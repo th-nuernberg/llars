@@ -221,6 +221,24 @@ export function useScenarioManager() {
   }
 
   /**
+   * Update a user's capability flags (is_viewer, is_assessor) in a scenario
+   * @param {number} scenarioId - Scenario ID
+   * @param {number} userId - User ID
+   * @param {Object} flags - { is_viewer: bool, is_assessor: bool }
+   */
+  async function updateUserFlags(scenarioId, userId, flags) {
+    try {
+      const response = await axios.put(`/api/scenarios/${scenarioId}/users/${userId}/flags`, flags, {
+        headers: getHeaders()
+      })
+      return response.data
+    } catch (err) {
+      console.error('Error updating user flags:', err)
+      throw err
+    }
+  }
+
+  /**
    * Start LLM evaluation for a scenario
    */
   async function startLLMEvaluation(scenarioId, options = {}) {
@@ -523,6 +541,7 @@ export function useScenarioManager() {
     inviteUsers,
     removeUser,
     updateUserRole,
+    updateUserFlags,
     startLLMEvaluation,
     stopLLMEvaluation,
     exportResults,

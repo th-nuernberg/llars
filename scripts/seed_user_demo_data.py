@@ -187,6 +187,9 @@ with app.app_context():
             scenario_id=scenario.id,
             user_id=user.id,
             role=ScenarioRoles.EVALUATOR,
+            access_level='MEMBER',
+            is_assessor=True,
+            is_viewer=False,
         )
         _db.session.add(su)
         _db.session.flush()

@@ -79,9 +79,15 @@ def add_threads_to_scenario():
             db.session.flush()
             thread_scenarios.append(new_scenario_thread.id)
 
+        # Find assessors (users who can rate) using new is_assessor flag with legacy fallback
         scenario_users_ids = [
-            user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter_by(
-                scenario_id=scenario.id, role=ScenarioRoles.EVALUATOR).all()
+            user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter(
+                ScenarioUsers.scenario_id == scenario.id,
+                db.or_(
+                    ScenarioUsers.is_assessor == True,
+                    ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+                )
+            ).all()
         ]
 
         distribution_mode = get_scenario_distribution_mode(scenario, scenario.function_type_id)
@@ -152,10 +158,16 @@ def add_viewers_to_scenario():
     for viewer_id in viewers:
         scenario_user = ScenarioUsers.query.filter_by(user_id=viewer_id, scenario_id=scenario_id).first()
         if not scenario_user:  # only add new users to scenario
-            db.session.add(ScenarioUsers(user_id=viewer_id, scenario_id=scenario_id, role=ScenarioRoles.VIEWER))
+            db.session.add(ScenarioUsers(
+                user_id=viewer_id, scenario_id=scenario_id,
+                role=ScenarioRoles.VIEWER,
+                access_level='MEMBER', is_viewer=True, is_assessor=False,
+            ))
             db.session.commit()
         else:
             scenario_user.role = ScenarioRoles.VIEWER
+            scenario_user.is_viewer = True
+            scenario_user.is_assessor = False
             db.session.commit()
 
     return jsonify({'message': 'Successfully added viewers to the db'}), 200
@@ -221,11 +233,15 @@ def invite_users_to_scenario():
             failed_users.append({'user_id': user_id, 'reason': 'User not found'})
             continue
 
-        # Map role string to enum
+        # Map role string to enum + new flags
         if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compat
             role = ScenarioRoles.EVALUATOR
+            is_assessor = True
+            is_viewer = False
         elif role_str == 'viewer':
             role = ScenarioRoles.VIEWER
+            is_assessor = False
+            is_viewer = True
         else:
             failed_users.append({'user_id': user_id, 'reason': f'Invalid role: {role_str}'})
             continue
@@ -234,13 +250,18 @@ def invite_users_to_scenario():
         scenario_user = ScenarioUsers.query.filter_by(user_id=user_id, scenario_id=scenario_id).first()
 
         if not scenario_user:
-            # Add new user
-            db.session.add(ScenarioUsers(user_id=user_id, scenario_id=scenario_id, role=role))
+            # Add new user with legacy role + new flags
+            db.session.add(ScenarioUsers(
+                user_id=user_id, scenario_id=scenario_id, role=role,
+                access_level='MEMBER', is_assessor=is_assessor, is_viewer=is_viewer,
+            ))
             added_users.append({'user_id': user_id, 'username': user.username, 'role': role.value})
         else:
             # Update existing user's role (unless they're OWNER)
-            if scenario_user.role != ScenarioRoles.OWNER:
+            if not scenario_user.is_owner_level and scenario_user.role != ScenarioRoles.OWNER:
                 scenario_user.role = role
+                scenario_user.is_assessor = is_assessor
+                scenario_user.is_viewer = is_viewer
                 updated_users.append({'user_id': user_id, 'username': user.username, 'role': role.value})
 
     db.session.commit()

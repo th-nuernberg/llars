@@ -2724,6 +2724,7 @@
       "results": "Ergebnisse",
       "team": "Team",
       "assessors": "Gutachter",
+      "settings": "Einstellungen",
       "myScenarios": "Meine Szenarien",
       "invitations": "Einladungen",
       "dataFormat": "Datenformat"
@@ -3428,6 +3429,19 @@
       "delete": "Szenario löschen",
       "distributionTooltip": "Legt fest, wie Items an Gutachter verteilt werden. \"Alle\" gibt jedem alle Items, \"Zufällig\" verteilt zufällig, und \"Sequentiell\" weist der Reihe nach zu.",
       "orderTooltip": "Legt die Reihenfolge fest, in der Items angezeigt werden. \"Fest\" zeigt allen die gleiche Reihenfolge, \"Zufällig\" mischt die Reihenfolge pro Gutachter."
+    },
+    "settingsTab": {
+      "teamSection": "Team",
+      "accessLevel": "Zugangsstufe",
+      "tags": {
+        "owner": "Besitzer",
+        "manager": "Manager",
+        "viewer": "Betrachter",
+        "assessor": "Gutachter",
+        "member": "Mitglied"
+      },
+      "toggleViewer": "Ergebnisse einsehen",
+      "toggleAssessor": "Items bewerten"
     },
     "distribution": {
       "all": "Alle an jeden",

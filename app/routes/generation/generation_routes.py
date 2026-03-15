@@ -555,10 +555,16 @@ def create_scenario_from_job(job_id: int):
             if existing:
                 continue
             role_enum = getattr(ScenarioRoles, invite_role, ScenarioRoles.EVALUATOR)
+            # Map legacy role enum to new flags
+            is_assessor = role_enum in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)
+            is_viewer = role_enum == ScenarioRoles.VIEWER
             scenario_user = ScenarioUsers(
                 scenario_id=scenario.id,
                 user_id=invite_user_id,
-                role=role_enum
+                role=role_enum,
+                access_level='MEMBER',
+                is_assessor=is_assessor,
+                is_viewer=is_viewer,
             )
             db.session.add(scenario_user)
         db.session.commit()

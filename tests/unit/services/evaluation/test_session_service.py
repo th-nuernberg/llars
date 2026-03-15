@@ -75,11 +75,18 @@ def _create_item_and_link(db_session, scenario_id, subject='Item', chat_id=1):
 
 
 def _add_user_to_scenario(db_session, scenario_id, user_id, role_name='ASSESSOR'):
-    """Add user to scenario with given role."""
+    """Add user to scenario with given role + new flags."""
     from db.models.scenario import ScenarioUsers, ScenarioRoles
 
     role = ScenarioRoles.ASSESSOR if role_name == 'ASSESSOR' else ScenarioRoles.OWNER
-    su = ScenarioUsers(scenario_id=scenario_id, user_id=user_id, role=role)
+    is_assessor = role_name == 'ASSESSOR'
+    is_owner = role_name == 'OWNER'
+    su = ScenarioUsers(
+        scenario_id=scenario_id, user_id=user_id, role=role,
+        access_level='OWNER' if is_owner else 'MEMBER',
+        is_assessor=is_assessor,
+        is_viewer=is_owner,  # Owner always gets viewer access
+    )
     db_session.session.add(su)
     db_session.session.flush()
     return su

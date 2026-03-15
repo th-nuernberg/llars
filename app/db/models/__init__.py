@@ -133,6 +133,7 @@ from db.models.kaimo import (
 # Scenario and Rating models
 from db.models.scenario import (
     ScenarioRoles,
+    AccessLevel,
     InvitationStatus,
     ProgressionStatus,
     FeatureFunctionType,
@@ -360,6 +361,7 @@ __all__ = [
     'KaimoCaseShare',
     # Scenario
     'ScenarioRoles',
+    'AccessLevel',
     'InvitationStatus',
     'ProgressionStatus',
     'FeatureFunctionType',

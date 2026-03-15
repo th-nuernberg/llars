@@ -502,7 +502,10 @@ def seed_llm_judge_demo_scenario(db):
             db.session.add(ScenarioUsers(
                 scenario_id=scenario.id,
                 user_id=user.id,
-                role=role
+                role=role,
+                access_level='MEMBER',
+                is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                is_viewer=(role == ScenarioRoles.VIEWER),
             ))
 
     db.session.flush()
@@ -519,10 +522,13 @@ def seed_llm_judge_demo_scenario(db):
 
     db.session.flush()
 
-    # Create distributions for all evaluator users
-    evaluator_users = ScenarioUsers.query.filter_by(
-        scenario_id=scenario.id,
-        role=ScenarioRoles.EVALUATOR
+    # Create distributions for all assessor users
+    evaluator_users = ScenarioUsers.query.filter(
+        ScenarioUsers.scenario_id == scenario.id,
+        db.or_(
+            ScenarioUsers.is_assessor == True,
+            ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+        )
     ).all()
 
     for eu in evaluator_users:

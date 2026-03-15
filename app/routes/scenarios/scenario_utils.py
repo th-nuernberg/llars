@@ -9,7 +9,7 @@ from decorators.error_handler import ForbiddenError
 
 
 def is_scenario_owner(scenario, username) -> bool:
-    """Check if the user is the owner of the scenario (by created_by or OWNER role in ScenarioUsers)."""
+    """Check if the user is the owner of the scenario (by created_by or OWNER access_level in ScenarioUsers)."""
     # Accept both username string and user object
     if not isinstance(username, str):
         username = getattr(username, 'username', str(username))
@@ -17,12 +17,19 @@ def is_scenario_owner(scenario, username) -> bool:
     if getattr(scenario, 'created_by', None) == username:
         return True
 
-    # Also check ScenarioUsers OWNER role (for seeded scenarios where created_by may be NULL)
-    from db.models import ScenarioUsers, ScenarioRoles, User
-    owner_entry = ScenarioUsers.query.filter_by(
-        scenario_id=scenario.id,
-        role=ScenarioRoles.OWNER
+    # Check ScenarioUsers OWNER access_level (for seeded scenarios where created_by may be NULL)
+    from db.models import ScenarioUsers, ScenarioRoles, User, AccessLevel
+    # New model: check access_level='OWNER'
+    owner_entry = ScenarioUsers.query.filter(
+        ScenarioUsers.scenario_id == scenario.id,
+        ScenarioUsers.access_level == AccessLevel.OWNER.value
     ).first()
+    # Fallback to legacy role for rows not yet migrated
+    if not owner_entry:
+        owner_entry = ScenarioUsers.query.filter_by(
+            scenario_id=scenario.id,
+            role=ScenarioRoles.OWNER
+        ).first()
     if owner_entry:
         owner_user = User.query.get(owner_entry.user_id)
         if owner_user and owner_user.username == username:
@@ -32,17 +39,25 @@ def is_scenario_owner(scenario, username) -> bool:
 
 
 def is_scenario_manager(scenario, username) -> bool:
-    """Check if the user has MANAGER role for this scenario."""
+    """Check if the user has MANAGER access_level for this scenario."""
     if not isinstance(username, str):
         username = getattr(username, 'username', str(username))
 
-    from db.models import ScenarioUsers, ScenarioRoles, User, MembershipStatus
-    manager_entry = ScenarioUsers.query.filter(
+    from db.models import ScenarioUsers, ScenarioRoles, User, MembershipStatus, AccessLevel
+    # New model: check access_level='MANAGER'
+    manager_entries = ScenarioUsers.query.filter(
         ScenarioUsers.scenario_id == scenario.id,
-        ScenarioUsers.role == ScenarioRoles.MANAGER,
+        ScenarioUsers.access_level == AccessLevel.MANAGER.value,
         ScenarioUsers.membership_status == MembershipStatus.ACTIVE
     ).all()
-    for entry in manager_entry:
+    # Fallback to legacy role for rows not yet migrated
+    if not manager_entries:
+        manager_entries = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == scenario.id,
+            ScenarioUsers.role == ScenarioRoles.MANAGER,
+            ScenarioUsers.membership_status == MembershipStatus.ACTIVE
+        ).all()
+    for entry in manager_entries:
         manager_user = User.query.get(entry.user_id)
         if manager_user and manager_user.username == username:
             return True

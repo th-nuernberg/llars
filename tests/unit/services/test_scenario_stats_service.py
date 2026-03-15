@@ -132,10 +132,15 @@ def _add_scenario_item(db_session, scenario_id, item_id):
 def _add_scenario_user(db_session, scenario_id, user_id, role_str='Assessor'):
     from db.models.scenario import ScenarioUsers, ScenarioRoles, MembershipStatus
     role = ScenarioRoles.EVALUATOR if role_str == 'Assessor' else ScenarioRoles.OWNER
+    is_assessor = role_str == 'Assessor'
+    is_owner = role_str == 'Owner'
     su = ScenarioUsers(
         scenario_id=scenario_id,
         user_id=user_id,
         role=role,
+        access_level='OWNER' if is_owner else 'MEMBER',
+        is_assessor=is_assessor,
+        is_viewer=is_owner or (not is_assessor),
         membership_status=MembershipStatus.ACTIVE,
     )
     db_session.session.add(su)

@@ -713,8 +713,8 @@ def get_user_progress_counts(scenario_id: int) -> Dict[str, Dict[str, int]]:
     result = {}
     for su in scenario_users:
         use_full = (
-            su.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER)
-            or (su.role == ScenarioRoles.EVALUATOR and raters_receive_all_threads(scenario))
+            su.is_viewer or su.can_manage
+            or (su.is_assessor and raters_receive_all_threads(scenario))
         )
         user_thread_ids = all_thread_ids if use_full else []
         if not use_full:
@@ -802,8 +802,7 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
     # Build a lookup for distributed threads per user
     distributed_thread_ids_by_user = defaultdict(set)
     if any(
-        su.role not in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER)
-        and not raters_receive_all_threads(scenario)
+        su.is_assessor and not raters_receive_all_threads(scenario)
         for su in scenario_users
     ):
         distributions = (
@@ -827,8 +826,8 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
         total_not_started_threads = 0
 
         use_full_threads = (
-            scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER)
-            or (scenario_user.role == ScenarioRoles.EVALUATOR and raters_receive_all_threads(scenario))
+            scenario_user.is_viewer or scenario_user.can_manage
+            or (scenario_user.is_assessor and raters_receive_all_threads(scenario))
         )
 
         if use_full_threads:
@@ -870,13 +869,13 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
             "progressing_threads_list": [],
         }
 
-        if scenario_user.role == ScenarioRoles.EVALUATOR:
-            # ASSESSOR/EVALUATOR can interact (rate/evaluate)
+        if scenario_user.is_assessor:
+            # ASSESSOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role in (ScenarioRoles.OWNER, ScenarioRoles.MANAGER):
+        elif scenario_user.can_manage and not scenario_user.is_assessor:
             # OWNER/MANAGER shown in stats for overview purposes
             evaluator_stats.append(new_data)
-        # VIEWER: excluded from stats entirely (read-only, no evaluation)
+        # VIEWER without assessor flag: excluded from stats entirely
 
     if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling", "comparison"}:
         scenario_thread_ids = [
@@ -1151,13 +1150,13 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
             "progressing_threads_list": [],
         }
 
-        if scenario_user.role == ScenarioRoles.EVALUATOR:
-            # ASSESSOR/EVALUATOR can interact (rate/evaluate)
+        if scenario_user.is_assessor:
+            # ASSESSOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role in (ScenarioRoles.OWNER, ScenarioRoles.MANAGER):
+        elif scenario_user.can_manage and not scenario_user.is_assessor:
             # OWNER/MANAGER shown in stats for overview purposes
             evaluator_stats.append(new_data)
-        # VIEWER: excluded from stats entirely (read-only, no evaluation)
+        # VIEWER without assessor flag: excluded from stats entirely
 
     # Add LLM evaluator stats (comparison sessions)
     config = scenario.config_json or {}
@@ -4090,8 +4089,8 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
         user = su.user
         user_id = user.id
 
-        # Get threads assigned to this user (for RATER role) or all threads (for EVALUATOR)
-        if su.role == ScenarioRoles.EVALUATOR and distribution_mode != DISTRIBUTION_MODE_ALL:
+        # Get threads assigned to this user (distributed assessors) or all threads
+        if su.is_assessor and distribution_mode != DISTRIBUTION_MODE_ALL:
             user_thread_ids = [
                 dist.scenario_thread.thread.thread_id
                 for dist in (

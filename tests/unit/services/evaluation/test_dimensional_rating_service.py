@@ -434,7 +434,8 @@ class TestSaveDimensionalRating:
         si = ScenarioItems(scenario_id=scenario.id, item_id=item.item_id)
         db_session.session.add(si)
 
-        su = ScenarioUsers(scenario_id=scenario.id, user_id=user.id, role=ScenarioRoles.ASSESSOR)
+        su = ScenarioUsers(scenario_id=scenario.id, user_id=user.id, role=ScenarioRoles.ASSESSOR,
+                           access_level='MEMBER', is_assessor=True, is_viewer=False)
         db_session.session.add(su)
         db_session.session.commit()
 
@@ -721,7 +722,8 @@ class TestGetUserProgress:
                 db.session.add(si)
                 items.append(item)
 
-            su = ScenarioUsers(scenario_id=scenario.id, user_id=user.id, role=ScenarioRoles.ASSESSOR)
+            su = ScenarioUsers(scenario_id=scenario.id, user_id=user.id, role=ScenarioRoles.ASSESSOR,
+                               access_level='MEMBER', is_assessor=True, is_viewer=False)
             db.session.add(su)
 
             # Rate first item as done

@@ -246,15 +246,23 @@ def can_access_thread(user_id, thread_id, function_type_id):
         RatingScenarios.end >= current_time
     ).all()
 
-    for scenario_user in scenario_users:
-        scenario_id = scenario_user.scenario_id
-        role = scenario_user.role
-        scenario = getattr(scenario_user, "rating_scenario", None)
+    for su in scenario_users:
+        scenario_id = su.scenario_id
+        scenario = getattr(su, "rating_scenario", None)
         if scenario is None:
             scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
-        if role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER) or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer, Owner oder All-Distribution-Evaluator sehen alle Threads des Szenarios
+        # New model: is_viewer or can_manage (OWNER/MANAGER access_level)
+        # Legacy fallback: VIEWER or OWNER role
+        has_full_access = (
+            su.is_viewer or su.can_manage
+            or su.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER)
+        )
+        # New model: is_assessor flag; Legacy fallback: EVALUATOR role
+        is_assessor = su.is_assessor or su.role == ScenarioRoles.EVALUATOR
+
+        if has_full_access or (is_assessor and raters_receive_all_threads(scenario, function_type_id)):
+            # Viewer, Owner, Manager oder All-Distribution-Assessor sehen alle Threads des Szenarios
             if db.session.query(ScenarioThreads).join(
                 RatingScenarios, RatingScenarios.id == ScenarioThreads.scenario_id
             ).filter(
@@ -265,14 +273,14 @@ def can_access_thread(user_id, thread_id, function_type_id):
             ).first():
                 return True
 
-        elif role == ScenarioRoles.EVALUATOR:
-            # Wenn der User Rater ist, muss der Thread zugeordnet sein
+        elif is_assessor:
+            # Wenn der User Assessor ist, muss der Thread zugeordnet sein
             if (
                 db.session.query(ScenarioThreadDistribution)
                 .join(ScenarioThreads, ScenarioThreads.id==ScenarioThreadDistribution.scenario_thread_id)
                 .join(RatingScenarios, RatingScenarios.id == ScenarioThreadDistribution.scenario_id)
                 .filter(
-                    ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                    ScenarioThreadDistribution.scenario_user_id == su.id,
                     ScenarioThreads.thread_id == thread_id,
                     RatingScenarios.begin <= current_time, # TODO: Gedanken zu Zeitzonen machen
                     RatingScenarios.end >= current_time
@@ -335,10 +343,9 @@ def get_user_threads(user_id, function_type_id):
     scenario_order_modes = {}
 
     # Durchlaufe alle Szenarien und deren zugeordnete Threads
-    for scenario_user in scenario_users:
-        scenario_id = scenario_user.scenario_id
-        role = scenario_user.role
-        scenario = getattr(scenario_user, "rating_scenario", None)
+    for su in scenario_users:
+        scenario_id = su.scenario_id
+        scenario = getattr(su, "rating_scenario", None)
         if scenario is None:
             scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
@@ -348,8 +355,17 @@ def get_user_threads(user_id, function_type_id):
         if scenario_id not in scenario_order_modes:
             scenario_order_modes[scenario_id] = get_scenario_order_mode(scenario)
 
-        if role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER) or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer/Owner/Manager oder All-Distribution-Evaluator sehen alle Threads im Szenario
+        # New model: is_viewer or can_manage (OWNER/MANAGER access_level)
+        # Legacy fallback: VIEWER, OWNER, or MANAGER role
+        has_full_access = (
+            su.is_viewer or su.can_manage
+            or su.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER)
+        )
+        # New model: is_assessor flag; Legacy fallback: EVALUATOR role
+        is_assessor = su.is_assessor or su.role == ScenarioRoles.EVALUATOR
+
+        if has_full_access or (is_assessor and raters_receive_all_threads(scenario, function_type_id)):
+            # Viewer/Owner/Manager oder All-Distribution-Assessor sehen alle Threads im Szenario
             threads = (
                 db.session.query(EmailThread)
                 .join(ScenarioThreads, ScenarioThreads.thread_id == EmailThread.thread_id)
@@ -361,14 +377,14 @@ def get_user_threads(user_id, function_type_id):
             )
             scenario_threads_map[scenario_id].extend(threads)
 
-        elif role == ScenarioRoles.EVALUATOR:
-            # Evaluator mit Thread-Zuweisung sehen nur ihre zugeordneten Threads
+        elif is_assessor:
+            # Assessor mit Thread-Zuweisung sehen nur ihre zugeordneten Threads
             thread_distributions = (
                 db.session.query(ScenarioThreadDistribution)
                 .join(ScenarioThreads, ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
                 .join(EmailThread, ScenarioThreads.thread_id == EmailThread.thread_id)
                 .filter(
-                    ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                    ScenarioThreadDistribution.scenario_user_id == su.id,
                     ScenarioThreadDistribution.scenario_id == scenario_id,
                     EmailThread.function_type_id == function_type_id,
                 )
@@ -401,8 +417,8 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     """
     Check if a user can submit evaluations for a scenario.
 
-    Only EVALUATOR role can submit evaluations.
-    OWNER and VIEWER roles are read-only.
+    Only assessors (is_assessor flag) can submit evaluations.
+    Falls back to legacy EVALUATOR role check for backwards compatibility.
 
     Args:
         user_id: The user ID to check
@@ -419,7 +435,8 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     if not scenario_user:
         return False
 
-    return scenario_user.role == ScenarioRoles.EVALUATOR
+    # New model: is_assessor flag; Legacy fallback: EVALUATOR role
+    return scenario_user.is_assessor or scenario_user.role == ScenarioRoles.EVALUATOR
 
 
 def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:

@@ -209,9 +209,10 @@ def get_scenario_details(scenario_id=None):
         if scenario_user.user.username == scenario.created_by:
             scenario_owner = user_info
 
-        if scenario_user.role == ScenarioRoles.EVALUATOR:
+        # Use new flags with legacy fallback for role categorization
+        if scenario_user.is_assessor or scenario_user.role == ScenarioRoles.EVALUATOR:
             scenario_evaluators.append(user_info)
-        elif scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER):
+        elif scenario_user.is_viewer or scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER):
             scenario_viewers.append(user_info)
 
     # get all the threads of the scenario
@@ -387,17 +388,26 @@ def create_scenario():
         evaluator_list = []
     evaluator_id_set = set(uid for uid in evaluator_list if isinstance(uid, int))
 
-    # Add the creating user: EVALUATOR if in evaluator list, otherwise VIEWER
+    # Add the creating user: ASSESSOR if in evaluator list, otherwise VIEWER — always OWNER access_level
     creating_user = User.query.filter_by(username=creating_username).first()
     if creating_user:
-        creator_role = ScenarioRoles.EVALUATOR if creating_user.id in evaluator_id_set else ScenarioRoles.VIEWER
-        new_scenario_users.append({"id": creating_user.id, "role": creator_role})
+        creator_is_assessor = creating_user.id in evaluator_id_set
+        creator_role = ScenarioRoles.EVALUATOR if creator_is_assessor else ScenarioRoles.VIEWER
+        new_scenario_users.append({
+            "id": creating_user.id, "role": creator_role,
+            "access_level": "OWNER",
+            "is_assessor": creator_is_assessor,
+            "is_viewer": True,  # Owner always has viewer access
+        })
         seen_user.add(creating_user.id)
 
     # Auto-add admin as VIEWER if not the creating user
     admin_user = User.query.filter_by(username='admin').first()
     if admin_user and admin_user.id not in seen_user:
-        new_scenario_users.append({"id": admin_user.id, "role": ScenarioRoles.VIEWER})
+        new_scenario_users.append({
+            "id": admin_user.id, "role": ScenarioRoles.VIEWER,
+            "access_level": "MEMBER", "is_assessor": False, "is_viewer": True,
+        })
         seen_user.add(admin_user.id)
 
     # Validate and collect evaluators (users who can interact/rate)
@@ -410,7 +420,10 @@ def create_scenario():
             continue
         if user.id in seen_user:
             continue
-        new_scenario_users.append({"id": user.id, "role": ScenarioRoles.EVALUATOR})
+        new_scenario_users.append({
+            "id": user.id, "role": ScenarioRoles.EVALUATOR,
+            "access_level": "MEMBER", "is_assessor": True, "is_viewer": False,
+        })
         seen_user.add(user.id)
 
     # Validate and collect viewers (users with read-only access)
@@ -426,7 +439,10 @@ def create_scenario():
             continue
         if user.id in seen_user:
             continue
-        new_scenario_users.append({"id": user.id, "role": ScenarioRoles.VIEWER})
+        new_scenario_users.append({
+            "id": user.id, "role": ScenarioRoles.VIEWER,
+            "access_level": "MEMBER", "is_assessor": False, "is_viewer": True,
+        })
         seen_user.add(user.id)
 
     # Validate threads
@@ -459,10 +475,13 @@ def create_scenario():
                 scenario_id=new_scenario.id,
                 user_id=scenario_user["id"],
                 role=scenario_user["role"],
+                access_level=scenario_user.get("access_level", "MEMBER"),
+                is_assessor=scenario_user.get("is_assessor", False),
+                is_viewer=scenario_user.get("is_viewer", False),
             )
             db.session.add(new_scenario_user)
             db.session.flush()
-            if new_scenario_user.role == ScenarioRoles.EVALUATOR:
+            if new_scenario_user.is_assessor or new_scenario_user.role == ScenarioRoles.EVALUATOR:
                 scenario_evaluator_ids.append(new_scenario_user.id)
 
         # Add threads

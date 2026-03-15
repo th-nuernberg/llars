@@ -75,14 +75,21 @@
         <LTag variant="warning">{{ $t('evaluation.viewerReadOnly') }}</LTag>
       </div>
 
-      <div v-if="hasBriefing" class="briefing-card">
-        <div v-if="taskMarkdown" class="briefing-section">
-          <span class="briefing-label">{{ $t('evaluation.briefing.taskDescription') }}</span>
-          <LMarkdownContent :markdown="taskMarkdown" compact />
-        </div>
-        <div v-if="criteriaMarkdown" class="briefing-section">
-          <span class="briefing-label">{{ $t('evaluation.briefing.criteria') }}</span>
-          <LMarkdownContent :markdown="criteriaMarkdown" compact />
+      <div v-if="hasBriefing" class="briefing-banner">
+        <button class="briefing-toggle" @click="toggleBriefing">
+          <LIcon size="16" class="mr-2" color="#88c4c8">mdi-clipboard-text-outline</LIcon>
+          <span class="briefing-toggle-title">{{ $t('evaluation.briefing.title') }}</span>
+          <LIcon size="16" class="toggle-chevron" :class="{ rotated: briefingExpanded }">mdi-chevron-down</LIcon>
+        </button>
+        <div v-show="briefingExpanded" class="briefing-body">
+          <div v-if="taskMarkdown" class="briefing-section">
+            <span class="briefing-label">{{ $t('evaluation.briefing.taskDescription') }}</span>
+            <LMarkdownContent :markdown="taskMarkdown" compact />
+          </div>
+          <div v-if="criteriaMarkdown" class="briefing-section">
+            <span class="briefing-label">{{ $t('evaluation.briefing.criteria') }}</span>
+            <LMarkdownContent :markdown="criteriaMarkdown" compact />
+          </div>
         </div>
       </div>
 
@@ -276,6 +283,12 @@ const initialItemId = computed(() => {
 const taskMarkdown = computed(() => resolveTaskMarkdown(config.value, locale.value))
 const criteriaMarkdown = computed(() => resolveCriteriaMarkdown(config.value, locale.value))
 const hasBriefing = computed(() => Boolean(taskMarkdown.value || criteriaMarkdown.value))
+const briefingExpanded = ref(localStorage.getItem('llars:briefingExpanded') !== 'false')
+
+function toggleBriefing() {
+  briefingExpanded.value = !briefingExpanded.value
+  localStorage.setItem('llars:briefingExpanded', String(briefingExpanded.value))
+}
 
 // Navigation
 function goBack() {
@@ -428,39 +441,72 @@ function handleItemCompleted(itemId) {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 24px;
+  padding: 6px 24px;
   background: rgba(209, 188, 138, 0.12);
   border-bottom: 1px solid rgba(209, 188, 138, 0.3);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: rgba(var(--v-theme-on-surface), 0.8);
   flex-shrink: 0;
 }
 
-.briefing-card {
+.briefing-banner {
+  background: rgba(136, 196, 200, 0.08);
+  border-bottom: 1px solid rgba(136, 196, 200, 0.25);
+  flex-shrink: 0;
+}
+
+.briefing-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.briefing-toggle:hover {
+  background: rgba(136, 196, 200, 0.08);
+}
+
+.briefing-toggle-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  flex: 1;
+  text-align: left;
+}
+
+.toggle-chevron {
+  transition: transform 0.2s ease;
+}
+
+.toggle-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.briefing-body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
-  margin: 16px 24px 0;
-  padding: 16px 18px;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgb(var(--v-theme-surface));
-  flex-shrink: 0;
+  padding: 4px 24px 12px;
 }
 
 .briefing-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .briefing-label {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.58);
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 /* Content Area */

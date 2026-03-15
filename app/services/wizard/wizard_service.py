@@ -774,12 +774,15 @@ class WizardService:
 
         assigned_user_ids = set()
 
-        # Add owner as VIEWER (ownership is determined by created_by field)
+        # Add owner as VIEWER with OWNER access_level
         if actual_owner_id:
             owner_assignment = ScenarioUsers(
                 scenario_id=scenario_id,
                 user_id=actual_owner_id,
                 role=ScenarioRoles.VIEWER,
+                access_level='OWNER',
+                is_viewer=True,
+                is_assessor=False,
                 invitation_status=InvitationStatus.ACCEPTED,
                 membership_status=MembershipStatus.ACTIVE,
                 invited_at=datetime.utcnow(),
@@ -789,13 +792,16 @@ class WizardService:
             assigned_user_ids.add(actual_owner_id)
             logger.info(f"Assigned owner as viewer (user_id={actual_owner_id}) to scenario {scenario_id}")
 
-        # Add evaluators
+        # Add evaluators (assessors)
         for evaluator_id in evaluator_ids:
             if evaluator_id not in assigned_user_ids:
                 evaluator_assignment = ScenarioUsers(
                     scenario_id=scenario_id,
                     user_id=evaluator_id,
                     role=ScenarioRoles.EVALUATOR,
+                    access_level='MEMBER',
+                    is_assessor=True,
+                    is_viewer=False,
                     invitation_status=InvitationStatus.ACCEPTED,
                     membership_status=MembershipStatus.ACTIVE,
                     invited_at=datetime.utcnow(),
@@ -811,6 +817,9 @@ class WizardService:
                 scenario_id=scenario_id,
                 user_id=admin.id,
                 role=ScenarioRoles.VIEWER,
+                access_level='MEMBER',
+                is_viewer=True,
+                is_assessor=False,
                 invitation_status=InvitationStatus.ACCEPTED,
                 membership_status=MembershipStatus.ACTIVE,
                 invited_at=datetime.utcnow(),

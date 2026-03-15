@@ -1449,12 +1449,128 @@ def apply_schema_patches(db) -> None:
                 changed = True
                 print(f"  [Backfill] Set rendered_content for {result.rowcount} prompts with JSON blocks")
 
+        # =========================================================================
+        # Scenario Role Redesign: 2-axis permission model (access_level + flags)
+        # =========================================================================
+        changed |= _migrate_to_access_level_flags(db)
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:
         db.session.rollback()
         print(f"⚠️  Schema patch failed: {exc}")
         raise
+
+
+def _migrate_to_access_level_flags(db) -> bool:
+    """
+    Migrate scenario_users from single 'role' column to 2-axis model:
+    - access_level (OWNER/MANAGER/MEMBER): hierarchical management permissions
+    - is_viewer: can see evaluation results
+    - is_assessor: can evaluate items
+
+    Migration mapping:
+    | Old role | → access_level | → is_viewer | → is_assessor |
+    |----------|---------------|-------------|---------------|
+    | OWNER    | OWNER         | true        | false         |
+    | MANAGER  | MANAGER       | true        | false         |
+    | ASSESSOR | MEMBER        | false       | true          |
+    | VIEWER   | MEMBER        | true        | false         |
+    """
+    if not _table_exists(db, "scenario_users"):
+        return False
+
+    changed = False
+
+    # Step 1: Add new columns
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="access_level",
+        column_definition_sql="`access_level` VARCHAR(20) NULL DEFAULT 'MEMBER'",
+    )
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="is_viewer",
+        column_definition_sql="`is_viewer` TINYINT(1) NOT NULL DEFAULT 0",
+    )
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="is_assessor",
+        column_definition_sql="`is_assessor` TINYINT(1) NOT NULL DEFAULT 0",
+    )
+
+    # Step 2: Migrate data from role column (only rows where access_level is still NULL)
+    if _column_exists(db, "scenario_users", "role") and _column_exists(db, "scenario_users", "access_level"):
+        try:
+            # OWNER → access_level=OWNER, is_viewer=true
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET access_level = 'OWNER', is_viewer = 1, is_assessor = 0
+                WHERE role = 'OWNER' AND (access_level IS NULL OR access_level = 'MEMBER')
+                  AND is_viewer = 0 AND is_assessor = 0
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Migrated {result.rowcount} OWNER rows")
+
+            # MANAGER → access_level=MANAGER, is_viewer=true
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET access_level = 'MANAGER', is_viewer = 1, is_assessor = 0
+                WHERE role = 'MANAGER' AND (access_level IS NULL OR access_level = 'MEMBER')
+                  AND is_viewer = 0 AND is_assessor = 0
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Migrated {result.rowcount} MANAGER rows")
+
+            # ASSESSOR/EVALUATOR → access_level=MEMBER, is_assessor=true
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET access_level = 'MEMBER', is_viewer = 0, is_assessor = 1
+                WHERE role IN ('ASSESSOR', 'EVALUATOR') AND (access_level IS NULL OR access_level = 'MEMBER')
+                  AND is_viewer = 0 AND is_assessor = 0
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Migrated {result.rowcount} ASSESSOR rows")
+
+            # VIEWER → access_level=MEMBER, is_viewer=true
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET access_level = 'MEMBER', is_viewer = 1, is_assessor = 0
+                WHERE role = 'VIEWER' AND (access_level IS NULL OR access_level = 'MEMBER')
+                  AND is_viewer = 0 AND is_assessor = 0
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Migrated {result.rowcount} VIEWER rows")
+
+            # Special: Scenario creators (created_by) who have a VIEWER row
+            # should be upgraded to OWNER access_level
+            result = db.session.execute(text("""
+                UPDATE scenario_users su
+                INNER JOIN rating_scenarios rs ON rs.id = su.scenario_id
+                INNER JOIN users u ON u.id = su.user_id
+                SET su.access_level = 'OWNER'
+                WHERE u.username = rs.created_by
+                  AND su.access_level != 'OWNER'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Promoted {result.rowcount} scenario creators to OWNER")
+
+            if changed:
+                db.session.commit()
+
+        except Exception as exc:
+            db.session.rollback()
+            print(f"  ⚠️ Access level migration failed (non-fatal): {exc}")
+
+    return changed
 
 
 def _migrate_model_id_prefixes(db) -> bool:

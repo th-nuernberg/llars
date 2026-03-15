@@ -2724,6 +2724,7 @@
       "results": "Results",
       "team": "Team",
       "assessors": "Assessors",
+      "settings": "Settings",
       "myScenarios": "My Scenarios",
       "invitations": "Invitations",
       "dataFormat": "Data format"
@@ -3428,6 +3429,19 @@
       "delete": "Delete Scenario",
       "distributionTooltip": "Controls how items are assigned to assessors. \"All\" gives every item to everyone, \"Random\" distributes randomly, and \"Sequential\" assigns in order.",
       "orderTooltip": "Controls the order in which items are presented. \"Fixed\" shows items in the same order for everyone, \"Random\" shuffles the order per assessor."
+    },
+    "settingsTab": {
+      "teamSection": "Team",
+      "accessLevel": "Access Level",
+      "tags": {
+        "owner": "Owner",
+        "manager": "Manager",
+        "viewer": "Viewer",
+        "assessor": "Assessor",
+        "member": "Member"
+      },
+      "toggleViewer": "Can view results",
+      "toggleAssessor": "Can evaluate items"
     },
     "distribution": {
       "all": "All to everyone",

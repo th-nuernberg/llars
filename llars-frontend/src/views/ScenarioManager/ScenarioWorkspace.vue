@@ -28,7 +28,7 @@
             </LBtn>
           </template>
           <v-list density="compact">
-            <v-list-item @click="showSettings = true">
+            <v-list-item @click="activeTab = 'settings'">
               <template #prepend>
                 <LIcon size="18" class="mr-2">mdi-cog-outline</LIcon>
               </template>
@@ -132,18 +132,17 @@
         @team-updated="refreshScenario"
         @refresh-stats="refreshStats"
       />
-    </div>
 
-    <!-- Settings Dialog -->
-    <v-dialog v-model="showSettings" max-width="600">
-      <ScenarioSettingsDialog
-        v-if="showSettings"
+      <!-- Settings Tab (Owner/Manager only) -->
+      <ScenarioSettingsTab
+        v-else-if="activeTab === 'settings'"
         :scenario="scenario"
         :is-owner="isOwner"
-        @close="showSettings = false"
+        :can-manage="canManage"
         @saved="onSettingsSaved"
+        @team-updated="refreshScenario"
       />
-    </v-dialog>
+    </div>
 
     <!-- Duplicate Dialog -->
     <v-dialog v-model="showDuplicateDialog" max-width="450">
@@ -235,7 +234,7 @@ import ScenarioOverviewTab from './components/tabs/ScenarioOverviewTab.vue'
 import ScenarioDataTab from './components/tabs/ScenarioDataTab.vue'
 import ScenarioEvaluationTab from './components/tabs/ScenarioEvaluationTab.vue'
 import ScenarioTeamTab from './components/tabs/ScenarioTeamTab.vue'
-import ScenarioSettingsDialog from './components/ScenarioSettingsDialog.vue'
+import ScenarioSettingsTab from './components/tabs/ScenarioSettingsTab.vue'
 
 const props = defineProps({
   id: {
@@ -276,7 +275,6 @@ const {
 
 // UI State
 const activeTab = ref('overview')
-const showSettings = ref(false)
 const showDuplicateDialog = ref(false)
 const showArchiveDialog = ref(false)
 const duplicateName = ref('')
@@ -287,22 +285,34 @@ const snackbar = ref({ show: false, message: '', color: 'success' })
 // Access control
 const isOwner = computed(() => scenario.value?.is_owner === true)
 const canManage = computed(() => isOwner.value || scenario.value?.can_manage === true)
-const canViewAll = computed(() => canManage.value || scenario.value?.user_role === 'Viewer')
+const canViewAll = computed(() => canManage.value || scenario.value?.is_viewer || scenario.value?.user_role === 'Viewer')
 
 // Tabs configuration based on role:
-// - Owner/Manager: all tabs + settings menu
-// - Viewer: all tabs (read-only), no settings menu
-// - Assessor: only evaluation tab
+// - Owner/Manager: Overview | Data | Evaluation | Assessors | Settings
+// - Viewer (is_viewer=true, not manager): Overview | Data | Evaluation | Assessors
+// - Pure Assessor (is_assessor=true, is_viewer=false): Evaluation only
 const tabs = computed(() => {
-  if (canViewAll.value) {
+  const baseTabs = [
+    { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
+    { value: 'data', label: t('scenarioManager.tabs.data'), icon: 'mdi-database-outline' },
+    { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' },
+    { value: 'assessors', label: t('scenarioManager.tabs.assessors'), icon: 'mdi-account-group-outline' }
+  ]
+
+  if (canManage.value) {
+    // Owner/Manager: all tabs + settings
     return [
-      { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
-      { value: 'data', label: t('scenarioManager.tabs.data'), icon: 'mdi-database-outline' },
-      { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' },
-      { value: 'assessors', label: t('scenarioManager.tabs.assessors'), icon: 'mdi-account-group-outline' }
+      ...baseTabs,
+      { value: 'settings', label: t('scenarioManager.tabs.settings'), icon: 'mdi-cog-outline' }
     ]
   }
-  // Assessors only see the evaluation tab
+
+  if (canViewAll.value) {
+    // Viewer: all tabs except settings
+    return baseTabs
+  }
+
+  // Pure assessor: evaluation only
   return [
     { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' }
   ]
@@ -451,8 +461,7 @@ async function executeArchive() {
   }
 }
 
-async function onSettingsSaved(updates) {
-  showSettings.value = false
+async function onSettingsSaved() {
   await refreshScenario()
 }
 

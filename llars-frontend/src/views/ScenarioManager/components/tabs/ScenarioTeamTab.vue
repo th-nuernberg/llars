@@ -14,15 +14,8 @@
       <div class="stat-card">
         <LIcon size="24" color="primary">mdi-account-check</LIcon>
         <div class="stat-info">
-          <span class="stat-value">{{ evaluators.length }}</span>
+          <span class="stat-value">{{ assessors.length }}</span>
           <span class="stat-label">{{ $t('scenarioManager.team.evaluators') }}</span>
-        </div>
-      </div>
-      <div v-if="humanViewers.length > 0" class="stat-card">
-        <LIcon size="24" color="secondary">mdi-eye-outline</LIcon>
-        <div class="stat-info">
-          <span class="stat-value">{{ humanViewers.length }}</span>
-          <span class="stat-label">{{ $t('scenarioManager.team.viewers') }}</span>
         </div>
       </div>
       <div class="stat-card">
@@ -34,12 +27,12 @@
       </div>
     </div>
 
-    <!-- Team Members List -->
+    <!-- Human Assessors (is_assessor=true) -->
     <div class="section">
       <h4 class="section-title">{{ $t('scenarioManager.team.humanEvaluators') }}</h4>
       <div class="members-list">
         <div
-          v-for="member in evaluators"
+          v-for="member in assessors"
           :key="member.user_id"
           class="member-card"
           :class="{ 'is-rejected': member.invitation_status === 'rejected' }"
@@ -55,12 +48,14 @@
           <div class="member-info">
             <span class="member-name">{{ member.display_name || member.username }}</span>
             <div class="member-meta">
-              <LTag :variant="getRoleVariant(member.role)" size="sm">
-                {{ $t(`scenarioManager.team.roles.${member.role?.toLowerCase() || 'evaluator'}`) }}
-              </LTag>
-              <!-- Owner indicator -->
-              <LTag v-if="isOwner(member)" variant="primary" size="sm">
-                {{ $t('scenarioManager.team.roles.owner') }}
+              <!-- Use tags from API if available, otherwise fall back to role -->
+              <LTag
+                v-for="tag in getMemberTags(member)"
+                :key="tag"
+                :variant="getTagVariant(tag)"
+                size="sm"
+              >
+                {{ $t(`scenarioManager.team.roles.${tag.toLowerCase()}`) }}
               </LTag>
               <!-- Invitation Status Badge -->
               <LTag
@@ -115,88 +110,8 @@
           </div>
         </div>
 
-        <div v-if="evaluators.length === 0" class="empty-list">
+        <div v-if="assessors.length === 0" class="empty-list">
           <p>{{ $t('scenarioManager.team.noEvaluators') }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Human Viewers -->
-    <div class="section" v-if="humanViewers.length > 0 || canManage">
-      <h4 class="section-title">{{ $t('scenarioManager.team.humanViewers') }}</h4>
-      <div class="members-list">
-        <div
-          v-for="member in humanViewers"
-          :key="member.user_id"
-          class="member-card"
-          :class="{ 'is-rejected': member.invitation_status === 'rejected' }"
-        >
-          <div class="member-avatar">
-            <LAvatar
-              :username="member.username"
-              :seed="member.avatar_seed"
-              :src="member.avatar_url"
-              size="md"
-            />
-          </div>
-          <div class="member-info">
-            <span class="member-name">{{ member.display_name || member.username }}</span>
-            <div class="member-meta">
-              <LTag :variant="getRoleVariant(member.role)" size="sm">
-                {{ $t(`scenarioManager.team.roles.${member.role?.toLowerCase() || 'viewer'}`) }}
-              </LTag>
-              <!-- Owner indicator -->
-              <LTag v-if="isOwner(member)" variant="primary" size="sm">
-                {{ $t('scenarioManager.team.roles.owner') }}
-              </LTag>
-              <!-- Invitation Status Badge -->
-              <LTag
-                v-if="member.invitation_status && member.invitation_status !== 'accepted' && !isOwner(member)"
-                :variant="getInvitationVariant(member.invitation_status)"
-                size="sm"
-              >
-                {{ $t(`scenarioManager.invitation.${member.invitation_status}`) }}
-              </LTag>
-            </div>
-          </div>
-          <div class="member-actions" v-if="canManage">
-            <!-- Re-invite button for rejected viewers -->
-            <LBtn
-              v-if="member.invitation_status === 'rejected'"
-              variant="primary"
-              size="small"
-              :loading="reinviting === member.user_id"
-              @click="doReinvite(member)"
-            >
-              <LIcon start size="16">mdi-email-send-outline</LIcon>
-              {{ $t('scenarioManager.invitation.reinvite') }}
-            </LBtn>
-            <v-menu v-else>
-              <template #activator="{ props }">
-                <v-btn icon size="small" variant="text" v-bind="props">
-                  <LIcon size="18">mdi-dots-vertical</LIcon>
-                </v-btn>
-              </template>
-              <v-list density="compact">
-                <v-list-item @click="changeRole(member)">
-                  <template #prepend>
-                    <LIcon size="18" class="mr-2">mdi-account-convert</LIcon>
-                  </template>
-                  <v-list-item-title>{{ $t('scenarioManager.team.changeRole') }}</v-list-item-title>
-                </v-list-item>
-                <v-list-item @click="confirmRemoveMember(member)" class="text-error">
-                  <template #prepend>
-                    <LIcon size="18" class="mr-2" color="error">mdi-account-remove</LIcon>
-                  </template>
-                  <v-list-item-title>{{ $t('scenarioManager.team.remove') }}</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-menu>
-          </div>
-        </div>
-
-        <div v-if="humanViewers.length === 0" class="empty-list">
-          <p>{{ $t('scenarioManager.team.noViewers') }}</p>
         </div>
       </div>
     </div>
@@ -604,17 +519,15 @@ const allHumanMembers = computed(() => {
   })
 })
 
-// Human Assessors: Assessor/Evaluator roles + Owner (unless owner is a Viewer)
-const evaluators = computed(() =>
-  allHumanMembers.value.filter(u =>
-    ['Assessor', 'Evaluator'].includes(u.role) ||
-    (isOwner(u) && u.role !== 'Viewer')
-  )
-)
-
-// Human Viewers: Viewer role (owner can also be a viewer)
-const humanViewers = computed(() =>
-  allHumanMembers.value.filter(u => u.role === 'Viewer')
+// Human Assessors: members with is_assessor=true, or legacy Assessor/Evaluator roles + Owner
+const assessors = computed(() =>
+  allHumanMembers.value.filter(u => {
+    // New API: use is_assessor flag
+    if (u.is_assessor !== undefined) return u.is_assessor
+    // Legacy fallback: role-based filtering
+    return ['Assessor', 'Evaluator'].includes(u.role) ||
+           (isOwner(u) && u.role !== 'Viewer')
+  })
 )
 
 const llmEvaluators = computed(() => {
@@ -692,6 +605,31 @@ function getRoleVariant(role) {
     'Viewer': 'info'
   }
   return map[role] || 'default'
+}
+
+/**
+ * Get display tags for a member.
+ * Prefers the new `tags` field from the API, falls back to role-based tags.
+ */
+function getMemberTags(member) {
+  if (member.tags && Array.isArray(member.tags) && member.tags.length > 0) {
+    return member.tags
+  }
+  // Legacy fallback
+  const tags = []
+  if (isOwner(member)) tags.push('Owner')
+  if (member.role) tags.push(member.role)
+  return tags
+}
+
+function getTagVariant(tag) {
+  const map = {
+    'Owner': 'primary',
+    'Manager': 'secondary',
+    'Assessor': 'success',
+    'Viewer': 'info'
+  }
+  return map[tag] || 'default'
 }
 
 function getInvitationVariant(status) {

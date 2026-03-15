@@ -397,10 +397,15 @@ def seed_demo_scenarios(db):
     existing_labeling = RatingScenarios.query.filter_by(scenario_name='Demo Labeling Szenario').first()
 
     def _ensure_scenario_user(scenario_id: int, user_id: int, role: ScenarioRoles) -> None:
+        """Ensure user exists in scenario with correct role + new flags."""
+        is_assessor = role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)
+        is_viewer = role == ScenarioRoles.VIEWER
         existing = ScenarioUsers.query.filter_by(scenario_id=scenario_id, user_id=user_id).first()
         if existing:
             if existing.role != role:
                 existing.role = role
+                existing.is_assessor = is_assessor
+                existing.is_viewer = is_viewer
                 db.session.flush()
             return
         db.session.add(
@@ -408,6 +413,9 @@ def seed_demo_scenarios(db):
                 scenario_id=scenario_id,
                 user_id=user_id,
                 role=role,
+                access_level='MEMBER',
+                is_assessor=is_assessor,
+                is_viewer=is_viewer,
             )
         )
         db.session.flush()
@@ -839,7 +847,10 @@ def seed_demo_scenarios(db):
                 scenario_user = ScenarioUsers(
                     scenario_id=ranking_scenario.id,
                     user_id=user.id,
-                    role=role
+                    role=role,
+                    access_level='MEMBER',
+                    is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                    is_viewer=(role == ScenarioRoles.VIEWER),
                 )
                 db.session.add(scenario_user)
 
@@ -853,10 +864,13 @@ def seed_demo_scenarios(db):
         db.session.add(st)
         db.session.flush()
 
-        # Distribute to rater
-        rater_scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=ranking_scenario.id,
-            role=ScenarioRoles.EVALUATOR
+        # Distribute to rater (assessor)
+        rater_scenario_user = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == ranking_scenario.id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
         if rater_scenario_user:
@@ -916,7 +930,10 @@ def seed_demo_scenarios(db):
                 scenario_user = ScenarioUsers(
                     scenario_id=mail_rating_scenario.id,
                     user_id=user.id,
-                    role=role
+                    role=role,
+                    access_level='MEMBER',
+                    is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                    is_viewer=(role == ScenarioRoles.VIEWER),
                 )
                 db.session.add(scenario_user)
 
@@ -934,10 +951,13 @@ def seed_demo_scenarios(db):
 
         db.session.flush()
 
-        # Distribute to rater
-        rater_scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=mail_rating_scenario.id,
-            role=ScenarioRoles.EVALUATOR
+        # Distribute to rater (assessor)
+        rater_scenario_user = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == mail_rating_scenario.id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
         if rater_scenario_user:
@@ -999,7 +1019,10 @@ def seed_demo_scenarios(db):
                 scenario_user = ScenarioUsers(
                     scenario_id=authenticity_scenario.id,
                     user_id=user.id,
-                    role=role
+                    role=role,
+                    access_level='MEMBER',
+                    is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                    is_viewer=(role == ScenarioRoles.VIEWER),
                 )
                 db.session.add(scenario_user)
 
@@ -1016,9 +1039,12 @@ def seed_demo_scenarios(db):
 
         db.session.flush()
 
-        rater_scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=authenticity_scenario.id,
-            role=ScenarioRoles.EVALUATOR
+        rater_scenario_user = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == authenticity_scenario.id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
         if rater_scenario_user:
@@ -1059,10 +1085,13 @@ def seed_demo_scenarios(db):
 
         if new_thread_objs:
             db.session.flush()
-            # Distribute new threads to existing EVALUATOR users
-            evaluator_scenario_users = ScenarioUsers.query.filter_by(
-                scenario_id=authenticity_scenario.id,
-                role=ScenarioRoles.EVALUATOR
+            # Distribute new threads to existing assessor users
+            evaluator_scenario_users = ScenarioUsers.query.filter(
+                ScenarioUsers.scenario_id == authenticity_scenario.id,
+                db.or_(
+                    ScenarioUsers.is_assessor == True,
+                    ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+                )
             ).all()
             for rater_su in evaluator_scenario_users:
                 for st in new_thread_objs:
@@ -1124,7 +1153,10 @@ def seed_demo_scenarios(db):
                     ScenarioUsers(
                         scenario_id=labeling_scenario.id,
                         user_id=user.id,
-                        role=role
+                        role=role,
+                        access_level='MEMBER',
+                        is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                        is_viewer=(role == ScenarioRoles.VIEWER),
                     )
                 )
 
@@ -1142,9 +1174,12 @@ def seed_demo_scenarios(db):
 
         db.session.flush()
 
-        rater_scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=labeling_scenario.id,
-            role=ScenarioRoles.EVALUATOR
+        rater_scenario_user = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == labeling_scenario.id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
         if rater_scenario_user:
@@ -1247,11 +1282,14 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
         if ft:
             feature_types[ft_name] = ft
 
-    # Helper to get rater scenario user
+    # Helper to get rater (assessor) scenario user
     def _get_rater_user(scenario_id):
-        return ScenarioUsers.query.filter_by(
-            scenario_id=scenario_id,
-            role=ScenarioRoles.EVALUATOR
+        return ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == scenario_id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
     # =========================================================================

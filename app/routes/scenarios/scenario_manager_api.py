@@ -55,11 +55,44 @@ _LLM_AUTO_START_COOLDOWN_SECONDS = 300  # 5 minutes
 
 
 def _normalize_role_value(role) -> str:
-    """Normalize role value for API: map DB 'Evaluator' to display 'Assessor'."""
+    """Normalize role value for API: map DB 'Evaluator' to display 'Assessor'.
+
+    DEPRECATED: Use _primary_role_display(su) when a ScenarioUsers object is available.
+    Kept as fallback for cases where only a role string/enum is available.
+    """
     val = role.value if hasattr(role, 'value') else str(role)
     if val == 'Evaluator':
         return 'Assessor'
     return val
+
+
+def _build_role_tags(su) -> list:
+    """Build display tags from ScenarioUsers access_level + capability flags."""
+    tags = []
+    if su.is_owner_level:
+        tags.append('Owner')
+    elif su.can_manage:
+        tags.append('Manager')
+    if su.is_viewer:
+        tags.append('Viewer')
+    if su.is_assessor:
+        tags.append('Assessor')
+    if not tags:
+        tags.append('Member')
+    return tags
+
+
+def _primary_role_display(su) -> str:
+    """Get the primary display role for backwards-compatible API responses."""
+    if su.is_owner_level:
+        return 'Owner'
+    if su.can_manage:
+        return 'Manager'
+    if su.is_assessor:
+        return 'Assessor'
+    if su.is_viewer:
+        return 'Viewer'
+    return 'Member'
 
 
 def _parse_scenario_config(raw_config):
@@ -232,7 +265,10 @@ def get_user_scenarios(user, invitation_filter=None):
         for su in scenario_users:
             invitation_map[su.scenario_id] = {
                 'status': su.invitation_status.value if su.invitation_status else 'accepted',
-                'role': _normalize_role_value(su.role) if su.role else 'Assessor',
+                'role': _primary_role_display(su),
+                'access_level': su.access_level or 'MEMBER',
+                'is_viewer': su.is_viewer,
+                'is_assessor': su.is_assessor,
                 'invited_at': su.invited_at.isoformat() if su.invited_at else None,
                 'invited_by': su.invited_by
             }
@@ -299,25 +335,50 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     user_id = getattr(user, 'id', None)
     username = getattr(user, 'username', str(user))
 
-    # Determine ownership: created_by, admin role, or OWNER role in scenario_users
-    is_owner = (scenario.created_by == username) or has_role(user, 'admin')
-    if not is_owner and invitation_map:
+    # Resolve the user's ScenarioUsers row for new-field access
+    su_record = None
+    if invitation_map and scenario.id in invitation_map:
         inv_info = invitation_map.get(scenario.id)
-        if inv_info and inv_info.get('role') == ScenarioRoles.OWNER.value:
-            is_owner = True
+    else:
+        inv_info = None
+    if user_id:
+        su_record = ScenarioUsers.query.filter_by(scenario_id=scenario.id, user_id=user_id).first()
+
+    # Determine ownership: created_by, admin role, or OWNER access_level in scenario_users
+    is_owner = (scenario.created_by == username) or has_role(user, 'admin')
+    if not is_owner and su_record and su_record.is_owner_level:
+        is_owner = True
+    if not is_owner and inv_info and inv_info.get('role') == 'Owner':
+        is_owner = True
 
     # Determine management access (Owner or Manager) and user's role
     can_manage = is_owner or is_scenario_manager(scenario, username)
+    if not can_manage and su_record and su_record.can_manage:
+        can_manage = True
+
+    # Build role info from ScenarioUsers record or invitation_map
     user_role = None
-    if invitation_map and scenario.id in invitation_map:
-        user_role = _normalize_role_value(invitation_map[scenario.id].get('role', 'Assessor'))
-    elif user_id:
-        su = ScenarioUsers.query.filter_by(scenario_id=scenario.id, user_id=user_id).first()
-        if su:
-            user_role = _normalize_role_value(su.role)
+    is_viewer = False
+    is_assessor = False
+    access_level = 'MEMBER'
+    role_tags = ['Member']
+    if su_record:
+        user_role = _primary_role_display(su_record)
+        is_viewer = su_record.is_viewer
+        is_assessor = su_record.is_assessor
+        access_level = su_record.access_level or 'MEMBER'
+        role_tags = _build_role_tags(su_record)
+    elif inv_info:
+        user_role = inv_info.get('role', 'Assessor')
+        is_viewer = inv_info.get('is_viewer', False)
+        is_assessor = inv_info.get('is_assessor', False)
+        access_level = inv_info.get('access_level', 'MEMBER')
     # Fallback for owner without ScenarioUsers row
     if not user_role and is_owner:
-        user_role = 'Viewer'
+        user_role = 'Owner'
+        access_level = 'OWNER'
+        is_viewer = True
+        role_tags = ['Owner', 'Viewer']
 
     # Get function type name
     func_type = FeatureFunctionType.query.filter_by(
@@ -430,17 +491,16 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     if invitation_map and scenario.id in invitation_map:
         invitation_info = invitation_map[scenario.id]
     elif user_id and not is_owner:
-        # Fetch invitation info if not provided
-        su = ScenarioUsers.query.filter_by(
-            scenario_id=scenario.id,
-            user_id=user_id
-        ).first()
-        if su:
+        # Use su_record already fetched above to avoid duplicate query
+        if su_record:
             invitation_info = {
-                'status': su.invitation_status.value if su.invitation_status else 'accepted',
-                'role': _normalize_role_value(su.role) if su.role else 'Assessor',
-                'invited_at': su.invited_at.isoformat() if su.invited_at else None,
-                'invited_by': su.invited_by
+                'status': su_record.invitation_status.value if su_record.invitation_status else 'accepted',
+                'role': _primary_role_display(su_record),
+                'access_level': su_record.access_level or 'MEMBER',
+                'is_viewer': su_record.is_viewer,
+                'is_assessor': su_record.is_assessor,
+                'invited_at': su_record.invited_at.isoformat() if su_record.invited_at else None,
+                'invited_by': su_record.invited_by
             }
 
     description = getattr(scenario, 'description', None) or config.get('description')
@@ -458,6 +518,10 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         'is_owner': is_owner,
         'can_manage': can_manage,
         'user_role': user_role,
+        'access_level': access_level,
+        'is_viewer': is_viewer,
+        'is_assessor': is_assessor,
+        'role_tags': role_tags,
         'owner_name': owner_name,
         'thread_count': thread_count,
         'user_count': user_count,
@@ -554,7 +618,10 @@ def get_scenario_detail(scenario_id):
             is_member = True
             invitation_map[scenario_id] = {
                 'status': su.invitation_status.value if su.invitation_status else 'accepted',
-                'role': su.role.value if su.role else 'EVALUATOR',
+                'role': _primary_role_display(su),
+                'access_level': su.access_level or 'MEMBER',
+                'is_viewer': su.is_viewer,
+                'is_assessor': su.is_assessor,
                 'invited_at': su.invited_at.isoformat() if su.invited_at else None,
                 'invited_by': su.invited_by
             }
@@ -591,7 +658,11 @@ def get_scenario_detail(scenario_id):
                 'user_id': su.user_id,
                 'username': db_user.username,
                 'display_name': getattr(db_user, 'display_name', db_user.username),
-                'role': _normalize_role_value(su.role) if su.role else 'Assessor',
+                'role': _primary_role_display(su),
+                'access_level': su.access_level or 'MEMBER',
+                'is_viewer': su.is_viewer,
+                'is_assessor': su.is_assessor,
+                'tags': _build_role_tags(su),
                 'avatar_seed': avatar.get('avatar_seed'),
                 'avatar_url': avatar.get('avatar_url'),
                 'completed': user_progress.get('done', 0),
@@ -1649,7 +1720,10 @@ def sm_create_scenario():
         owner_su = ScenarioUsers(
             scenario_id=new_scenario.id,
             user_id=owner_user.id,
-            role=ScenarioRoles.VIEWER,
+            role=ScenarioRoles.VIEWER,  # Legacy column for backwards compat
+            access_level='OWNER',
+            is_viewer=True,
+            is_assessor=False,
             invitation_status=InvitationStatus.ACCEPTED,
             membership_status=MembershipStatus.ACTIVE,
             invited_by=username
@@ -1982,13 +2056,22 @@ def sm_invite_users(scenario_id):
     user_ids = data.get('user_ids', [])
     role_str = data.get('role', 'ASSESSOR').lower()
 
-    # Map role string to enum
+    # Map role string to enum + new permission fields
     if role_str in ('assessor', 'evaluator', 'rater'):  # Accept legacy names
         role_enum = ScenarioRoles.ASSESSOR
+        new_access_level = 'MEMBER'
+        new_is_assessor = True
+        new_is_viewer = False
     elif role_str == 'manager':
         role_enum = ScenarioRoles.MANAGER
+        new_access_level = 'MANAGER'
+        new_is_assessor = False
+        new_is_viewer = True
     elif role_str == 'viewer':
         role_enum = ScenarioRoles.VIEWER
+        new_access_level = 'MEMBER'
+        new_is_assessor = False
+        new_is_viewer = True
     else:
         raise ValidationError(f'Invalid role: {role_str}. Must be ASSESSOR, MANAGER, or VIEWER.')
 
@@ -2016,6 +2099,9 @@ def sm_invite_users(scenario_id):
                 scenario_id=scenario_id,
                 user_id=uid,
                 role=role_enum,
+                access_level=new_access_level,
+                is_viewer=new_is_viewer,
+                is_assessor=new_is_assessor,
                 invitation_status=InvitationStatus.ACCEPTED,  # Auto-accept new invitations
                 invited_at=datetime.utcnow(),
                 invited_by=username,
@@ -2028,6 +2114,9 @@ def sm_invite_users(scenario_id):
             # Role is set to the new requested role (EVALUATOR can continue, VIEWER is read-only)
             existing.membership_status = MembershipStatus.ACTIVE
             existing.role = role_enum
+            existing.access_level = new_access_level
+            existing.is_viewer = new_is_viewer
+            existing.is_assessor = new_is_assessor
             existing.invitation_status = InvitationStatus.ACCEPTED
             existing.invited_at = datetime.utcnow()
             existing.invited_by = username
@@ -2151,6 +2240,9 @@ def sm_update_user_role(scenario_id, user_id):
             scenario_id=scenario_id,
             user_id=user_id,
             role=ScenarioRoles.VIEWER,
+            access_level='OWNER',
+            is_viewer=True,
+            is_assessor=False,
             invitation_status=InvitationStatus.ACCEPTED,
             membership_status=MembershipStatus.ACTIVE,
             invited_by=scenario.created_by
@@ -2165,18 +2257,33 @@ def sm_update_user_role(scenario_id, user_id):
     data = request.get_json()
     role_str = data.get('role', '').lower()
 
-    # Map role string to enum
+    # Map role string to enum + new permission fields
     if role_str in ('assessor', 'evaluator', 'rater'):  # Accept legacy names
         role_enum = ScenarioRoles.ASSESSOR
+        new_access_level = su.access_level if su.is_owner_level else 'MEMBER'
+        new_is_assessor = True
+        new_is_viewer = False
     elif role_str == 'manager':
         role_enum = ScenarioRoles.MANAGER
+        new_access_level = 'MANAGER' if not su.is_owner_level else su.access_level
+        new_is_assessor = False
+        new_is_viewer = True
     elif role_str == 'viewer':
         role_enum = ScenarioRoles.VIEWER
+        new_access_level = su.access_level if su.is_owner_level else 'MEMBER'
+        new_is_assessor = False
+        new_is_viewer = True
     else:
         raise ValidationError(f'Invalid role: {role_str}. Must be ASSESSOR, MANAGER, or VIEWER.')
 
-    old_role = su.role.value
+    old_role = _primary_role_display(su)
     su.role = role_enum
+    # Preserve OWNER access_level - owners changing their capability flags
+    # should not lose their management access
+    if not su.is_owner_level:
+        su.access_level = new_access_level
+    su.is_assessor = new_is_assessor
+    su.is_viewer = new_is_viewer
 
     # Role changes should always reactivate membership for active collaboration.
     su.membership_status = MembershipStatus.ACTIVE
@@ -2187,13 +2294,60 @@ def sm_update_user_role(scenario_id, user_id):
 
     db.session.commit()
 
-    logger.info(f"User {username} changed role of user {user_id} from {old_role} to {role_enum.value} in scenario {scenario_id}")
+    logger.info(f"User {username} changed role of user {user_id} from {old_role} to {_primary_role_display(su)} in scenario {scenario_id}")
 
     return jsonify({
         'message': 'Role updated successfully',
         'user_id': user_id,
         'old_role': old_role,
-        'new_role': role_enum.value
+        'new_role': _primary_role_display(su),
+        'access_level': su.access_level or 'MEMBER',
+        'is_viewer': su.is_viewer,
+        'is_assessor': su.is_assessor,
+        'tags': _build_role_tags(su)
+    }), 200
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/users/<int:user_id>/flags', methods=['PUT'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def sm_update_user_flags(scenario_id, user_id):
+    """Toggle is_viewer/is_assessor flags for a user in a scenario.
+
+    Allows fine-grained control over user capabilities without changing
+    their access_level. Syncs the legacy role column for backwards compat.
+    """
+    user = g.authentik_user
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+    check_scenario_management_access(scenario, user)
+
+    su = ScenarioUsers.query.filter_by(scenario_id=scenario_id, user_id=user_id).first()
+    if not su:
+        raise NotFoundError('User not found in scenario')
+
+    data = request.get_json()
+    if 'is_viewer' in data:
+        su.is_viewer = bool(data['is_viewer'])
+    if 'is_assessor' in data:
+        su.is_assessor = bool(data['is_assessor'])
+
+    # Sync legacy role column for backwards compat
+    if su.is_assessor:
+        su.role = ScenarioRoles.ASSESSOR
+    elif su.is_viewer:
+        su.role = ScenarioRoles.VIEWER
+
+    db.session.commit()
+    _emit_scenario_stats_update(scenario_id)
+
+    return jsonify({
+        'message': 'User flags updated',
+        'is_viewer': su.is_viewer,
+        'is_assessor': su.is_assessor,
+        'tags': _build_role_tags(su),
+        'role': _primary_role_display(su)
     }), 200
 
 
@@ -2732,7 +2886,11 @@ def get_scenario_team(scenario_id):
             'user_id': su.user_id,
             'username': db_user.username,
             'display_name': getattr(db_user, 'display_name', db_user.username),
-            'role': _normalize_role_value(su.role) if su.role else 'Assessor',
+            'role': _primary_role_display(su),
+            'access_level': su.access_level or 'MEMBER',
+            'is_viewer': su.is_viewer,
+            'is_assessor': su.is_assessor,
+            'tags': _build_role_tags(su),
             'invitation_status': su.invitation_status.value if su.invitation_status else 'accepted',
             'invited_at': su.invited_at.isoformat() if su.invited_at else None,
             'invited_by': su.invited_by,
@@ -2754,7 +2912,11 @@ def get_scenario_team(scenario_id):
             'user_id': owner_user.id,
             'username': owner_user.username,
             'display_name': getattr(owner_user, 'display_name', owner_user.username),
-            'role': ScenarioRoles.VIEWER.value,
+            'role': 'Owner',
+            'access_level': 'OWNER',
+            'is_viewer': True,
+            'is_assessor': False,
+            'tags': ['Owner', 'Viewer'],
             'invitation_status': InvitationStatus.ACCEPTED.value,
             'invited_at': None,
             'invited_by': scenario.created_by,

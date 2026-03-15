@@ -9,11 +9,24 @@ from db import db
 
 
 class ScenarioRoles(Enum):
+    """Legacy role enum - kept for backwards compatibility during migration.
+    New code should use AccessLevel + is_viewer/is_assessor flags on ScenarioUsers."""
     OWNER = 'Owner'          # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
     MANAGER = 'Manager'      # Kann Szenario mitverwalten (Settings, Assessors einladen), aber nicht löschen
     ASSESSOR = 'Assessor'    # Bewerter/Gutachter - kann bewerten/interagieren
     EVALUATOR = 'Assessor'   # Legacy-Alias für ASSESSOR (DB speichert 'ASSESSOR')
     VIEWER = 'Viewer'        # Nur lesend - sieht alle Tabs
+
+
+class AccessLevel(Enum):
+    """Hierarchical access level for scenario management.
+
+    Defines WHO can manage the scenario, separate from WHAT they can do (flags).
+    OWNER > MANAGER > MEMBER (hierarchical).
+    """
+    OWNER = 'OWNER'      # Can edit, delete, manage all users
+    MANAGER = 'MANAGER'  # Can edit settings, invite users, but not delete scenario
+    MEMBER = 'MEMBER'    # Default level - capabilities defined by is_viewer/is_assessor flags
 
 
 class InvitationStatus(Enum):
@@ -210,11 +223,31 @@ class RatingScenarios(db.Model):
 
 
 class ScenarioUsers(db.Model):
+    """
+    Scenario membership with 2-axis permission model:
+    - access_level (OWNER/MANAGER/MEMBER): hierarchical management permissions
+    - is_viewer: can see evaluation results and all tabs
+    - is_assessor: can evaluate items, appears in Assessors tab and stats
+
+    The legacy `role` column is kept for backwards compatibility during migration.
+    New code should use access_level + flags.
+    """
     __tablename__ = 'scenario_users'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     role = mapped_column(db.Enum(ScenarioRoles))
+
+    # --- New 2-axis permission model ---
+    # access_level: hierarchical management permission (OWNER > MANAGER > MEMBER)
+    access_level: Mapped[Optional[str]] = mapped_column(
+        db.String(20), nullable=True, default='MEMBER'
+    )
+    # is_viewer: can see evaluation results, overview, data tabs
+    is_viewer: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default='0')
+    # is_assessor: can evaluate items, appears in Assessors tab and stats
+    is_assessor: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default='0')
+
     # Einladungsstatus: accepted (default), rejected, pending
     invitation_status = mapped_column(
         db.Enum(InvitationStatus),
@@ -239,6 +272,16 @@ class ScenarioUsers(db.Model):
     archived_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
 
     user = db.relationship('User', backref='scenario_users')
+
+    @property
+    def can_manage(self) -> bool:
+        """Check if user can manage the scenario (edit settings, invite users)."""
+        return self.access_level in (AccessLevel.OWNER.value, 'OWNER', AccessLevel.MANAGER.value, 'MANAGER')
+
+    @property
+    def is_owner_level(self) -> bool:
+        """Check if user is the scenario owner."""
+        return self.access_level in (AccessLevel.OWNER.value, 'OWNER')
 
     # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
     __table_args__ = (

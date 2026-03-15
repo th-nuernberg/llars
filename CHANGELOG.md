@@ -9,21 +9,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 LLARS uses **tag-based semantic versioning** computed via `git describe --tags --match "v*" --first-parent`.
 Given a tag `vMAJOR.MINOR.PATCH`, the formula produces `MAJOR.MINOR.(PATCH + N)` where N is the number
 of commits since the tag. At the tagged commit itself, N=0 and the version matches the tag exactly.
-Tags: `v1.0.0` (2026-03-09), `v1.1.0` (2026-03-13). Future releases will be tagged on `main` after
-each dev-to-main merge.
+Tags: `v1.0.0` (2026-03-09), `v1.1.0` (2026-03-13), `v1.2.0` (2026-03-15). Future releases will be
+tagged on `main` after each dev-to-main merge.
 
 ---
 
 ## [Unreleased]
 
-### 2026-03-15
+---
 
-#### Fixed
-- **KRITISCH: Frontend Healthcheck nutzte `wget` (nicht installiert in nginx:alpine)** - verursachte 9h17min Production-Downtime nach Server-Reboot. `unattended-upgrades` Kernel-Update loeste Reboot aus → `llars.service` startete `docker compose up -d` → Frontend-Healthcheck schlug fehl (wget fehlt) → Frontend "unhealthy" → nginx `depends_on: condition: service_healthy` blockiert → nginx blieb im "Created"-Status. Fix: Healthcheck auf `curl` umgestellt (in nginx:alpine enthalten).
+## [1.2.0] - 2026-03-15
 
-#### Added
-- **2-Achsen Berechtigungsmodell fuer Szenarien** - Ersetzt einfache `role`-Spalte durch `access_level` (OWNER/MANAGER/MEMBER) + Capability-Flags (`is_viewer`, `is_assessor`). Ermoeglicht feingranulare Kontrolle: z.B. Manager ohne Evaluations-Sicht oder Viewer mit Assessor-Aufgabe.
-- **Neuer Settings-Tab im Scenario Manager** - Ersetzt Settings-Popup-Dialog. Enthaelt alle Szenario-Einstellungen + Team-Uebersicht mit Tag-basierter Rollenverwaltung und Toggle-Switches fuer Viewer/Assessor-Flags.
+### Fixed
+- **KRITISCH: Frontend Healthcheck nutzte `wget` (nicht installiert in nginx:alpine)** - verursachte 9h17min Production-Downtime nach Server-Reboot. `unattended-upgrades` Kernel-Update loeste Reboot aus → Frontend-Healthcheck schlug fehl → nginx blockiert. Fix: Healthcheck auf `curl` umgestellt.
+
+### Added
+- **Systemd Reboot-Resilienz** - Automatische Wiederherstellung nach Server-Reboots via `llars.service` mit 5-Retry-Logik und Exponential-Backoff. Blue-Green-aware: Zwei-Schritt-Start (Infrastructure via compose, App-Container via docker start). Healthcheck-Timer (3min) und Cleanup-Timer (taeglich 03:30).
+- **2-Achsen Berechtigungsmodell fuer Szenarien** - Ersetzt einfache `role`-Spalte durch `access_level` (OWNER/MANAGER/MEMBER) + Capability-Flags (`is_viewer`, `is_assessor`). Ermoeglicht feingranulare Kontrolle.
+- **Neuer Settings-Tab im Scenario Manager** - Ersetzt Settings-Popup-Dialog. Enthaelt alle Szenario-Einstellungen + Team-Uebersicht mit Tag-basierter Rollenverwaltung.
 
 ---
 

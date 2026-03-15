@@ -12,6 +12,10 @@
 #   1. Reads SSH host + sudo password from .env
 #   2. Copies scripts to server via scp
 #   3. Runs install_systemd.sh on the server via SSH + sudo
+#
+# Password handling:
+#   Uses a temporary file descriptor to pipe the sudo password, avoiding
+#   shell quoting issues with special characters in passwords.
 # =============================================================================
 
 set -euo pipefail
@@ -28,9 +32,19 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# --- Read credentials from .env (handles special chars in passwords) ---
+# --- Read credentials from .env ---
+# Uses Python to safely parse values with special characters (quotes, pipes, etc.)
 get_env() {
-    grep "^${1}=" "$ENV_FILE" | head -1 | cut -d= -f2-
+    python3 -c "
+import re, sys
+with open('${ENV_FILE}') as f:
+    for line in f:
+        m = re.match(r'^${1}=(.*)', line.rstrip('\n'))
+        if m:
+            print(m.group(1))
+            sys.exit(0)
+sys.exit(1)
+" 2>/dev/null
 }
 
 case "$TARGET" in
@@ -55,8 +69,33 @@ if [ -z "$SUDO_PASS" ]; then
     exit 1
 fi
 
+# --- Helper: run command with sudo on remote, piping password via stdin ---
+# Uses a heredoc to avoid shell quoting issues with special characters
+remote_sudo() {
+    ssh "$SSH_HOST" "cat | sudo -S bash -c '$1'" <<< "$SUDO_PASS" 2>/dev/null
+}
+
 # --- Determine LLARS_ROOT on the remote server ---
-REMOTE_LLARS_ROOT=$(ssh "$SSH_HOST" 'grep -m1 "^WorkingDirectory=" /etc/systemd/system/llars.service 2>/dev/null | cut -d= -f2- || echo "/var/llars"')
+# Check existing service file, fall back to finding docker-compose.yml, then /var/llars
+REMOTE_LLARS_ROOT=$(ssh "$SSH_HOST" bash -c '
+    # Try existing systemd service
+    if [ -f /etc/systemd/system/llars.service ]; then
+        val=$(grep -m1 "^WorkingDirectory=" /etc/systemd/system/llars.service | cut -d= -f2-)
+        if [ -n "$val" ] && [ -d "$val" ]; then
+            echo "$val"
+            exit 0
+        fi
+    fi
+    # Try common locations
+    for dir in /var/llars /opt/llars /home/*/llars; do
+        if [ -f "$dir/docker-compose.yml" ]; then
+            echo "$dir"
+            exit 0
+        fi
+    done
+    # Final fallback
+    echo "/var/llars"
+')
 REMOTE_SCRIPTS_DIR="${REMOTE_LLARS_ROOT}/scripts/server"
 
 echo "  SSH_HOST:          ${SSH_HOST}"
@@ -66,20 +105,24 @@ echo ""
 
 # --- 1. Ensure remote directory exists ---
 echo "[1/3] Creating remote directory..."
-ssh "$SSH_HOST" "echo '${SUDO_PASS}' | sudo -S mkdir -p '${REMOTE_SCRIPTS_DIR}' && echo '${SUDO_PASS}' | sudo -S chown \$(whoami):\$(id -gn) '${REMOTE_SCRIPTS_DIR}'" 2>/dev/null
+remote_sudo "mkdir -p '${REMOTE_SCRIPTS_DIR}'"
+# Set ownership to the SSH user so scp works without sudo
+REMOTE_USER=$(ssh "$SSH_HOST" whoami)
+remote_sudo "chown -R ${REMOTE_USER}:${REMOTE_USER} '${REMOTE_SCRIPTS_DIR}'"
 
 # --- 2. Copy scripts ---
 echo "[2/3] Copying scripts to ${SSH_HOST}:${REMOTE_SCRIPTS_DIR}/..."
 scp -q \
     "${SCRIPT_DIR}/llars_start_retry.sh" \
     "${SCRIPT_DIR}/llars_healthcheck.sh" \
+    "${SCRIPT_DIR}/llars_cleanup.sh" \
     "${SCRIPT_DIR}/install_systemd.sh" \
     "${SSH_HOST}:${REMOTE_SCRIPTS_DIR}/"
 
 # --- 3. Run installer with sudo ---
 echo "[3/3] Running install_systemd.sh on ${SSH_HOST}..."
 echo ""
-ssh "$SSH_HOST" "echo '${SUDO_PASS}' | sudo -S bash '${REMOTE_SCRIPTS_DIR}/install_systemd.sh'" 2>/dev/null
+remote_sudo "bash '${REMOTE_SCRIPTS_DIR}/install_systemd.sh'"
 
 echo ""
 echo "=== Deployment complete ==="

@@ -38,7 +38,7 @@ if [ ! -f "${LLARS_ROOT}/docker-compose.yml" ]; then
 fi
 
 # Verify scripts exist
-for script in llars_start_retry.sh llars_healthcheck.sh; do
+for script in llars_start_retry.sh llars_healthcheck.sh llars_cleanup.sh; do
     if [ ! -f "${SCRIPTS_DIR}/${script}" ]; then
         echo "ERROR: ${script} not found at ${SCRIPTS_DIR}/${script}"
         exit 1
@@ -49,11 +49,12 @@ done
 echo "[1/5] Setting script permissions..."
 chmod +x "${SCRIPTS_DIR}/llars_start_retry.sh"
 chmod +x "${SCRIPTS_DIR}/llars_healthcheck.sh"
+chmod +x "${SCRIPTS_DIR}/llars_cleanup.sh"
 
 # 2. Backup old service
 echo "[2/5] Backing up old llars.service..."
 if [ -f "$SYSTEMD_DIR/llars.service" ]; then
-    cp "$SYSTEMD_DIR/llars.service" "$SYSTEMD_DIR/llars.service.bak.$(date +%Y%m%d)"
+    cp "$SYSTEMD_DIR/llars.service" "$SYSTEMD_DIR/llars.service.bak.$(date +%Y%m%d_%H%M%S)"
 fi
 
 # 3. Generate and install systemd units (paths injected from LLARS_ROOT)
@@ -99,13 +100,14 @@ After=llars.service
 Requires=llars.service
 
 [Service]
+# Type=oneshot prevents overlapping invocations: systemd will not start a new
+# instance while one is already running. This is our primary overlap guard.
 Type=oneshot
 WorkingDirectory=${LLARS_ROOT}
 Environment=LLARS_ROOT=${LLARS_ROOT}
 ExecStart=/bin/bash ${SCRIPTS_DIR}/llars_healthcheck.sh
 
-# Don't log success (runs every 3 min, would spam the journal)
-StandardOutput=null
+# Recovery messages go to stderr → journal. Healthy fast-path produces no output.
 StandardError=journal
 UNIT
 
@@ -119,6 +121,34 @@ After=llars.service
 OnBootSec=90
 # Then check every 3 minutes
 OnUnitActiveSec=180
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+# --- Docker Cleanup (daily) ---
+cat > "$SYSTEMD_DIR/llars-cleanup.service" <<UNIT
+[Unit]
+Description=LLARS Docker Cleanup (dangling images, build cache, old backups)
+After=llars.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=${LLARS_ROOT}
+Environment=LLARS_ROOT=${LLARS_ROOT}
+ExecStart=/bin/bash ${SCRIPTS_DIR}/llars_cleanup.sh
+StandardError=journal
+UNIT
+
+cat > "$SYSTEMD_DIR/llars-cleanup.timer" <<UNIT
+[Unit]
+Description=LLARS Docker Cleanup Timer (daily at 03:30)
+
+[Timer]
+# Run daily at 03:30 (after nightly deploy window 02:00-03:00)
+OnCalendar=*-*-* 03:30:00
+Persistent=true
 
 [Install]
 WantedBy=timers.target
@@ -130,6 +160,8 @@ systemctl daemon-reload
 systemctl enable llars.service
 systemctl enable llars-healthcheck.timer
 systemctl start llars-healthcheck.timer
+systemctl enable llars-cleanup.timer
+systemctl start llars-cleanup.timer
 
 # 5. Verify
 echo "[5/5] Verifying installation..."
@@ -139,6 +171,7 @@ echo ""
 echo "=== Installation complete ==="
 echo "  llars.service:             updated (retry + force-start logic)"
 echo "  llars-healthcheck.timer:   enabled (every 3 min auto-recovery)"
+echo "  llars-cleanup.timer:       enabled (daily at 03:30)"
 echo ""
 echo "  Generated paths:"
 echo "    LLARS_ROOT:    ${LLARS_ROOT}"

@@ -801,14 +801,31 @@ class TestGetProgressStats:
         assert result['rating_distribution'] is not None
         assert result['dimension_averages'] is not None
 
-    @patch('services.scenario_stats_service._get_comparison_progress_stats')
-    def test_STATS_077_comparison_delegates(self, mock_comp, app, db, app_context):
-        """[STATS-077] Comparison scenario delegates to _get_comparison_progress_stats."""
-        mock_comp.return_value = {"rater_stats": [], "evaluator_stats": []}
+    def test_STATS_077_comparison_delegates(self, app, db, app_context):
+        """[STATS-077] Comparison scenario delegates to _get_comparison_progress_stats.
+
+        The delegation only happens when ComparisonSession records exist for
+        the scenario (chat-based comparison). Without sessions the code falls
+        through to the standard item-based flow.
+        """
+        from db.models.scenario import ComparisonSession
+        sss = _sss()
         fft = _create_function_type(db, 'comparison')
         scenario = _create_scenario(db, 'Comp Stats', fft.function_type_id)
-        _sss().get_progress_stats(scenario.id)
-        mock_comp.assert_called_once_with(scenario.id)
+        # A ComparisonSession must exist for the delegate path to trigger
+        user = _create_user(db, 'comp_user_077')
+        session = ComparisonSession(
+            scenario_id=scenario.id,
+            user_id=user.id,
+            persona_json={"name": "Test"},
+            persona_name="Test",
+        )
+        db.session.add(session)
+        db.session.commit()
+        with patch.object(sss, '_get_comparison_progress_stats',
+                          return_value={"rater_stats": [], "evaluator_stats": []}) as mock_comp:
+            sss.get_progress_stats(scenario.id)
+            mock_comp.assert_called_once_with(scenario.id)
 
     @patch('services.scenario_stats_service.serialize_user_brief')
     @patch('services.scenario_stats_service.resolve_model_registry')
@@ -879,7 +896,11 @@ class TestCalculateBucketDistribution:
         assert _sss()._calculate_bucket_distribution(scenario.id) == []
 
     def test_STATS_083_distribution_with_human_rankings(self, app, db, app_context):
-        """[STATS-083] Human rankings produce correct bucket counts."""
+        """[STATS-083] Human rankings produce correct bucket counts.
+
+        The user must be an active scenario member because bucket distribution
+        only counts rankings from active members.
+        """
         fft = _create_function_type(db, 'ranking')
         scenario = _create_scenario(db, 'BucketTest', fft.function_type_id, config_json={
             "buckets": [
@@ -888,6 +909,7 @@ class TestCalculateBucketDistribution:
             ]
         })
         user = _create_user(db, 'bucket_user')
+        _add_scenario_user(db, scenario.id, user.id, 'Assessor')
         item1 = _create_item(db, fft.function_type_id, chat_id=90, institut_id=90)
         item2 = _create_item(db, fft.function_type_id, chat_id=91, institut_id=91)
         _add_scenario_item(db, scenario.id, item1.item_id)

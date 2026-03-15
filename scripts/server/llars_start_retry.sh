@@ -100,6 +100,36 @@ start_existing_containers() {
     fi
 }
 
+# --- Bring up base infrastructure (DB, Redis, Authentik, etc.) ---
+# After a reboot, containers with restart:no are REMOVED entirely (not just stopped).
+# We use docker compose (BASE file only, no prod override) to recreate infrastructure,
+# but SKIP app services that have blue-green variants (flask, frontend, yjs, supervisor).
+# nginx-service is also skipped here because compose depends_on chains would block on
+# frontend_service healthcheck. Instead, nginx is force-started separately below.
+# Using --scale=0: robust against new infrastructure services being added to compose.
+start_infrastructure() {
+    log "Starting infrastructure via docker compose (base file, skipping app services)..."
+    docker compose -f "${COMPOSE_BASE}" up -d \
+        --scale backend-flask-service=0 \
+        --scale frontend-vue-service=0 \
+        --scale backend-supervisor-service=0 \
+        --scale yjs-service=0 \
+        --scale nginx-service=0 \
+        2>&1 || true
+
+    # Create nginx container from prod override (port 80/443) WITHOUT starting it.
+    # Must use --no-deps to skip depends_on chain (frontend_service healthcheck blocks).
+    # start_existing_containers() will docker-start it in the next step.
+    log "Ensuring nginx container exists (prod override for port 80/443)..."
+    local compose_cmd="docker compose -f ${COMPOSE_BASE}"
+    [ -f "$COMPOSE_PROD" ] && compose_cmd="${compose_cmd} -f ${COMPOSE_PROD}"
+    $compose_cmd up --no-start --no-deps nginx-service 2>&1 || true
+
+    # Give infrastructure containers time to become healthy (especially DB)
+    log "Waiting 15s for infrastructure to initialize..."
+    sleep 15
+}
+
 # --- Standard mode: use docker compose up ---
 start_standard() {
     local cmd="docker compose -f ${COMPOSE_BASE}"
@@ -137,8 +167,13 @@ for attempt in $(seq 1 "$MAX_RETRIES"); do
     log "Attempt ${attempt}/${MAX_RETRIES}: starting LLARS stack..."
 
     if [ "$MODE" = "bluegreen" ]; then
-        # Blue-green: just start existing containers. Docker compose would try to
-        # recreate them under a different project name → "Conflict" errors.
+        # Blue-green two-step startup:
+        # 1. Infrastructure (DB, Redis, Authentik, etc.) — these have restart:no and
+        #    are REMOVED after reboot. Base compose file recreates them safely.
+        # 2. App containers (flask, frontend, yjs, supervisor) — these exist with
+        #    blue/green suffixed names. Use "docker start" to avoid compose project-
+        #    name conflicts.
+        start_infrastructure
         start_existing_containers
     else
         # Standard: compose up handles creation + start

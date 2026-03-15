@@ -16,7 +16,14 @@ each dev-to-main merge.
 
 ## [Unreleased]
 
-_No changes yet._
+### 2026-03-15
+
+#### Fixed
+- **KRITISCH: Frontend Healthcheck nutzte `wget` (nicht installiert in nginx:alpine)** - verursachte 9h17min Production-Downtime nach Server-Reboot. `unattended-upgrades` Kernel-Update loeste Reboot aus → `llars.service` startete `docker compose up -d` → Frontend-Healthcheck schlug fehl (wget fehlt) → Frontend "unhealthy" → nginx `depends_on: condition: service_healthy` blockiert → nginx blieb im "Created"-Status. Fix: Healthcheck auf `curl` umgestellt (in nginx:alpine enthalten).
+
+#### Added
+- **2-Achsen Berechtigungsmodell fuer Szenarien** - Ersetzt einfache `role`-Spalte durch `access_level` (OWNER/MANAGER/MEMBER) + Capability-Flags (`is_viewer`, `is_assessor`). Ermoeglicht feingranulare Kontrolle: z.B. Manager ohne Evaluations-Sicht oder Viewer mit Assessor-Aufgabe.
+- **Neuer Settings-Tab im Scenario Manager** - Ersetzt Settings-Popup-Dialog. Enthaelt alle Szenario-Einstellungen + Team-Uebersicht mit Tag-basierter Rollenverwaltung und Toggle-Switches fuer Viewer/Assessor-Flags.
 
 ---
 

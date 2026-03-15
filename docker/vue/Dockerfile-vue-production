@@ -85,8 +85,8 @@ USER vueuser
 
 EXPOSE 5173
 
-# Health check
+# Health check — use curl (available in nginx:alpine), NOT wget (not installed)
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -q --spider http://127.0.0.1:5173/health || exit 1
+    CMD curl -fsS http://127.0.0.1:5173/health -o /dev/null || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

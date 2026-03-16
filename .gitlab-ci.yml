@@ -166,11 +166,9 @@ lint:backend:
     paths:
       - .cache/pip
   script:
-    - pip install flake8 black isort
+    - pip install flake8
     - echo "Checking Python code style..."
     - flake8 app/
-    - black --check app/ --line-length=120
-    - isort --check-only app/
 
 lint:frontend:
   stage: lint

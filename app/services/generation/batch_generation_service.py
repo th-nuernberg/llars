@@ -934,15 +934,7 @@ class BatchGenerationService:
 
         active_streams = []
         for proc_output in processing_outputs:
-            model_color = None
-            if proc_output.llm_model and getattr(proc_output.llm_model, "color", None):
-                model_color = proc_output.llm_model.color
-            else:
-                try:
-                    from db.models.llm_model import LLMModel
-                    model_color = LLMModel.generate_color(proc_output.llm_model_name)
-                except Exception:
-                    model_color = None
+            model_color = proc_output._resolve_model_color()
             partial_content = proc_output.generated_content or ""
             live_partial = get_partial_content(proc_output.id)
             if live_partial and len(live_partial) > len(partial_content):

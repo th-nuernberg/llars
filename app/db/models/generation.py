@@ -773,6 +773,38 @@ class GeneratedOutput(db.Model):
         except Exception:
             return None
 
+    def _resolve_model_color(self) -> str | None:
+        """
+        Resolve model color: DB model → user-provider config → fallback.
+
+        Single source of truth: colors stored in llm_models.color (global)
+        or user_llm_providers.config_json.model_colors (user providers).
+        """
+        # 1. Global model with stored color
+        if self.llm_model and getattr(self.llm_model, "color", None):
+            return self.llm_model.color
+        # 2. User-provider model: look up stored color from provider config
+        model_name = self.llm_model_name or ''
+        if model_name.startswith('user-provider:'):
+            try:
+                parts = model_name.split(':')
+                if len(parts) >= 2 and parts[1].isdigit():
+                    from db.models.user_llm_provider import UserLLMProvider
+                    provider = db.session.get(UserLLMProvider, int(parts[1]))
+                    if provider:
+                        raw_model = ':'.join(parts[3:]) if len(parts) > 3 else parts[-1]
+                        model_colors = (provider.config_json or {}).get('model_colors', {})
+                        if isinstance(model_colors, dict) and raw_model in model_colors:
+                            return model_colors[raw_model]
+            except Exception:
+                pass
+        # 3. Fallback: generate (should rarely happen with backfill)
+        try:
+            from db.models.llm_model import LLMModel
+            return LLMModel.generate_color(model_name)
+        except Exception:
+            return None
+
     def to_dict(self, include_prompts: bool = False) -> Dict[str, Any]:
         """
         Convert to dictionary for API responses.
@@ -783,15 +815,7 @@ class GeneratedOutput(db.Model):
         Returns:
             Dictionary representation
         """
-        llm_model_color = None
-        if self.llm_model and getattr(self.llm_model, "color", None):
-            llm_model_color = self.llm_model.color
-        else:
-            try:
-                from db.models.llm_model import LLMModel
-                llm_model_color = LLMModel.generate_color(self.llm_model_name)
-            except Exception:
-                llm_model_color = None
+        llm_model_color = self._resolve_model_color()
 
         result = {
             'id': self.id,
@@ -846,15 +870,7 @@ class GeneratedOutput(db.Model):
 
     def to_summary_dict(self) -> Dict[str, Any]:
         """Convert to lightweight summary for list views."""
-        llm_model_color = None
-        if self.llm_model and getattr(self.llm_model, "color", None):
-            llm_model_color = self.llm_model.color
-        else:
-            try:
-                from db.models.llm_model import LLMModel
-                llm_model_color = LLMModel.generate_color(self.llm_model_name)
-            except Exception:
-                llm_model_color = None
+        llm_model_color = self._resolve_model_color()
         source_item_label = None
         source_group_key = None
         if self.source_item and self.source_item.subject:

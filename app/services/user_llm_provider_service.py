@@ -71,6 +71,48 @@ class UserLLMProviderService:
             return None
         return UserLLMProviderService.DEFAULT_BASE_URLS.get(provider_type.lower().strip())
 
+    # ==================== Color Assignment ====================
+
+    @staticmethod
+    def _assign_model_colors(config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Assign distinct colors to models in config, preserving existing assignments.
+
+        Stores colors in config['model_colors'] as single source of truth.
+        New models get colors that maximize visual distance from all existing
+        colors (global models + other user-provider models).
+        """
+        from db.models.llm_model import LLMModel
+
+        selected_models = config.get('selected_models', [])
+        single_model = config.get('model_id', '')
+        models = selected_models if selected_models else ([single_model] if single_model else [])
+        if not models:
+            return config
+
+        existing_colors = config.get('model_colors', {})
+        if not isinstance(existing_colors, dict):
+            existing_colors = {}
+
+        # Remove colors for models no longer selected
+        existing_colors = {m: c for m, c in existing_colors.items() if m in models}
+
+        # Collect all assigned colors globally for distance maximization
+        all_colors = LLMModel.get_all_assigned_colors()
+        # Include already-assigned colors from this provider
+        all_colors.extend(c for c in existing_colors.values() if c)
+
+        # Assign colors to new models
+        for model in models:
+            if model in existing_colors:
+                continue
+            color = LLMModel.generate_color(model, existing_colors=all_colors)
+            existing_colors[model] = color
+            all_colors.append(color)
+
+        config['model_colors'] = existing_colors
+        return config
+
     # ==================== Provider CRUD ====================
 
     @staticmethod
@@ -117,13 +159,17 @@ class UserLLMProviderService:
                 user_id=user_id, is_default=True
             ).update({'is_default': False})
 
+        # Assign distinct colors to models before storing
+        provider_config = config or {}
+        provider_config = UserLLMProviderService._assign_model_colors(provider_config)
+
         provider = UserLLMProvider(
             user_id=user_id,
             provider_type=provider_type,
             name=name,
             api_key_encrypted=UserLLMProviderService._encrypt_api_key(api_key) if api_key else None,
             base_url=base_url,
-            config_json=config or {},
+            config_json=provider_config,
             is_default=is_default,
             priority=priority
         )
@@ -227,6 +273,8 @@ class UserLLMProviderService:
             provider.base_url = base_url if base_url else None
 
         if config is not None:
+            # Assign distinct colors to new models, preserve existing
+            config = UserLLMProviderService._assign_model_colors(config)
             provider.config_json = config
 
         if is_active is not None:

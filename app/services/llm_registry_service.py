@@ -69,12 +69,19 @@ def resolve_model_registry(model_ids: List[str]) -> Dict[str, Dict[str, Any]]:
         elif mid.startswith('user-provider:'):
             parts = mid.split(':')
             provider_name = None
+            stored_color = None
             if len(parts) >= 2 and parts[1].isdigit():
                 provider = provider_map.get(int(parts[1]))
                 provider_name = provider.name if provider else None
+                # Read stored color from config_json.model_colors (single source of truth)
+                if provider:
+                    raw_model = ':'.join(parts[3:]) if len(parts) > 3 else (parts[-1] if len(parts) >= 3 else None)
+                    model_colors = (provider.config_json or {}).get('model_colors', {})
+                    if raw_model and isinstance(model_colors, dict):
+                        stored_color = model_colors.get(raw_model)
             registry[mid] = {
                 'display_name': mid,
-                'color': LLMModel.generate_color(mid),
+                'color': stored_color or LLMModel.generate_color(mid),
                 'user_provider_name': provider_name,
             }
         else:

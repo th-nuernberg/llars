@@ -371,6 +371,34 @@ class LLMModel(db.Model):
             return []
 
     @classmethod
+    def get_all_assigned_colors(cls) -> list[str]:
+        """
+        Return all assigned colors from both llm_models and user_llm_providers.
+
+        Combines global model colors with per-model colors stored in
+        user_llm_providers.config_json.model_colors to ensure distance-aware
+        color assignment considers the full universe of assigned colors.
+        """
+        colors = cls.get_assigned_colors()
+        try:
+            from db.models.user_llm_provider import UserLLMProvider
+            providers = db.session.query(
+                UserLLMProvider.config_json
+            ).filter(UserLLMProvider.is_active.is_(True)).all()
+            for (config_json,) in providers:
+                if not config_json or not isinstance(config_json, dict):
+                    continue
+                model_colors = config_json.get('model_colors', {})
+                if isinstance(model_colors, dict):
+                    for color in model_colors.values():
+                        normalized = _color_key(color)
+                        if normalized:
+                            colors.append(normalized)
+        except Exception:
+            pass
+        return colors
+
+    @classmethod
     def generate_color(
         cls,
         model_id: str,

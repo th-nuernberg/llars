@@ -151,7 +151,7 @@ function formatModelName(modelId) {
   return modelId
 }
 
-// Model color helpers (same as GenerationJobDetail)
+// Model color helpers — colors come from DB (single source of truth)
 const normalizeHex = (value) => {
   if (!value || typeof value !== 'string') return null
   const v = value.trim()
@@ -159,44 +159,7 @@ const normalizeHex = (value) => {
   return v.startsWith('#') ? v : `#${v}`
 }
 
-const hashString = (value) => {
-  if (!value) return 0
-  let hash = 0x811c9dc5
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i)
-    hash = Math.imul(hash, 0x01000193) >>> 0
-  }
-  return hash
-}
-
-const seedColor = (modelName) => {
-  const seed = hashString(modelName || '')
-  // Use full 360° hue range for maximum color variety
-  const hue = seed % 360
-  const saturation = 40 + ((seed >>> 8) % 19)
-  const lightness = 40 + ((seed >>> 16) % 16)
-  return hslToHex(hue, saturation, lightness)
-}
-
-const hslToHex = (h, s, l) => {
-  const sat = Math.max(0, Math.min(1, s / 100))
-  const light = Math.max(0, Math.min(1, l / 100))
-  const c = (1 - Math.abs(2 * light - 1)) * sat
-  const hh = (h % 360) / 60
-  const x = c * (1 - Math.abs((hh % 2) - 1))
-  let r1 = 0, g1 = 0, b1 = 0
-  if (hh >= 0 && hh < 1) { r1 = c; g1 = x }
-  else if (hh >= 1 && hh < 2) { r1 = x; g1 = c }
-  else if (hh >= 2 && hh < 3) { g1 = c; b1 = x }
-  else if (hh >= 3 && hh < 4) { g1 = x; b1 = c }
-  else if (hh >= 4 && hh < 5) { r1 = x; b1 = c }
-  else if (hh >= 5 && hh < 6) { r1 = c; b1 = x }
-  const m = light - c / 2
-  const r = Math.round((r1 + m) * 255)
-  const g = Math.round((g1 + m) * 255)
-  const b = Math.round((b1 + m) * 255)
-  return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`
-}
+const DEFAULT_MODEL_COLOR = '#6B7280'
 
 const hexToRgb = (hex) => {
   const normalized = normalizeHex(hex)
@@ -212,7 +175,7 @@ const hexToRgb = (hex) => {
 const resolveColor = (modelName, explicitColor) => {
   const normalized = normalizeHex(explicitColor)
   if (normalized) return normalized
-  return seedColor(modelName || '')
+  return DEFAULT_MODEL_COLOR
 }
 
 function getModelTagStyle(color, modelName) {

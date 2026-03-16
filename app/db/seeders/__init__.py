@@ -33,6 +33,56 @@ from db.models.llm_model import seed_default_models
 from services.ai_assist import FieldPromptService
 
 
+def _backfill_user_provider_model_colors(db):
+    """Assign colors to existing user providers that lack model_colors in config_json."""
+    try:
+        from db.models.user_llm_provider import UserLLMProvider
+        from db.models.llm_model import LLMModel
+
+        providers = UserLLMProvider.query.all()
+        if not providers:
+            return
+
+        all_colors = LLMModel.get_all_assigned_colors()
+        changed = 0
+        for provider in providers:
+            config = provider.config_json or {}
+            selected = config.get('selected_models', [])
+            single = config.get('model_id', '')
+            models = selected if selected else ([single] if single else [])
+            if not models:
+                continue
+
+            existing_colors = config.get('model_colors', {})
+            if not isinstance(existing_colors, dict):
+                existing_colors = {}
+
+            # Skip if all models already have colors
+            if existing_colors and all(m in existing_colors for m in models):
+                continue
+
+            for model in models:
+                if model in existing_colors:
+                    continue
+                color = LLMModel.generate_color(model, existing_colors=all_colors)
+                existing_colors[model] = color
+                all_colors.append(color)
+
+            config['model_colors'] = existing_colors
+            provider.config_json = config
+            # Force SQLAlchemy dirty detection for JSON column
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(provider, 'config_json')
+            changed += 1
+
+        if changed:
+            db.session.commit()
+            print(f"  Backfilled model colors for {changed} user provider(s)")
+    except Exception as e:
+        print(f"  Warning: model color backfill failed: {e}")
+        db.session.rollback()
+
+
 def run_all_seeders(db):
     """
     Run all database seeders in the correct order.
@@ -76,6 +126,9 @@ def run_all_seeders(db):
     # Seed default LLM models (embedding, reranker, etc.)
     # Must be called BEFORE initialize_rag_system as RAG requires embedding model
     seed_default_models()
+
+    # Backfill model colors for user providers that lack them
+    _backfill_user_provider_model_colors(db)
 
     # Initialize RAG system (default collection + scan /app/data/rag/standard)
     initialize_rag_system(db)

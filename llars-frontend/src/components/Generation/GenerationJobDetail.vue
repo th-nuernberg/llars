@@ -540,6 +540,7 @@ import { useMobile } from '@/composables/useMobile'
 import { useGeneration, JOB_STATUS, OUTPUT_STATUS } from '@/composables/useGeneration'
 import { getSocket } from '@/services/socketService'
 import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 import { parseGenerationOutput, previewGenerationOutput } from '@/utils/generationOutputParser'
 import GenerationLiveStreams from './GenerationLiveStreams.vue'
 import ScenarioWizard from '@/views/ScenarioManager/components/ScenarioWizard.vue'
@@ -736,10 +737,7 @@ function shouldActivateOutputStream(outputId) {
   return (Date.now() - activeLastToken) > STREAM_SWITCH_INACTIVITY_MS
 }
 
-// Model color helpers (seeded in DB, evenly-spaced fallback if missing)
-const NEUTRAL_SAT_RANGE = { min: 40, max: 58 }
-const NEUTRAL_LIGHT_RANGE = { min: 40, max: 55 }
-
+// Model color helpers — colors come from DB (single source of truth)
 const normalizeHex = (value) => {
   if (!value || typeof value !== 'string') return null
   const v = value.trim()
@@ -747,66 +745,18 @@ const normalizeHex = (value) => {
   return v.startsWith('#') ? v : `#${v}`
 }
 
-const hashString = (value) => {
-  if (!value) return 0
-  let hash = 0x811c9dc5
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i)
-    hash = Math.imul(hash, 0x01000193) >>> 0
-  }
-  return hash
-}
-
-const hslToHex = (h, s, l) => {
-  const sat = Math.max(0, Math.min(1, s / 100))
-  const light = Math.max(0, Math.min(1, l / 100))
-  const c = (1 - Math.abs(2 * light - 1)) * sat
-  const hh = (h % 360) / 60
-  const x = c * (1 - Math.abs((hh % 2) - 1))
-  let r1 = 0
-  let g1 = 0
-  let b1 = 0
-  if (hh >= 0 && hh < 1) {
-    r1 = c; g1 = x; b1 = 0
-  } else if (hh >= 1 && hh < 2) {
-    r1 = x; g1 = c; b1 = 0
-  } else if (hh >= 2 && hh < 3) {
-    r1 = 0; g1 = c; b1 = x
-  } else if (hh >= 3 && hh < 4) {
-    r1 = 0; g1 = x; b1 = c
-  } else if (hh >= 4 && hh < 5) {
-    r1 = x; g1 = 0; b1 = c
-  } else if (hh >= 5 && hh < 6) {
-    r1 = c; g1 = 0; b1 = x
-  }
-  const m = light - c / 2
-  const r = Math.round((r1 + m) * 255)
-  const g = Math.round((g1 + m) * 255)
-  const b = Math.round((b1 + m) * 255)
-  return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`
-}
-
-const seedColor = (modelName) => {
-  const seed = hashString(modelName || '')
-  // Use full 360° hue range for maximum color variety
-  const hue = seed % 360
-  const satSpan = NEUTRAL_SAT_RANGE.max - NEUTRAL_SAT_RANGE.min
-  const lightSpan = NEUTRAL_LIGHT_RANGE.max - NEUTRAL_LIGHT_RANGE.min
-  const saturation = NEUTRAL_SAT_RANGE.min + ((seed >>> 8) % (satSpan + 1))
-  const lightness = NEUTRAL_LIGHT_RANGE.min + ((seed >>> 16) % (lightSpan + 1))
-  return hslToHex(hue, saturation, lightness)
-}
+const DEFAULT_MODEL_COLOR = '#6B7280'
 
 const modelColorMap = computed(() => {
   const map = {}
 
-  // 1. Collect explicit DB colors
-  outputs.value.forEach(o => {
+  // Collect DB-stored colors from API responses (single source of truth)
+  for (const o of outputs.value) {
     if (o?.llm_model_name && o?.llm_model_color) {
       const normalized = normalizeHex(o.llm_model_color)
       if (normalized) map[o.llm_model_name] = normalized
     }
-  })
+  }
   const cp = currentJob.value?.currently_processing
   if (cp?.model_name && cp?.model_color) {
     const normalized = normalizeHex(cp.model_color)
@@ -817,12 +767,15 @@ const modelColorMap = computed(() => {
     if (normalized) map[currentlyProcessing.value.model] = normalized
   }
 
-  // 2. For models without explicit colors, use deterministic seed color
-  //    (FNV-1a hash of model name → stable across reloads/pagination)
-  const allModels = [...new Set(outputs.value.map(o => o?.llm_model_name).filter(Boolean))]
-  allModels.filter(m => !map[m]).forEach(modelName => {
-    map[modelName] = seedColor(modelName)
-  })
+  // Registry colors as fallback (also from backend)
+  const { getModelColor } = useModelRegistry()
+  for (const o of outputs.value) {
+    const name = o?.llm_model_name
+    if (name && !map[name]) {
+      const regColor = getModelColor(name)
+      if (regColor) map[name] = regColor
+    }
+  }
 
   return map
 })
@@ -831,7 +784,7 @@ const resolveModelColor = (modelName, explicitColor = null) => {
   const normalized = normalizeHex(explicitColor)
   if (normalized) return normalized
   if (modelName && modelColorMap.value[modelName]) return modelColorMap.value[modelName]
-  return seedColor(modelName || '')
+  return DEFAULT_MODEL_COLOR
 }
 
 // Map model IDs to their resolved provider names from backend

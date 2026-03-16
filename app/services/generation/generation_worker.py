@@ -718,15 +718,7 @@ class GenerationWorker:
             clear_partial_content(output.id)
             set_partial_content(output.id, "")
 
-            model_color = None
-            if output.llm_model and getattr(output.llm_model, "color", None):
-                model_color = output.llm_model.color
-            else:
-                try:
-                    from db.models.llm_model import LLMModel
-                    model_color = LLMModel.generate_color(output.llm_model_name)
-                except Exception:
-                    model_color = None
+            model_color = output._resolve_model_color()
 
             # Emit started event for real-time UI updates
             self._emit_event("generation:item:started", {

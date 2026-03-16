@@ -329,9 +329,9 @@ export const parseUserProviderModelId = (modelId, providerNameHint = null) => {
     } else if (prefixLabel) {
       providerLabel = prefixLabel
       normalizedModelName = modelName
-    } else if (providerNameHint && remainder) {
-      // Unknown API prefix (e.g. "meta-llama/") - strip it when we have a real provider name
-      normalizedModelName = remainder
+    } else {
+      // Unknown prefix (e.g. "openGPT-X/", "meta-llama/") - keep full model name
+      normalizedModelName = modelName
     }
   } else if (lower.startsWith('gpt-') || lower.startsWith('o1') || lower.startsWith('o3') || lower.startsWith('o4')) {
     providerLabel = 'OpenAI'

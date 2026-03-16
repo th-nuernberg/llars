@@ -1544,7 +1544,7 @@ async function fetchUserProviders() {
           const fullId = ownerName
             ? `user-provider:${provider.id}:${ownerName}:${mid}`
             : `user-provider:${provider.id}:${mid}`
-          const parsed = parseUserProviderModelId(fullId)
+          const parsed = parseUserProviderModelId(fullId, provider.name)
           expanded.push({
             ...provider,
             _key: `${provider.id}:${mid}`,
@@ -1559,7 +1559,7 @@ async function fetchUserProviders() {
             ? `user-provider:${provider.id}:${ownerName}:${singleModel}`
             : `user-provider:${provider.id}:${singleModel}`)
           : null
-        const parsed = fullId ? parseUserProviderModelId(fullId) : null
+        const parsed = fullId ? parseUserProviderModelId(fullId, provider.name) : null
         expanded.push({
           ...provider,
           _key: String(provider.id),

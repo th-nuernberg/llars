@@ -1006,7 +1006,8 @@ function formatProviderModel(provider, modelId) {
   const mid = (modelId || '').trim()
   if (!mid) return ''
 
-  const directParsed = parseUserProviderModelId(mid)
+  const providerName = provider?.name || null
+  const directParsed = parseUserProviderModelId(mid, providerName)
   if (directParsed?.displayName) {
     return directParsed.displayName
   }
@@ -1015,7 +1016,7 @@ function formatProviderModel(provider, modelId) {
   const providerKey = provider?.id
   if (owner && providerKey) {
     const syntheticId = `user-provider:${providerKey}:${owner}:${mid}`
-    const parsed = parseUserProviderModelId(syntheticId)
+    const parsed = parseUserProviderModelId(syntheticId, providerName)
     if (parsed?.displayName) {
       return parsed.displayName
     }

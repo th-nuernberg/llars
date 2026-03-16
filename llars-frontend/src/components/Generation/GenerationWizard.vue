@@ -840,7 +840,7 @@ async function loadModels() {
             const fullId = ownerName
               ? `user-provider:${provider.id}:${ownerName}:${modelId}`
               : `user-provider:${provider.id}:${modelId}`
-            const parsed = parseUserProviderModelId(fullId)
+            const parsed = parseUserProviderModelId(fullId, provider.name)
             providerModels.push({
               id: fullId,
               model_id: fullId,
@@ -859,7 +859,7 @@ async function loadModels() {
         const fullId = ownerName
           ? `user-provider:${provider.id}:${ownerName}:${modelId}`
           : `user-provider:${provider.id}:${modelId}`
-        const parsed = parseUserProviderModelId(fullId)
+        const parsed = parseUserProviderModelId(fullId, provider.name)
         providerModels.push({
           id: fullId,
           model_id: fullId,

@@ -432,10 +432,10 @@ describe('parseUserProviderModelId', () => {
     expect(result.modelName).toBe('Mistral-Small')
   })
 
-  it('UTIL_FMT_080: strips unknown API prefix when providerNameHint given', () => {
+  it('UTIL_FMT_080: preserves unknown API prefix in model name, uses providerNameHint for label', () => {
     const result = parseUserProviderModelId('user-provider:42:user1:meta-llama/Llama-3', 'IONOS')
     expect(result.providerLabel).toBe('IONOS')
-    expect(result.modelName).toBe('Llama-3')
+    expect(result.modelName).toBe('meta-llama/Llama-3')
   })
 
   it('UTIL_FMT_081: displayName includes username when present', () => {

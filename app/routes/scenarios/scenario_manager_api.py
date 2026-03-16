@@ -2150,8 +2150,7 @@ def sm_invite_users(scenario_id):
     db.session.commit()
 
     # Invalidate stats cache so the Assessors tab shows correct counts immediately
-    from services.scenario_stats_cache_service import mark_dirty
-    mark_dirty(scenario_id)
+    _emit_scenario_stats_update(scenario_id)
 
     logger.info(f"User {username} invited {added} users (reinvited {reinvited}, restored {restored}, skipped_invalid {skipped_invalid}) to scenario {scenario_id}")
 
@@ -2221,8 +2220,7 @@ def sm_remove_user(scenario_id, user_id):
     db.session.commit()
 
     # Invalidate stats cache so the Assessors tab updates immediately
-    from services.scenario_stats_cache_service import mark_dirty
-    mark_dirty(scenario_id)
+    _emit_scenario_stats_update(scenario_id)
 
     logger.info(f"User {username} archived user {user_id} from scenario {scenario_id}")
 
@@ -2337,8 +2335,7 @@ def sm_update_user_role(scenario_id, user_id):
     db.session.commit()
 
     # Invalidate stats cache so the Assessors tab updates immediately
-    from services.scenario_stats_cache_service import mark_dirty
-    mark_dirty(scenario_id)
+    _emit_scenario_stats_update(scenario_id)
 
     logger.info(f"User {username} changed role of user {user_id} from {old_role} to {_primary_role_display(su)} in scenario {scenario_id}")
 

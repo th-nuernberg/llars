@@ -407,6 +407,7 @@ def _calculate_ranking_agreement(
     For rating: compares rating values across evaluators
     """
     from db.models import UserFeatureRanking, UserFeatureRating, UserMailHistoryRating
+    from db.models import LLMTaskResult, Feature
 
     # Get evaluators who have completed at least one thread
     active_evaluators = [e for e in evaluator_stats if e.get("done_threads", 0) > 0]
@@ -419,41 +420,111 @@ def _calculate_ranking_agreement(
     if len(thread_ids) < 2:
         return None
 
-    # Build ratings matrix based on function type
-    user_ids = []
+    # Collect human evaluator user_ids
+    human_user_ids = []
     for e in active_evaluators:
         if e.get("is_llm"):
-            continue  # Skip LLM evaluators for now - different storage
-        # Try to get user_id from username
+            continue
         user = User.query.filter_by(username=e.get("username")).first()
         if user:
-            user_ids.append(user.id)
+            human_user_ids.append(user.id)
 
-    if len(user_ids) < 2:
+    # Collect LLM evaluator model_ids for ranking scenarios
+    llm_model_ids = []
+    if function_type_name == "ranking":
+        for e in active_evaluators:
+            if e.get("is_llm") and e.get("model_id"):
+                llm_model_ids.append(e["model_id"])
+
+    total_evaluators = len(human_user_ids) + len(llm_model_ids)
+    if total_evaluators < 2:
         return None
 
-    ratings_matrix = np.full((len(user_ids), len(thread_ids)), np.nan)
+    ratings_matrix = np.full((total_evaluators, len(thread_ids)), np.nan)
 
     if function_type_name == "ranking":
-        # Get bucket assignments
-        for i, user_id in enumerate(user_ids):
-            rankings = UserFeatureRanking.query.filter(
-                UserFeatureRanking.user_id == user_id,
-                UserFeatureRanking.feature.has(thread_id=thread_ids[0]) if thread_ids else False
-            ).all()
-            # Map buckets to numeric values
-            bucket_map = {"gut": 0, "good": 0, "mittel": 1, "medium": 1, "schlecht": 2, "bad": 2, "poor": 2}
+        # Build bucket ordinal map from scenario config for consistent numeric mapping.
+        # _extract_ranking_bucket_config returns [{id, label_de, ...}, ...] ordered by rank.
+        scenario = RatingScenarios.query.get(scenario_id)
+        bucket_config = _extract_ranking_bucket_config(
+            scenario.config_json if scenario else {}
+        )
+        # Ordinal map: bucket_id → numeric value (0, 1, 2, ...)
+        bucket_ordinal = {}
+        for idx, b in enumerate(bucket_config):
+            bucket_ordinal[b["id"]] = idx
+        resolve_bucket = _build_bucket_id_resolver(bucket_config)
+
+        # Human rankings from UserFeatureRanking
+        # Build feature_id → thread_id map for all features in this scenario
+        feature_thread_map = {}
+        features = (
+            Feature.query
+            .filter(Feature.thread_id.in_(thread_ids))
+            .with_entities(Feature.id, Feature.thread_id)
+            .all()
+        )
+        for f_id, t_id in features:
+            feature_thread_map[f_id] = t_id
+
+        thread_id_to_idx = {tid: j for j, tid in enumerate(thread_ids)}
+
+        for i, user_id in enumerate(human_user_ids):
+            rankings = (
+                UserFeatureRanking.query
+                .filter(
+                    UserFeatureRanking.user_id == user_id,
+                    UserFeatureRanking.feature_id.in_(list(feature_thread_map.keys())),
+                    UserFeatureRanking.bucket.isnot(None),
+                )
+                .all()
+            )
             for ranking in rankings:
-                if ranking.feature and ranking.bucket:
+                tid = feature_thread_map.get(ranking.feature_id)
+                if tid is None:
+                    continue
+                j = thread_id_to_idx.get(tid)
+                if j is None:
+                    continue
+                resolved = resolve_bucket(ranking.bucket)
+                if resolved and resolved in bucket_ordinal:
+                    ratings_matrix[i, j] = bucket_ordinal[resolved]
+
+        # LLM rankings from LLMTaskResult (payload_json = {bucket: [feature_ids]})
+        for li, model_id in enumerate(llm_model_ids):
+            row_idx = len(human_user_ids) + li
+            results = (
+                LLMTaskResult.query
+                .filter_by(scenario_id=scenario_id, model_id=model_id, task_type="ranking")
+                .filter(LLMTaskResult.error.is_(None))
+                .all()
+            )
+            for result in results:
+                payload = result.payload_json
+                if not payload:
+                    continue
+                if isinstance(payload, str):
                     try:
-                        tid = ranking.feature.thread_id
-                        if tid in thread_ids:
-                            j = thread_ids.index(tid)
-                            bucket_val = bucket_map.get(ranking.bucket.lower())
-                            if bucket_val is not None:
-                                ratings_matrix[i, j] = bucket_val
-                    except (ValueError, AttributeError):
+                        payload = json.loads(payload)
+                    except (json.JSONDecodeError, TypeError):
                         continue
+                if not isinstance(payload, dict):
+                    continue
+                for bucket_name, feature_ids in payload.items():
+                    resolved = resolve_bucket(bucket_name)
+                    if not resolved or resolved not in bucket_ordinal or not isinstance(feature_ids, list):
+                        continue
+                    for fid in feature_ids:
+                        try:
+                            fid_int = int(fid)
+                        except (TypeError, ValueError):
+                            continue
+                        tid = feature_thread_map.get(fid_int)
+                        if tid is None:
+                            continue
+                        j = thread_id_to_idx.get(tid)
+                        if j is not None:
+                            ratings_matrix[row_idx, j] = bucket_ordinal[resolved]
 
     elif function_type_name == "rating":
         # Get rating values
@@ -3240,12 +3311,12 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     if not feature_provenance:
         return response
 
-    # Provenance analysis only makes sense with 2+ distinct generators OR 2+ distinct prompts.
-    # With a single source, there is nothing to compare.
+    # Track whether we have multiple generators for the ranking tables.
+    # Even with a single source, we still collect assignments for the top-bucket
+    # summary — provenance breakdown by LLM/prompt is only shown when 2+ exist.
     distinct_llms = {entry.get("llm_key") for entry in feature_provenance.values()}
     distinct_prompts = {entry.get("prompt_key") for entry in feature_provenance.values()}
-    if len(distinct_llms) < 2 and len(distinct_prompts) < 2:
-        return response
+    has_multiple_sources = len(distinct_llms) >= 2 or len(distinct_prompts) >= 2
 
     assignments: List[tuple] = []
 

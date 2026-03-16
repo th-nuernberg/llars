@@ -501,6 +501,10 @@
                 class="mb-3"
               />
 
+              <LSwitch v-model="ownerAsAssessor" class="mb-3">
+                {{ $t('scenarioManager.wizard.step4.ownerAsAssessor') }}
+              </LSwitch>
+
               <div v-if="loadingUsers" class="d-flex justify-center py-4">
                 <v-progress-circular indeterminate size="24" />
               </div>
@@ -995,6 +999,7 @@ const availableUsers = ref([])
 const selectedUsers = ref([])
 const loadingUsers = ref(false)
 const inviteRole = ref('ASSESSOR')
+const ownerAsAssessor = ref(false)
 
 // LLM state - System models (admin-configured)
 const availableLLMs = ref([])
@@ -2369,6 +2374,7 @@ async function createScenario() {
           ...(combinedEvaluators.length > 0 ? { llm_evaluators: combinedEvaluators } : {}),
         },
         invited_users: selectedUsers.value.map(u => ({ user_id: u.id, role: u.role || 'ASSESSOR' })),
+        owner_as_assessor: ownerAsAssessor.value,
         split_by_prompt: Boolean(formData.value.evalConfig?.config?.splitByPrompt),
       }
 
@@ -2435,6 +2441,7 @@ async function createScenario() {
       description: formData.value.description,
       task_description: formData.value.task_description,
       evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+      owner_as_assessor: ownerAsAssessor.value,
       config_json: {
         ...formData.value.config,
         description: formData.value.description,

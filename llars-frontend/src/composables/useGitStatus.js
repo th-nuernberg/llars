@@ -211,9 +211,9 @@ export function useGitStatus(entityIdRef, options = {}) {
       const newChangedFiles = res.data.changed_files || []
       const newDeletedFiles = res.data.deleted_files || []
 
-      // Smart merge: only update if different
-      const changedFilesChanged = JSON.stringify(newChangedFiles.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions }))) !==
-                                  JSON.stringify(changedFiles.value.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions })))
+      // Smart merge: only update if different (include diff_status in comparison)
+      const changedFilesChanged = JSON.stringify(newChangedFiles.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions, diff_status: f.diff_status }))) !==
+                                  JSON.stringify(changedFiles.value.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions, diff_status: f.diff_status })))
       const deletedFilesChanged = JSON.stringify(newDeletedFiles.map(f => f.id)) !==
                                   JSON.stringify(deletedFiles.value.map(f => f.id))
 
@@ -229,6 +229,11 @@ export function useGitStatus(entityIdRef, options = {}) {
 
       if (deletedFilesChanged) {
         deletedFiles.value = newDeletedFiles
+      }
+
+      // If diffs are still being computed in the backend, poll again after 2s
+      if (res.data.all_diffs_ready === false) {
+        setTimeout(() => checkForChanges({ silent: true }), 2000)
       }
     } catch (e) {
       if (!silent) {

@@ -538,6 +538,18 @@ def create_scenario_from_job(job_id: int):
         split_by_prompt=data.get('split_by_prompt', False),
     )
 
+    # Handle owner_as_assessor: promote owner to assessor if requested
+    if data.get('owner_as_assessor'):
+        from db.models import ScenarioUsers, ScenarioRoles
+        owner_su = ScenarioUsers.query.filter_by(
+            scenario_id=scenario.id,
+            access_level='OWNER',
+        ).first()
+        if owner_su:
+            owner_su.role = ScenarioRoles.ASSESSOR
+            owner_su.is_assessor = True
+            owner_su.is_viewer = False
+
     # Invite users if provided
     invited_users = data.get('invited_users', [])
     if invited_users and scenario.id:

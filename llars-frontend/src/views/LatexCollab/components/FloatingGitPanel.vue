@@ -79,7 +79,10 @@
               <LTag :variant="getStatusBadge(file).color" size="small">
                 {{ getStatusBadge(file).text }}
               </LTag>
-              <span class="file-stats">
+              <span v-if="file.diff_status === 'computing'" class="file-stats">
+                <v-progress-circular size="12" width="2" indeterminate />
+              </span>
+              <span v-else class="file-stats">
                 <span class="stat-add">+{{ file.insertions || 0 }}</span>
                 <span class="stat-del">-{{ file.deletions || 0 }}</span>
               </span>

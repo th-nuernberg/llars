@@ -184,6 +184,22 @@ class AgreementMetricsService:
         }
 
     @staticmethod
+    def _get_active_assessor_user_ids(scenario_id: int) -> set:
+        """Return user_ids of active assessors for this scenario.
+
+        Used to filter human evaluations so that users who were demoted
+        from assessor (e.g. to viewer) no longer influence IRR/agreement metrics.
+        """
+        from db.models import MembershipStatus
+        return {
+            su.user_id for su in ScenarioUsers.query.filter(
+                ScenarioUsers.scenario_id == scenario_id,
+                ScenarioUsers.is_assessor.is_(True),
+                ScenarioUsers.membership_status == MembershipStatus.ACTIVE,
+            ).all()
+        }
+
+    @staticmethod
     def _collect_evaluations(
         *,
         scenario_id: int,
@@ -198,6 +214,9 @@ class AgreementMetricsService:
 
         For other types: units are items (thread_ids),
         data[item_id][rater_id] = value
+
+        Only evaluations from active assessors are included in human metrics,
+        so role changes (assessor→viewer) are reflected immediately.
         """
         evaluations = {
             "raters": [],
@@ -211,6 +230,9 @@ class AgreementMetricsService:
             ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
         ]
 
+        # Load active assessor user_ids for filtering human evaluations
+        active_assessor_ids = AgreementMetricsService._get_active_assessor_user_ids(scenario_id)
+
         if task_type == "ranking":
             # For ranking: units = features, not items
             return AgreementMetricsService._collect_ranking_evaluations(
@@ -218,6 +240,7 @@ class AgreementMetricsService:
                 thread_ids=thread_ids,
                 include_llm=include_llm,
                 include_human=include_human,
+                active_assessor_ids=active_assessor_ids,
             )
 
         evaluations["items"] = thread_ids
@@ -242,10 +265,11 @@ class AgreementMetricsService:
 
             evaluations["raters"].extend(sorted(llm_raters))
 
-        # Collect human evaluations
+        # Collect human evaluations (filtered to active assessors only)
         if include_human:
             human_raters = AgreementMetricsService._collect_human_evaluations(
-                scenario_id, task_type, thread_ids, evaluations
+                scenario_id, task_type, thread_ids, evaluations,
+                active_assessor_ids=active_assessor_ids,
             )
             evaluations["raters"].extend(sorted(human_raters))
 
@@ -258,12 +282,15 @@ class AgreementMetricsService:
         thread_ids: List[int],
         include_llm: bool,
         include_human: bool,
+        active_assessor_ids: Optional[set] = None,
     ) -> Dict[str, Any]:
         """Collect ranking evaluations at FEATURE level.
 
         Each feature (Zusammenfassung) is one unit of analysis.
         Each evaluator assigns each feature to exactly one bucket.
         data[feature_id][rater_id] = ordinal value (gut=3, mittel=2, neutral=1, schlecht=0)
+
+        Only rankings from active_assessor_ids are included for human raters.
         """
         evaluations = {
             "raters": [],
@@ -313,14 +340,20 @@ class AgreementMetricsService:
             evaluations["raters"].extend(sorted(llm_raters))
 
         # 2. Collect human evaluations - each ranking row = one feature
+        # Only include rankings from active assessors (role-aware filtering)
         if include_human:
-            rankings = db.session.query(
+            ranking_query = db.session.query(
                 UserFeatureRanking, Feature.feature_id
             ).join(
                 Feature, UserFeatureRanking.feature_id == Feature.feature_id
             ).filter(
                 Feature.item_id.in_(thread_ids),
-            ).all()
+            )
+            if active_assessor_ids is not None:
+                ranking_query = ranking_query.filter(
+                    UserFeatureRanking.user_id.in_(active_assessor_ids)
+                )
+            rankings = ranking_query.all()
 
             human_raters = set()
             for ranking, feature_id in rankings:
@@ -348,8 +381,13 @@ class AgreementMetricsService:
         task_type: str,
         thread_ids: List[int],
         evaluations: Dict[str, Any],
+        active_assessor_ids: Optional[set] = None,
     ) -> set:
-        """Collect human evaluations based on task type."""
+        """Collect human evaluations based on task type.
+
+        Only includes evaluations from active_assessor_ids when provided,
+        so demoted users (assessor→viewer) no longer affect IRR metrics.
+        """
         human_raters = set()
 
         if task_type == "ranking":
@@ -360,13 +398,18 @@ class AgreementMetricsService:
         elif task_type == "rating":
             # Join through Feature to get thread_id
             # UserFeatureRating uses rating_content, not rating
-            ratings = db.session.query(
+            rating_query = db.session.query(
                 UserFeatureRating, Feature.thread_id
             ).join(
                 Feature, UserFeatureRating.feature_id == Feature.feature_id
             ).filter(
                 Feature.thread_id.in_(thread_ids),
-            ).all()
+            )
+            if active_assessor_ids is not None:
+                rating_query = rating_query.filter(
+                    UserFeatureRating.user_id.in_(active_assessor_ids)
+                )
+            ratings = rating_query.all()
 
             for rating, thread_id in ratings:
                 rater_id = f"human:{rating.user_id}"
@@ -376,9 +419,14 @@ class AgreementMetricsService:
 
         elif task_type == "mail_rating":
             # UserMailHistoryRating has direct thread_id
-            ratings = UserMailHistoryRating.query.filter(
+            mail_query = UserMailHistoryRating.query.filter(
                 UserMailHistoryRating.thread_id.in_(thread_ids),
-            ).all()
+            )
+            if active_assessor_ids is not None:
+                mail_query = mail_query.filter(
+                    UserMailHistoryRating.user_id.in_(active_assessor_ids)
+                )
+            ratings = mail_query.all()
 
             for rating in ratings:
                 rater_id = f"human:{rating.user_id}"
@@ -388,9 +436,14 @@ class AgreementMetricsService:
                     evaluations["data"][rating.thread_id][rater_id] = rating.overall_rating
 
         elif task_type == "authenticity":
-            votes = UserAuthenticityVote.query.filter(
+            auth_query = UserAuthenticityVote.query.filter(
                 UserAuthenticityVote.thread_id.in_(thread_ids),
-            ).all()
+            )
+            if active_assessor_ids is not None:
+                auth_query = auth_query.filter(
+                    UserAuthenticityVote.user_id.in_(active_assessor_ids)
+                )
+            votes = auth_query.all()
 
             for vote in votes:
                 rater_id = f"human:{vote.user_id}"

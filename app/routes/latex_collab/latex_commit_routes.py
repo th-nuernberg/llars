@@ -25,6 +25,10 @@ from routes.latex_collab.latex_helpers import (
     require_document_access,
     build_doc_path,
 )
+from services.latex_collab.diff_cache_service import (
+    get_or_compute as diff_cache_get_or_compute,
+    invalidate_document as diff_cache_invalidate,
+)
 from services.latex_compile_service import build_workspace_snapshot
 
 logger = logging.getLogger(__name__)
@@ -45,7 +49,9 @@ def calculate_char_diff(baseline: str, current: str) -> tuple[int, int]:
     if baseline == current:
         return 0, 0
 
-    matcher = SequenceMatcher(None, baseline, current, autojunk=False)
+    # autojunk=True (default) is much faster on large documents with minimal
+    # accuracy trade-off for character-level insertion/deletion counts.
+    matcher = SequenceMatcher(None, baseline, current, autojunk=True)
     insertions = 0
     deletions = 0
 
@@ -181,6 +187,9 @@ def create_commit(document_id: int):
     )
     db.session.add(commit)
     db.session.commit()
+
+    # Invalidate diff cache for the committed document
+    diff_cache_invalidate(doc.id)
 
     socketio = current_app.extensions.get('socketio')
     if socketio:
@@ -342,6 +351,9 @@ def rollback_document(document_id: int):
     doc.updated_at = datetime.now(timezone.utc)
     db.session.commit()
 
+    # Invalidate diff cache — baseline has changed
+    diff_cache_invalidate(document_id)
+
     # Verify the commit worked
     db.session.refresh(doc)
     logger.info(f"[LatexCollab] ROLLBACK COMMITTED - new content_text length: {len(doc.content_text or '')}, content is None: {doc.content is None}")
@@ -492,7 +504,29 @@ def get_workspace_changes(workspace_id: int):
         # Determine status
         # Status codes: M=Modified, A=Added, R=Renamed, V=Moved (German: Verschoben)
         if content_changed or is_renamed or is_moved:
-            char_insertions, char_deletions = calculate_char_diff(baseline or "", current_content or "") if content_changed else (0, 0)
+            # Diff computation: use async cache to avoid blocking the gevent worker
+            # on large documents (SequenceMatcher is O(n²)).
+            char_insertions = 0
+            char_deletions = 0
+            diff_status = "ready"
+
+            if content_changed:
+                socketio = current_app.extensions.get('socketio')
+                if socketio:
+                    diff_result = diff_cache_get_or_compute(
+                        doc.id, baseline or "", current_content or "", socketio
+                    )
+                    if diff_result:
+                        char_insertions = diff_result.insertions
+                        char_deletions = diff_result.deletions
+                    else:
+                        # Background computation started — tell frontend to poll
+                        char_insertions = None
+                        char_deletions = None
+                        diff_status = "computing"
+                else:
+                    # Fallback: no socketio available (e.g. in tests) — compute sync
+                    char_insertions, char_deletions = calculate_char_diff(baseline or "", current_content or "")
 
             status = "M"  # Default: Modified
             if not baseline_commit:
@@ -510,6 +544,7 @@ def get_workspace_changes(workspace_id: int):
                 "path": current_path,
                 "insertions": char_insertions,
                 "deletions": char_deletions,
+                "diff_status": diff_status,
                 "has_baseline": baseline_commit is not None,
                 "baseline_commit_id": baseline_commit.id if baseline_commit else None,
                 "status": status,
@@ -564,12 +599,17 @@ def get_workspace_changes(workspace_id: int):
                 "deleted_at": doc.deleted_at.isoformat() if doc.deleted_at else None,
             })
 
+    all_diffs_ready = all(
+        f.get("diff_status") == "ready" for f in changed_files
+    )
+
     return jsonify({
         "success": True,
         "changed_files": changed_files,
         "deleted_files": deleted_files,
         "total_changed": len(changed_files),
         "total_deleted": len(deleted_files),
+        "all_diffs_ready": all_diffs_ready,
     }), 200
 
 
@@ -646,6 +686,10 @@ def create_workspace_commit(workspace_id: int):
         created_commits.append((doc.id, commit))
 
     db.session.commit()
+
+    # Invalidate diff cache for all committed documents
+    for doc_id, _ in created_commits:
+        diff_cache_invalidate(doc_id)
 
     socketio = current_app.extensions.get('socketio')
     if socketio:

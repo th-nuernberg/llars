@@ -2878,7 +2878,8 @@
         "addProviderHint": "Add your own API key in Settings",
         "selectedSummary": "Selected Evaluators",
         "aiNativeHint": "LLARS is AI-Native: AI models are treated like users and will start evaluation automatically after creation.",
-        "aiAutoStart": "AI starts automatically after creation"
+        "aiAutoStart": "AI starts automatically after creation",
+        "ownerAsAssessor": "I also want to participate as an assessor"
       },
       "step5": {
         "title": "Summary",

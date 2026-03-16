@@ -2878,7 +2878,8 @@
         "aiAutoStart": "KI startet automatisch nach Erstellung",
         "systemModels": "System-Modelle",
         "myProviders": "Meine Provider",
-        "addProviderHint": "Eigenen API-Schlüssel in den Einstellungen hinzufügen"
+        "addProviderHint": "Eigenen API-Schlüssel in den Einstellungen hinzufügen",
+        "ownerAsAssessor": "Ich möchte auch als Gutachter teilnehmen"
       },
       "step5": {
         "title": "Zusammenfassung",

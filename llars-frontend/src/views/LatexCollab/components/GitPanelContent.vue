@@ -99,7 +99,10 @@
         <LTag :variant="getStatusBadge(file).color" size="sm" :title="getStatusBadge(file).tooltip">
           {{ getStatusBadge(file).text }}
         </LTag>
-        <span v-if="file.insertions || file.deletions" class="file-stats">
+        <span v-if="file.diff_status === 'computing'" class="file-stats">
+          <v-progress-circular size="12" width="2" indeterminate />
+        </span>
+        <span v-else-if="file.insertions || file.deletions" class="file-stats">
           <span v-if="file.insertions" class="insertions">+{{ file.insertions }}</span>
           <span v-if="file.deletions" class="deletions">-{{ file.deletions }}</span>
         </span>

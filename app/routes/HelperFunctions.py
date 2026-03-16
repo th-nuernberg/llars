@@ -417,7 +417,8 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     """
     Check if a user can submit evaluations for a scenario.
 
-    Only assessors (is_assessor flag) can submit evaluations.
+    Only ACTIVE assessors (is_assessor flag + membership_status=ACTIVE)
+    can submit evaluations. Archived or non-assessor users are read-only.
     Falls back to legacy EVALUATOR role check for backwards compatibility.
 
     Args:
@@ -427,12 +428,18 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     Returns:
         True if the user can submit evaluations, False otherwise
     """
+    from db.models.scenario import MembershipStatus
+
     scenario_user = ScenarioUsers.query.filter_by(
         user_id=user_id,
         scenario_id=scenario_id
     ).first()
 
     if not scenario_user:
+        return False
+
+    # Archived users cannot evaluate regardless of role
+    if scenario_user.membership_status != MembershipStatus.ACTIVE:
         return False
 
     # New model: is_assessor flag; Legacy fallback: EVALUATOR role

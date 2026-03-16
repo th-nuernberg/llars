@@ -42,7 +42,10 @@ from services.scenario_stats_service import get_authenticity_stats, get_scenario
 from services.user_profile_service import serialize_user_brief
 from .. import data_blueprint
 from auth.access_control import require_scenario_membership
-from .scenario_utils import is_scenario_owner, check_scenario_ownership, check_scenario_management_access, is_scenario_manager
+from .scenario_utils import (
+    is_scenario_owner, check_scenario_ownership, check_scenario_management_access,
+    is_scenario_manager, assign_items_to_new_assessor, reassign_items_from_user,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1713,17 +1716,18 @@ def sm_create_scenario():
     db.session.add(new_scenario)
     db.session.commit()
 
-    # Auto-create a VIEWER membership row for the owner so they appear in the team list.
-    # The owner can later self-promote to ASSESSOR to participate in evaluation.
+    # Auto-create a membership row for the owner so they appear in the team list.
+    # If owner_as_assessor is true, owner starts as assessor immediately.
+    owner_as_assessor = data.get('owner_as_assessor', False)
     owner_user = User.query.filter_by(username=username).first()
     if owner_user:
         owner_su = ScenarioUsers(
             scenario_id=new_scenario.id,
             user_id=owner_user.id,
-            role=ScenarioRoles.VIEWER,  # Legacy column for backwards compat
+            role=ScenarioRoles.ASSESSOR if owner_as_assessor else ScenarioRoles.VIEWER,
             access_level='OWNER',
-            is_viewer=True,
-            is_assessor=False,
+            is_viewer=not owner_as_assessor,
+            is_assessor=owner_as_assessor,
             invitation_status=InvitationStatus.ACCEPTED,
             membership_status=MembershipStatus.ACTIVE,
             invited_by=username
@@ -2082,6 +2086,9 @@ def sm_invite_users(scenario_id):
     reinvited = 0
     restored = 0
     skipped_invalid = 0
+    # Track new assessors for item distribution after commit
+    new_assessor_su_ids = []
+
     for uid in user_ids:
         # Validate user exists before attempting to add
         if not User.query.get(uid):
@@ -2108,6 +2115,9 @@ def sm_invite_users(scenario_id):
                 membership_status=MembershipStatus.ACTIVE
             )
             db.session.add(su)
+            db.session.flush()  # Get the su.id for distribution
+            if new_is_assessor:
+                new_assessor_su_ids.append(su.id)
             added += 1
         elif existing.membership_status == MembershipStatus.ARCHIVED:
             # Restore archived user - their evaluations are preserved
@@ -2122,6 +2132,8 @@ def sm_invite_users(scenario_id):
             existing.invited_by = username
             existing.archived_at = None
             existing.archived_by = None
+            if new_is_assessor:
+                new_assessor_su_ids.append(existing.id)
             restored += 1
         elif existing.invitation_status == InvitationStatus.REJECTED:
             # Re-invite a rejected user
@@ -2131,7 +2143,15 @@ def sm_invite_users(scenario_id):
             existing.responded_at = None
             reinvited += 1
 
+    # Assign items to newly added assessors (round_robin mode only)
+    for su_id in new_assessor_su_ids:
+        assign_items_to_new_assessor(scenario_id, scenario, su_id)
+
     db.session.commit()
+
+    # Invalidate stats cache so the Assessors tab shows correct counts immediately
+    from services.scenario_stats_cache_service import mark_dirty
+    mark_dirty(scenario_id)
 
     logger.info(f"User {username} invited {added} users (reinvited {reinvited}, restored {restored}, skipped_invalid {skipped_invalid}) to scenario {scenario_id}")
 
@@ -2186,11 +2206,23 @@ def sm_remove_user(scenario_id, user_id):
     if target_user and scenario.created_by and target_user.username == scenario.created_by:
         raise ValidationError('Cannot remove the scenario owner')
 
+    # If the user was an assessor, reassign their undone items to remaining assessors
+    was_assessor = su.is_assessor
+
     # Archive instead of delete - preserves evaluations for potential restoration
     su.membership_status = MembershipStatus.ARCHIVED
+    su.is_assessor = False
     su.archived_at = datetime.utcnow()
     su.archived_by = username
+
+    if was_assessor:
+        reassign_items_from_user(scenario_id, scenario, su.id)
+
     db.session.commit()
+
+    # Invalidate stats cache so the Assessors tab updates immediately
+    from services.scenario_stats_cache_service import mark_dirty
+    mark_dirty(scenario_id)
 
     logger.info(f"User {username} archived user {user_id} from scenario {scenario_id}")
 
@@ -2277,6 +2309,8 @@ def sm_update_user_role(scenario_id, user_id):
         raise ValidationError(f'Invalid role: {role_str}. Must be ASSESSOR, MANAGER, or VIEWER.')
 
     old_role = _primary_role_display(su)
+    was_assessor = su.is_assessor
+
     su.role = role_enum
     # Preserve OWNER access_level - owners changing their capability flags
     # should not lose their management access
@@ -2292,7 +2326,19 @@ def sm_update_user_role(scenario_id, user_id):
     su.invitation_status = InvitationStatus.ACCEPTED
     su.responded_at = None
 
+    # Handle item distribution changes when assessor status changes
+    if not was_assessor and new_is_assessor:
+        # Viewer/Manager → Assessor: assign items
+        assign_items_to_new_assessor(scenario_id, scenario, su.id)
+    elif was_assessor and not new_is_assessor:
+        # Assessor → Viewer/Manager: reassign undone items to remaining assessors
+        reassign_items_from_user(scenario_id, scenario, su.id)
+
     db.session.commit()
+
+    # Invalidate stats cache so the Assessors tab updates immediately
+    from services.scenario_stats_cache_service import mark_dirty
+    mark_dirty(scenario_id)
 
     logger.info(f"User {username} changed role of user {user_id} from {old_role} to {_primary_role_display(su)} in scenario {scenario_id}")
 

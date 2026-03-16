@@ -28,7 +28,7 @@ from db.models import (
     EmailThread, Feature, UserFeatureRating, UserFeatureRanking, Message,
     FeatureFunctionType, User
 )
-from db.models.scenario import ScenarioRoles
+from db.models.scenario import ScenarioRoles, MembershipStatus
 from schemas.evaluation_data_schemas import EvaluationType
 
 logger = logging.getLogger(__name__)
@@ -87,9 +87,11 @@ class EvaluationSessionService:
         if isinstance(config, dict):
             description = config.get('description')
 
-        # Determine if user can evaluate (is_assessor flag, with legacy fallback)
+        # Determine if user can evaluate (active assessor with is_assessor flag)
+        # Archived users or viewers are always read-only
         can_evaluate = (
             scenario_user is not None
+            and scenario_user.membership_status == MembershipStatus.ACTIVE
             and (scenario_user.is_assessor or scenario_user.role == ScenarioRoles.EVALUATOR)
         )
 

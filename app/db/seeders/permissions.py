@@ -523,6 +523,8 @@ def initialize_permissions(db):
                 'feature:latex_collab:edit',
                 'feature:latex_collab:share',
                 'feature:latex_collab:ai',
+                # RAG (read-only, needed for LaTeX Collab AI citation finder)
+                'feature:rag:view',
                 # Anonymisierung
                 'feature:anonymize:view',
                 # Anonymisierungs-Pipeline

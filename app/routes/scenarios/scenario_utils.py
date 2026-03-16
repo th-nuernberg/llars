@@ -149,6 +149,7 @@ def assign_items_to_new_assessor(scenario_id, scenario, new_scenario_user_id):
         ScenarioUsers, ScenarioItems, ScenarioItemDistribution,
         MembershipStatus, ProgressionStatus, EmailThread,
     )
+    from sqlalchemy.orm import joinedload
     from routes.HelperFunctions import get_thread_progression_state
 
     config = getattr(scenario, 'config_json', None) or {}
@@ -180,20 +181,29 @@ def assign_items_to_new_assessor(scenario_id, scenario, new_scenario_user_id):
             ))
         return
 
+    # Pre-load all EvaluationItems for this scenario to avoid lazy-load queries
+    # in the loop below (SQLite fails with "another row available" on nested queries)
+    item_id_set = {si.item_id for si in scenario_items}
+    threads_by_id = {
+        t.item_id: t
+        for t in EmailThread.query.filter(EmailThread.item_id.in_(item_id_set)).all()
+    }
+
     # Collect undone items per existing assessor.
     # An item is "undone" for a user if their progression is NOT_STARTED.
     undone_by_assessor = {}  # {scenario_user_id: [scenario_item_id, ...]}
     for su in existing_assessors:
+        # Eagerly load scenario_item relationship to avoid lazy-load in loop
         dists = ScenarioItemDistribution.query.filter_by(
             scenario_id=scenario_id,
             scenario_user_id=su.id,
-        ).all()
+        ).options(joinedload(ScenarioItemDistribution.scenario_item)).all()
         undone = []
         for dist in dists:
             si = dist.scenario_item
             if not si:
                 continue
-            thread = EmailThread.query.get(si.item_id)
+            thread = threads_by_id.get(si.item_id)
             if not thread:
                 continue
             try:
@@ -256,9 +266,10 @@ def reassign_items_from_user(scenario_id, scenario, removed_scenario_user_id):
     """
     from db.database import db
     from db.models import (
-        ScenarioUsers, ScenarioItemDistribution,
+        ScenarioUsers, ScenarioItems, ScenarioItemDistribution,
         MembershipStatus, ProgressionStatus, EmailThread,
     )
+    from sqlalchemy.orm import joinedload
     from routes.HelperFunctions import get_thread_progression_state
 
     config = getattr(scenario, 'config_json', None) or {}
@@ -288,18 +299,27 @@ def reassign_items_from_user(scenario_id, scenario, removed_scenario_user_id):
         ).delete()
         return
 
-    # Find undone items for the removed user
+    # Pre-load all EvaluationItems for this scenario to avoid lazy-load queries
+    # in the loop below (SQLite fails with "another row available" on nested queries)
+    scenario_item_rows = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
+    item_id_set = {si.item_id for si in scenario_item_rows}
+    threads_by_id = {
+        t.item_id: t
+        for t in EmailThread.query.filter(EmailThread.item_id.in_(item_id_set)).all()
+    }
+
+    # Find undone items for the removed user (eagerly load scenario_item)
     dists = ScenarioItemDistribution.query.filter_by(
         scenario_id=scenario_id,
         scenario_user_id=removed_scenario_user_id,
-    ).all()
+    ).options(joinedload(ScenarioItemDistribution.scenario_item)).all()
 
     undone_dists = []
     for dist in dists:
         si = dist.scenario_item
         if not si:
             continue
-        thread = EmailThread.query.get(si.item_id)
+        thread = threads_by_id.get(si.item_id)
         if not thread:
             continue
         try:

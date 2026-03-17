@@ -418,7 +418,10 @@ function compareFn(a, b, field, asc) {
 
 const sortedConferences = computed(() => {
   const list = [...filteredConferences.value]
-  if (!sortField.value) return list
+  if (!sortField.value) {
+    // Default: newest conferences first (by id descending)
+    return list.sort((a, b) => (b.id || 0) - (a.id || 0))
+  }
   return list.sort((a, b) => compareFn(a, b, sortField.value, sortAsc.value))
 })
 

@@ -102,7 +102,7 @@
           :style="{
             left: span.startX + 'px',
             width: Math.max(span.endX - span.startX, 80) + 'px',
-            top: `calc(60% + 16px + ${span.row * 38}px)`,
+            top: `calc(70% + 16px + ${span.row * 38}px)`,
           }"
           @mouseenter="onSpanEnter($event, span)"
           @mouseleave="onSpanLeave"
@@ -155,12 +155,12 @@
           :class="'stem-' + evt.type"
           :style="{
             left: (evt.x + 55) + 'px',
-            top: `calc(60% - ${(evt.row + 1) * 56 + 4}px)`,
+            top: `calc(70% - ${(evt.row + 1) * 56 + 4}px)`,
             height: `${4 + (evt.row + 1) * 56}px`,
           }"
         />
 
-        <!-- Event cards — above axis -->
+        <!-- Event cards — above axis (combined deadline + notification per conference) -->
         <div
           v-for="(evt, i) in eventCards"
           :key="'card-' + i"
@@ -171,7 +171,7 @@
           ]"
           :style="{
             left: evt.x + 'px',
-            top: `calc(60% - ${48 + (evt.row + 1) * 56}px)`,
+            top: `calc(70% - ${48 + (evt.row + 1) * 56}px)`,
             animationDelay: (i * 60) + 'ms',
           }"
           @mouseenter="onCardEnter($event, i, evt)"
@@ -179,14 +179,16 @@
           @click.stop="toggleDetail(i, evt)"
         >
           <div class="card-accent" />
-          <div class="card-icon">
-            <v-icon size="15">
-              {{ evt.type === 'deadline' ? 'mdi-file-document-outline' : 'mdi-bell-outline' }}
-            </v-icon>
-          </div>
           <div class="card-body">
             <div class="card-title">{{ evt.conference.acronym }}</div>
-            <div class="card-date">{{ formatDateShort(evt.date) }}</div>
+            <div v-if="evt.deadline" class="card-date-row card-date--deadline">
+              <v-icon size="11" color="#c4735a">mdi-file-document-outline</v-icon>
+              <span>{{ formatDateShort(evt.deadline) }}</span>
+            </div>
+            <div v-if="evt.notification" class="card-date-row card-date--notification">
+              <v-icon size="11" color="#4a8e93">mdi-bell-outline</v-icon>
+              <span>{{ formatDateShort(evt.notification) }}</span>
+            </div>
           </div>
         </div>
 
@@ -199,16 +201,14 @@
               :class="'card-tooltip--' + tooltipCard.type"
               :style="cardTooltipStyle"
             >
-              <div class="card-tooltip-type">
-                <v-icon size="13">
-                  {{ tooltipCard.type === 'deadline' ? 'mdi-file-document-outline' : 'mdi-bell-outline' }}
-                </v-icon>
-                {{ t(`conferenceManager.timeline.${tooltipCard.type}`) }}
-              </div>
               <div class="card-tooltip-name">{{ tooltipCard.conference.name }}</div>
-              <div class="card-tooltip-date-row" :class="'date-row--' + tooltipCard.type">
-                <v-icon size="14">mdi-calendar</v-icon>
-                <span class="card-tooltip-date">{{ formatDate(tooltipCard.date) }}</span>
+              <div v-if="tooltipCard.deadline" class="card-tooltip-date-row date-row--deadline">
+                <v-icon size="14" color="#c4735a">mdi-file-document-outline</v-icon>
+                <span class="card-tooltip-date">{{ formatDate(tooltipCard.deadline) }}</span>
+              </div>
+              <div v-if="tooltipCard.notification" class="card-tooltip-date-row date-row--notification">
+                <v-icon size="14" color="#4a8e93">mdi-bell-outline</v-icon>
+                <span class="card-tooltip-date">{{ formatDate(tooltipCard.notification) }}</span>
               </div>
               <div v-if="tooltipCard.conference.start_date" class="card-tooltip-conf-dates">
                 <v-icon size="12">mdi-calendar-range</v-icon>
@@ -243,7 +243,7 @@
                 <div class="detail-header">
                   <span class="detail-type" :class="'type-' + detailEvent.type">
                     <v-icon size="14">{{ getTypeIcon(detailEvent.type) }}</v-icon>
-                    {{ t(`conferenceManager.timeline.${detailEvent.type}`) }}
+                    {{ detailEvent.conference.acronym }}
                   </span>
                   <v-btn icon size="x-small" variant="text" @click="activeDot = null">
                     <v-icon size="16">mdi-close</v-icon>
@@ -252,9 +252,13 @@
                 <div class="detail-title">{{ detailEvent.conference.acronym }}</div>
                 <div class="detail-name">{{ detailEvent.conference.name }}</div>
                 <div class="detail-meta">
-                  <div class="detail-meta-row">
-                    <v-icon size="14">mdi-calendar-outline</v-icon>
-                    {{ formatDate(detailEvent.date) }}
+                  <div v-if="detailEvent.deadline" class="detail-meta-row">
+                    <v-icon size="14" color="#c4735a">mdi-file-document-outline</v-icon>
+                    {{ t('conferenceManager.timeline.deadline') }}: {{ formatDate(detailEvent.deadline) }}
+                  </div>
+                  <div v-if="detailEvent.notification" class="detail-meta-row">
+                    <v-icon size="14" color="#4a8e93">mdi-bell-outline</v-icon>
+                    {{ t('conferenceManager.timeline.notification') }}: {{ formatDate(detailEvent.notification) }}
                   </div>
                   <div v-if="detailEvent.conference.city || detailEvent.conference.country" class="detail-meta-row">
                     <v-icon size="14">mdi-map-marker-outline</v-icon>
@@ -414,10 +418,35 @@ function assignRows(items, minGap) {
 }
 
 const eventCards = computed(() => {
-  const cards = timelineEvents.value
-    .filter(e => e.type !== 'span')
-    .map(e => ({ ...e, x: dateToX(e.date) }))
-  return assignRows(cards, 130)
+  // Combine deadline + notification per conference into one card
+  const byConference = new Map()
+  for (const e of timelineEvents.value) {
+    if (e.type === 'span') continue
+    const key = e.conference.id
+    if (!byConference.has(key)) {
+      byConference.set(key, { conference: e.conference, deadline: null, notification: null })
+    }
+    const entry = byConference.get(key)
+    if (e.type === 'deadline') entry.deadline = e.date
+    if (e.type === 'notification') entry.notification = e.date
+  }
+
+  const cards = []
+  for (const [, entry] of byConference) {
+    const primaryDate = entry.deadline || entry.notification
+    const type = entry.deadline && entry.notification ? 'combined'
+      : entry.deadline ? 'deadline' : 'notification'
+    cards.push({
+      conference: entry.conference,
+      deadline: entry.deadline,
+      notification: entry.notification,
+      date: primaryDate,
+      type,
+      x: dateToX(primaryDate),
+    })
+  }
+
+  return assignRows(cards, 140)
 })
 
 const conferenceSpans = computed(() => {
@@ -487,6 +516,7 @@ function onSpanLeave() {
 function getTypeIcon(type) {
   if (type === 'deadline') return 'mdi-file-document-outline'
   if (type === 'notification') return 'mdi-bell-outline'
+  if (type === 'combined') return 'mdi-calendar-multiple'
   return 'mdi-account-group-outline'
 }
 
@@ -724,7 +754,7 @@ onMounted(async () => {
 /* ── Axis ─────────────────────────────────────── */
 .axis-line {
   position: absolute;
-  top: 60%;
+  top: 70%;
   left: 0;
   right: 0;
   height: 2px;
@@ -792,7 +822,7 @@ onMounted(async () => {
 
 .today-diamond {
   position: absolute;
-  top: 60%;
+  top: 70%;
   left: 50%;
   width: 8px;
   height: 8px;
@@ -916,7 +946,7 @@ onMounted(async () => {
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 0;
-  padding: 6px 8px 6px 0;
+  padding: 6px 8px 6px 10px;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   animation: cardAppear 0.35s ease forwards;
   opacity: 0;
@@ -947,27 +977,24 @@ onMounted(async () => {
 .card-deadline .card-accent { background: #c4735a; }
 .card-notification .card-accent { background: #4a8e93; }
 
-/* Icon circle */
-.card-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-left: 8px;
-  margin-right: 6px;
+/* Combined card (deadline + notification) */
+.event-card.card-combined {
+  background: rgba(140, 130, 120, 0.06);
+  border: 1px solid rgba(140, 130, 120, 0.15);
 }
 
-.card-deadline .card-icon {
-  background: rgba(196, 115, 90, 0.1);
-  color: #c4735a;
+.card-combined .card-accent {
+  background: linear-gradient(180deg, #c4735a 50%, #4a8e93 50%);
 }
 
-.card-notification .card-icon {
-  background: rgba(74, 142, 147, 0.1);
-  color: #4a8e93;
+.event-card.card-hovered.card-combined {
+  background: rgba(140, 130, 120, 0.1);
+  border-color: rgba(140, 130, 120, 0.3);
+  box-shadow: 0 4px 16px rgba(140, 130, 120, 0.1);
+}
+
+.card-stem.stem-combined {
+  background: linear-gradient(180deg, rgba(196, 115, 90, 0.2), rgba(74, 142, 147, 0.08));
 }
 
 /* Text body */
@@ -988,10 +1015,13 @@ onMounted(async () => {
   color: rgb(var(--v-theme-on-surface));
 }
 
-.card-date {
+.card-date-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
   font-size: 0.6rem;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  line-height: 1.3;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -1060,6 +1090,7 @@ onMounted(async () => {
 .detail-type.type-deadline { color: #c4735a; }
 .detail-type.type-notification { color: #4a8e93; }
 .detail-type.type-span { color: #4a9e7e; }
+.detail-type.type-combined { color: #8b8070; }
 
 .detail-title {
   font-size: 1.15rem;
@@ -1167,7 +1198,7 @@ onMounted(async () => {
 
 .skeleton-axis {
   position: absolute;
-  top: 60%;
+  top: 70%;
   left: 0;
   right: 0;
   height: 2px;
@@ -1351,6 +1382,9 @@ onMounted(async () => {
 .card-tooltip--notification {
   border: 1px solid rgba(74, 142, 147, 0.25);
 }
+.card-tooltip--combined {
+  border: 1px solid rgba(140, 130, 120, 0.25);
+}
 
 .card-tooltip::after {
   content: '';
@@ -1365,6 +1399,9 @@ onMounted(async () => {
 }
 .card-tooltip--notification::after {
   border-top-color: rgba(74, 142, 147, 0.25);
+}
+.card-tooltip--combined::after {
+  border-top-color: rgba(140, 130, 120, 0.25);
 }
 
 .card-tooltip-type {
@@ -1406,8 +1443,8 @@ onMounted(async () => {
   font-weight: 700;
   white-space: nowrap;
 }
-.card-tooltip--deadline .card-tooltip-date { color: #c4735a; }
-.card-tooltip--notification .card-tooltip-date { color: #4a8e93; }
+.date-row--deadline .card-tooltip-date { color: #c4735a; }
+.date-row--notification .card-tooltip-date { color: #4a8e93; }
 
 .card-tooltip-conf-dates,
 .card-tooltip-location,

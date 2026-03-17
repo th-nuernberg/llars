@@ -244,7 +244,6 @@ def run_compile_job(job_id: int) -> None:
                 cwd=tmpdir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True,
             )
 
             main_stem = os.path.splitext(rel_main)[0]
@@ -252,7 +251,8 @@ def run_compile_job(job_id: int) -> None:
             synctex_path = Path(tmpdir) / f"{main_stem}.synctex.gz"
             log_path = Path(tmpdir) / f"{main_stem}.log"
 
-            output = proc.stdout or ""
+            # Decode stdout with error handling — latexmk can emit non-UTF-8 bytes
+            output = proc.stdout.decode("utf-8", errors="replace") if proc.stdout else ""
             job.log_text = _read_log(log_path, output)
 
             # Check if PDF was created - latexmk may return non-zero for warnings

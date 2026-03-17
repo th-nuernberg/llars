@@ -448,8 +448,18 @@ class BatchGenerationService:
             source_sources = source_config.get("sources", {})
             original_type = source_sources.get("type")
 
+            # Walk up from_job chain to find the original source (max 10 hops)
+            hops = 0
+            while original_type == "from_job" and hops < 10:
+                chained_job = GenerationJob.query.get(source_sources["job_id"])
+                if not chained_job:
+                    raise ValidationError(f"Chained source job {source_sources['job_id']} not found")
+                source_config = chained_job.config_json or {}
+                source_sources = source_config.get("sources", {})
+                original_type = source_sources.get("type")
+                hops += 1
             if original_type == "from_job":
-                raise ValidationError("Cannot chain from_job sources. Reference the original job instead.")
+                raise ValidationError("from_job chain too deep (max 10 hops)")
 
             if original_type == "scenario":
                 scenario_id = source_sources["scenario_id"]
@@ -1124,8 +1134,18 @@ class BatchGenerationService:
         source_sources = source_config.get("sources", {})
         original_type = source_sources.get("type")
 
+        # Walk up from_job chain to find the original source (max 10 hops)
+        hops = 0
+        while original_type == "from_job" and hops < 10:
+            chained_job = GenerationJob.query.get(source_sources["job_id"])
+            if not chained_job:
+                raise ValidationError(f"Chained source job {source_sources['job_id']} not found")
+            source_config = chained_job.config_json or {}
+            source_sources = source_config.get("sources", {})
+            original_type = source_sources.get("type")
+            hops += 1
         if original_type == "from_job":
-            raise ValidationError("Cannot chain from_job sources. Reference the original job instead.")
+            raise ValidationError("from_job chain too deep (max 10 hops)")
         if original_type == "scenario":
             scenario_id = source_sources["scenario_id"]
             return ScenarioItems.query.filter_by(scenario_id=scenario_id).count()

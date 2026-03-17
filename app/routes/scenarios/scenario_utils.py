@@ -250,6 +250,11 @@ def assign_items_to_new_assessor(scenario_id, scenario, new_scenario_user_id):
     for dist in items_to_reassign:
         dist.scenario_user_id = new_scenario_user_id
 
+    # Flush to stabilize session state before caller commits.
+    # Without this, SQLite can lose dirty attributes set by the caller
+    # (e.g. su.is_assessor) when the session auto-expires after commit.
+    db.session.flush()
+
     logger.info(
         "Assigned %d items to new assessor (su_id=%d) in scenario %d "
         "(from %d existing assessors, %d undone total)",
@@ -340,6 +345,9 @@ def reassign_items_from_user(scenario_id, scenario, removed_scenario_user_id):
 
     for i, dist in enumerate(undone_dists):
         dist.scenario_user_id = remaining_ids[i % len(remaining_ids)]
+
+    # Flush to stabilize session state (see assign_items_to_new_assessor)
+    db.session.flush()
 
     logger.info(
         "Reassigned %d undone items from su_id=%d to %d remaining assessors in scenario %d",

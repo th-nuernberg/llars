@@ -394,8 +394,6 @@ build:docker:
       fi
     - echo "Version $APP_VERSION ($APP_BRANCH@$APP_COMMIT_HASH)"
     - docker compose build --parallel
-    # Pre-build smoke-test container so E2E/smoke jobs don't rebuild it
-    - docker compose --profile testing build smoke-test-service
     - echo "Build completed successfully"
   rules:
     - *test_only_skip
@@ -433,8 +431,6 @@ build:docker:dev:
       fi
     - echo "Version $APP_VERSION ($APP_BRANCH@$APP_COMMIT_HASH)"
     - docker compose build --parallel
-    # Pre-build smoke-test container so E2E/smoke jobs don't rebuild it
-    - docker compose --profile testing build smoke-test-service
     - echo "Build completed successfully"
   extends:
     - .dev_deploy_rules
@@ -531,7 +527,7 @@ e2e:dev:
     - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
     - export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD:-$E2E_TEST_PASSWORD}"
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
-    # smoke-test-service already built in build:docker:dev
+    - docker compose --profile testing build smoke-test-service
     - python3 scripts/testing/validate_nightly_coverage.py
     - |
       set -o pipefail
@@ -624,7 +620,9 @@ test:e2e:nightly:tiles:
     - 'echo "Nightly E2E tag: ${E2E_RUN_TAG}"'
     - 'echo "Nightly users: admin=${E2E_ADMIN_USER}, researcher=${E2E_RESEARCHER_USER}, evaluator=${E2E_EVALUATOR_USER}, chatbot_manager=${E2E_CHATBOT_MANAGER_USER}"'
     - 'echo "Bootstrap admin: ${E2E_BOOTSTRAP_ADMIN_USER}"'
-    # smoke-test-service already built in build:docker
+    # Build smoke-test container (with Playwright + E2E tests)
+    # Must build here because build:docker runs on Docker runner (different machine)
+    - docker compose --profile testing build smoke-test-service
     # Validate tile/workflow contracts before UI execution
     - python3 scripts/testing/validate_nightly_coverage.py
     # Run E2E tests against staging (localhost:55080)
@@ -683,7 +681,8 @@ smoke:staging:
     - sleep 30
     # Load SYSTEM_ADMIN_API_KEY from server .env
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
-    # smoke-test-service already built in build:docker stage
+    # Build smoke-test container (build:docker runs on Docker runner, not available here)
+    - docker compose --profile testing build smoke-test-service
     - |
       docker compose --profile testing run --rm --entrypoint "" \
         -e BASE_URL=http://localhost:55080 \

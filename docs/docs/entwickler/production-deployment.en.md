@@ -623,6 +623,23 @@ deploy:staging → test:e2e:staging → smoke:staging → deploy:production → 
 
 On failed smoke tests: automatic rollback.
 
+### Pipeline Controls
+
+| Trigger | Staging | Production | Description |
+|---------|:-------:|:----------:|-------------|
+| Normal push | ✗ | ✗ | Lint + Tests only |
+| `[dryrun]` in commit message | ✓ | **✗** | Full staging flow, no prod deploy |
+| `DRY_RUN=true` (CI variable) | ✓ | **✗** | Same as `[dryrun]` |
+| `FORCE_DEPLOY=true` (CI variable) | ✓ | ✓ | Immediate full pipeline |
+| Nightly schedule | ✓ | ✓ | Mon-Fri 02:00 CET |
+
+**Dry-Run** verifies the nightly pipeline will succeed without touching production:
+
+```bash
+git commit -m "chore: pre-release check [dryrun]"
+git push origin main
+```
+
 ### Rollback
 
 ```bash

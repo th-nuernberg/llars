@@ -175,6 +175,44 @@ Bei Shell Runner auf dem Server sind **keine SSH-Variablen nötig**! Die Deploy-
 
 ---
 
+## Pipeline-Steuerung
+
+Die Pipeline kann auf verschiedene Arten getriggert werden:
+
+| Trigger | Lint | Tests | E2E | Staging | Smoke | Production | Dauer |
+|---------|:----:|:-----:|:---:|:-------:|:-----:|:----------:|:-----:|
+| Normaler Push (main/dev) | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ~5 min |
+| `[dryrun]` in Commit-Message | ✓ | ✓ | ✓ | ✓ | ✓ | **✗** | ~15 min |
+| `DRY_RUN=true` (CI Variable) | ✓ | ✓ | ✓ | ✓ | ✓ | **✗** | ~15 min |
+| `FORCE_DEPLOY=true` (CI Variable) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ~20 min |
+| Nightly Schedule (Mo-Fr 02:00) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ~20 min |
+
+### Dry-Run: Staging-Pipeline ohne Production-Deploy
+
+Mit `[dryrun]` in der Commit-Message kann der vollständige Staging-Flow getestet werden,
+**ohne** dass Production deployed wird. Nützlich um vor dem Nightly-Lauf zu prüfen,
+ob die Pipeline durchlaufen wird.
+
+```bash
+# Via Commit-Message (empfohlen)
+git commit -m "chore: pre-release check [dryrun]"
+git push origin main
+
+# Via GitLab UI
+# CI/CD → Pipelines → Run Pipeline → Variable: DRY_RUN=true
+```
+
+**Was läuft:** Lint → Test → Security → Build → Deploy:Staging → E2E → Smoke:Staging
+
+**Was NICHT läuft:** Deploy:Production, Smoke:Production, Switch
+
+### Sofort-Deploy
+
+Für dringende Deployments kann über die GitLab UI eine Pipeline mit `FORCE_DEPLOY=true`
+getriggert werden. Dies startet den vollen Pipeline-Flow inkl. Production-Deploy.
+
+---
+
 ## 3. Pipeline-Stages
 
 ### Stage 1: Lint (~30 Sekunden)

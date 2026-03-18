@@ -30,7 +30,7 @@ chromadb==0.5.20
 posthog==5.4.0
 python-dotenv==1.0.1
 PyPDF2==3.0.1
-pypdf==6.7.5
+pypdf==6.9.1
 langchain-chroma==0.1.4
 
 y-py==0.6.2

@@ -1,6 +1,6 @@
 # LLARS Testdokumentation
 
-**Version:** 1.2 | **Stand:** 31. Dezember 2025
+**Version:** 1.3 | **Stand:** 18. März 2026
 
 **Implementierungsstatus:** 🟢 Backend komplett, Frontend in Arbeit
 
@@ -184,18 +184,18 @@ docs/testing/
 
 | Bereich | Tests | Status |
 |---------|-------|--------|
-| **Backend Unit Tests** | 768 | ✅ Implementiert |
+| **Backend Unit Tests** | 3.121 | ✅ Implementiert |
 | **Backend Integration Tests** | 342 | ✅ Implementiert |
-| **Frontend Component Tests** | 1.733 | ✅ Implementiert |
-| **E2E Tests (Playwright)** | 25 | ✅ Implementiert |
-| **Gesamt** | **2.868** | ~98% ✅ |
+| **Frontend Component Tests** | 4.519 | ✅ Implementiert |
+| **E2E Tests (Playwright)** | 13+ Spec-Dateien | ✅ Implementiert |
+| **Gesamt** | **7.982+** | ~98% ✅ |
 
 ### Implementierte Backend Test-Dateien
 
 ```
 tests/
 ├── conftest.py                                  # ✅ Fixtures & Setup
-├── unit/                                        # ✅ 768 Tests
+├── unit/                                        # ✅ 3.121 Tests
 │   ├── auth/
 │   │   └── test_decorators.py                   # Auth Decorators
 │   └── services/
@@ -288,13 +288,13 @@ llars-frontend/tests/
 | 09_ACCESSIBILITY | WCAG 2.1 AA, Keyboard | ~75 | ⏳ 0 |
 | 10_EDGE_CASES_ERRORS | Empty States, Errors | ~40 | ⏳ 0 |
 | 11_VISUAL_RESPONSIVE | Breakpoints, Dark Mode | ~50 | ⏳ 0 |
-| Composables | useAuth, usePermissions, etc. | ~120 | ✅ 775 (13 Composables) |
+| Composables | useAuth, usePermissions, etc. | ~120 | ✅ 775+ (33 Composables) |
 
 **Implementierte Komponenten (22/22):** ✅ Alle Komponenten getestet - LBtn, LTag, LSlider, LCard, LTabs, LTooltip, LActionGroup, LIconBtn, LAvatar, LLoading, LMessage, LThemeToggle, LInfoTooltip, LMessageList, LUserSearch, LGauge, LChart, LEvaluationLayout, LEvaluationStatus, KatexFormula, AppSidebar, AnalyticsConsentBanner
 
 **Fehlende Komponenten:** Keine - alle Komponenten sind vollständig getestet!
 
-**Implementierte Composables (13/13):** ✅ Alle Composables getestet - useAuth, usePermissions, usePanelResize, useAppTheme, useMobile, useSkeletonLoading, useBuilderValidation, useBuilderState, useWizardSession, useKIAStatusCache, useAnalyticsMetrics, useFieldGenerationService, useSplitPaneResize
+**Implementierte Composables (33):** ✅ Alle Composables getestet - useAuth, usePermissions, usePanelResize, useAppTheme, useMobile, useSkeletonLoading, useBuilderValidation, useBuilderState, useWizardSession, useKIAStatusCache, useAnalyticsMetrics, useFieldGenerationService, useSplitPaneResize und 20 weitere
 
 **Fehlende Composables:** Keine - alle Composables sind vollständig getestet!
 
@@ -302,14 +302,12 @@ llars-frontend/tests/
 
 ```
 llars-frontend/e2e/
-└── login.spec.js                            # ✅ 25 Tests (E2E_LOGIN_001-025)
-    ├── Login Page (5 Tests)                 # Page load, form fields, focus, password type, visibility toggle
-    ├── Successful Login (6 Tests)           # All 4 user roles + token storage + loading state
-    ├── Failed Login (5 Tests)               # Wrong credentials, empty fields, error dismissal
-    ├── Logout (2 Tests)                     # Logout flow, token cleared
-    ├── Session & Redirects (4 Tests)        # Auth redirects, protected routes
-    ├── Keyboard Navigation (2 Tests)        # Enter submit, Tab navigation
-    └── Mobile Responsive (1 Test)           # Mobile viewport login
+├── login.spec.js                            # ✅ Login Flow Tests
+├── nightly/
+│   ├── tile-regression.spec.js              # ✅ Home Tile Regression
+│   ├── workflows.spec.js                    # ✅ Cross-Feature Workflows
+│   └── ...                                  # ✅ Weitere Nightly Specs
+└── ...                                      # ✅ 13+ Spec-Dateien insgesamt
 ```
 
 ---
@@ -344,7 +342,7 @@ Bei Fragen zur Testdokumentation wende dich an das Entwicklungsteam.
 
 ---
 
-**Letzte Aktualisierung:** 1. Januar 2026
+**Letzte Aktualisierung:** 18. März 2026
 
 ---
 

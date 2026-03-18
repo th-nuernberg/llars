@@ -1,6 +1,6 @@
 # LLARS GitLab CI/CD Setup
 
-**Version:** 2.0 | **Stand:** 1. Januar 2026
+**Version:** 3.0 | **Stand:** 18. März 2026
 
 ---
 
@@ -8,7 +8,7 @@
 
 Dieses Dokument beschreibt die Einrichtung der GitLab CI/CD Pipeline für automatisches Testing und Deployment.
 
-**Wichtig:** LLARS verwendet einen **Shell Runner direkt auf dem Server** - kein SSH für Deployments nötig!
+**Wichtig:** LLARS verwendet ein **Two-Branch Blue-Green Deployment** mit Shell Runnern auf zwei Servern — kein SSH für Deployments nötig!
 
 ### Nightly Kachel- und Workflow-Regression
 
@@ -65,53 +65,70 @@ python3 scripts/testing/cleanup_nightly_test_users.py
 ```
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     LLARS CI/CD PIPELINE                            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  develop Branch                    main Branch                       │
-│  ┌──────────┐                     ┌──────────┐                      │
-│  │  Push    │                     │  Push    │                      │
-│  └────┬─────┘                     └────┬─────┘                      │
-│       │                                │                             │
-│       ▼                                ▼                             │
-│  ┌──────────┐                     ┌──────────┐                      │
-│  │   Lint   │                     │   Lint   │                      │
-│  └────┬─────┘                     └────┬─────┘                      │
-│       │                                │                             │
-│       ▼                                ▼                             │
-│  ┌──────────┐                     ┌──────────┐                      │
-│  │  Tests   │                     │  Tests   │                      │
-│  │  (Unit)  │                     │  (All)   │                      │
-│  └────┬─────┘                     └────┬─────┘                      │
-│       │                                │                             │
-│       ▼                                ▼                             │
-│  ┌──────────┐                     ┌──────────┐                      │
-│  │  Build   │                     │  Build   │                      │
-│  └────┬─────┘                     └────┬─────┘                      │
-│       │                                │                             │
-│       ▼                                ▼                             │
-│  ┌──────────┐                     ┌──────────┐                      │
-│  │ Deploy   │                     │ Deploy   │                      │
-│  │ STAGING  │                     │   PROD   │                      │
-│  └──────────┘                     └────┬─────┘                      │
-│                                        │                             │
-│                                        ▼                             │
-│                                   ┌──────────┐                      │
-│                                   │  Smoke   │                      │
-│                                   │  Tests   │                      │
-│                                   └──────────┘                      │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                          LLARS CI/CD PIPELINE (Two-Branch Model)                 │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  dev Branch → llars-dev (141.75.150.86)     main Branch → Production (141.75.150.128)
+│  Auto-deploy on every push                  Lint+Test on push, nightly deploy    │
+│                                                                                  │
+│  ┌──────┐   ┌──────┐   ┌────────┐          ┌──────┐   ┌──────┐   ┌────────┐    │
+│  │ Lint │ → │ Test │ → │Security│          │ Lint │ → │ Test │ → │Security│    │
+│  └──────┘   └──────┘   └───┬────┘          └──────┘   └──────┘   └───┬────┘    │
+│                             │                                         │          │
+│                             ▼                          (Nightly/Force) ▼          │
+│                        ┌─────────┐                           ┌──────────────┐    │
+│                        │Build:dev│                           │ Build:docker │    │
+│                        │(shell-  │                           │  (shell)     │    │
+│                        │  dev)   │                           └──────┬───────┘    │
+│                        └───┬─────┘                                 │            │
+│                            │                                       ▼            │
+│                            ▼                              ┌──────────────┐      │
+│                     ┌────────────┐                        │Deploy:staging│      │
+│                     │ Deploy:dev │                        └──────┬───────┘      │
+│                     └─────┬──────┘                               │              │
+│                           │                                      ▼              │
+│                     ┌─────┴──────┐                        ┌──────────────┐      │
+│                     │  E2E:dev + │                        │ E2E + Smoke  │      │
+│                     │ Smoke:dev  │                        │   :staging   │      │
+│                     └─────┬──────┘                        └──────┬───────┘      │
+│                           │                                      │              │
+│                           ▼                                      ▼              │
+│                     ┌────────────┐                        ┌──────────────┐      │
+│                     │ Switch:dev │                        │   Deploy:    │      │
+│                     └────────────┘                        │  production  │      │
+│                                                           └──────┬───────┘      │
+│                                                                  │              │
+│                                                                  ▼              │
+│                                                          ┌──────────────┐       │
+│                                                          │    Smoke:    │       │
+│                                                          │  production  │       │
+│                                                          └──────┬───────┘       │
+│                                                                 │               │
+│                                                          FAIL → Rollback        │
+│                                                                                  │
+│  Workflow: dev → test on llars-dev → merge dev→main → nightly prod deploy       │
+│                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 1. Voraussetzungen
 
-### GitLab Shell Runner auf dem Server
+### GitLab Runners
 
-LLARS verwendet einen Shell Runner, der direkt auf dem LLARS Server läuft. Damit entfällt SSH-Konfiguration für Deployments.
+LLARS verwendet drei Runner:
+
+| Runner | ID | Tag | Server | Zweck |
+|--------|----|-----|--------|-------|
+| Docker | 515 | (shared) | GitLab shared | Lint, Test, Security |
+| Shell (prod) | 517 | `shell` | 141.75.150.128 | Build + Deploy Production |
+| Shell (dev) | 546 | `shell-dev` | 141.75.150.86 | Build + Deploy llars-dev |
+
+Shell Runner laufen direkt auf dem jeweiligen Server. Damit entfaellt SSH-Konfiguration fuer Deployments.
+
+### Production Runner Setup (141.75.150.128)
 
 ```bash
 # 1. GitLab Runner installieren
@@ -134,9 +151,9 @@ sudo chmod -R g+rwX /var/llars
 sudo find /var/llars -type d -exec chmod g+s {} \;  # SetGID für neue Dateien
 ```
 
-### Runner-Konfiguration
+### Runner-Konfiguration (Production)
 
-```bash
+```toml
 # /etc/gitlab-runner/config.toml
 [[runners]]
   name = "llars-server-shell"
@@ -151,27 +168,106 @@ sudo find /var/llars -type d -exec chmod g+s {} \;  # SetGID für neue Dateien
 
 **Wichtig:** Der Shell Runner muss mit `tags = ["shell"]` und `run_untagged = false` konfiguriert werden, damit er nur Jobs mit dem `shell` Tag annimmt.
 
+### Dev Runner Setup (141.75.150.86)
+
+Der Dev-Server hat einen eigenen Shell Runner fuer automatische Deployments bei jedem Push auf `dev`.
+
+```bash
+# Runner registrieren (auf llars-dev Server)
+sudo gitlab-runner register
+# URL: https://git.informatik.fh-nuernberg.de/
+# Token: aus GitLab → Settings → CI/CD → Runners
+# Executor: shell
+# Tags: shell-dev
+
+# Runner zur docker Gruppe hinzufügen
+sudo usermod -aG docker gitlab-runner
+```
+
+### Runner-Konfiguration (Dev)
+
+```toml
+# /home/master/.gitlab-runner/config.toml
+[[runners]]
+  name = "llars-dev-shell"
+  url = "https://git.informatik.fh-nuernberg.de/"
+  executor = "shell"
+  tags = ["shell-dev"]
+  [runners.custom_build_dir]
+  [runners.cache]
+```
+
+**Systemd Service:** `/etc/systemd/system/gitlab-runner.service`
+
+**Wichtig:** Die Dev-Server `.env` unter `/var/llars/.env` hat `LLARS_PRODUCTION_BRANCH=dev` gesetzt, damit `deploy_bluegreen.sh` den `dev` Branch auscheckt.
+
 ---
 
 ## 2. GitLab CI/CD Variables
 
 Gehe zu: **Settings → CI/CD → Variables**
 
-### Erforderliche Variablen (für Shell Runner)
-
-Bei Shell Runner auf dem Server sind **keine SSH-Variablen nötig**! Die Deploy-Jobs laufen direkt auf dem Server.
+### Erforderliche Variablen
 
 | Variable | Typ | Beschreibung | Protected | Masked |
 |----------|-----|--------------|-----------|--------|
-| (keine) | - | Shell Runner benötigt keine Variablen | - | - |
+| `SYSTEM_ADMIN_API_KEY` | Variable | API Key fuer Smoke Tests (Backend System-Endpoints) | Yes | Yes |
+| `E2E_TEST_PASSWORD` | Variable | Passwort fuer E2E/Nightly Test-User | Yes | Yes |
+
+### Trigger-Variablen
+
+| Variable | Typ | Beschreibung |
+|----------|-----|--------------|
+| `SCHEDULED_DEPLOY` | `true` | Nightly Production Deploy (gesetzt im Pipeline Schedule) |
+| `FORCE_DEPLOY` | `true` | Sofortige volle Pipeline auf `main` (inkl. Production) |
+| `FORCE_DEV_DEPLOY` | `true` | Force Dev-Deploy (auch ohne Code-Aenderungen) |
+| `DRY_RUN` | `true` | Voller Staging-Flow ohne Production-Deploy |
 
 ### Optionale Variablen
 
 | Variable | Typ | Beschreibung |
 |----------|-----|--------------|
-| `DEPLOY_TOKEN` | Variable | Für private Docker Registry |
-| `SLACK_WEBHOOK` | Variable | Für Deployment-Benachrichtigungen |
-| `SENTRY_DSN` | Variable | Für Error Tracking |
+| `DEPLOY_TOKEN` | Variable | Fuer private Docker Registry |
+| `SLACK_WEBHOOK` | Variable | Fuer Deployment-Benachrichtigungen |
+| `SENTRY_DSN` | Variable | Fuer Error Tracking |
+
+---
+
+## Pipeline-Steuerung
+
+Die Pipeline kann auf verschiedene Arten getriggert werden:
+
+| Trigger | Lint | Tests | E2E | Staging | Smoke | Production | Dauer |
+|---------|:----:|:-----:|:---:|:-------:|:-----:|:----------:|:-----:|
+| Normaler Push (main/dev) | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ~5 min |
+| `[dryrun]` in Commit-Message | ✓ | ✓ | ✓ | ✓ | ✓ | **✗** | ~15 min |
+| `DRY_RUN=true` (CI Variable) | ✓ | ✓ | ✓ | ✓ | ✓ | **✗** | ~15 min |
+| `FORCE_DEPLOY=true` (CI Variable) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ~20 min |
+| Nightly Schedule (Mo-Fr 02:00) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ~20 min |
+
+### Dry-Run: Staging-Pipeline ohne Production-Deploy
+
+Mit `[dryrun]` in der Commit-Message kann der vollständige Staging-Flow getestet werden,
+**ohne** dass Production deployed wird. Nützlich um vor dem Nightly-Lauf zu prüfen,
+ob die Pipeline durchlaufen wird.
+
+```bash
+# Via Commit-Message (empfohlen)
+git commit -m "chore: pre-release check [dryrun]"
+git push origin main
+
+# Via GitLab UI
+# CI/CD → Pipelines → Run Pipeline → Variable: DRY_RUN=true
+```
+
+**Was läuft:** Lint → Test → Security → Build → Deploy:Staging → E2E → Smoke:Staging
+
+**Was NICHT läuft:** Deploy:Production, Smoke:Production, Switch
+
+### Sofort-Deploy
+
+Für dringende Deployments kann über die GitLab UI eine Pipeline mit `FORCE_DEPLOY=true`
+getriggert werden. Dies startet den vollen Pipeline-Flow inkl. Production-Deploy.
 
 ---
 
@@ -228,60 +324,103 @@ before_script:
 ### Stage 3: Build (~5 Minuten)
 
 ```yaml
-build:docker:   # docker compose build
+build:docker:      # docker compose build (shell runner, Production-Server)
+build:docker:dev:  # docker compose build (shell-dev runner, Dev-Server)
 ```
 
-**Wann:** Nur auf main Branch (nach erfolgreichen Tests)
+**Wann:**
+- `build:docker` — Auf `main` bei Nightly Schedule oder `FORCE_DEPLOY=true`
+- `build:docker:dev` — Auf `dev` bei jedem Push
 
-### Stage 4: Deploy (~2-5 Minuten)
+### Stage 4-7: Deploy, Test-Staging, Production, Smoke
+
+**Dev-Pipeline (auto, bei jedem Push auf `dev`):**
 
 ```yaml
-deploy:staging:     # Automatisch bei develop (Shell Runner)
-test:e2e:nightly:tiles: # Contract-basierte Nightly-Playwright-Suite
-deploy:production:  # Automatisch bei main (Shell Runner)
-smoke:test:         # Nach Production Deploy
-maintenance:docker-cleanup: # Entfernt ungenutzte Docker-Artefakte (>7 Tage)
-rollback:production: # Manuell bei Problemen
+deploy:dev:              # Blue-Green deploy auf llars-dev (shell-dev)
+e2e:dev:                 # Playwright E2E Tests gegen llars-dev
+smoke:dev:               # Smoke Tests gegen llars-dev
+switch:dev:              # Blue-Green switch auf llars-dev
 ```
 
-**Shell Runner Jobs:**
-Die Deploy-Jobs laufen mit `tags: [shell]` direkt auf dem LLARS Server.
+**Main-Pipeline (Nightly/Force auf `main`):**
+
+```yaml
+deploy:staging:          # Blue-Green staging deploy auf Production-Server (shell)
+test:e2e:nightly:tiles:  # Contract-basierte Nightly Playwright-Suite
+smoke:staging:           # Smoke Tests gegen Staging
+deploy:production:       # Blue-Green switch auf Production (shell)
+smoke:production:        # Smoke Tests gegen Production
+maintenance:docker-cleanup:  # Entfernt ungenutzte Docker-Artefakte (>7 Tage)
+rollback:production:     # Manuell bei Problemen (automatisch bei Smoke-Failure)
+```
+
+**Runner-Zuordnung:**
+- `tags: [shell]` — Jobs auf dem Production-Server (141.75.150.128)
+- `tags: [shell-dev]` — Jobs auf dem Dev-Server (141.75.150.86)
+- Kein Tag — Docker Runner (shared, fuer Lint/Test/Security)
 
 ---
 
 ## 4. Deployment-Ablauf
 
-### Automatisches Production Deployment
-
-Bei Push zu `main`:
+### Dev-Pipeline (automatisch bei jedem Push auf `dev`)
 
 ```
-1. Lint & Tests laufen
-2. Docker Images werden gebaut
-3. SSH Verbindung zum Server
-4. Pre-Deployment Backup
-5. Git Pull (main)
-6. Docker Compose Build
-7. Rolling Update der Container
-8. Health Checks
-9. Smoke Tests
+Push → Lint → Test → Security → Build:docker:dev → Deploy:dev
+  → E2E:dev + Smoke:dev → Switch:dev
 ```
+
+1. Lint, Tests und Security laufen (Docker Runner)
+2. `build:docker:dev` baut Images auf dem Dev-Server (shell-dev Runner)
+3. `deploy:dev` deployt Blue-Green auf llars-dev (inaktive Farbe)
+4. `e2e:dev` und `smoke:dev` testen parallel gegen die Staging-Instanz
+5. `switch:dev` schaltet nginx auf die neue Farbe um
+
+### Main-Pipeline (Nightly Schedule Mo-Fr 02:00 CET)
+
+```
+Schedule → Lint → Test → Security → Build:docker → Deploy:staging
+  → E2E:nightly + Smoke:staging → Deploy:production → Smoke:production
+```
+
+1. Lint, Tests und Security laufen (Docker Runner)
+2. `build:docker` baut Images auf dem Production-Server (shell Runner)
+3. `deploy:staging` deployt Blue-Green auf Staging (:55080, inaktive Farbe)
+4. `test:e2e:nightly:tiles` und `smoke:staging` testen gegen Staging
+5. `deploy:production` schaltet nginx auf die neue Farbe um
+6. `smoke:production` verifiziert die Live-Instanz
+
+### Dryrun-Pipeline (Staging ohne Production)
+
+```
+Push [dryrun] → Lint → Test → Security → Build → Deploy:staging
+  → E2E → Smoke:staging → STOP (kein Production-Deploy)
+```
+
+Nuetzlich um vor dem Nightly-Lauf zu pruefen, ob die Pipeline durchlaufen wird.
 
 ### Bei Fehlern
 
-Die Pipeline führt automatisch ein Rollback durch:
+Blue-Green Deployment ermoeglicht sofortiges Rollback (~2 Sekunden):
 
-```bash
-# Automatischer Rollback bei fehlgeschlagenem Health Check:
-1. Datenbank aus Backup wiederherstellen
-2. Git auf vorherigen Commit zurücksetzen
-3. Container neu starten
 ```
+Smoke:production FAIL → rollback_bluegreen.sh
+  → nginx wird auf vorherige Farbe zurueckgeschaltet
+  → Kein Datenverlust, alte Container laufen weiter
+```
+
+State-Dateien unter `.deploy/`:
+- `active_color` — aktuell aktive Farbe (blue/green)
+- `previous_color` — vorherige Farbe fuer Rollback
+- `rollback.env` — Commit-SHA der vorherigen Version
 
 ### Manueller Rollback
 
 ```bash
 # In GitLab: Pipeline → rollback:production → Play Button
+# Oder auf dem Server:
+cd /var/llars && bash scripts/ci/rollback_bluegreen.sh
 ```
 
 ---
@@ -320,12 +459,10 @@ sudo usermod -aG docker llars
 ### Firewall-Regeln
 
 ```bash
-# SSH Zugang für GitLab Runner
-sudo ufw allow from <GITLAB_RUNNER_IP> to any port 22
-
-# LLARS Ports (falls nötig)
-sudo ufw allow 55080/tcp  # HTTP
-sudo ufw allow 443/tcp    # HTTPS (Produktion)
+# LLARS Ports
+sudo ufw allow 55080/tcp  # HTTP (Staging)
+sudo ufw allow 80/tcp     # HTTP (Production)
+sudo ufw allow 443/tcp    # HTTPS (Production)
 ```
 
 ---
@@ -336,10 +473,10 @@ sudo ufw allow 443/tcp    # HTTPS (Produktion)
 
 ```bash
 # Lokale Entwicklung
-git checkout develop
+git checkout dev
 git add .gitlab-ci.yml docs/testing/CICD_SETUP.md
 git commit -m "ci: add GitLab CI/CD pipeline for automated deployment"
-git push origin develop
+git push origin dev
 ```
 
 ### 2. Pipeline prüfen
@@ -348,12 +485,15 @@ git push origin develop
 2. Pipeline sollte starten
 3. Prüfe jeden Stage
 
-### 3. Merge zu main für Production Deploy
+### 3. Merge zu main (triggert Nightly Production Deploy)
 
 ```bash
 git checkout main
-git merge develop
+git merge dev
 git push origin main
+# → Lint + Tests laufen sofort
+# → Nightly Schedule (Mo-Fr 02:00) deployt auf Production
+# → Oder: FORCE_DEPLOY=true in GitLab UI fuer sofortiges Deploy
 ```
 
 ---
@@ -447,22 +587,23 @@ main:
   - Allowed to push: No one
   - Require pipeline success: ✓
 
-develop:
+dev:
   - Allowed to merge: Developers
   - Allowed to push: Developers
 ```
 
 ### Merge Request Workflow
 
-1. Feature-Branch von `develop` erstellen
+1. Feature-Branch von `dev` erstellen
 2. Entwickeln und committen
-3. MR zu `develop` erstellen
+3. MR zu `dev` erstellen
 4. Pipeline muss erfolgreich sein
 5. Code Review
-6. Merge zu `develop` → Auto-Deploy zu Staging
-7. Testen auf Staging
-8. MR von `develop` zu `main`
-9. Merge zu `main` → Auto-Deploy zu Production
+6. Merge zu `dev` → Auto-Deploy zu llars-dev (141.75.150.86)
+7. Testen auf llars-dev
+8. Wenn stabil: `dev` in `main` mergen
+9. Nightly Schedule (02:00 CET) deployt automatisch auf Production
+10. Bei Bedarf: `FORCE_DEPLOY=true` fuer sofortiges Production-Deploy
 
 ### Backup-Strategie
 
@@ -512,22 +653,32 @@ notify:failure:
 
 ## 10. Checkliste: CI/CD Einrichtung
 
-### Einmalige Einrichtung (Server)
+### Einmalige Einrichtung (Production-Server 141.75.150.128)
 
 - [ ] GitLab Runner installiert (`gitlab-runner`)
-- [ ] Runner registriert mit Shell Executor
-- [ ] Runner-Tags: `shell`, `run_untagged = false`
-- [ ] Runner zur `docker` Gruppe hinzugefügt
+- [ ] Runner registriert mit Shell Executor, Tag: `shell`
+- [ ] Runner zur `docker` Gruppe hinzugefuegt
 - [ ] `/var/llars` Verzeichnis erstellt
 - [ ] Git Repository geklont
 - [ ] `.env` Datei konfiguriert
 - [ ] Berechtigungen: `gitlab-runner` Gruppe hat Schreibzugriff
 
+### Einmalige Einrichtung (Dev-Server 141.75.150.86)
+
+- [ ] GitLab Runner installiert (`gitlab-runner`)
+- [ ] Runner registriert mit Shell Executor, Tag: `shell-dev`
+- [ ] Runner zur `docker` Gruppe hinzugefuegt
+- [ ] `/var/llars` Verzeichnis erstellt
+- [ ] `.env` mit `LLARS_PRODUCTION_BRANCH=dev` konfiguriert
+- [ ] Berechtigungen: `gitlab-runner` Gruppe hat Schreibzugriff
+
 ### GitLab Konfiguration
 
-- [ ] Runner in GitLab sichtbar (Settings → CI/CD → Runners)
+- [ ] Alle 3 Runner in GitLab sichtbar (Settings → CI/CD → Runners)
 - [ ] Branch Protection konfiguriert (main: nur Maintainers)
 - [ ] `requirements-test.txt` vorhanden (ohne torch/flair)
+- [ ] Pipeline Schedule: Mo-Fr 02:00, Branch: main, `SCHEDULED_DEPLOY=true`
+- [ ] CI Variables: `SYSTEM_ADMIN_API_KEY`, `E2E_TEST_PASSWORD`
 
 ### Test-Pipeline
 
@@ -536,10 +687,11 @@ notify:failure:
 - [ ] test:unit:frontend erfolgreich
 - [ ] test:integration erfolgreich
 - [ ] test:nightly:contracts erfolgreich
-- [ ] test:e2e:nightly:tiles erfolgreich
-- [ ] build:docker erfolgreich
-- [ ] deploy:production erfolgreich
-- [ ] smoke:test erfolgreich
+- [ ] build:docker:dev erfolgreich (dev Branch)
+- [ ] deploy:dev + smoke:dev + switch:dev erfolgreich
+- [ ] build:docker erfolgreich (main Branch)
+- [ ] deploy:staging + test:e2e:nightly:tiles + smoke:staging erfolgreich
+- [ ] deploy:production + smoke:production erfolgreich
 
 ### Verifizierung
 
@@ -554,4 +706,4 @@ docker compose ps
 
 ---
 
-**Letzte Aktualisierung:** 5. März 2026
+**Letzte Aktualisierung:** 18. März 2026

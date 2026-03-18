@@ -615,13 +615,32 @@ bash scripts/ci/manual_bluegreen_deploy.sh switch
 
 ### Automated Deployment (CI/CD)
 
-Nightly Mon-Fri 02:00 CET via GitLab Pipeline Schedule:
+The development branch (`dev`) auto-deploys on every push to the dev server (llars-dev, 141.75.150.86). The production branch (`main`) deploys nightly Mon-Fri 02:00 CET via GitLab Pipeline Schedule.
+
+Production nightly flow:
 
 ```
-deploy:staging → test:e2e:staging → smoke:staging → deploy:production → smoke:production
+deploy:staging → test:e2e:nightly:tiles → smoke:staging → deploy:production → smoke:production
 ```
 
 On failed smoke tests: automatic rollback.
+
+### Pipeline Controls
+
+| Trigger | Staging | Production | Description |
+|---------|:-------:|:----------:|-------------|
+| Normal push | ✗ | ✗ | Lint + Tests only |
+| `[dryrun]` in commit message | ✓ | **✗** | Full staging flow, no prod deploy |
+| `DRY_RUN=true` (CI variable) | ✓ | **✗** | Same as `[dryrun]` |
+| `FORCE_DEPLOY=true` (CI variable) | ✓ | ✓ | Immediate full pipeline |
+| Nightly schedule | ✓ | ✓ | Mon-Fri 02:00 CET |
+
+**Dry-Run** verifies the nightly pipeline will succeed without touching production:
+
+```bash
+git commit -m "chore: pre-release check [dryrun]"
+git push origin main
+```
 
 ### Rollback
 

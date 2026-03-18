@@ -136,11 +136,13 @@ variables:
     - if: $FORCE_DEV_DEPLOY == "true" && $CI_COMMIT_BRANCH == "dev"
 
 # Production deployment rules (main branch only): schedule, force, or manual
-# Note: DRY_RUN explicitly excluded — staging-only rules handle that case.
+# Note: [dryrun] and DRY_RUN explicitly excluded — staging-only rules handle that case.
 .deploy_rules:
   rules:
     - *test_only_skip
     - if: $DRY_RUN == "true"
+      when: never
+    - if: $CI_COMMIT_MESSAGE =~ /\[dryrun\]/
       when: never
     - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main"
       when: manual
@@ -401,6 +403,7 @@ build:docker:
   rules:
     - *test_only_skip
     - if: $DRY_RUN == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_MESSAGE =~ /\[dryrun\]/ && $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
 
@@ -588,6 +591,7 @@ deploy:staging:
   rules:
     - *test_only_skip
     - if: $DRY_RUN == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_MESSAGE =~ /\[dryrun\]/ && $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main"
       when: manual
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
@@ -674,6 +678,7 @@ test:e2e:nightly:tiles:
   rules:
     - *test_only_skip
     - if: $DRY_RUN == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_MESSAGE =~ /\[dryrun\]/ && $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main"
       when: manual
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
@@ -706,6 +711,7 @@ smoke:staging:
   rules:
     - *test_only_skip
     - if: $DRY_RUN == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_MESSAGE =~ /\[dryrun\]/ && $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main"
       when: manual
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"

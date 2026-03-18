@@ -91,6 +91,41 @@ nav:
       - ACT: agentic-ai/act.md
       - ReACT: agentic-ai/react.md
       - ReflAct: agentic-ai/reflact.md
+  - Testing & QA:
+      - Übersicht: testing/README.md
+      - Leitfaden: testing/leitfaden/LLARS_TEST_LEITFADEN.md
+      - Testkonzept: testing/leitfaden/TESTKONZEPT.md
+      - CI/CD Pipeline: testing/CICD_SETUP.md
+      - Nightly Tests: testing/nightly/NIGHTLY_TILE_MATRIX.md
+      - Anforderungen:
+          - Übersicht: testing/anforderungen/00_UEBERSICHT.md
+          - Frontend:
+              - Seiten & Navigation: testing/anforderungen/frontend/01_SEITEN_NAVIGATION.md
+              - Evaluation Features: testing/anforderungen/frontend/02_EVALUATION_FEATURES.md
+              - Collab Editoren: testing/anforderungen/frontend/03_COLLAB_EDITOREN.md
+              - Chat & Chatbots: testing/anforderungen/frontend/04_CHAT_CHATBOTS.md
+              - Admin Dashboard: testing/anforderungen/frontend/05_ADMIN_DASHBOARD.md
+              - UI Komponenten: testing/anforderungen/frontend/06_UI_KOMPONENTEN.md
+              - Dialoge & Modals: testing/anforderungen/frontend/07_DIALOGE_MODALS.md
+              - Tooltips & Quicklinks: testing/anforderungen/frontend/08_TOOLTIPS_QUICKLINKS.md
+              - Accessibility: testing/anforderungen/frontend/09_ACCESSIBILITY.md
+              - Edge Cases: testing/anforderungen/frontend/10_EDGE_CASES_ERRORS.md
+              - Visual & Responsive: testing/anforderungen/frontend/11_VISUAL_RESPONSIVE.md
+          - Backend:
+              - Auth & Routes: testing/anforderungen/backend/01_AUTH_ROUTES.md
+              - Socket.IO Events: testing/anforderungen/backend/02_SOCKETIO_EVENTS.md
+          - Features:
+              - RAG Pipeline: testing/anforderungen/features/01_RAG_PIPELINE.md
+              - LLM Integration: testing/anforderungen/features/02_LLM_INTEGRATION.md
+              - LaTeX Kompilierung: testing/anforderungen/features/03_LATEX_KOMPILIERUNG.md
+              - Anonymisierung: testing/anforderungen/features/04_ANONYMISIERUNG.md
+          - Security:
+              - Berechtigungen: testing/anforderungen/security/01_BERECHTIGUNGEN.md
+              - Rollen-Matrix: testing/anforderungen/security/02_ROLLEN_MATRIX.md
+      - Checklisten:
+          - Smoke Test: testing/checklisten/SMOKE_TEST.md
+          - Regression Tests: testing/checklisten/REGRESSION_TESTS.md
+          - Release Checklist: testing/checklisten/RELEASE_CHECKLIST.md
   - Entwickler:
       - Docker-Architektur: entwickler/docker-architektur.md
       - Rating/Ranking Checklist: entwickler/rating-ranking-checklist.md
@@ -185,6 +220,35 @@ plugins:
           Code-Qualität: Code Quality
           Production Deployment: Production Deployment
           Docker-Architektur: Docker Architecture
+          Testing & QA: Testing & QA
+          Leitfaden: Guide
+          Testkonzept: Test Concept
+          CI/CD Pipeline: CI/CD Pipeline
+          Nightly Tests: Nightly Tests
+          Anforderungen: Requirements
+          Seiten & Navigation: Pages & Navigation
+          Evaluation Features: Evaluation Features
+          Collab Editoren: Collab Editors
+          Chat & Chatbots: Chat & Chatbots
+          Admin Dashboard: Admin Dashboard
+          UI Komponenten: UI Components
+          Dialoge & Modals: Dialogs & Modals
+          Tooltips & Quicklinks: Tooltips & Quicklinks
+          Accessibility: Accessibility
+          Edge Cases: Edge Cases
+          Visual & Responsive: Visual & Responsive
+          Auth & Routes: Auth & Routes
+          Socket.IO Events: Socket.IO Events
+          RAG Pipeline: RAG Pipeline
+          LLM Integration: LLM Integration
+          LaTeX Kompilierung: LaTeX Compilation
+          Anonymisierung: Anonymization
+          Berechtigungen: Permissions
+          Rollen-Matrix: Roles Matrix
+          Checklisten: Checklists
+          Smoke Test: Smoke Test
+          Regression Tests: Regression Tests
+          Release Checklist: Release Checklist
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js

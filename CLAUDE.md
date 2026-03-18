@@ -928,13 +928,13 @@ git push --tags  # nur wenn neue Tags erstellt wurden
 
 **WICHTIG:** Working Directory ist `llars-frontend/`, Git-Root ist `llars/`. Dateipfade in `git add` relativ zum CWD angeben (z.B. `src/App.vue`, NICHT `llars-frontend/src/App.vue`).
 
-### Deployment via CI Variables
+### Deployment-Steuerung
 
 | Trigger | Lint | Tests | E2E | Staging | Smoke | Production | Dauer | Wann? |
 |---|---|---|---|---|---|---|---|---|
 | Normaler Push | ja | ja | nein | nein | nein | nein | ~5 min | Bei jedem Push |
-| `FORCE_DEPLOY=true` | ja | ja | ja | ja | ja | ja | ~20 min | Sofort - volle Pipeline |
-| `DRY_RUN=true` | ja | ja | ja | ja | ja | **nein** | ~15 min | Test ob Nightly durchlaeuft, ohne Prod-Deploy |
+| `[dryrun]` in Commit-Message | ja | ja | ja | ja | ja | **nein** | ~15 min | Voller Staging-Flow, kein Prod-Deploy |
+| `FORCE_DEPLOY=true` (Variable) | ja | ja | ja | ja | ja | ja | ~20 min | Sofort - volle Pipeline inkl. Production |
 | Schedule (nightly) | ja | ja | ja | ja | ja | ja | ~20 min | Mo-Fr 02:00 CET |
 
 **Normaler Push (empfohlen):**
@@ -944,22 +944,18 @@ git push
 # → Lint + Tests laufen, kein Deploy. Nachts um 02:00 deployed der Schedule.
 ```
 
+**Dry-Run (testen ob Nightly durchlaeuft, KEIN Prod-Deploy):**
+```bash
+git commit -m "chore: pre-release check [dryrun]"
+git push
+# → Lint + Tests + Build + Staging + E2E + Smoke, aber KEIN Production-Deploy
+# Alternativ: GitLab UI → Run Pipeline → Variable DRY_RUN=true
+```
+
 **Sofort deployen (dringend):**
 ```bash
 # Via GitLab UI: Pipeline manuell triggern mit Variable FORCE_DEPLOY=true
-# Oder via API:
-curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-  "$GITLAB_API/pipeline?ref=main" --form "variables[FORCE_DEPLOY]=true"
 # → Volle Pipeline JETZT, deployed nach ~20 min wenn alles gruen
-```
-
-**Dry-Run (testen ohne Prod-Deploy):**
-```bash
-# Via GitLab UI: Pipeline manuell triggern mit Variable DRY_RUN=true
-# Oder via API:
-curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-  "$GITLAB_API/pipeline?ref=main" --form "variables[DRY_RUN]=true"
-# → Lint + Tests + Build + Staging + E2E + Smoke, aber KEIN Production-Deploy
 ```
 
 **Schedule:** Mo-Fr 02:00 CET via GitLab Pipeline Schedule (`SCHEDULED_DEPLOY=true`)

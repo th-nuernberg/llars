@@ -928,13 +928,14 @@ git push --tags  # nur wenn neue Tags erstellt wurden
 
 **WICHTIG:** Working Directory ist `llars-frontend/`, Git-Root ist `llars/`. Dateipfade in `git add` relativ zum CWD angeben (z.B. `src/App.vue`, NICHT `llars-frontend/src/App.vue`).
 
-### Deployment via Commit Tags
+### Deployment via CI Variables
 
-| Commit-Tag | Lint | Tests | E2E | Staging | Smoke | Production | Dauer | Wann? |
+| Trigger | Lint | Tests | E2E | Staging | Smoke | Production | Dauer | Wann? |
 |---|---|---|---|---|---|---|---|---|
-| (keiner) | ja | ja | nein | nein | nein | nein | ~5 min | Nachts um 02:00 via Schedule |
-| `[deploy]` | ja | ja | ja | ja | ja | ja | ~20 min | Sofort bei Push - volle Pipeline |
-| `[hotfix]` | nein | nein | nein | ja | ja | ja | ~5 min | Sofort bei Push - Tests ueberspringen |
+| Normaler Push | ja | ja | nein | nein | nein | nein | ~5 min | Bei jedem Push |
+| `FORCE_DEPLOY=true` | ja | ja | ja | ja | ja | ja | ~20 min | Sofort - volle Pipeline |
+| `DRY_RUN=true` | ja | ja | ja | ja | ja | **nein** | ~15 min | Test ob Nightly durchlaeuft, ohne Prod-Deploy |
+| Schedule (nightly) | ja | ja | ja | ja | ja | ja | ~20 min | Mo-Fr 02:00 CET |
 
 **Normaler Push (empfohlen):**
 ```bash
@@ -945,16 +946,20 @@ git push
 
 **Sofort deployen (dringend):**
 ```bash
-git commit -m "feat(frontend): wichtiges Feature [deploy]"
-git push
+# Via GitLab UI: Pipeline manuell triggern mit Variable FORCE_DEPLOY=true
+# Oder via API:
+curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "$GITLAB_API/pipeline?ref=main" --form "variables[FORCE_DEPLOY]=true"
 # → Volle Pipeline JETZT, deployed nach ~20 min wenn alles gruen
 ```
 
-**Hotfix (Production brennt):**
+**Dry-Run (testen ohne Prod-Deploy):**
 ```bash
-git commit -m "fix: kritischer Auth-Bug [hotfix]"
-git push
-# → Ueberspringt Tests, deployed in ~5 min
+# Via GitLab UI: Pipeline manuell triggern mit Variable DRY_RUN=true
+# Oder via API:
+curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "$GITLAB_API/pipeline?ref=main" --form "variables[DRY_RUN]=true"
+# → Lint + Tests + Build + Staging + E2E + Smoke, aber KEIN Production-Deploy
 ```
 
 **Schedule:** Mo-Fr 02:00 CET via GitLab Pipeline Schedule (`SCHEDULED_DEPLOY=true`)

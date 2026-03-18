@@ -232,10 +232,7 @@ def save_mail_rating(thread_id):
                 .join(RatingScenarios, RatingScenarios.id == ScenarioUsers.scenario_id)
                 .filter(
                     ScenarioUsers.user_id == user.id,
-                    db.or_(
-                        ScenarioUsers.is_assessor == True,
-                        ScenarioUsers.role == ScenarioRoles.EVALUATOR,
-                    ),
+                    ScenarioUsers.evaluation_role == 'assessor',
                     RatingScenarios.begin <= current_time,
                     RatingScenarios.end >= current_time,
                 )

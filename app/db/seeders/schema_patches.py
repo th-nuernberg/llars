@@ -1454,6 +1454,11 @@ def apply_schema_patches(db) -> None:
         # =========================================================================
         changed |= _migrate_to_access_level_flags(db)
 
+        # =========================================================================
+        # Scenario Role Redesign v2: manager_role + evaluation_role
+        # =========================================================================
+        changed |= _migrate_to_manager_evaluation_roles(db)
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:
@@ -1825,5 +1830,93 @@ def _backfill_feature_model_ids(db) -> bool:
     except Exception as exc:
         db.session.rollback()
         print(f"  ⚠️ model_id backfill failed (non-fatal): {exc}")
+
+    return changed
+
+
+def _migrate_to_manager_evaluation_roles(db) -> bool:
+    """
+    Migrate scenario_users to the 2-axis role model (manager_role + evaluation_role).
+
+    Backfills from existing access_level/is_viewer/is_assessor fields:
+    | Old fields                           | → manager_role | → evaluation_role |
+    |--------------------------------------|---------------|-------------------|
+    | access_level=OWNER                   | owner         | none              |
+    | access_level=MANAGER                 | editor        | none              |
+    | is_viewer=1, access_level=MEMBER     | viewer        | none              |
+    | is_assessor=1                        | none          | assessor          |
+    | OWNER + is_assessor=1                | owner         | assessor          |
+    """
+    if not _table_exists(db, "scenario_users"):
+        return False
+
+    changed = False
+
+    # Step 1: Add new columns
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="manager_role",
+        column_definition_sql="`manager_role` VARCHAR(10) NOT NULL DEFAULT 'none'",
+    )
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="evaluation_role",
+        column_definition_sql="`evaluation_role` VARCHAR(10) NOT NULL DEFAULT 'none'",
+    )
+
+    # Step 2: Backfill from existing fields (only rows still at defaults)
+    if (
+        _column_exists(db, "scenario_users", "manager_role")
+        and _column_exists(db, "scenario_users", "access_level")
+    ):
+        try:
+            # OWNER access_level → manager_role='owner'
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET manager_role = 'owner'
+                WHERE access_level = 'OWNER' AND manager_role = 'none'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Manager/Eval Role Migration] Set manager_role=owner for {result.rowcount} OWNER rows")
+
+            # MANAGER access_level → manager_role='editor'
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET manager_role = 'editor'
+                WHERE access_level = 'MANAGER' AND manager_role = 'none'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Manager/Eval Role Migration] Set manager_role=editor for {result.rowcount} MANAGER rows")
+
+            # is_viewer=1 with MEMBER access_level → manager_role='viewer'
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET manager_role = 'viewer'
+                WHERE is_viewer = 1 AND access_level = 'MEMBER' AND manager_role = 'none'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Manager/Eval Role Migration] Set manager_role=viewer for {result.rowcount} VIEWER rows")
+
+            # is_assessor=1 → evaluation_role='assessor'
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET evaluation_role = 'assessor'
+                WHERE is_assessor = 1 AND evaluation_role = 'none'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Manager/Eval Role Migration] Set evaluation_role=assessor for {result.rowcount} ASSESSOR rows")
+
+            if changed:
+                db.session.commit()
+
+        except Exception as exc:
+            db.session.rollback()
+            print(f"  ⚠️ Manager/Eval role migration failed (non-fatal): {exc}")
 
     return changed

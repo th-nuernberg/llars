@@ -27,7 +27,7 @@
       </div>
     </div>
 
-    <!-- Human Assessors (is_assessor=true) -->
+    <!-- Human Assessors (evaluation_role='assessor') -->
     <div class="section">
       <h4 class="section-title">{{ $t('scenarioManager.team.humanEvaluators') }}</h4>
       <div class="members-list">
@@ -384,6 +384,15 @@
           >
             {{ $t('scenarioManager.team.viewerHint') }}
           </v-alert>
+          <v-alert
+            v-if="newRole === 'MANAGER'"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            {{ $t('scenarioManager.team.editorHint') }}
+          </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -482,9 +491,13 @@ const availableTemplates = ref([
   { id: 'detailed', name: 'Detailed' }
 ])
 
+// Role options for invite/change-role dialogs.
+// Maps to the backend role-change endpoint which accepts ASSESSOR, MANAGER, or VIEWER.
+// ASSESSOR → evaluation_role=assessor, MANAGER → manager_role=editor, VIEWER → manager_role=viewer
 const roleOptions = computed(() => [
   { title: t('scenarioManager.team.roles.assessor'), value: 'ASSESSOR' },
-  { title: t('scenarioManager.team.roles.viewer'), value: 'VIEWER' }
+  { title: t('scenarioManager.team.roles.editor'), value: 'MANAGER' },
+  { title: t('scenarioManager.team.roles.eval_viewer'), value: 'VIEWER' }
 ])
 
 // Usernames to exclude from search (already selected + already in team)
@@ -519,11 +532,11 @@ const allHumanMembers = computed(() => {
   })
 })
 
-// Human Assessors: members with is_assessor=true, or legacy Assessor/Evaluator roles + Owner
+// Human Assessors: members with evaluation_role === 'assessor', with legacy fallback
 const assessors = computed(() =>
   allHumanMembers.value.filter(u => {
-    // New API: use is_assessor flag
-    if (u.is_assessor !== undefined) return u.is_assessor
+    // New API: use evaluation_role field from 2-axis role model
+    if (u.evaluation_role !== undefined) return u.evaluation_role === 'assessor'
     // Legacy fallback: role-based filtering
     return ['Assessor', 'Evaluator'].includes(u.role) ||
            (isOwner(u) && u.role !== 'Viewer')
@@ -600,20 +613,41 @@ function getRoleVariant(role) {
   const map = {
     'Owner': 'primary',
     'Manager': 'secondary',
+    'Editor': 'secondary',
     'Assessor': 'info',
     'Evaluator': 'info',
-    'Viewer': 'info'
+    'Viewer': 'info',
+    'Eval. Viewer': 'info'
   }
   return map[role] || 'default'
 }
 
 /**
  * Get display tags for a member.
- * Prefers the new `tags` field from the API, falls back to role-based tags.
+ * Prefers `member.role_tags` (if present), then the API `tags` field,
+ * then derives tags from the 2-axis manager_role/evaluation_role fields.
  */
 function getMemberTags(member) {
+  // Prefer explicit role_tags from the API
+  if (member.role_tags && Array.isArray(member.role_tags) && member.role_tags.length > 0) {
+    return member.role_tags
+  }
+  // Fall back to the `tags` field (built by _build_role_tags on the backend)
   if (member.tags && Array.isArray(member.tags) && member.tags.length > 0) {
     return member.tags
+  }
+  // Derive from 2-axis role model (manager_role + evaluation_role)
+  if (member.manager_role || member.evaluation_role) {
+    const tags = []
+    const mgr = { owner: 'Owner', editor: 'Editor', viewer: 'Viewer' }
+    if (member.manager_role && mgr[member.manager_role]) {
+      tags.push(mgr[member.manager_role])
+    }
+    const evalMap = { assessor: 'Assessor', viewer: 'Eval. Viewer' }
+    if (member.evaluation_role && evalMap[member.evaluation_role]) {
+      tags.push(evalMap[member.evaluation_role])
+    }
+    if (tags.length > 0) return tags
   }
   // Legacy fallback
   const tags = []
@@ -626,8 +660,10 @@ function getTagVariant(tag) {
   const map = {
     'Owner': 'primary',
     'Manager': 'secondary',
+    'Editor': 'secondary',
     'Assessor': 'success',
-    'Viewer': 'info'
+    'Viewer': 'info',
+    'Eval. Viewer': 'info'
   }
   return map[tag] || 'default'
 }
@@ -714,8 +750,15 @@ async function removeMember() {
 
 function changeRole(member) {
   memberToChangeRole.value = member
-  // Set current role as default, but allow changing to other role
-  newRole.value = (member.role === 'Assessor' || member.role === 'Evaluator') ? 'VIEWER' : 'ASSESSOR'
+  // Default to a different role than the member's current evaluation_role
+  if (member.evaluation_role === 'assessor') {
+    newRole.value = 'VIEWER'
+  } else if (member.manager_role === 'editor') {
+    newRole.value = 'ASSESSOR'
+  } else {
+    // Fallback: legacy role-based check
+    newRole.value = (member.role === 'Assessor' || member.role === 'Evaluator') ? 'VIEWER' : 'ASSESSOR'
+  }
   showRoleDialog.value = true
 }
 

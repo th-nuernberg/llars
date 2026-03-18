@@ -132,6 +132,8 @@ from db.models.kaimo import (
 
 # Scenario and Rating models
 from db.models.scenario import (
+    ManagerRole,
+    EvaluationRole,
     ScenarioRoles,
     AccessLevel,
     InvitationStatus,
@@ -360,6 +362,8 @@ __all__ = [
     'KaimoCasePermission',
     'KaimoCaseShare',
     # Scenario
+    'ManagerRole',
+    'EvaluationRole',
     'ScenarioRoles',
     'AccessLevel',
     'InvitationStatus',

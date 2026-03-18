@@ -190,6 +190,8 @@ with app.app_context():
             access_level='MEMBER',
             is_assessor=True,
             is_viewer=False,
+            manager_role='none',
+            evaluation_role='assessor',
         )
         _db.session.add(su)
         _db.session.flush()

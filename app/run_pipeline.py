@@ -88,6 +88,8 @@ def main():
             access_level='OWNER',
             is_viewer=True,
             is_assessor=False,
+            manager_role='viewer',
+            evaluation_role='none',
         )
         db.session.add(scenario_user)
         db.session.commit()
@@ -239,7 +241,8 @@ def main():
             db.session.add(scenario_item)
 
         ranking_user = ScenarioUsers(scenario_id=ranking_scenario.id, user_id=admin.id, role=ScenarioRoles.VIEWER,
-                                     access_level='OWNER', is_viewer=True, is_assessor=False)
+                                     access_level='OWNER', is_viewer=True, is_assessor=False,
+                                     manager_role='viewer', evaluation_role='none')
         db.session.add(ranking_user)
         db.session.commit()
 

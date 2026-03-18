@@ -87,6 +87,9 @@ def _add_scenario_user(db, scenario_id, user_id, *,
         'ASSESSOR': ScenarioRoles.ASSESSOR,
         'MANAGER': ScenarioRoles.MANAGER,
     }
+    # Derive 2-axis roles from legacy flags
+    manager_role = 'owner' if access_level == 'OWNER' else ('viewer' if is_viewer and not is_assessor else 'none')
+    evaluation_role = 'assessor' if is_assessor else 'none'
     su = ScenarioUsers(
         scenario_id=scenario_id,
         user_id=user_id,
@@ -94,6 +97,8 @@ def _add_scenario_user(db, scenario_id, user_id, *,
         access_level=access_level,
         is_assessor=is_assessor,
         is_viewer=is_viewer,
+        manager_role=manager_role,
+        evaluation_role=evaluation_role,
         invitation_status=InvitationStatus.ACCEPTED,
         membership_status=MembershipStatus.ACTIVE,
         invited_by='test',
@@ -942,6 +947,8 @@ class TestReadonlyOnRoleSwitch:
             # Demote to viewer (same as sm_update_user_role does)
             su.is_assessor = False
             su.is_viewer = True
+            su.evaluation_role = 'none'
+            su.manager_role = 'viewer'
             su.role = ScenarioRoles.VIEWER
             rdb.session.commit()
 
@@ -967,6 +974,8 @@ class TestReadonlyOnRoleSwitch:
             # Promote to assessor
             su.is_assessor = True
             su.is_viewer = False
+            su.evaluation_role = 'assessor'
+            su.manager_role = 'none'
             su.role = ScenarioRoles.ASSESSOR
             rdb.session.commit()
 
@@ -1202,6 +1211,8 @@ class TestGoldenValueRankingMetrics:
             # --- Degrade rater C to viewer ---
             sus[2].is_assessor = False
             sus[2].is_viewer = True
+            sus[2].evaluation_role = 'none'
+            sus[2].manager_role = 'viewer'
             sus[2].role = ScenarioRoles.VIEWER
             rdb.session.commit()
 
@@ -1480,6 +1491,8 @@ class TestGoldenValueBoundaryConditions:
             for su in sus:
                 su.is_assessor = False
                 su.is_viewer = True
+                su.evaluation_role = 'none'
+                su.manager_role = 'viewer'
                 su.role = ScenarioRoles.VIEWER
             rdb.session.commit()
 

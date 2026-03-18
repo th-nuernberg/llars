@@ -100,7 +100,9 @@ defineEmits(['open', 'settings', 'duplicate', 'archive', 'delete'])
 const { t } = useI18n()
 
 // Viewers can see the card but not manage (no kebab menu)
-const canManage = computed(() => props.scenario.is_owner || props.scenario.can_manage)
+const canManage = computed(() =>
+  ['owner', 'editor'].includes(props.scenario.manager_role) || props.scenario.is_owner || props.scenario.can_manage
+)
 
 // Type configuration
 const typeConfigs = {

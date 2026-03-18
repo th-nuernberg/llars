@@ -478,6 +478,8 @@ def create_scenario():
                 access_level=scenario_user.get("access_level", "MEMBER"),
                 is_assessor=scenario_user.get("is_assessor", False),
                 is_viewer=scenario_user.get("is_viewer", False),
+                manager_role=scenario_user.get("manager_role", "none"),
+                evaluation_role=scenario_user.get("evaluation_role", "none"),
             )
             db.session.add(new_scenario_user)
             db.session.flush()

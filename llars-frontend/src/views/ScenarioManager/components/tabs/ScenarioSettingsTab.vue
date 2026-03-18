@@ -284,15 +284,16 @@
             </div>
 
             <!-- Flag Toggles (only for non-owner members, only if canManage) -->
+            <!-- Reads is_viewer/is_assessor (derived from manager_role/evaluation_role on backend) -->
             <div v-if="canManage && !isMemberOwner(member)" class="member-flags">
               <LSwitch
-                :model-value="member.is_viewer"
+                :model-value="member.is_viewer ?? (member.manager_role && member.manager_role !== 'none')"
                 :label="$t('scenarioManager.settingsTab.toggleViewer')"
                 :disabled="updatingFlags === member.user_id"
                 @change="(val) => toggleFlag(member, 'is_viewer', val)"
               />
               <LSwitch
-                :model-value="member.is_assessor"
+                :model-value="member.is_assessor ?? (member.evaluation_role === 'assessor')"
                 :label="$t('scenarioManager.settingsTab.toggleAssessor')"
                 :disabled="updatingFlags === member.user_id"
                 @change="(val) => toggleFlag(member, 'is_assessor', val)"
@@ -324,9 +325,10 @@
  *
  * Contains two panels:
  * 1. Settings: Name, Description, Briefing, Time Period, Distribution, Order, Status
- * 2. Team: Member list with access-level tags, capability tags, and is_viewer/is_assessor toggles
+ * 2. Team: Member list with capability toggles (is_viewer/is_assessor synced to
+ *    manager_role/evaluation_role on the backend)
  *
- * Uses the new PUT /api/scenarios/:id/users/:userId/flags endpoint for toggling capabilities.
+ * Uses the PUT /api/scenarios/:id/users/:userId/flags endpoint for toggling capabilities.
  */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -403,7 +405,7 @@ const orderOptions = computed(() => [
 ])
 
 const collabRoleOptions = computed(() => [
-  { title: t('scenarioManager.settings.roleManager'), value: 'MANAGER' },
+  { title: t('scenarioManager.settings.roleEditor'), value: 'MANAGER' },
   { title: t('scenarioManager.settings.roleViewer'), value: 'VIEWER' }
 ])
 
@@ -480,21 +482,33 @@ const rules = {
 // --- Helper functions ---
 
 function getAccessLevelVariant(level) {
-  const map = { OWNER: 'primary', MANAGER: 'secondary', MEMBER: 'default' }
+  const map = {
+    OWNER: 'primary',
+    MANAGER: 'secondary',
+    EDITOR: 'secondary',
+    MEMBER: 'default'
+  }
   return map[level] || 'default'
 }
 
 function getAccessLevelLabel(level) {
   const map = {
     OWNER: t('scenarioManager.settingsTab.tags.owner'),
-    MANAGER: t('scenarioManager.settingsTab.tags.manager'),
+    MANAGER: t('scenarioManager.settingsTab.tags.editor'),
+    EDITOR: t('scenarioManager.settingsTab.tags.editor'),
     MEMBER: t('scenarioManager.settingsTab.tags.member')
   }
   return map[level] || level
 }
 
 function getCapabilityTagVariant(tag) {
-  const map = { Viewer: 'info', Assessor: 'success' }
+  const map = {
+    Owner: 'primary',
+    Editor: 'secondary',
+    Viewer: 'info',
+    Assessor: 'success',
+    'Eval. Viewer': 'info'
+  }
   return map[tag] || 'default'
 }
 
@@ -694,10 +708,15 @@ async function removeCollaborator(collab) {
 async function toggleFlag(member, flag, value) {
   updatingFlags.value = member.user_id
   try {
+    // Build the effective flag state after the toggle
+    const effectiveViewer = flag === 'is_viewer' ? value : member.is_viewer
+    const effectiveAssessor = flag === 'is_assessor' ? value : member.is_assessor
     const flags = {
-      is_viewer: member.is_viewer,
-      is_assessor: member.is_assessor,
-      [flag]: value
+      is_viewer: effectiveViewer,
+      is_assessor: effectiveAssessor,
+      // Also send 2-axis role fields so backend stays in sync
+      manager_role: effectiveViewer ? 'viewer' : 'none',
+      evaluation_role: effectiveAssessor ? 'assessor' : 'none'
     }
     await updateUserFlags(props.scenario.id, member.user_id, flags)
     // Refresh team data to get updated tags

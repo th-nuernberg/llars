@@ -142,6 +142,8 @@ def _add_scenario_user(db_session, scenario_id, user_id, role_str='Assessor'):
         is_assessor=is_assessor,
         is_viewer=is_owner or (not is_assessor),
         membership_status=MembershipStatus.ACTIVE,
+        manager_role='owner' if is_owner else 'none',
+        evaluation_role='assessor' if is_assessor else 'none',
     )
     db_session.session.add(su)
     db_session.session.commit()

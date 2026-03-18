@@ -8,25 +8,48 @@ from sqlalchemy.orm import Mapped, mapped_column, synonym
 from db import db
 
 
+class ManagerRole(Enum):
+    """Scenario management role — controls access to Scenario Manager features.
+
+    owner:  full control (settings, users, delete)
+    editor: settings + user management, but cannot delete
+    viewer: read-only access to results & IRR
+    none:   no management access (pure evaluator)
+    """
+    OWNER = 'owner'
+    EDITOR = 'editor'
+    VIEWER = 'viewer'
+    NONE = 'none'
+
+
+class EvaluationRole(Enum):
+    """Evaluation participation role — controls access to evaluation features.
+
+    assessor: can view items and submit evaluations
+    viewer:   can view items read-only
+    none:     no evaluation access
+    """
+    ASSESSOR = 'assessor'
+    VIEWER = 'viewer'
+    NONE = 'none'
+
+
 class ScenarioRoles(Enum):
     """Legacy role enum - kept for backwards compatibility during migration.
-    New code should use AccessLevel + is_viewer/is_assessor flags on ScenarioUsers."""
-    OWNER = 'Owner'          # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
-    MANAGER = 'Manager'      # Kann Szenario mitverwalten (Settings, Assessors einladen), aber nicht löschen
-    ASSESSOR = 'Assessor'    # Bewerter/Gutachter - kann bewerten/interagieren
-    EVALUATOR = 'Assessor'   # Legacy-Alias für ASSESSOR (DB speichert 'ASSESSOR')
-    VIEWER = 'Viewer'        # Nur lesend - sieht alle Tabs
+    New code should use manager_role + evaluation_role on ScenarioUsers."""
+    OWNER = 'Owner'
+    MANAGER = 'Manager'
+    ASSESSOR = 'Assessor'
+    EVALUATOR = 'Assessor'   # Legacy alias
+    VIEWER = 'Viewer'
 
 
 class AccessLevel(Enum):
-    """Hierarchical access level for scenario management.
-
-    Defines WHO can manage the scenario, separate from WHAT they can do (flags).
-    OWNER > MANAGER > MEMBER (hierarchical).
-    """
-    OWNER = 'OWNER'      # Can edit, delete, manage all users
-    MANAGER = 'MANAGER'  # Can edit settings, invite users, but not delete scenario
-    MEMBER = 'MEMBER'    # Default level - capabilities defined by is_viewer/is_assessor flags
+    """Legacy access level - kept for backwards compatibility during migration.
+    New code should use manager_role on ScenarioUsers."""
+    OWNER = 'OWNER'
+    MANAGER = 'MANAGER'
+    MEMBER = 'MEMBER'
 
 
 class InvitationStatus(Enum):
@@ -224,28 +247,35 @@ class RatingScenarios(db.Model):
 
 class ScenarioUsers(db.Model):
     """
-    Scenario membership with 2-axis permission model:
-    - access_level (OWNER/MANAGER/MEMBER): hierarchical management permissions
-    - is_viewer: can see evaluation results and all tabs
-    - is_assessor: can evaluate items, appears in Assessors tab and stats
+    Scenario membership with 2-axis role model:
+    - manager_role (owner/editor/viewer/none): Scenario Manager access
+    - evaluation_role (assessor/viewer/none): Evaluation participation
 
-    The legacy `role` column is kept for backwards compatibility during migration.
-    New code should use access_level + flags.
+    These two axes are independent — a user can be an editor + assessor,
+    a viewer + eval-viewer, or any other combination.
+
+    Legacy columns (role, access_level, is_viewer, is_assessor) are kept
+    temporarily for backwards compatibility during migration.
     """
     __tablename__ = 'scenario_users'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
-    role = mapped_column(db.Enum(ScenarioRoles))
 
-    # --- New 2-axis permission model ---
-    # access_level: hierarchical management permission (OWNER > MANAGER > MEMBER)
+    # --- New 2-axis role model ---
+    manager_role: Mapped[str] = mapped_column(
+        db.String(10), nullable=False, default='none', server_default='none'
+    )
+    evaluation_role: Mapped[str] = mapped_column(
+        db.String(10), nullable=False, default='none', server_default='none'
+    )
+
+    # --- Legacy columns (kept for migration, not read by new code) ---
+    role = mapped_column(db.Enum(ScenarioRoles))
     access_level: Mapped[Optional[str]] = mapped_column(
         db.String(20), nullable=True, default='MEMBER'
     )
-    # is_viewer: can see evaluation results, overview, data tabs
     is_viewer: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default='0')
-    # is_assessor: can evaluate items, appears in Assessors tab and stats
     is_assessor: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default='0')
 
     # Einladungsstatus: accepted (default), rejected, pending
@@ -273,15 +303,22 @@ class ScenarioUsers(db.Model):
 
     user = db.relationship('User', backref='scenario_users')
 
+    # --- Computed properties from new role fields ---
+
     @property
     def can_manage(self) -> bool:
         """Check if user can manage the scenario (edit settings, invite users)."""
-        return self.access_level in (AccessLevel.OWNER.value, 'OWNER', AccessLevel.MANAGER.value, 'MANAGER')
+        return self.manager_role in (ManagerRole.OWNER.value, ManagerRole.EDITOR.value)
 
     @property
     def is_owner_level(self) -> bool:
         """Check if user is the scenario owner."""
-        return self.access_level in (AccessLevel.OWNER.value, 'OWNER')
+        return self.manager_role == ManagerRole.OWNER.value
+
+    @property
+    def can_see_evaluation(self) -> bool:
+        """Check if user has any evaluation access (assessor or eval-viewer)."""
+        return self.evaluation_role != EvaluationRole.NONE.value
 
     # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
     __table_args__ = (

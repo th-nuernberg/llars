@@ -282,15 +282,23 @@ const duplicating = ref(false)
 const archiving = ref(false)
 const snackbar = ref({ show: false, message: '', color: 'success' })
 
-// Access control
-const isOwner = computed(() => scenario.value?.is_owner === true)
-const canManage = computed(() => isOwner.value || scenario.value?.can_manage === true)
-const canViewAll = computed(() => canManage.value || scenario.value?.is_viewer || scenario.value?.user_role === 'Viewer')
+// Access control — prefer new manager_role field, fall back to legacy fields for backwards compat
+const isOwner = computed(() =>
+  scenario.value?.manager_role === 'owner' || scenario.value?.is_owner === true
+)
+const canManage = computed(() =>
+  ['owner', 'editor'].includes(scenario.value?.manager_role) ||
+  isOwner.value || scenario.value?.can_manage === true
+)
+const canViewAll = computed(() =>
+  (scenario.value?.manager_role && scenario.value?.manager_role !== 'none') ||
+  canManage.value || scenario.value?.is_viewer || scenario.value?.user_role === 'Viewer'
+)
 
-// Tabs configuration based on role:
-// - Owner/Manager: Overview | Data | Evaluation | Assessors | Settings
-// - Viewer (is_viewer=true, not manager): Overview | Data | Evaluation | Assessors
-// - Pure Assessor (is_assessor=true, is_viewer=false): Evaluation only
+// Tabs configuration based on manager_role:
+// - Owner/Editor (manager_role=owner|editor): Overview | Data | Evaluation | Assessors | Settings
+// - Viewer (manager_role=viewer): Overview | Data | Evaluation | Assessors (no settings)
+// - Pure Assessor/Eval-Viewer (manager_role=none or not set): redirect to evaluation
 const tabs = computed(() => {
   const baseTabs = [
     { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
@@ -484,11 +492,18 @@ watch(activeTab, (newTab) => {
   }
 })
 
-// Redirect assessors to the dedicated evaluation interface
-// Managers and Viewers stay in the workspace (they can see all tabs)
+// Redirect pure assessors/eval-viewers to the dedicated evaluation interface.
+// Users with a real manager_role (owner/editor/viewer) stay in the workspace.
 watch(scenario, (sc) => {
-  if (sc && !sc.is_owner && !sc.can_manage && sc.user_role !== 'Viewer') {
-    // Assessors should use the evaluation items overview, not the workspace
+  if (!sc) return
+  const role = sc.manager_role
+  // New field: redirect when manager_role is 'none' or missing
+  const hasManagerAccess = role && role !== 'none'
+  // Legacy fallback: keep old checks so older backend responses still work
+  const hasLegacyAccess = sc.is_owner || sc.can_manage || sc.user_role === 'Viewer'
+
+  if (!hasManagerAccess && !hasLegacyAccess) {
+    // Pure assessors should use the evaluation items overview, not the workspace
     router.replace({ name: 'EvaluationItemsOverview', params: { scenarioId: sc.id } })
   }
 }, { immediate: true })

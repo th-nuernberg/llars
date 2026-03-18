@@ -323,6 +323,8 @@ test:nightly:contracts:
   image: python:3.10-slim
   rules:
     - *test_only_skip
+    - if: $DRY_RUN == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_MESSAGE =~ /\[dryrun\]/ && $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "push"
@@ -685,7 +687,8 @@ test:e2e:nightly:tiles:
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
   needs:
     - deploy:staging
-    - test:nightly:contracts
+    - job: test:nightly:contracts
+      optional: true
 
 # Smoke Tests against staging (Evaluation + Prompt Engineering pipeline)
 smoke:staging:

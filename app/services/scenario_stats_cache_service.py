@@ -139,7 +139,10 @@ def mark_dirty(scenario_id: int) -> None:
             row.computed_at = datetime(2000, 1, 1, tzinfo=timezone.utc)
             db.session.commit()
     except Exception as exc:
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except Exception:
+            pass  # Session may not have an active transaction (e.g. SQLite in tests)
         logger.warning("[StatsCache] Failed to mark dirty for scenario %s: %s", scenario_id, exc)
 
     # Immediately trigger background recompute

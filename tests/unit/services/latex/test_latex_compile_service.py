@@ -768,7 +768,7 @@ class TestCompileJobMocked:
                 with open(pdf_path, 'wb') as f:
                     f.write(b'%PDF-1.4 fake pdf content')
             result = MagicMock()
-            result.stdout = 'Output log'
+            result.stdout = b'Output log'
             result.returncode = 0
             return result
 

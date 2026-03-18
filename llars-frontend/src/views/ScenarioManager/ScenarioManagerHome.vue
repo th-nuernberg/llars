@@ -233,14 +233,16 @@ const tabs = computed(() => [
 
 // Filtered Lists
 const ownScenarios = computed(() => {
+  // Owner, Manager, AND Viewers (anyone with active access to results)
   return scenarios.value
-    .filter(s => s.is_owner || s.can_manage)
+    .filter(s => s.is_owner || s.can_manage || s.is_viewer)
     .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
 })
 
 const invitedScenarios = computed(() => {
+  // Only assessors without viewer/management access, and pending/rejected invitations
   return scenarios.value
-    .filter(s => !s.is_owner && !s.can_manage)
+    .filter(s => !s.is_owner && !s.can_manage && !s.is_viewer)
     .sort((a, b) => {
       // Pending first, then by date
       if (a.invitation?.status === 'pending' && b.invitation?.status !== 'pending') return -1

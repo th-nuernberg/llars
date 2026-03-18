@@ -506,6 +506,8 @@ def seed_llm_judge_demo_scenario(db):
                 access_level='MEMBER',
                 is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
                 is_viewer=(role == ScenarioRoles.VIEWER),
+                manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
             ))
 
     db.session.flush()

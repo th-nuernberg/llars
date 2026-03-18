@@ -688,6 +688,8 @@ def _seed_demo_scenarios_for_ijcai(db_session, demo_user, collab_user):
                 access_level='MEMBER',
                 is_assessor=True,
                 is_viewer=False,
+                manager_role='none',
+                evaluation_role='assessor',
             )
             db_session.session.add(su)
             db_session.session.flush()
@@ -1456,6 +1458,8 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         access_level='MEMBER',
         is_assessor=True,
         is_viewer=False,
+        manager_role='none',
+        evaluation_role='assessor',
     )
     db_session.session.add(reviewer_1_su)
     db_session.session.flush()
@@ -1469,6 +1473,8 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
             access_level='MEMBER',
             is_assessor=True,
             is_viewer=False,
+            manager_role='none',
+            evaluation_role='assessor',
         )
         db_session.session.add(reviewer_2_su)
         db_session.session.flush()
@@ -1821,6 +1827,8 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
         access_level='MEMBER',
         is_assessor=True,
         is_viewer=False,
+        manager_role='none',
+        evaluation_role='assessor',
     )
     db_session.session.add(reviewer_1_su)
     db_session.session.flush()
@@ -1834,6 +1842,8 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
             access_level='MEMBER',
             is_assessor=True,
             is_viewer=False,
+            manager_role='none',
+            evaluation_role='assessor',
         )
         db_session.session.add(reviewer_2_su)
         db_session.session.flush()

@@ -14,7 +14,7 @@
           </LTag>
         </div>
       </div>
-      <v-menu location="bottom end">
+      <v-menu v-if="canManage" location="bottom end">
         <template #activator="{ props }">
           <v-btn
             v-bind="props"
@@ -98,6 +98,11 @@ const props = defineProps({
 defineEmits(['open', 'settings', 'duplicate', 'archive', 'delete'])
 
 const { t } = useI18n()
+
+// Viewers can see the card but not manage (no kebab menu)
+const canManage = computed(() =>
+  ['owner', 'editor'].includes(props.scenario.manager_role) || props.scenario.is_owner || props.scenario.can_manage
+)
 
 // Type configuration
 const typeConfigs = {

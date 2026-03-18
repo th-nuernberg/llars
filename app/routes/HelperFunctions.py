@@ -246,35 +246,33 @@ def can_access_thread(user_id, thread_id, function_type_id):
         RatingScenarios.end >= current_time
     ).all()
 
+    from db.models.scenario import ManagerRole, EvaluationRole
+
     for su in scenario_users:
         scenario_id = su.scenario_id
         scenario = getattr(su, "rating_scenario", None)
         if scenario is None:
             scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
-        # New model: is_viewer or can_manage (OWNER/MANAGER access_level)
-        # Legacy fallback: VIEWER or OWNER role
-        has_full_access = (
-            su.is_viewer or su.can_manage
-            or su.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER)
-        )
-        # New model: is_assessor flag; Legacy fallback: EVALUATOR role
-        is_assessor = su.is_assessor or su.role == ScenarioRoles.EVALUATOR
+        # Manager role != 'none' → can see all threads
+        has_full_access = su.manager_role != ManagerRole.NONE.value
+        # Evaluation role == 'assessor' → can evaluate (and see assigned threads)
+        is_assessor = su.evaluation_role == EvaluationRole.ASSESSOR.value
 
         if has_full_access or (is_assessor and raters_receive_all_threads(scenario, function_type_id)):
-            # Viewer, Owner, Manager oder All-Distribution-Assessor sehen alle Threads des Szenarios
+            # Viewer/Editor/Owner oder All-Distribution-Assessor sehen alle Threads des Szenarios
             if db.session.query(ScenarioThreads).join(
                 RatingScenarios, RatingScenarios.id == ScenarioThreads.scenario_id
             ).filter(
                 ScenarioThreads.scenario_id == scenario_id,
                 ScenarioThreads.thread_id == thread_id,
-                RatingScenarios.begin <= current_time, # TODO: Gedanken zu Zeitzonen machen
+                RatingScenarios.begin <= current_time,
                 RatingScenarios.end >= current_time
             ).first():
                 return True
 
         elif is_assessor:
-            # Wenn der User Assessor ist, muss der Thread zugeordnet sein
+            # Assessor mit Thread-Zuweisung sieht nur zugeordnete Threads
             if (
                 db.session.query(ScenarioThreadDistribution)
                 .join(ScenarioThreads, ScenarioThreads.id==ScenarioThreadDistribution.scenario_thread_id)
@@ -282,7 +280,7 @@ def can_access_thread(user_id, thread_id, function_type_id):
                 .filter(
                     ScenarioThreadDistribution.scenario_user_id == su.id,
                     ScenarioThreads.thread_id == thread_id,
-                    RatingScenarios.begin <= current_time, # TODO: Gedanken zu Zeitzonen machen
+                    RatingScenarios.begin <= current_time,
                     RatingScenarios.end >= current_time
                 )
                 .first()
@@ -355,14 +353,9 @@ def get_user_threads(user_id, function_type_id):
         if scenario_id not in scenario_order_modes:
             scenario_order_modes[scenario_id] = get_scenario_order_mode(scenario)
 
-        # New model: is_viewer or can_manage (OWNER/MANAGER access_level)
-        # Legacy fallback: VIEWER, OWNER, or MANAGER role
-        has_full_access = (
-            su.is_viewer or su.can_manage
-            or su.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER)
-        )
-        # New model: is_assessor flag; Legacy fallback: EVALUATOR role
-        is_assessor = su.is_assessor or su.role == ScenarioRoles.EVALUATOR
+        from db.models.scenario import ManagerRole, EvaluationRole
+        has_full_access = su.manager_role != ManagerRole.NONE.value
+        is_assessor = su.evaluation_role == EvaluationRole.ASSESSOR.value
 
         if has_full_access or (is_assessor and raters_receive_all_threads(scenario, function_type_id)):
             # Viewer/Owner/Manager oder All-Distribution-Assessor sehen alle Threads im Szenario
@@ -428,7 +421,7 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     Returns:
         True if the user can submit evaluations, False otherwise
     """
-    from db.models.scenario import MembershipStatus
+    from db.models.scenario import MembershipStatus, EvaluationRole
 
     scenario_user = ScenarioUsers.query.filter_by(
         user_id=user_id,
@@ -442,8 +435,7 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     if scenario_user.membership_status != MembershipStatus.ACTIVE:
         return False
 
-    # New model: is_assessor flag; Legacy fallback: EVALUATOR role
-    return scenario_user.is_assessor or scenario_user.role == ScenarioRoles.EVALUATOR
+    return scenario_user.evaluation_role == EvaluationRole.ASSESSOR.value
 
 
 def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:

@@ -87,12 +87,13 @@ class EvaluationSessionService:
         if isinstance(config, dict):
             description = config.get('description')
 
-        # Determine if user can evaluate (active assessor with is_assessor flag)
-        # Archived users or viewers are always read-only
+        # Determine if user can evaluate (active assessor with evaluation_role='assessor')
+        # Archived users or eval-viewers are always read-only
+        from db.models.scenario import EvaluationRole
         can_evaluate = (
             scenario_user is not None
             and scenario_user.membership_status == MembershipStatus.ACTIVE
-            and (scenario_user.is_assessor or scenario_user.role == ScenarioRoles.EVALUATOR)
+            and scenario_user.evaluation_role == EvaluationRole.ASSESSOR.value
         )
 
         return {

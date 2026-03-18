@@ -596,6 +596,7 @@ def db(app):
             MessagingEncryptionKey, MessagingAIKeyGrant,
             MessagingCall, MessagingCallParticipant, MessagingLinkPreview
         )
+        from db.models.scenario_stats_cache import ScenarioStatsCache  # noqa: F401
 
         _db.create_all()
 

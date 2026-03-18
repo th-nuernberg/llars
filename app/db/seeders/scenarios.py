@@ -400,12 +400,23 @@ def seed_demo_scenarios(db):
         """Ensure user exists in scenario with correct role + new flags."""
         is_assessor = role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)
         is_viewer = role == ScenarioRoles.VIEWER
+        # Map legacy role to new 2-axis model
+        if role == ScenarioRoles.OWNER:
+            manager_role, evaluation_role = 'owner', 'none'
+        elif role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR):
+            manager_role, evaluation_role = 'none', 'assessor'
+        elif role == ScenarioRoles.VIEWER:
+            manager_role, evaluation_role = 'viewer', 'none'
+        else:
+            manager_role, evaluation_role = 'none', 'none'
         existing = ScenarioUsers.query.filter_by(scenario_id=scenario_id, user_id=user_id).first()
         if existing:
             if existing.role != role:
                 existing.role = role
                 existing.is_assessor = is_assessor
                 existing.is_viewer = is_viewer
+                existing.manager_role = manager_role
+                existing.evaluation_role = evaluation_role
                 db.session.flush()
             return
         db.session.add(
@@ -416,6 +427,8 @@ def seed_demo_scenarios(db):
                 access_level='MEMBER',
                 is_assessor=is_assessor,
                 is_viewer=is_viewer,
+                manager_role=manager_role,
+                evaluation_role=evaluation_role,
             )
         )
         db.session.flush()
@@ -851,6 +864,8 @@ def seed_demo_scenarios(db):
                     access_level='MEMBER',
                     is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
                     is_viewer=(role == ScenarioRoles.VIEWER),
+                    manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                    evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
                 )
                 db.session.add(scenario_user)
 
@@ -934,6 +949,8 @@ def seed_demo_scenarios(db):
                     access_level='MEMBER',
                     is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
                     is_viewer=(role == ScenarioRoles.VIEWER),
+                    manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                    evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
                 )
                 db.session.add(scenario_user)
 
@@ -1023,6 +1040,8 @@ def seed_demo_scenarios(db):
                     access_level='MEMBER',
                     is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
                     is_viewer=(role == ScenarioRoles.VIEWER),
+                    manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                    evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
                 )
                 db.session.add(scenario_user)
 
@@ -1157,6 +1176,8 @@ def seed_demo_scenarios(db):
                         access_level='MEMBER',
                         is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
                         is_viewer=(role == ScenarioRoles.VIEWER),
+                        manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                        evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
                     )
                 )
 

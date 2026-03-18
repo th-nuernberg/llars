@@ -3381,12 +3381,16 @@
       "llmRunning": "Läuft",
       "llmPending": "Ausstehend",
       "llmStopped": "Gestoppt",
+      "editorHint": "Editoren können Szenario-Einstellungen verwalten und Nutzer einladen, aber keine Bewertungen abgeben.",
       "roles": {
         "owner": "Besitzer",
         "manager": "Manager",
+        "editor": "Editor",
         "assessor": "Gutachter",
         "evaluator": "Gutachter",
-        "viewer": "Betrachter"
+        "viewer": "Betrachter",
+        "eval_viewer": "Eval.-Betrachter",
+        "eval. viewer": "Eval.-Betrachter"
       }
     },
     "settings": {
@@ -3421,6 +3425,7 @@
       "collaborationTooltip": "Fügen Sie Kollegen als Manager (können Einstellungen bearbeiten und Gutachter einladen) oder Betrachter (können alle Tabs einsehen) hinzu.",
       "addCollaborator": "Mitarbeiter hinzufügen",
       "roleManager": "Manager",
+      "roleEditor": "Editor",
       "roleManagerDesc": "Kann Einstellungen bearbeiten und Gutachter verwalten",
       "roleViewer": "Betrachter",
       "roleViewerDesc": "Kann alle Tabs einsehen aber nichts ändern",
@@ -3437,6 +3442,7 @@
       "tags": {
         "owner": "Besitzer",
         "manager": "Manager",
+        "editor": "Editor",
         "viewer": "Betrachter",
         "assessor": "Gutachter",
         "member": "Mitglied"

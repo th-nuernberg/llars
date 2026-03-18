@@ -70,6 +70,7 @@ def _import_all_models():
     from db.models.conference import Conference, Paper, PaperAuthor  # noqa
     from db.models.referral import ReferralCampaign, ReferralLink, ReferralRegistration  # noqa
     from db.models.generation import GenerationJob, GeneratedOutput  # noqa
+    from db.models.scenario_stats_cache import ScenarioStatsCache  # noqa
     from db.models.user_llm_provider import UserLLMProvider  # noqa
     try:
         from db.models.user_llm_provider import UserLLMProviderShare  # noqa

@@ -3381,12 +3381,16 @@
       "llmRunning": "Running",
       "llmPending": "Pending",
       "llmStopped": "Stopped",
+      "editorHint": "Editors can manage scenario settings and invite users, but cannot submit ratings.",
       "roles": {
         "owner": "Owner",
         "manager": "Manager",
+        "editor": "Editor",
         "assessor": "Assessor",
         "evaluator": "Assessor",
-        "viewer": "Viewer"
+        "viewer": "Viewer",
+        "eval_viewer": "Eval. Viewer",
+        "eval. viewer": "Eval. Viewer"
       }
     },
     "settings": {
@@ -3421,6 +3425,7 @@
       "collaborationTooltip": "Add colleagues as managers (can edit settings and invite assessors) or viewers (can see all tabs read-only).",
       "addCollaborator": "Add Collaborator",
       "roleManager": "Manager",
+      "roleEditor": "Editor",
       "roleManagerDesc": "Can edit settings and manage assessors",
       "roleViewer": "Viewer",
       "roleViewerDesc": "Can view all tabs but not make changes",
@@ -3437,6 +3442,7 @@
       "tags": {
         "owner": "Owner",
         "manager": "Manager",
+        "editor": "Editor",
         "viewer": "Viewer",
         "assessor": "Assessor",
         "member": "Member"

@@ -549,6 +549,7 @@ def create_scenario_from_job(job_id: int):
             owner_su.role = ScenarioRoles.ASSESSOR
             owner_su.is_assessor = True
             owner_su.is_viewer = False
+            owner_su.evaluation_role = 'assessor'
 
     # Invite users if provided
     invited_users = data.get('invited_users', [])
@@ -577,6 +578,8 @@ def create_scenario_from_job(job_id: int):
                 access_level='MEMBER',
                 is_assessor=is_assessor,
                 is_viewer=is_viewer,
+                manager_role='none' if is_assessor else ('viewer' if is_viewer else 'none'),
+                evaluation_role='assessor' if is_assessor else 'none',
             )
             db.session.add(scenario_user)
         db.session.commit()

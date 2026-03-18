@@ -87,6 +87,8 @@ def _add_user_to_scenario(db_session, scenario_id, user_id, role_name='ASSESSOR'
         access_level='OWNER' if is_owner else 'MEMBER',
         is_assessor=is_assessor,
         is_viewer=is_owner,  # Owner always gets viewer access
+        manager_role='owner' if is_owner else 'none',
+        evaluation_role='assessor' if is_assessor else 'none',
     )
     db_session.session.add(su)
     db_session.session.flush()

@@ -476,6 +476,8 @@ class TestRespondToInvitation:
                 access_level='MEMBER',
                 is_assessor=True,
                 is_viewer=False,
+                manager_role='none',
+                evaluation_role='assessor',
                 invitation_status=InvitationStatus.ACCEPTED,
                 membership_status=MembershipStatus.ACTIVE,
                 invited_at=datetime.utcnow(),

@@ -391,6 +391,8 @@ class OutputExportService:
                 access_level='OWNER',
                 is_viewer=True,
                 is_assessor=False,
+                manager_role='viewer',
+                evaluation_role='none',
             )
             db.session.add(scenario_user)
 
@@ -598,6 +600,8 @@ class OutputExportService:
                 access_level='OWNER',
                 is_viewer=True,
                 is_assessor=False,
+                manager_role='viewer',
+                evaluation_role='none',
             )
             db.session.add(scenario_user)
 

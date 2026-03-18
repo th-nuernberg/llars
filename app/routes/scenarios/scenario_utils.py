@@ -12,27 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 def is_scenario_owner(scenario, username) -> bool:
-    """Check if the user is the owner of the scenario (by created_by or OWNER access_level in ScenarioUsers)."""
-    # Accept both username string and user object
+    """Check if the user is the owner of the scenario (by created_by or manager_role='owner')."""
     if not isinstance(username, str):
         username = getattr(username, 'username', str(username))
 
     if getattr(scenario, 'created_by', None) == username:
         return True
 
-    # Check ScenarioUsers OWNER access_level (for seeded scenarios where created_by may be NULL)
-    from db.models import ScenarioUsers, ScenarioRoles, User, AccessLevel
-    # New model: check access_level='OWNER'
+    from db.models import ScenarioUsers, User, ManagerRole
     owner_entry = ScenarioUsers.query.filter(
         ScenarioUsers.scenario_id == scenario.id,
-        ScenarioUsers.access_level == AccessLevel.OWNER.value
+        ScenarioUsers.manager_role == ManagerRole.OWNER.value
     ).first()
-    # Fallback to legacy role for rows not yet migrated
-    if not owner_entry:
-        owner_entry = ScenarioUsers.query.filter_by(
-            scenario_id=scenario.id,
-            role=ScenarioRoles.OWNER
-        ).first()
     if owner_entry:
         owner_user = User.query.get(owner_entry.user_id)
         if owner_user and owner_user.username == username:
@@ -42,27 +33,19 @@ def is_scenario_owner(scenario, username) -> bool:
 
 
 def is_scenario_manager(scenario, username) -> bool:
-    """Check if the user has MANAGER access_level for this scenario."""
+    """Check if the user has editor (manager) role for this scenario."""
     if not isinstance(username, str):
         username = getattr(username, 'username', str(username))
 
-    from db.models import ScenarioUsers, ScenarioRoles, User, MembershipStatus, AccessLevel
-    # New model: check access_level='MANAGER'
-    manager_entries = ScenarioUsers.query.filter(
+    from db.models import ScenarioUsers, User, MembershipStatus, ManagerRole
+    editor_entries = ScenarioUsers.query.filter(
         ScenarioUsers.scenario_id == scenario.id,
-        ScenarioUsers.access_level == AccessLevel.MANAGER.value,
+        ScenarioUsers.manager_role == ManagerRole.EDITOR.value,
         ScenarioUsers.membership_status == MembershipStatus.ACTIVE
     ).all()
-    # Fallback to legacy role for rows not yet migrated
-    if not manager_entries:
-        manager_entries = ScenarioUsers.query.filter(
-            ScenarioUsers.scenario_id == scenario.id,
-            ScenarioUsers.role == ScenarioRoles.MANAGER,
-            ScenarioUsers.membership_status == MembershipStatus.ACTIVE
-        ).all()
-    for entry in manager_entries:
-        manager_user = User.query.get(entry.user_id)
-        if manager_user and manager_user.username == username:
+    for entry in editor_entries:
+        editor_user = User.query.get(entry.user_id)
+        if editor_user and editor_user.username == username:
             return True
     return False
 
@@ -164,9 +147,10 @@ def assign_items_to_new_assessor(scenario_id, scenario, new_scenario_user_id):
         return
 
     # Active assessors EXCLUDING the new one (they already have distributions)
+    from db.models.scenario import EvaluationRole
     existing_assessors = ScenarioUsers.query.filter(
         ScenarioUsers.scenario_id == scenario_id,
-        ScenarioUsers.is_assessor.is_(True),
+        ScenarioUsers.evaluation_role == EvaluationRole.ASSESSOR.value,
         ScenarioUsers.membership_status == MembershipStatus.ACTIVE,
         ScenarioUsers.id != new_scenario_user_id,
     ).all()
@@ -289,9 +273,10 @@ def reassign_items_from_user(scenario_id, scenario, removed_scenario_user_id):
         return
 
     # Find remaining active assessors
+    from db.models.scenario import EvaluationRole
     remaining_assessors = ScenarioUsers.query.filter(
         ScenarioUsers.scenario_id == scenario_id,
-        ScenarioUsers.is_assessor.is_(True),
+        ScenarioUsers.evaluation_role == EvaluationRole.ASSESSOR.value,
         ScenarioUsers.membership_status == MembershipStatus.ACTIVE,
         ScenarioUsers.id != removed_scenario_user_id,
     ).all()

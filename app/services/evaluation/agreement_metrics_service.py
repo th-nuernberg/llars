@@ -191,10 +191,11 @@ class AgreementMetricsService:
         from assessor (e.g. to viewer) no longer influence IRR/agreement metrics.
         """
         from db.models import MembershipStatus
+        from db.models.scenario import EvaluationRole
         return {
             su.user_id for su in ScenarioUsers.query.filter(
                 ScenarioUsers.scenario_id == scenario_id,
-                ScenarioUsers.is_assessor.is_(True),
+                ScenarioUsers.evaluation_role == EvaluationRole.ASSESSOR.value,
                 ScenarioUsers.membership_status == MembershipStatus.ACTIVE,
             ).all()
         }

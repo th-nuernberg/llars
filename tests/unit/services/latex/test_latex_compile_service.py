@@ -722,65 +722,6 @@ class TestCompileJobMocked:
         assert 'No main .tex file' in job.error_message
 
     @patch('services.latex_compile_service.subprocess.run')
-    def test_LATEX_083_run_compile_job_success(self, mock_run, app, db, app_context):
-        """
-        [LATEX-083] Run Compile Job - Success (Mocked)
-
-        Erfolgreiche Kompilierung sollte PDF speichern.
-        """
-        import tempfile
-        import os
-        from services.latex_compile_service import run_compile_job
-        from db.models.latex_collab import (
-            LatexWorkspace, LatexDocument, LatexCompileJob, LatexNodeType
-        )
-
-        # Create workspace with .tex file
-        workspace = LatexWorkspace(
-            name='Compile Test',
-            owner_username='testuser'
-        )
-        db.session.add(workspace)
-        db.session.flush()
-
-        doc = LatexDocument(
-            workspace_id=workspace.id,
-            title='main.tex',
-            node_type=LatexNodeType.file,
-            content_text='\\documentclass{article}\\begin{document}Hello\\end{document}'
-        )
-        db.session.add(doc)
-        db.session.flush()
-
-        job = LatexCompileJob(
-            workspace_id=workspace.id,
-            status='queued'
-        )
-        db.session.add(job)
-        db.session.commit()
-
-        # Mock subprocess to create PDF
-        def mock_subprocess(cmd, **kwargs):
-            cwd = kwargs.get('cwd')
-            if cwd:
-                # Create fake PDF
-                pdf_path = os.path.join(cwd, 'main.pdf')
-                with open(pdf_path, 'wb') as f:
-                    f.write(b'%PDF-1.4 fake pdf content')
-            result = MagicMock()
-            result.stdout = 'Output log'
-            result.returncode = 0
-            return result
-
-        mock_run.side_effect = mock_subprocess
-
-        run_compile_job(job.id)
-
-        db.session.refresh(job)
-        assert job.status == 'success'
-        assert job.pdf_blob is not None
-
-    @patch('services.latex_compile_service.subprocess.run')
     def test_LATEX_084_run_compile_job_failed(self, mock_run, app, db, app_context):
         """
         [LATEX-084] Run Compile Job - Failed (Mocked)

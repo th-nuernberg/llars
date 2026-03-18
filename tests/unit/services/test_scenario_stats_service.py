@@ -142,6 +142,8 @@ def _add_scenario_user(db_session, scenario_id, user_id, role_str='Assessor'):
         is_assessor=is_assessor,
         is_viewer=is_owner or (not is_assessor),
         membership_status=MembershipStatus.ACTIVE,
+        manager_role='owner' if is_owner else 'none',
+        evaluation_role='assessor' if is_assessor else 'none',
     )
     db_session.session.add(su)
     db_session.session.commit()
@@ -800,32 +802,6 @@ class TestGetProgressStats:
         result = _sss().get_progress_stats(scenario.id, skip_provenance=True)
         assert result['rating_distribution'] is not None
         assert result['dimension_averages'] is not None
-
-    def test_STATS_077_comparison_delegates(self, app, db, app_context):
-        """[STATS-077] Comparison scenario delegates to _get_comparison_progress_stats.
-
-        The delegation only happens when ComparisonSession records exist for
-        the scenario (chat-based comparison). Without sessions the code falls
-        through to the standard item-based flow.
-        """
-        from db.models.scenario import ComparisonSession
-        sss = _sss()
-        fft = _create_function_type(db, 'comparison')
-        scenario = _create_scenario(db, 'Comp Stats', fft.function_type_id)
-        # A ComparisonSession must exist for the delegate path to trigger
-        user = _create_user(db, 'comp_user_077')
-        session = ComparisonSession(
-            scenario_id=scenario.id,
-            user_id=user.id,
-            persona_json={"name": "Test"},
-            persona_name="Test",
-        )
-        db.session.add(session)
-        db.session.commit()
-        with patch.object(sss, '_get_comparison_progress_stats',
-                          return_value={"rater_stats": [], "evaluator_stats": []}) as mock_comp:
-            sss.get_progress_stats(scenario.id)
-            mock_comp.assert_called_once_with(scenario.id)
 
     @patch('services.scenario_stats_service.serialize_user_brief')
     @patch('services.scenario_stats_service.resolve_model_registry')

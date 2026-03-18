@@ -233,14 +233,16 @@ const tabs = computed(() => [
 
 // Filtered Lists
 const ownScenarios = computed(() => {
+  // Anyone with a management role (owner, manager, viewer) — uses backend-resolved manager_role
   return scenarios.value
-    .filter(s => s.is_owner || s.can_manage)
+    .filter(s => s.manager_role && s.manager_role !== 'none')
     .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
 })
 
 const invitedScenarios = computed(() => {
+  // Pure evaluators/eval-viewers without management access
   return scenarios.value
-    .filter(s => !s.is_owner && !s.can_manage)
+    .filter(s => !s.manager_role || s.manager_role === 'none')
     .sort((a, b) => {
       // Pending first, then by date
       if (a.invitation?.status === 'pending' && b.invitation?.status !== 'pending') return -1

@@ -372,6 +372,8 @@ def seed_scenario():
                 access_level='MEMBER',
                 is_assessor=True,
                 is_viewer=False,
+                manager_role='none',
+                evaluation_role='assessor',
             )
             db.session.add(su)
             users_added += 1

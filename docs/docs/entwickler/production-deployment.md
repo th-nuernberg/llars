@@ -615,10 +615,12 @@ bash scripts/ci/manual_bluegreen_deploy.sh switch
 
 ### Automatisches Deployment (CI/CD)
 
-Nightly Mo-Fr 02:00 CET via GitLab Pipeline Schedule:
+Development-Branch (`dev`) deployed automatisch bei jedem Push auf den Dev-Server (llars-dev, 141.75.150.86). Production-Branch (`main`) deployed nachts Mo-Fr 02:00 CET via GitLab Pipeline Schedule.
+
+Production Nightly-Flow:
 
 ```
-deploy:staging → test:e2e:staging → smoke:staging → deploy:production → smoke:production
+deploy:staging → test:e2e:nightly:tiles → smoke:staging → deploy:production → smoke:production
 ```
 
 Bei fehlgeschlagenen Smoke-Tests: automatischer Rollback.

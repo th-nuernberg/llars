@@ -2237,6 +2237,11 @@ def sm_remove_user(scenario_id, user_id):
     su.archived_at = datetime.utcnow()
     su.archived_by = username
 
+    # Flush archive state before reassignment — reassign_items_from_user() queries
+    # ScenarioUsers which triggers autoflush; SQLite chokes on autoflush during
+    # SELECT ("not an error" OperationalError). Explicit flush avoids this.
+    db.session.flush()
+
     if was_assessor:
         reassign_items_from_user(scenario_id, scenario, su.id)
 

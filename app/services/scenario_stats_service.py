@@ -460,8 +460,8 @@ def _calculate_ranking_agreement(
         feature_thread_map = {}
         features = (
             Feature.query
-            .filter(Feature.thread_id.in_(thread_ids))
-            .with_entities(Feature.id, Feature.thread_id)
+            .filter(Feature.item_id.in_(thread_ids))
+            .with_entities(Feature.feature_id, Feature.item_id)
             .all()
         )
         for f_id, t_id in features:

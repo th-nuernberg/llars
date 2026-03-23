@@ -3,6 +3,9 @@
 echo "Waiting for 2 seconds before starting the Flask app..."
 sleep 2
 
+# Ensure storage directories exist and are writable (volume may be root-owned)
+mkdir -p /app/storage/rag_images /app/storage/screenshots 2>/dev/null || true
+
 export PYTHONPATH="/app${PYTHONPATH:+:$PYTHONPATH}"
 export FLASK_APP="main"
 # Add local pip bin to PATH for gunicorn

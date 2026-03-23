@@ -7406,5 +7406,114 @@
       "transfers": "Transfers",
       "trains": "Trains"
     }
+  },
+  "landing": {
+    "hero": {
+      "badge": "Accepted at IJCAI 2026",
+      "headline": "Collaborative Prompt Engineering, Batch Generation & Hybrid Evaluation",
+      "subtitle": "An open-source platform for building, generating, and evaluating LLM outputs — with humans and AI side by side.",
+      "cta": "Try LLARS",
+      "demo": "Watch Demo"
+    },
+    "pipeline": {
+      "title": "Three Steps to Better LLM Outputs",
+      "subtitle": "LLARS connects prompt engineering, generation, and evaluation in a single workflow.",
+      "steps": {
+        "prompt": {
+          "title": "Prompt Engineering",
+          "desc": "Design, version, and test prompts collaboratively in real time."
+        },
+        "generation": {
+          "title": "Batch Generation",
+          "desc": "Generate outputs across models and prompts — automatically and at scale."
+        },
+        "evaluation": {
+          "title": "Hybrid Evaluation",
+          "desc": "Combine human ratings with LLM assessors and inter-rater reliability metrics."
+        }
+      },
+      "note": "New prompts and models are automatically available for generation and evaluation."
+    },
+    "features": {
+      "title": "Built for Research Teams",
+      "items": {
+        "rag": {
+          "title": "RAG Pipeline",
+          "desc": "Upload documents, build ChromaDB collections, and ground LLM responses in your own data."
+        },
+        "llmEvaluator": {
+          "title": "LLM Evaluator",
+          "desc": "Automated LLM assessors rate outputs alongside human evaluators."
+        },
+        "wizard": {
+          "title": "Scenario Wizard",
+          "desc": "AI-assisted setup analyzes uploaded data and suggests evaluation types and presets."
+        },
+        "agreement": {
+          "title": "Agreement Metrics",
+          "desc": "Ordinal Krippendorff's Alpha and agreement heatmaps for inter-rater reliability."
+        },
+        "collab": {
+          "title": "Real-time Collaboration",
+          "desc": "YJS CRDT-based collaborative editing for Markdown and LaTeX documents."
+        },
+        "chatbot": {
+          "title": "Chatbot Builder",
+          "desc": "Configure chatbots with custom system prompts, RAG contexts, and model selection."
+        },
+        "auth": {
+          "title": "Auth & RBAC",
+          "desc": "Authentik SSO with role-based permissions — admin, researcher, evaluator, and more."
+        },
+        "designSystem": {
+          "title": "35+ L-Components",
+          "desc": "A consistent design system with pastel colors, asymmetric border-radius, and dark mode."
+        }
+      }
+    },
+    "evalTypes": {
+      "title": "Six Evaluation Types",
+      "subtitle": "Choose the right evaluation method for your research question.",
+      "types": {
+        "rating": {
+          "title": "Rating",
+          "desc": "Multi-dimensional Likert scales"
+        },
+        "ranking": {
+          "title": "Ranking",
+          "desc": "Drag-and-drop bucket sorting"
+        },
+        "comparison": {
+          "title": "Comparison",
+          "desc": "Pairwise A vs B judgments"
+        },
+        "labeling": {
+          "title": "Labeling",
+          "desc": "Binary or multi-class categories"
+        },
+        "authenticity": {
+          "title": "Authenticity",
+          "desc": "Human vs AI detection"
+        }
+      }
+    },
+    "tech": {
+      "title": "Open Source & Production-Ready",
+      "counters": {
+        "components": "Custom Components",
+        "evalTypes": "Evaluation Types",
+        "roles": "Auth Roles",
+        "lines": "Lines of Code"
+      }
+    },
+    "cta": {
+      "headline": "Ready to evaluate LLM outputs?",
+      "subtitle": "LLARS is open-source under the MIT license.",
+      "register": "Create Account"
+    },
+    "footer": {
+      "demo": "Demo Video",
+      "docs": "Documentation"
+    }
   }
 }

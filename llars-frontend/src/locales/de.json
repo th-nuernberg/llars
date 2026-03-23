@@ -7248,5 +7248,114 @@
       "transfers": "Umstiege",
       "trains": "Züge"
     }
+  },
+  "landing": {
+    "hero": {
+      "badge": "Akzeptiert bei IJCAI 2026",
+      "headline": "Kollaboratives Prompt Engineering, Batch-Generierung & Hybride Evaluation",
+      "subtitle": "Eine Open-Source-Plattform zum Erstellen, Generieren und Bewerten von LLM-Ausgaben — mit Menschen und KI gemeinsam.",
+      "cta": "LLARS testen",
+      "demo": "Demo ansehen"
+    },
+    "pipeline": {
+      "title": "Drei Schritte zu besseren LLM-Ausgaben",
+      "subtitle": "LLARS verbindet Prompt Engineering, Generierung und Evaluation in einem Workflow.",
+      "steps": {
+        "prompt": {
+          "title": "Prompt Engineering",
+          "desc": "Prompts kollaborativ in Echtzeit entwerfen, versionieren und testen."
+        },
+        "generation": {
+          "title": "Batch-Generierung",
+          "desc": "Ausgaben über Modelle und Prompts hinweg generieren — automatisch und skalierbar."
+        },
+        "evaluation": {
+          "title": "Hybride Evaluation",
+          "desc": "Menschliche Bewertungen mit LLM-Assessoren und Inter-Rater-Reliabilitätsmetriken kombinieren."
+        }
+      },
+      "note": "Neue Prompts und Modelle stehen automatisch für Generierung und Evaluation zur Verfügung."
+    },
+    "features": {
+      "title": "Entwickelt für Forschungsteams",
+      "items": {
+        "rag": {
+          "title": "RAG-Pipeline",
+          "desc": "Dokumente hochladen, ChromaDB-Sammlungen erstellen und LLM-Antworten auf eigenen Daten fundieren."
+        },
+        "llmEvaluator": {
+          "title": "LLM-Evaluator",
+          "desc": "Automatisierte LLM-Assessoren bewerten Ausgaben neben menschlichen Evaluatoren."
+        },
+        "wizard": {
+          "title": "Szenario-Wizard",
+          "desc": "KI-gestütztes Setup analysiert hochgeladene Daten und schlägt Evaluationstypen und Presets vor."
+        },
+        "agreement": {
+          "title": "Übereinstimmungsmetriken",
+          "desc": "Ordinales Krippendorff's Alpha und Übereinstimmungs-Heatmaps für Inter-Rater-Reliabilität."
+        },
+        "collab": {
+          "title": "Echtzeit-Kollaboration",
+          "desc": "YJS-CRDT-basierte kollaborative Bearbeitung für Markdown- und LaTeX-Dokumente."
+        },
+        "chatbot": {
+          "title": "Chatbot-Builder",
+          "desc": "Chatbots mit eigenen System-Prompts, RAG-Kontexten und Modellauswahl konfigurieren."
+        },
+        "auth": {
+          "title": "Auth & RBAC",
+          "desc": "Authentik SSO mit rollenbasierten Berechtigungen — Admin, Researcher, Evaluator und mehr."
+        },
+        "designSystem": {
+          "title": "35+ L-Komponenten",
+          "desc": "Ein konsistentes Design-System mit Pastellfarben, asymmetrischem Border-Radius und Dark Mode."
+        }
+      }
+    },
+    "evalTypes": {
+      "title": "Sechs Evaluationstypen",
+      "subtitle": "Wählen Sie die passende Evaluationsmethode für Ihre Forschungsfrage.",
+      "types": {
+        "rating": {
+          "title": "Rating",
+          "desc": "Mehrdimensionale Likert-Skalen"
+        },
+        "ranking": {
+          "title": "Ranking",
+          "desc": "Drag-and-Drop Bucket-Sortierung"
+        },
+        "comparison": {
+          "title": "Vergleich",
+          "desc": "Paarweise A-gegen-B-Bewertung"
+        },
+        "labeling": {
+          "title": "Labeling",
+          "desc": "Binäre oder Multi-Class-Kategorien"
+        },
+        "authenticity": {
+          "title": "Authentizität",
+          "desc": "Mensch-vs-KI-Erkennung"
+        }
+      }
+    },
+    "tech": {
+      "title": "Open Source & produktionsbereit",
+      "counters": {
+        "components": "Eigene Komponenten",
+        "evalTypes": "Evaluationstypen",
+        "roles": "Auth-Rollen",
+        "lines": "Codezeilen"
+      }
+    },
+    "cta": {
+      "headline": "Bereit, LLM-Ausgaben zu bewerten?",
+      "subtitle": "LLARS ist Open Source unter der MIT-Lizenz.",
+      "register": "Konto erstellen"
+    },
+    "footer": {
+      "demo": "Demo-Video",
+      "docs": "Dokumentation"
+    }
   }
 }

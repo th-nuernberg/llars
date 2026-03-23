@@ -335,7 +335,12 @@ const routes = [
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/register', name: 'Register', component: Register, meta: { requiresAuth: false } },
     { path: '/join/:code', name: 'RegisterWithCode', component: Register, props: true, meta: { requiresAuth: false } },
-    { path: '/', redirect: '/login' },
+    {
+      path: '/',
+      name: 'LandingPage',
+      component: () => import('@/views/LandingPage/LandingPage.vue'),
+      meta: { requiresAuth: false, hiddenWhenAuth: true }
+    },
     { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }, // 404 Route
 
     { path: '/chat', component: ChatWithBots, name: 'ChatWithBots', meta: { requiresAuth: true } },
@@ -394,6 +399,12 @@ router.beforeEach((to, from, next) => {
     logI18n("log", "logs.router.navigateTo", to.path);
     logI18n("log", "logs.router.authenticated", isAuthenticated);
     logI18n("log", "logs.router.isAdmin", isAdmin);
+
+    // Redirect authenticated users away from landing page to Home
+    if (to.meta.hiddenWhenAuth && isAuthenticated) {
+        next('/Home');
+        return;
+    }
 
     // If route requires authentication and user is not authenticated
     if (requiresAuth && !isAuthenticated) {

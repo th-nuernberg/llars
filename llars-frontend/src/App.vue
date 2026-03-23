@@ -1,7 +1,7 @@
 <template>
   <v-app>
-    <!-- Unified AppBar -->
-    <v-app-bar app class="llars-appbar" :class="{ 'is-mobile': isMobile }">
+    <!-- Unified AppBar (hidden on Landing Page) -->
+    <v-app-bar v-if="!isLandingPage" app class="llars-appbar" :class="{ 'is-mobile': isMobile }">
       <v-toolbar-title @click="goHome" class="toolbar-title" :class="{ 'flex-shrink-1': isMobile }">
         <div class="logo-wrapper">
           <img src="./assets/logo/llars-logo.png" alt="Logo" :height="isMobile ? 24 : 28" class="logo-image">
@@ -145,7 +145,7 @@
       </template>
     </v-snackbar>
 
-    <v-footer app :height="isMobile ? 24 : 30" class="llars-footer" :class="{ 'is-mobile': isMobile, 'px-2': isMobile, 'px-4': !isMobile }">
+    <v-footer v-if="!isLandingPage" app :height="isMobile ? 24 : 30" class="llars-footer" :class="{ 'is-mobile': isMobile, 'px-2': isMobile, 'px-4': !isMobile }">
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
           <span class="copyright">
@@ -189,6 +189,9 @@ import { logI18n } from '@/utils/logI18n';
 import axios from 'axios';
 
 const { t, locale } = useI18n();
+
+// Hide AppBar + Footer on LandingPage (it has its own nav/footer)
+const isLandingPage = computed(() => route.name === 'LandingPage')
 
 // Global Snackbar
 const { snackbarModel } = useSnackbar();

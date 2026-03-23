@@ -479,12 +479,13 @@ function applyServerRanking(featureMap, serverRanking) {
   return featureMap
 }
 
-// Prepare features for server save
+// Prepare features for server save (includes feature_id for reliable lookup)
 function prepareForServerSave() {
   return groupedFeatures.value.map(group => ({
     type: group.type,
     details: group.bucketLists.flatMap((list, bIdx) =>
       list.map((detail, position) => ({
+        feature_id: detail.feature_id,
         model_name: detail.model_name,
         content: detail.content,
         position,

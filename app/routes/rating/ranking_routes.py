@@ -318,35 +318,55 @@ def save_ranking(thread_id):
                 content = detail['content']
                 position = detail['position']
                 bucket = detail['bucket']
+                detail_feature_id = detail.get('feature_id')
 
                 # Use FeatureService to find the FeatureType
                 feature_type_entry = FeatureService.get_feature_type_by_name(type_name)
                 if not feature_type_entry:
                     raise NotFoundError(f'Feature type {type_name} not found')
 
-                # Use FeatureService to find the feature
-                feature = FeatureService.get_feature_by_attributes(
-                    thread_id=thread_id,
-                    type_id=feature_type_entry.type_id,
-                    model_id=model_name,
-                    content=content
-                )
+                # Prefer direct feature_id lookup (reliable), fall back to
+                # attribute-based search (fragile — content mismatch drops ranking silently)
+                feature = None
+                if detail_feature_id and str(detail_feature_id).isdigit():
+                    feature = FeatureService.get_feature_by_id(int(detail_feature_id))
+                    # Verify the feature belongs to this thread
+                    if feature and feature.item_id != thread_id:
+                        logger.warning(
+                            "Feature %s belongs to item %s, not thread %s — ignoring",
+                            detail_feature_id, feature.item_id, thread_id
+                        )
+                        feature = None
 
-                if feature:
-                    # Use RankingService to save the ranking
-                    success, error_msg = RankingService.save_ranking(
-                        user_id=user.id,
+                if not feature:
+                    feature = FeatureService.get_feature_by_attributes(
                         thread_id=thread_id,
-                        feature_id=feature.feature_id,
                         type_id=feature_type_entry.type_id,
                         model_id=model_name,
-                        position=position,
-                        bucket=bucket,
-                        commit=False
+                        content=content
                     )
 
-                    if not success:
-                        raise ValidationError(error_msg)
+                if not feature:
+                    logger.warning(
+                        "Feature not found for thread %s (type=%s, model=%s, feature_id=%s) — ranking dropped",
+                        thread_id, type_name, model_name, detail_feature_id
+                    )
+                    continue
+
+                # Use RankingService to save the ranking
+                success, error_msg = RankingService.save_ranking(
+                    user_id=user.id,
+                    thread_id=thread_id,
+                    feature_id=feature.feature_id,
+                    type_id=feature_type_entry.type_id,
+                    model_id=model_name,
+                    position=position,
+                    bucket=bucket,
+                    commit=False
+                )
+
+                if not success:
+                    raise ValidationError(error_msg)
 
         db.session.commit()
 

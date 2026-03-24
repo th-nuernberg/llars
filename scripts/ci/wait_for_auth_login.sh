@@ -20,15 +20,13 @@ BASE_URL="${BASE_URL%/}"
 ELAPSED=0
 
 probe_login() {
-  local response_file http_code
+  local response_file http_code payload
   response_file="$(mktemp)"
 
-  http_code="$(
+  payload="$(
     AUTH_READY_USERNAME="$USERNAME" \
     AUTH_READY_PASSWORD="$PASSWORD" \
-    curl -sS -o "$response_file" -w "%{http_code}" \
-      -H "Content-Type: application/json" \
-      --data-binary "$(python3 - <<'PY'
+    python3 - <<'PY'
 import json
 import os
 
@@ -37,7 +35,12 @@ print(json.dumps({
     "password": os.environ["AUTH_READY_PASSWORD"],
 }))
 PY
-)" \
+  )"
+
+  http_code="$(
+    curl -sS -o "$response_file" -w "%{http_code}" \
+      -H "Content-Type: application/json" \
+      --data-binary "$payload" \
       --max-time 20 \
       "${BASE_URL}/auth/login" || true
   )"

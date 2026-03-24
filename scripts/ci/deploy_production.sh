@@ -123,7 +123,7 @@ DEPLOYED_COMMIT=$DEPLOYED_COMMIT
 DEPLOYED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 
-echo "[5/8] Waiting for production to be healthy..."
+echo "[5/9] Waiting for production to be healthy..."
 HEALTH_SCRIPT="$DEPLOY_PATH/scripts/ci/wait_for_health.sh"
 if [ -f "$HEALTH_SCRIPT" ]; then
   bash "$HEALTH_SCRIPT" "http://localhost/auth/health_check" 180 5
@@ -141,14 +141,23 @@ else
   done
 fi
 
-echo "[6/8] Stopping staging containers (if running)..."
+AUTH_READY_SCRIPT="$DEPLOY_PATH/scripts/ci/wait_for_auth_login.sh"
+AUTH_READY_PASSWORD="${LLARS_ADMIN_PASSWORD:-admin123}"
+echo "[6/9] Waiting for production login readiness..."
+if [ -f "$AUTH_READY_SCRIPT" ]; then
+  bash "$AUTH_READY_SCRIPT" "http://localhost" "admin" "$AUTH_READY_PASSWORD" 180 15
+else
+  echo "WARNING: Auth readiness script missing, skipping login probe."
+fi
+
+echo "[7/9] Stopping staging containers (if running)..."
 STAGING_SERVICES="nginx-service backend-flask-service frontend-vue-service backend-supervisor-service yjs-service"
 if [ -f "$DEPLOY_PATH/docker-compose.staging.yml" ]; then
   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.staging.yml \
     stop $STAGING_SERVICES 2>/dev/null || true
 fi
 
-echo "[7/8] Deployment complete"
+echo "[8/9] Deployment complete"
 
-echo "[8/8] Current status"
+echo "[9/9] Current status"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml ps

@@ -132,6 +132,17 @@ wait_for_http_health() {
   return 1
 }
 
+get_admin_password() {
+  if [ -n "${LLARS_ADMIN_PASSWORD:-}" ]; then
+    echo "$LLARS_ADMIN_PASSWORD"
+    return 0
+  fi
+
+  if [ -f "$DEPLOY_PATH/.env" ]; then
+    grep '^LLARS_ADMIN_PASSWORD=' "$DEPLOY_PATH/.env" | cut -d= -f2- || true
+  fi
+}
+
 verify_flask_storage() {
   local container="$1"
 
@@ -532,6 +543,16 @@ CONF
     else
       echo "WARNING: Staging health check on :55080 failed"
     fi
+  fi
+
+  local auth_ready_script="$DEPLOY_PATH/scripts/ci/wait_for_auth_login.sh"
+  local auth_ready_password
+  auth_ready_password="$(get_admin_password)"
+  if [ -n "$auth_ready_password" ] && [ -f "$auth_ready_script" ]; then
+    echo "Waiting for staging login readiness..."
+    bash "$auth_ready_script" "http://localhost:55080" "admin" "$auth_ready_password" 180 15
+  else
+    echo "WARNING: Skipping staging login readiness probe (missing password or helper script)."
   fi
 
   # Save rollback metadata

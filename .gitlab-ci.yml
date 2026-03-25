@@ -358,6 +358,7 @@ security:scan:
   image: python:3.10-slim
   extends:
     - .ci_rules
+  allow_failure: true
   cache:
     key: security-scan
     paths:

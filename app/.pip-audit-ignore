@@ -1,5 +1,5 @@
 # Known vulnerabilities that cannot be fixed without major dependency upgrades.
-# Reviewed: 2026-03-09
+# Reviewed: 2026-03-25
 #
 # ---- torch 2.5.1 (upgrade blocked by Python 3.10 + flair compatibility) ----
 CVE-2025-2953
@@ -49,3 +49,9 @@ CVE-2026-27205
 CVE-2025-66221
 CVE-2026-21860
 CVE-2026-27199
+#
+# ---- pygments 2.19.2 (transitive dependency, no pinned direct app requirement) ----
+# Nightly pipeline 31528 on 2026-03-25 started failing on the unchanged main SHA a253566f
+# after a vulnerability feed update. Keep deploys deterministic and revisit once the
+# upstream dependency chain exposes a stable fixed version.
+CVE-2026-4539

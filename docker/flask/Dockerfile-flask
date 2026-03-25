@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    gosu \
     libgomp1 \
     default-mysql-client \
     # Playwright dependencies
@@ -80,7 +81,5 @@ ENV FLASK_APP=main
 RUN chown -R flaskuser:flaskuser /app && \
     chown -R flaskuser:flaskuser /app/models && \
     chown -R flaskuser:flaskuser /app/storage
-
-USER flaskuser
 
 CMD ["/usr/local/bin/start_flask.sh"]

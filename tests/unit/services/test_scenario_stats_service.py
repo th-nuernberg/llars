@@ -1207,3 +1207,97 @@ class TestConfigJsonStringParsing:
         _add_scenario_user(db, scenario.id, user.id, 'Assessor')
         result = _sss().get_progress_stats(scenario.id, skip_provenance=True)
         assert 'rater_stats' in result
+
+
+class TestRankingAgreementRegression:
+    def test_STATS_106_ranking_progress_stats_handles_feature_primary_key_names(
+        self, app, db, app_context
+    ):
+        """[STATS-106] Ranking stats use Feature.feature_id/item_id and do not crash."""
+        service = _sss()
+
+        with patch.object(service, 'serialize_user_brief') as mock_brief, patch.object(service, 'resolve_model_registry') as mock_reg:
+            mock_brief.side_effect = lambda u: {"username": u.username, "avatar_seed": None, "avatar_url": None}
+            mock_reg.return_value = {}
+
+            fft = _create_function_type(db, 'ranking')
+            scenario = _create_scenario(db, 'Ranking Alpha Regression', fft.function_type_id, config_json={
+                "distribution_mode": "all",
+                "buckets": [
+                    {"id": "gut", "name": {"de": "Gut", "en": "Good"}},
+                    {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}},
+                ],
+            })
+
+            u1 = _create_user(db, 'alpha_u1')
+            u2 = _create_user(db, 'alpha_u2')
+            _add_scenario_user(db, scenario.id, u1.id, 'Assessor')
+            _add_scenario_user(db, scenario.id, u2.id, 'Assessor')
+
+            item1 = _create_item(db, fft.function_type_id, chat_id=500, institut_id=500)
+            item2 = _create_item(db, fft.function_type_id, chat_id=501, institut_id=501)
+            _add_scenario_item(db, scenario.id, item1.item_id)
+            _add_scenario_item(db, scenario.id, item2.item_id)
+
+            feature1 = _create_feature(db, item1.item_id, content='alpha_f1')
+            feature2 = _create_feature(db, item2.item_id, content='alpha_f2')
+
+            for user in (u1, u2):
+                _create_ranking(db, user.id, feature1.feature_id, bucket='gut')
+                _create_ranking(db, user.id, feature2.feature_id, bucket='mittel')
+
+            result = service.get_progress_stats(scenario.id, skip_provenance=True)
+
+        assert len(result['rater_stats']) == 2
+        assert result['krippendorff_alpha'] == 1.0
+        assert all(entry['done_threads'] == 2 for entry in result['rater_stats'])
+
+    def test_STATS_107_ranking_alpha_uses_feature_level_ordinal_data(
+        self, app, db, app_context
+    ):
+        """[STATS-107] Ranking alpha is computed per feature, not overwritten per thread."""
+        service = _sss()
+
+        with patch.object(service, 'serialize_user_brief') as mock_brief, patch.object(service, 'resolve_model_registry') as mock_reg:
+            mock_brief.side_effect = lambda u: {"username": u.username, "avatar_seed": None, "avatar_url": None}
+            mock_reg.return_value = {}
+
+            fft = _create_function_type(db, 'ranking')
+            scenario = _create_scenario(db, 'Ranking Feature-Level Alpha', fft.function_type_id, config_json={
+                "distribution_mode": "all",
+                "buckets": [
+                    {"id": "gut", "name": {"de": "Gut", "en": "Good"}},
+                    {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}},
+                ],
+            })
+
+            u1 = _create_user(db, 'feature_alpha_u1')
+            u2 = _create_user(db, 'feature_alpha_u2')
+            _add_scenario_user(db, scenario.id, u1.id, 'Assessor')
+            _add_scenario_user(db, scenario.id, u2.id, 'Assessor')
+
+            item1 = _create_item(db, fft.function_type_id, chat_id=700, institut_id=700)
+            item2 = _create_item(db, fft.function_type_id, chat_id=701, institut_id=701)
+            _add_scenario_item(db, scenario.id, item1.item_id)
+            _add_scenario_item(db, scenario.id, item2.item_id)
+
+            f1 = _create_feature(db, item1.item_id, content='feature_item1_disagree')
+            f2 = _create_feature(db, item1.item_id, content='feature_item1_agree')
+            f3 = _create_feature(db, item2.item_id, content='feature_item2_disagree')
+            f4 = _create_feature(db, item2.item_id, content='feature_item2_agree')
+
+            # If alpha were incorrectly collapsed to the thread level, the last
+            # feature per item would make this look like perfect agreement.
+            _create_ranking(db, u1.id, f1.feature_id, bucket='gut')
+            _create_ranking(db, u2.id, f1.feature_id, bucket='mittel')
+            _create_ranking(db, u1.id, f2.feature_id, bucket='gut')
+            _create_ranking(db, u2.id, f2.feature_id, bucket='gut')
+
+            _create_ranking(db, u1.id, f3.feature_id, bucket='mittel')
+            _create_ranking(db, u2.id, f3.feature_id, bucket='gut')
+            _create_ranking(db, u1.id, f4.feature_id, bucket='mittel')
+            _create_ranking(db, u2.id, f4.feature_id, bucket='mittel')
+
+            result = service.get_progress_stats(scenario.id, skip_provenance=True)
+
+        assert result['krippendorff_alpha'] == 0.125

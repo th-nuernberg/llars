@@ -148,6 +148,19 @@ else
   done
 fi
 
+AUTH_READY_SCRIPT="$SCRIPT_DIR/wait_for_auth_login.sh"
+if [ ! -f "$AUTH_READY_SCRIPT" ]; then
+  AUTH_READY_SCRIPT="$DEPLOY_PATH/scripts/ci/wait_for_auth_login.sh"
+fi
+
+AUTH_READY_PASSWORD="${LLARS_ADMIN_PASSWORD:-admin123}"
+echo "Waiting for staging login readiness..."
+if [ -f "$AUTH_READY_SCRIPT" ]; then
+  bash "$AUTH_READY_SCRIPT" "http://localhost:55080" "admin" "$AUTH_READY_PASSWORD" 180 15
+else
+  echo "WARNING: Auth readiness script missing, skipping login probe."
+fi
+
 echo ""
 echo "=== Staging deployment complete ==="
 echo "Staging URL: http://localhost:55080"

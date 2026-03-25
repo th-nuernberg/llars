@@ -132,6 +132,48 @@ wait_for_http_health() {
   return 1
 }
 
+get_admin_password() {
+  if [ -n "${LLARS_ADMIN_PASSWORD:-}" ]; then
+    echo "$LLARS_ADMIN_PASSWORD"
+    return 0
+  fi
+
+  if [ -f "$DEPLOY_PATH/.env" ]; then
+    grep '^LLARS_ADMIN_PASSWORD=' "$DEPLOY_PATH/.env" | cut -d= -f2- || true
+  fi
+}
+
+verify_flask_storage() {
+  local container="$1"
+
+  echo "Verifying writable storage in $container..."
+  if docker exec "$container" sh -lc '
+    set -eu
+    mkdir -p \
+      /app/storage \
+      /app/storage/rag_images \
+      /app/storage/screenshots \
+      /app/storage/models \
+      /app/storage/vectorstore
+    test -w /app/storage
+    test -w /app/storage/rag_images
+    test -w /app/storage/models
+  ' >/dev/null 2>&1; then
+    echo "Writable storage verified for $container"
+    return 0
+  fi
+
+  echo "ERROR: Writable storage verification failed for $container"
+  docker exec "$container" sh -lc '
+    id || true
+    echo "--- /proc/mounts (/app*) ---"
+    grep /app /proc/mounts || true
+    echo "--- storage permissions ---"
+    ls -ld /app /app/storage /app/storage/rag_images /app/storage/models 2>&1 || true
+  ' || true
+  return 1
+}
+
 update_upstream_conf() {
   local color="$1"
   local conf_file="$DEPLOY_PATH/docker/nginx/active_upstream.conf"
@@ -444,6 +486,7 @@ cmd_deploy() {
   echo "[5/6] Waiting for $deploy_color to be healthy..."
 
   wait_for_http_health "llars_flask_${deploy_color}" "http://localhost:8081/auth/health_check" 420 5
+  verify_flask_storage "llars_flask_${deploy_color}"
   wait_for_container_health "llars_frontend_${deploy_color}" 180 5
 
   # Also verify via HTTP through the Docker network
@@ -500,6 +543,16 @@ CONF
     else
       echo "WARNING: Staging health check on :55080 failed"
     fi
+  fi
+
+  local auth_ready_script="$DEPLOY_PATH/scripts/ci/wait_for_auth_login.sh"
+  local auth_ready_password
+  auth_ready_password="$(get_admin_password)"
+  if [ -n "$auth_ready_password" ] && [ -f "$auth_ready_script" ]; then
+    echo "Waiting for staging login readiness..."
+    bash "$auth_ready_script" "http://localhost:55080" "admin" "$auth_ready_password" 180 15
+  else
+    echo "WARNING: Skipping staging login readiness probe (missing password or helper script)."
   fi
 
   # Save rollback metadata
@@ -573,9 +626,7 @@ cmd_switch() {
   local active_commit
   active_commit=$(cat "$ACTIVE_COMMIT_FILE" 2>/dev/null || echo "")
   if [ -n "$active_commit" ] && [ "$active_commit" = "$candidate_commit" ]; then
-    echo "Candidate commit is already active ($candidate_commit). Skipping switch."
-    rm -f "$PENDING_SWITCH_FILE"
-    exit 0
+    echo "Candidate commit is already active ($candidate_commit); switching anyway to refresh production on $deploy_color."
   fi
 
   echo "Switching production: ${active:-none} → $deploy_color ($candidate_commit)"

@@ -401,162 +401,127 @@ def _calculate_ranking_agreement(
     function_type_name: str,
 ) -> Optional[float]:
     """
-    Calculate Krippendorff's Alpha for ranking/rating scenarios.
+    Calculate ranking Krippendorff's Alpha on the feature level.
 
-    For ranking: compares bucket assignments across evaluators
-    For rating: compares rating values across evaluators
+    Ranking assigns each feature to exactly one ordinal bucket. The feature is
+    therefore the unit of analysis, not the parent thread/item.
     """
-    from db.models import UserFeatureRanking, UserFeatureRating, UserMailHistoryRating
-    from db.models import LLMTaskResult, Feature
+    from db.models import UserFeatureRanking, LLMTaskResult, Feature
+    from services.evaluation.agreement_metrics_service import AgreementMetricsService
+
+    if function_type_name != "ranking":
+        return None
 
     # Get evaluators who have completed at least one thread
     active_evaluators = [e for e in evaluator_stats if e.get("done_threads", 0) > 0]
     if len(active_evaluators) < 2:
         return None
 
-    # Get all thread IDs from the scenario
+    # Get all thread IDs and features from the scenario.
     scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
     thread_ids = [st.thread_id for st in scenario_threads if st.thread_id]
-    if len(thread_ids) < 2:
+    if not thread_ids:
         return None
 
-    # Collect human evaluator user_ids
-    human_user_ids = []
+    features = (
+        Feature.query
+        .filter(Feature.item_id.in_(thread_ids))
+        .with_entities(Feature.feature_id, Feature.item_id)
+        .all()
+    )
+    feature_ids = [feature_id for feature_id, _ in features]
+    if len(feature_ids) < 2:
+        return None
+
+    # Build bucket ordinal map from scenario config for consistent numeric mapping.
+    scenario = RatingScenarios.query.get(scenario_id)
+    bucket_config = _extract_ranking_bucket_config(
+        scenario.config_json if scenario else {}
+    )
+    bucket_ordinal = {bucket["id"]: idx for idx, bucket in enumerate(bucket_config)}
+    resolve_bucket = _build_bucket_id_resolver(bucket_config)
+
+    # Collect active human evaluator user_ids and active LLM evaluator model_ids.
+    human_user_ids: List[int] = []
+    llm_model_ids: List[str] = []
+    raters: List[str] = []
     for e in active_evaluators:
         if e.get("is_llm"):
+            model_id = e.get("model_id")
+            if model_id and model_id not in llm_model_ids:
+                llm_model_ids.append(model_id)
+                raters.append(f"llm:{model_id}")
             continue
+
         user = User.query.filter_by(username=e.get("username")).first()
-        if user:
+        if user and user.id not in human_user_ids:
             human_user_ids.append(user.id)
+            raters.append(f"human:{user.id}")
 
-    # Collect LLM evaluator model_ids for ranking scenarios
-    llm_model_ids = []
-    if function_type_name == "ranking":
-        for e in active_evaluators:
-            if e.get("is_llm") and e.get("model_id"):
-                llm_model_ids.append(e["model_id"])
-
-    total_evaluators = len(human_user_ids) + len(llm_model_ids)
-    if total_evaluators < 2:
+    if len(raters) < 2:
         return None
 
-    ratings_matrix = np.full((total_evaluators, len(thread_ids)), np.nan)
+    data: Dict[int, Dict[str, float]] = {feature_id: {} for feature_id in feature_ids}
 
-    if function_type_name == "ranking":
-        # Build bucket ordinal map from scenario config for consistent numeric mapping.
-        # _extract_ranking_bucket_config returns [{id, label_de, ...}, ...] ordered by rank.
-        scenario = RatingScenarios.query.get(scenario_id)
-        bucket_config = _extract_ranking_bucket_config(
-            scenario.config_json if scenario else {}
+    # Human rankings from UserFeatureRanking: feature_id -> ordinal bucket value
+    human_rankings = (
+        UserFeatureRanking.query
+        .filter(
+            UserFeatureRanking.user_id.in_(human_user_ids),
+            UserFeatureRanking.feature_id.in_(feature_ids),
+            UserFeatureRanking.bucket.isnot(None),
         )
-        # Ordinal map: bucket_id → numeric value (0, 1, 2, ...)
-        bucket_ordinal = {}
-        for idx, b in enumerate(bucket_config):
-            bucket_ordinal[b["id"]] = idx
-        resolve_bucket = _build_bucket_id_resolver(bucket_config)
+        .all()
+    )
+    for ranking in human_rankings:
+        resolved = resolve_bucket(ranking.bucket)
+        if resolved and resolved in bucket_ordinal:
+            data[ranking.feature_id][f"human:{ranking.user_id}"] = bucket_ordinal[resolved]
 
-        # Human rankings from UserFeatureRanking
-        # Build feature_id → thread_id map for all features in this scenario
-        feature_thread_map = {}
-        features = (
-            Feature.query
-            .filter(Feature.thread_id.in_(thread_ids))
-            .with_entities(Feature.id, Feature.thread_id)
-            .all()
-        )
-        for f_id, t_id in features:
-            feature_thread_map[f_id] = t_id
-
-        thread_id_to_idx = {tid: j for j, tid in enumerate(thread_ids)}
-
-        for i, user_id in enumerate(human_user_ids):
-            rankings = (
-                UserFeatureRanking.query
-                .filter(
-                    UserFeatureRanking.user_id == user_id,
-                    UserFeatureRanking.feature_id.in_(list(feature_thread_map.keys())),
-                    UserFeatureRanking.bucket.isnot(None),
-                )
-                .all()
-            )
-            for ranking in rankings:
-                tid = feature_thread_map.get(ranking.feature_id)
-                if tid is None:
+    # LLM rankings from LLMTaskResult: payload_json = {bucket: [feature_ids]}
+    llm_results = (
+        LLMTaskResult.query
+        .filter_by(scenario_id=scenario_id, task_type="ranking")
+        .filter(LLMTaskResult.model_id.in_(llm_model_ids))
+        .filter(LLMTaskResult.error.is_(None))
+        .all()
+    )
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        if not isinstance(payload, dict):
+            continue
+        for bucket_name, ranked_feature_ids in payload.items():
+            resolved = resolve_bucket(bucket_name)
+            if not resolved or resolved not in bucket_ordinal or not isinstance(ranked_feature_ids, list):
+                continue
+            for feature_id in ranked_feature_ids:
+                try:
+                    feature_id = int(feature_id)
+                except (TypeError, ValueError):
                     continue
-                j = thread_id_to_idx.get(tid)
-                if j is None:
-                    continue
-                resolved = resolve_bucket(ranking.bucket)
-                if resolved and resolved in bucket_ordinal:
-                    ratings_matrix[i, j] = bucket_ordinal[resolved]
+                if feature_id in data:
+                    data[feature_id][f"llm:{result.model_id}"] = bucket_ordinal[resolved]
 
-        # LLM rankings from LLMTaskResult (payload_json = {bucket: [feature_ids]})
-        for li, model_id in enumerate(llm_model_ids):
-            row_idx = len(human_user_ids) + li
-            results = (
-                LLMTaskResult.query
-                .filter_by(scenario_id=scenario_id, model_id=model_id, task_type="ranking")
-                .filter(LLMTaskResult.error.is_(None))
-                .all()
-            )
-            for result in results:
-                payload = result.payload_json
-                if not payload:
-                    continue
-                if isinstance(payload, str):
-                    try:
-                        payload = json.loads(payload)
-                    except (json.JSONDecodeError, TypeError):
-                        continue
-                if not isinstance(payload, dict):
-                    continue
-                for bucket_name, feature_ids in payload.items():
-                    resolved = resolve_bucket(bucket_name)
-                    if not resolved or resolved not in bucket_ordinal or not isinstance(feature_ids, list):
-                        continue
-                    for fid in feature_ids:
-                        try:
-                            fid_int = int(fid)
-                        except (TypeError, ValueError):
-                            continue
-                        tid = feature_thread_map.get(fid_int)
-                        if tid is None:
-                            continue
-                        j = thread_id_to_idx.get(tid)
-                        if j is not None:
-                            ratings_matrix[row_idx, j] = bucket_ordinal[resolved]
+    valid_feature_ids = [
+        feature_id for feature_id in feature_ids
+        if sum(1 for rater in raters if data.get(feature_id, {}).get(rater) is not None) >= 2
+    ]
+    if len(valid_feature_ids) < 2:
+        return None
 
-    elif function_type_name == "rating":
-        # Get rating values
-        for i, user_id in enumerate(user_ids):
-            ratings = UserFeatureRating.query.filter_by(user_id=user_id).all()
-            for rating in ratings:
-                if rating.feature and rating.rating_content is not None:
-                    try:
-                        tid = rating.feature.thread_id
-                        if tid in thread_ids:
-                            j = thread_ids.index(tid)
-                            ratings_matrix[i, j] = float(rating.rating_content)
-                    except (ValueError, AttributeError):
-                        continue
-
-    elif function_type_name == "mail_rating":
-        # Get mail ratings (use overall_rating)
-        for i, user_id in enumerate(user_ids):
-            ratings = UserMailHistoryRating.query.filter(
-                UserMailHistoryRating.user_id == user_id,
-                UserMailHistoryRating.thread_id.in_(thread_ids)
-            ).all()
-            for rating in ratings:
-                if rating.overall_rating is not None:
-                    try:
-                        j = thread_ids.index(rating.thread_id)
-                        ratings_matrix[i, j] = float(rating.overall_rating)
-                    except (ValueError, AttributeError):
-                        continue
-
-    # Calculate alpha using ordinal metric for ratings
-    return _calculate_krippendorff_alpha(ratings_matrix)
+    return AgreementMetricsService._krippendorff_alpha(
+        data,
+        raters,
+        valid_feature_ids,
+        "ordinal",
+    )
 
 
 def _batch_get_progression_states(
@@ -990,7 +955,7 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
 
     all_stats = rater_stats + evaluator_stats
     alpha = None
-    if function_type.name in {"ranking", "rating", "mail_rating"} and len(all_stats) >= 2:
+    if function_type.name == "ranking" and len(all_stats) >= 2:
         _t = time.time()
         alpha = _calculate_ranking_agreement(all_stats, scenario_id, function_type.name)
         _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_agreement: %.3fs", scenario_id, time.time() - _t)
@@ -1020,7 +985,7 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
         if function_type.name == "mail_rating":
             if not skip_provenance:
                 conversation_provenance = _calculate_mail_rating_conversation_provenance(scenario_id)
-        if alpha is None and rating_alpha and rating_alpha.get("all") is not None:
+        if rating_alpha and rating_alpha.get("all") is not None:
             alpha = rating_alpha["all"]
     elif function_type.name == "labeling":
         rating_distribution = _calculate_labeling_distribution(scenario_id)

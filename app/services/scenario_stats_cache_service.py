@@ -217,6 +217,15 @@ def trigger_recompute(scenario_id: int) -> None:
                 except Exception:
                     db.session.rollback()
 
+    # Tests use in-memory SQLite and tear the database down at fixture end.
+    # A background recompute can outlive the request and race with `drop_all()`,
+    # which then surfaces as a pool ping failure on `SELECT 1`. Running inline
+    # under Flask's testing mode keeps test behavior deterministic while
+    # production remains asynchronous.
+    if app.testing or app.config.get('TESTING'):
+        _worker()
+        return
+
     thread = threading.Thread(target=_worker, daemon=True, name=f"stats-recompute-{scenario_id}")
     thread.start()
 

@@ -17,6 +17,7 @@ Test IDs: SCEN_DIST_001 - SCEN_DIST_037
 import itertools
 import json
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 
@@ -560,6 +561,37 @@ class TestRoleChangeDistribution:
 
             assert c1 == 6, f"Remaining assessor should have 6 items, got {c1}"
             assert c2 == 0, f"Demoted viewer should have 0 items, got {c2}"
+
+    def test_SCEN_DIST_038_role_change_runs_stats_recompute_inline_in_tests(
+        self, auth_admin, rdb, real_app, seed_function_types, radmin
+    ):
+        """Testing mode must not spawn async stats threads during role changes."""
+        with real_app.app_context():
+            import services.scenario_stats_cache_service as stats_cache
+
+            scenario = _make_scenario(rdb, config_json={'distribution_mode': 'round_robin'},
+                                      created_by='admin')
+            _add_scenario_user(rdb, scenario.id, radmin.id,
+                               access_level='OWNER', is_viewer=True, role_str='OWNER')
+
+            _make_item_and_link(rdb, scenario.id, subject='Inline recompute item')
+            user = _make_user(rdb, 'inline_recompute_user', role_name='evaluator')
+            _add_scenario_user(rdb, scenario.id, user.id, is_viewer=True, role_str='VIEWER')
+
+            with patch.object(stats_cache, '_compute_full_stats', return_value={'ok': True}) as compute_mock, \
+                    patch.object(stats_cache, '_save_to_db') as save_mock, \
+                    patch.object(stats_cache, '_emit_stats_update') as emit_mock, \
+                    patch.object(stats_cache.threading, 'Thread') as thread_mock:
+                response = auth_admin.put(
+                    f'/api/scenarios/{scenario.id}/users/{user.id}/role',
+                    json={'role': 'ASSESSOR'},
+                )
+
+            assert response.status_code == 200
+            compute_mock.assert_called_once_with(scenario.id)
+            save_mock.assert_called_once_with(scenario.id, {'ok': True})
+            emit_mock.assert_called_once_with(scenario.id, {'ok': True})
+            thread_mock.assert_not_called()
 
 
 # =============================================================================

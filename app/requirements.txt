@@ -14,12 +14,12 @@ gevent==24.2.1  # Production async worker (alternative to eventlet)
 gevent-websocket==0.10.1  # WebSocket support for gevent
 gunicorn==22.0.0  # Production WSGI server
 openai==1.75.0
-requests==2.32.4
+requests==2.33.0
 
 # OIDC Integration (legacy Keycloak compatibility)
 python-keycloak==5.0.0
 PyJWT==2.12.0
-cryptography==44.0.1
+cryptography==46.0.6
 
 # Authentik Integration
 psycopg2-binary==2.9.9
@@ -36,7 +36,7 @@ sentence-transformers==3.3.1
 transformers==4.46.3
 torch==2.5.1
 PyPDF2==3.0.1
-pypdf==6.9.1
+pypdf==6.9.2
 langchain-huggingface==0.1.2
 langchain-chroma==0.1.4
 

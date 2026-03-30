@@ -133,6 +133,44 @@ wait_for_http_health() {
   return 1
 }
 
+wait_for_container_running() {
+  local container="$1"
+  local max_wait="${2:-120}"
+  local interval="${3:-5}"
+  local elapsed=0
+
+  echo "Waiting for $container to be running..."
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    local state
+    state=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "not_found")
+
+    if [ "$state" = "running" ]; then
+      echo "$container running after ${elapsed}s"
+      return 0
+    elif [ "$state" = "not_found" ]; then
+      echo "ERROR: Container $container not found"
+      return 1
+    fi
+
+    elapsed=$((elapsed + interval))
+    echo "  Waiting... (${elapsed}/${max_wait}s) status=$state"
+    sleep "$interval"
+  done
+
+  echo "ERROR: $container not running after ${max_wait}s"
+  print_container_diagnostics "$container"
+  return 1
+}
+
+ensure_shared_authentik_services() {
+  echo "Ensuring shared Authentik services are running..."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d authentik-db authentik-redis authentik-server authentik-worker
+  wait_for_container_health "llars_authentik_db" 180 5
+  wait_for_container_health "llars_authentik_redis" 120 5
+  wait_for_container_health "llars_authentik_server" 240 5
+  wait_for_container_running "llars_authentik_worker" 120 5
+}
+
 get_admin_password() {
   if [ -n "${LLARS_ADMIN_PASSWORD:-}" ]; then
     echo "$LLARS_ADMIN_PASSWORD"
@@ -203,6 +241,7 @@ CONF
 reload_nginx() {
   local container="${1:-llars_nginx_service}"
   echo "Reloading nginx in $container..."
+  ensure_shared_authentik_services
   if docker exec "$container" nginx -t 2>&1; then
     docker exec "$container" nginx -s reload
     echo "Nginx reloaded successfully"
@@ -246,6 +285,7 @@ ensure_production_nginx() {
     return 0
   fi
 
+  ensure_shared_authentik_services
   echo "llars_nginx_service is not running (status: $state). Starting production nginx..."
   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps nginx-service
 

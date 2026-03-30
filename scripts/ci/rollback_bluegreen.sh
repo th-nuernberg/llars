@@ -28,6 +28,7 @@ ensure_production_nginx() {
     return 0
   fi
 
+  ensure_shared_authentik_services
   echo "llars_nginx_service is not running (status: $state). Starting production nginx..."
   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps nginx-service
 
@@ -46,6 +47,75 @@ ensure_production_nginx() {
   echo "ERROR: llars_nginx_service did not start."
   docker ps -a --filter "name=llars_nginx_service" --format "table {{.Names}}\t{{.Status}}" || true
   return 1
+}
+
+wait_for_container_health() {
+  local container="$1"
+  local max_wait="${2:-180}"
+  local interval="${3:-5}"
+  local elapsed=0
+
+  echo "Waiting for $container to be healthy..."
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    local health
+    health=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "not_found")
+
+    if [ "$health" = "healthy" ]; then
+      echo "$container healthy after ${elapsed}s"
+      return 0
+    elif [ "$health" = "not_found" ]; then
+      echo "ERROR: Container $container not found"
+      return 1
+    fi
+
+    elapsed=$((elapsed + interval))
+    echo "  Waiting... (${elapsed}/${max_wait}s) status=$health"
+    sleep "$interval"
+  done
+
+  echo "ERROR: $container not healthy after ${max_wait}s"
+  docker ps -a --filter "name=^/${container}$" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" || true
+  docker logs --tail 120 "$container" 2>&1 || true
+  return 1
+}
+
+wait_for_container_running() {
+  local container="$1"
+  local max_wait="${2:-120}"
+  local interval="${3:-5}"
+  local elapsed=0
+
+  echo "Waiting for $container to be running..."
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    local state
+    state=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "not_found")
+
+    if [ "$state" = "running" ]; then
+      echo "$container running after ${elapsed}s"
+      return 0
+    elif [ "$state" = "not_found" ]; then
+      echo "ERROR: Container $container not found"
+      return 1
+    fi
+
+    elapsed=$((elapsed + interval))
+    echo "  Waiting... (${elapsed}/${max_wait}s) status=$state"
+    sleep "$interval"
+  done
+
+  echo "ERROR: $container not running after ${max_wait}s"
+  docker ps -a --filter "name=^/${container}$" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" || true
+  docker logs --tail 120 "$container" 2>&1 || true
+  return 1
+}
+
+ensure_shared_authentik_services() {
+  echo "Ensuring shared Authentik services are running..."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d authentik-db authentik-redis authentik-server authentik-worker
+  wait_for_container_health "llars_authentik_db" 180 5
+  wait_for_container_health "llars_authentik_redis" 120 5
+  wait_for_container_health "llars_authentik_server" 240 5
+  wait_for_container_running "llars_authentik_worker" 120 5
 }
 
 # =============================================================================
@@ -180,6 +250,7 @@ echo ""
 echo "[4/5] Reloading nginx..."
 
 ensure_production_nginx
+ensure_shared_authentik_services
 
 if docker exec llars_nginx_service nginx -t 2>&1; then
   docker exec llars_nginx_service nginx -s reload

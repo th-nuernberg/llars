@@ -31,9 +31,6 @@ CVE-2024-6844
 CVE-2024-6866
 CVE-2024-6839
 #
-# ---- cryptography 44.0.1 (remaining CVE requires 46.x, major version) ----
-CVE-2026-26007
-#
 # ---- langchain-text-splitters (transitive dep, pinned by langchain) ----
 CVE-2025-6985
 #

@@ -748,6 +748,26 @@ class TestRunForScenario:
         assert call_args[0][1] == "ranking"       # function_name from FeatureFunctionType
 
 
+class TestRunForScenarioAsync:
+    """Test async entrypoint behavior after queue-based worker refactor."""
+
+    @patch('services.background_jobs.llm_eval_queue_service.LLMEvalQueueService.enqueue_for_scenario')
+    @patch('services.llm.llm_ai_task_runner.is_worker_runtime', return_value=False)
+    def test_TASK_RUN_ASYNC_001_web_runtime_enqueues(
+        self,
+        mock_is_worker_runtime,
+        mock_enqueue,
+    ):
+        """Web/runtime requests should enqueue durable work instead of spawning local threads."""
+        LLMAITaskRunner.run_for_scenario_async(42, model_ids=["mistral"], thread_ids=[1, 2])
+
+        mock_enqueue.assert_called_once_with(
+            42,
+            model_ids=["mistral"],
+            thread_ids=[1, 2],
+        )
+
+
 # ============================================================
 # TestRequestJson (TASK_REQ_001-003) -- mock LLMExecutionService
 # ============================================================

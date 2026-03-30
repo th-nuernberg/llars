@@ -73,7 +73,7 @@ class SystemSettings(db.Model):
 
     # Batch Generation Settings
     batch_generation_max_parallel: Mapped[int] = mapped_column(
-        db.Integer, default=1, nullable=False,
+        db.Integer, default=4, nullable=False,
         comment="Maximum number of parallel outputs processed in batch generation"
     )
 

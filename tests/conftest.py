@@ -217,10 +217,12 @@ def app():
         from db.models.prompt_template import PromptTemplate  # noqa: F401
         from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget  # noqa: F401
         from db.models.llm_task_result import LLMTaskResult  # noqa: F401
+        from db.models.llm_eval_run import LLMEvalRun  # noqa: F401
         from db.models.conference import Conference, Paper, PaperAuthor  # noqa: F401
         from db.models.referral import (  # noqa: F401
             ReferralCampaign, ReferralLink, ReferralRegistration
         )
+        from db.models.scenario_stats_job import ScenarioStatsJob  # noqa: F401
         from db.models.messaging import (  # noqa: F401
             MessagingConversation, MessagingParticipant, MessagingMessage,
             MessagingAttachment, MessagingReaction, MessagingReadReceipt,

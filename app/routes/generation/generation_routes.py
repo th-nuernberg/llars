@@ -687,7 +687,7 @@ def get_max_parallel():
     Returns:
         200: { max_parallel: N }
     """
-    max_parallel = max(1, min(int(get_batch_generation_max_parallel() or 5), 16))
+    max_parallel = max(1, min(int(get_batch_generation_max_parallel() or 4), 16))
 
     return jsonify({
         'success': True,

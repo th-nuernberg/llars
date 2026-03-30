@@ -30,6 +30,7 @@ prepare_storage 2>/dev/null || true
 
 export PYTHONPATH="/app${PYTHONPATH:+:$PYTHONPATH}"
 export FLASK_APP="main"
+export LLARS_RUNTIME_ROLE="${LLARS_RUNTIME_ROLE:-web}"
 # Add local pip bin to PATH for gunicorn
 export PATH="$PATH:/home/flaskuser/.local/bin"
 

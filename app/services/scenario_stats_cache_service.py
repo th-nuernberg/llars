@@ -1,9 +1,10 @@
 """
 Scenario Stats Cache Service.
 
-DB-backed stats cache with background recomputation.
+DB-backed stats cache with durable background recomputation.
 Stats are always served from cache (DB or in-memory). When stale,
-a background thread recomputes and pushes updates via Socket.IO.
+the web process enqueues a recompute job and dedicated worker processes
+refresh the cache and push updates via Socket.IO.
 
 Tiered refresh intervals based on scenario size:
   - S (<=50 items):  30s
@@ -15,13 +16,13 @@ from __future__ import annotations
 
 import json
 import logging
-import threading
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from db.database import db
 from db.models.scenario_stats_cache import ScenarioStatsCache
+from services.background_jobs import ScenarioStatsJobService
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +30,6 @@ logger = logging.getLogger(__name__)
 # In-memory layer (avoids DB round-trip on hot paths)
 # ---------------------------------------------------------------------------
 _mem_cache: Dict[int, tuple] = {}  # scenario_id -> (timestamp, stats_dict, item_count)
-
-# ---------------------------------------------------------------------------
-# Background recompute tracking
-# ---------------------------------------------------------------------------
-_active_recomputes: set = set()
-_recompute_lock = threading.Lock()
-
 
 # ---------------------------------------------------------------------------
 # Tier logic
@@ -92,33 +86,16 @@ def get_cached_stats(scenario_id: int) -> Dict[str, Any]:
             return stats
 
     # 3. Cold start - compute synchronously but skip expensive provenance
-    # Use recompute lock to prevent duplicate cold starts from concurrent requests
-    with _recompute_lock:
-        if scenario_id in _active_recomputes:
-            # Another thread is already computing - wait briefly and check mem cache
-            pass
-        else:
-            _active_recomputes.add(scenario_id)
-
-    # Re-check mem cache (another thread may have populated it)
-    mem = _mem_cache.get(scenario_id)
-    if mem is not None:
-        _active_recomputes.discard(scenario_id)
-        return mem[1]
-
     logger.info("[StatsCache] Cold start for scenario %s - computing synchronously (no provenance)", scenario_id)
-    try:
-        stats = _compute_quick_stats(scenario_id)
-        if stats is not None:
-            _save_to_db(scenario_id, stats)
-            try:
-                from db.models import ScenarioItems
-                item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
-            except Exception:
-                item_count = 0
-            _mem_cache[scenario_id] = (time.time(), stats, item_count)
-    finally:
-        _active_recomputes.discard(scenario_id)
+    stats = _compute_quick_stats(scenario_id)
+    if stats is not None:
+        _save_to_db(scenario_id, stats)
+        try:
+            from db.models import ScenarioItems
+            item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
+        except Exception:
+            item_count = 0
+        _mem_cache[scenario_id] = (time.time(), stats, item_count)
     # Trigger background recompute for full stats (with provenance)
     trigger_recompute(scenario_id)
     return stats or {}
@@ -155,79 +132,20 @@ def invalidate_and_recompute(scenario_id: int) -> None:
 
 
 def trigger_recompute(scenario_id: int) -> None:
-    """Start a background thread to recompute stats (if not already running)."""
-    # Capture app reference while we still have context
+    """Queue a durable background recompute for full stats."""
     try:
-        from flask import current_app
-        app = current_app._get_current_object()
-    except RuntimeError:
-        try:
-            from main import app
-        except ImportError:
-            logger.error("[StatsCache] Cannot get Flask app for background recompute")
-            return
+        row = ScenarioStatsCache.query.filter_by(scenario_id=scenario_id).first()
+        if row:
+            row.is_computing = True
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
-    with _recompute_lock:
-        if scenario_id in _active_recomputes:
-            return
-        _active_recomputes.add(scenario_id)
-
-    def _worker():
-        with app.app_context():
-            try:
-                # Mark as computing in DB
-                row = ScenarioStatsCache.query.filter_by(scenario_id=scenario_id).first()
-                if row:
-                    row.is_computing = True
-                    db.session.commit()
-
-                # Full computation
-                t0 = time.time()
-                stats = _compute_full_stats(scenario_id)
-                elapsed = time.time() - t0
-                logger.info(
-                    "[StatsCache] Recomputed scenario %s in %.2fs",
-                    scenario_id, elapsed,
-                )
-
-                if stats is not None:
-                    _save_to_db(scenario_id, stats)
-                    # Get item count for tier determination
-                    try:
-                        from db.models import ScenarioItems
-                        item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
-                    except Exception:
-                        item_count = 0
-                    _mem_cache[scenario_id] = (time.time(), stats, item_count)
-
-                    # Push via Socket.IO
-                    _emit_stats_update(scenario_id, stats)
-
-            except Exception as exc:
-                logger.warning("[StatsCache] Recompute failed for scenario %s: %s", scenario_id, exc)
-                db.session.rollback()
-            finally:
-                _active_recomputes.discard(scenario_id)
-                # Clear computing flag
-                try:
-                    row = ScenarioStatsCache.query.filter_by(scenario_id=scenario_id).first()
-                    if row:
-                        row.is_computing = False
-                        db.session.commit()
-                except Exception:
-                    db.session.rollback()
-
-    # Tests use in-memory SQLite and tear the database down at fixture end.
-    # A background recompute can outlive the request and race with `drop_all()`,
-    # which then surfaces as a pool ping failure on `SELECT 1`. Running inline
-    # under Flask's testing mode keeps test behavior deterministic while
-    # production remains asynchronous.
-    if app.testing or app.config.get('TESTING'):
-        _worker()
-        return
-
-    thread = threading.Thread(target=_worker, daemon=True, name=f"stats-recompute-{scenario_id}")
-    thread.start()
+    try:
+        ScenarioStatsJobService.enqueue_recompute(scenario_id)
+    except Exception as exc:
+        db.session.rollback()
+        logger.warning("[StatsCache] Failed to queue recompute for scenario %s: %s", scenario_id, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -313,6 +231,40 @@ def _save_to_db(scenario_id: int, stats: Dict[str, Any]) -> None:
     except Exception as exc:
         db.session.rollback()
         logger.warning("[StatsCache] Failed to save stats to DB for scenario %s: %s", scenario_id, exc)
+
+
+def recompute_stats_for_worker(scenario_id: int) -> Optional[Dict[str, Any]]:
+    """Compute and persist full stats from a dedicated worker process."""
+    t0 = time.time()
+    try:
+        row = ScenarioStatsCache.query.filter_by(scenario_id=scenario_id).first()
+        if row:
+            row.is_computing = True
+            db.session.commit()
+
+        stats = _compute_full_stats(scenario_id)
+        elapsed = time.time() - t0
+        logger.info("[StatsCache] Recomputed scenario %s in %.2fs", scenario_id, elapsed)
+        if stats is None:
+            return None
+
+        _save_to_db(scenario_id, stats)
+        try:
+            from db.models import ScenarioItems
+            item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
+        except Exception:
+            item_count = 0
+        _mem_cache[scenario_id] = (time.time(), stats, item_count)
+        _emit_stats_update(scenario_id, stats)
+        return stats
+    finally:
+        try:
+            row = ScenarioStatsCache.query.filter_by(scenario_id=scenario_id).first()
+            if row:
+                row.is_computing = False
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 
 def _emit_stats_update(scenario_id: int, stats: Dict[str, Any]) -> None:

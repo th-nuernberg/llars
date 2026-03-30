@@ -70,9 +70,11 @@ RUN playwright install chromium && \
 # Layer 4: Anwendungscode (aendert sich haeufig)
 COPY app /app/
 COPY docker/flask/start_flask.sh /usr/local/bin/start_flask.sh
+COPY docker/flask/start_llars_worker.sh /usr/local/bin/start_llars_worker.sh
 COPY docker/flask/healthcheck.sh /usr/local/bin/healthcheck.sh
 COPY docker/flask/gunicorn.conf.py /usr/local/bin/gunicorn.conf.py
 RUN chmod +x /usr/local/bin/start_flask.sh && \
+    chmod +x /usr/local/bin/start_llars_worker.sh && \
     chmod +x /usr/local/bin/healthcheck.sh
 
 ENV FLASK_APP=main

@@ -8,9 +8,9 @@ bind = '0.0.0.0:8081'
 backlog = 2048
 
 # Worker processes
-# For gevent/eventlet, use 1 worker (greenlets handle concurrency)
-# For sync workers, use: (2 * CPU cores) + 1
-workers = 1
+# Multiple gevent workers let LLARS spread request and Socket.IO load across CPU cores.
+# CPU-heavy work is offloaded to dedicated backend workers, so the web tier stays responsive.
+workers = max(1, int(os.environ.get('GUNICORN_WORKERS', '4')))
 
 # Worker class: gevent-websocket for real WebSocket support
 # This provides better Docker DNS compatibility than eventlet

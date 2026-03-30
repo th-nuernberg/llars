@@ -214,7 +214,7 @@ class TestConvenienceFunctions:
 
     def test_SYS_SET_018_get_batch_generation_max_parallel(self, app, db, app_context):
         """[SYS_SET-018] get_batch_generation_max_parallel should return default value."""
-        assert get_batch_generation_max_parallel() == 1  # DB default is 1
+        assert get_batch_generation_max_parallel() == 4
 
     def test_SYS_SET_019_is_communication_enabled(self, app, db, app_context):
         """[SYS_SET-019] is_communication_enabled should return False by default."""

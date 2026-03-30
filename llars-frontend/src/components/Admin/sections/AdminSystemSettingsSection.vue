@@ -632,7 +632,7 @@ const settings = reactive({
   llm_ai_log_response_max: 800,
   llm_ai_log_prompts: false,
   llm_ai_log_prompt_max: 800,
-  batch_generation_max_parallel: 1,
+  batch_generation_max_parallel: 4,
   referral_system_enabled: false,
   self_registration_enabled: false,
   default_referral_role: 'evaluator',

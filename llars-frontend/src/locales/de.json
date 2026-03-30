@@ -6278,7 +6278,7 @@
       "batchGeneration": {
         "title": "Batch-Generierung",
         "maxParallel": "Maximale parallele Outputs",
-        "maxParallelHint": "Globales Limit für gleichzeitig verarbeitete Outputs in der Batch-Generierung (Standard: 1)."
+        "maxParallelHint": "Globales Limit für gleichzeitig verarbeitete Outputs in der Batch-Generierung (Standard: 4, empfohlen zunächst 4-6)."
       },
       "referral": {
         "title": "Referral-System",

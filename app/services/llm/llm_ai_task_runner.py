@@ -11,7 +11,7 @@ Key responsibilities:
 - Prevent self-DDoS through 6 layers of protection (see LLMAITaskRunner docstring)
 
 Trigger points (see CLAUDE.md "LLM Evaluator Auto-Start"):
-- Server startup (main.py) - daemon thread for pending evaluations
+- Worker startup (worker_main.py) - durable queue resume for pending evaluations
 - Scenario GET (scenario_manager_api.py) - 5min cooldown per scenario
 - Scenario creation / thread addition - immediate, one-shot
 - Manual Start/Retry button (llm_evaluation_routes.py) - clears errors first
@@ -44,6 +44,7 @@ from llm.openai_utils import extract_message_text
 from services.evaluation.dimensional_rating_service import DimensionalRatingService
 from services.llm.llm_client_factory import LLMClientFactory
 from services.llm.llm_execution_service import LLMExecutionService
+from services.runtime_config import is_worker_runtime
 from services.system_settings_service import get_setting
 
 logger = logging.getLogger(__name__)
@@ -260,9 +261,9 @@ class LLMAITaskRunner:
        tab can retry, and it clears old error records first (see llm_evaluation_routes.py).
 
     3. **Cooldown per scenario** (5 min) - scenario_manager_api.py limits auto-start on
-       GET /scenarios/<id> to once per 5 minutes (in-memory dict, per worker process).
+       GET /scenarios/<id> to once per 5 minutes via Redis TTL shared across workers.
 
-    4. **Error cooldown** (30 min) - Startup skips models with 3+ errors in the last
+    4. **Error cooldown** (30 min) - Queue resume skips models with 3+ errors in the last
        30 minutes, preventing restart loops for transient failures.
 
     5. **Circuit breaker** - MAX_CONSECUTIVE_FAILURES (3) consecutive errors for the same
@@ -273,7 +274,7 @@ class LLMAITaskRunner:
 
     Auto-Start Trigger Points:
     ~~~~~~~~~~~~~~~~~~~~~~~~~~
-    - Server startup (main.py) → daemon thread, skips permanent failures + errored items
+    - Worker startup (worker_main.py) → queues pending work, skips permanent failures + errored items
     - Scenario GET (scenario_manager_api.py) → 5min cooldown, skips running models
     - Scenario creation (POST) → fires once, no cooldown needed
     - Threads added to scenario (POST) → only for newly added thread_ids
@@ -325,6 +326,12 @@ class LLMAITaskRunner:
     @classmethod
     def is_running(cls, scenario_id: int, model_id: str) -> bool:
         """Check if a runner is active for this (scenario, model). Used by status endpoint."""
+        try:
+            from services.background_jobs import LLMEvalQueueService
+            if LLMEvalQueueService.is_active(scenario_id, model_id):
+                return True
+        except Exception:
+            pass
         key = (scenario_id, model_id)
         with cls._active_locks_guard:
             return key in cls._active_locks
@@ -385,10 +392,21 @@ class LLMAITaskRunner:
         thread_ids: Optional[List[int]] = None,
     ) -> None:
         """
-        Spawn a daemon thread to run LLM evaluations for a scenario.
-        The actual lock acquisition happens inside run_for_scenario(),
-        so callers don't need to worry about deduplication.
+        Queue a durable LLM evaluation run from web processes or execute it directly
+        when already inside the dedicated worker runtime.
         """
+        if not is_worker_runtime():
+            try:
+                from services.background_jobs import LLMEvalQueueService
+                LLMEvalQueueService.enqueue_for_scenario(
+                    scenario_id,
+                    model_ids=model_ids,
+                    thread_ids=thread_ids,
+                )
+            except Exception as exc:
+                logger.warning("[LLM AI Runner] Queue enqueue failed: %s", exc)
+            return
+
         def _runner():
             try:
                 from main import app
@@ -411,6 +429,7 @@ class LLMAITaskRunner:
         *,
         model_ids: Optional[List[str]] = None,
         thread_ids: Optional[List[int]] = None,
+        use_process_lock: bool = True,
     ) -> None:
         """
         Main entry point: run LLM evaluations for a scenario.
@@ -439,13 +458,14 @@ class LLMAITaskRunner:
             session_ids = LLMAITaskRunner._resolve_comparison_session_ids(scenario, thread_ids)
             if session_ids:
                 for model_id in resolved_models:
-                    if not LLMAITaskRunner._try_acquire(scenario_id, model_id):
+                    if use_process_lock and not LLMAITaskRunner._try_acquire(scenario_id, model_id):
                         logger.info("[LLM AI Runner] Already running: scenario=%s model=%s", scenario_id, model_id)
                         continue
                     try:
                         LLMAITaskRunner._run_comparison_sessions(model_id, session_ids, scenario.id)
                     finally:
-                        LLMAITaskRunner._release(scenario_id, model_id)
+                        if use_process_lock:
+                            LLMAITaskRunner._release(scenario_id, model_id)
                 return
             # No ComparisonSessions → pairwise comparison, fall through to item-based flow
 
@@ -454,7 +474,7 @@ class LLMAITaskRunner:
             return
 
         for model_id in resolved_models:
-            if not LLMAITaskRunner._try_acquire(scenario_id, model_id):
+            if use_process_lock and not LLMAITaskRunner._try_acquire(scenario_id, model_id):
                 logger.info("[LLM AI Runner] Already running: scenario=%s model=%s", scenario_id, model_id)
                 continue
             try:
@@ -462,7 +482,8 @@ class LLMAITaskRunner:
                     model_id, function_name, scenario_thread_ids, scenario,
                 )
             finally:
-                LLMAITaskRunner._release(scenario_id, model_id)
+                if use_process_lock:
+                    LLMAITaskRunner._release(scenario_id, model_id)
 
     @staticmethod
     def _run_model_for_scenario(

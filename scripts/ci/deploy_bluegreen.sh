@@ -36,6 +36,7 @@ ACTIVE_COMMIT_FILE="$STATE_DIR/active_commit"
 PREVIOUS_COMMIT_FILE="$STATE_DIR/previous_commit"
 
 COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-bluegreen.yml"
+BG_BUILD_SERVICES="backend-flask-service backend-worker-service frontend-vue-service yjs-service backend-supervisor-service"
 BG_SERVICES="backend-flask-service frontend-vue-service yjs-service backend-supervisor-service"
 
 # Mark deploy directory as safe for git
@@ -298,7 +299,7 @@ cmd_status() {
 
     echo ""
     echo "--- Blue containers ---"
-    for svc in flask frontend yjs supervisor; do
+    for svc in flask worker frontend yjs supervisor; do
       local status
       status=$(docker inspect --format='{{.State.Status}} (health: {{.State.Health.Status}})' "llars_${svc}_blue" 2>/dev/null || echo "not running")
       echo "  llars_${svc}_blue: $status"
@@ -306,7 +307,7 @@ cmd_status() {
 
     echo ""
     echo "--- Green containers ---"
-    for svc in flask frontend yjs supervisor; do
+    for svc in flask worker frontend yjs supervisor; do
       local status
       status=$(docker inspect --format='{{.State.Status}} (health: {{.State.Health.Status}})' "llars_${svc}_green" 2>/dev/null || echo "not running")
       echo "  llars_${svc}_green: $status"
@@ -462,7 +463,7 @@ cmd_deploy() {
   # source code changes are always picked up without rebuilding everything.
   DEPLOY_COLOR="$deploy_color" docker compose --project-name "llars-${deploy_color}" \
     $COMPOSE_FILES \
-    build --parallel $BG_SERVICES
+    build --parallel $BG_BUILD_SERVICES
 
   # -----------------------------------------------------------------------
   # [4/6] Start inactive color containers
@@ -478,6 +479,11 @@ cmd_deploy() {
   DEPLOY_COLOR="$deploy_color" docker compose --project-name "llars-${deploy_color}" \
     $COMPOSE_FILES \
     up -d --no-deps $BG_SERVICES
+
+  # Prepare the worker container for this color without starting it.
+  DEPLOY_COLOR="$deploy_color" docker compose --project-name "llars-${deploy_color}" \
+    $COMPOSE_FILES \
+    up --no-start --no-deps backend-worker-service
 
   # -----------------------------------------------------------------------
   # [5/6] Wait for health
@@ -579,7 +585,7 @@ EOF
   echo "Color: $deploy_color"
   echo "Commit: $deployed_commit"
   echo "Containers:"
-  for svc in flask frontend yjs supervisor; do
+  for svc in flask worker frontend yjs supervisor; do
     local status
     status=$(docker inspect --format='{{.State.Status}}' "llars_${svc}_${deploy_color}" 2>/dev/null || echo "not found")
     echo "  llars_${svc}_${deploy_color}: $status"
@@ -631,7 +637,7 @@ cmd_switch() {
 
   echo "Switching production: ${active:-none} → $deploy_color ($candidate_commit)"
 
-  # Verify inactive color containers are running and healthy
+  # Verify inactive color web containers are running and healthy
   for svc in flask frontend yjs supervisor; do
     local container="llars_${svc}_${deploy_color}"
     local status
@@ -651,22 +657,30 @@ cmd_switch() {
     exit 1
   fi
 
+  echo ""
+  echo "[1/6] Handing over worker ownership..."
+  if [ -n "$active" ]; then
+    docker stop "llars_worker_${active}" 2>/dev/null || true
+  fi
+  docker start "llars_worker_${deploy_color}" 2>/dev/null || true
+  wait_for_container_health "llars_worker_${deploy_color}" 180 5
+
   # Switch upstream
   echo ""
-  echo "[1/5] Updating upstream → $deploy_color"
+  echo "[2/6] Updating upstream → $deploy_color"
   update_upstream_conf "$deploy_color"
 
   echo ""
-  echo "[2/5] Ensuring production nginx is running..."
+  echo "[3/6] Ensuring production nginx is running..."
   ensure_production_nginx
   ensure_nginx_upstream_mount_synced
 
   echo ""
-  echo "[3/5] Reloading nginx..."
+  echo "[4/6] Reloading nginx..."
   reload_nginx llars_nginx_service
 
   echo ""
-  echo "[4/5] Saving state..."
+  echo "[5/6] Saving state..."
   save_state "$deploy_color" "$active"
   if [ -n "$active_commit" ]; then
     echo "$active_commit" > "$PREVIOUS_COMMIT_FILE"
@@ -674,7 +688,7 @@ cmd_switch() {
   echo "$candidate_commit" > "$ACTIVE_COMMIT_FILE"
 
   echo ""
-  echo "[5/5] Clearing pending switch state..."
+  echo "[6/6] Clearing pending switch state..."
   rm -f "$PENDING_SWITCH_FILE"
 
   echo ""

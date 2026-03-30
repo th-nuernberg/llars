@@ -67,6 +67,33 @@ services:
       timeout: 10s
       retries: 3
 
+  backend-worker-service:
+    environment:
+      - TZ=Europe/Berlin
+      - PROJECT_STATE=production
+      - FLASK_ENV=production
+      - FLASK_DEBUG=False
+      - ANONYMIZED_TELEMETRY=False
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-${PROJECT_URL:-https://${PROJECT_HOST}}}
+      - APP_VERSION=${APP_VERSION:-0.0.0}
+      - APP_COMMIT_HASH=${APP_COMMIT_HASH:-unknown}
+      - APP_BRANCH=${APP_BRANCH:-unknown}
+    volumes:
+      - rag_storage:/app/storage
+      - rag_docs:/app/rag_docs
+      - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
+      - ./docs/docs/projekte/anonymize/models/recommender_system:/app/models/anonymize/recommender_system:ro
+      - ./docs/docs/projekte/anonymize/database:/app/data/anonymize:ro
+      - ./app/models/oncoco:/app/models/oncoco:ro
+    ports: []
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import pathlib,sys; found=False\nfor p in pathlib.Path('/proc').iterdir():\n    if not p.name.isdigit():\n        continue\n    try:\n        if b'worker_main.py' in (p/'cmdline').read_bytes():\n            found=True\n            break\n    except Exception:\n        pass\nsys.exit(0 if found else 1)\""]
+      start_period: 30s
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
   # ============================================
   # Frontend - Production Build (nginx serves static files)
   # ============================================

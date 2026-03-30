@@ -39,6 +39,7 @@ from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
 from schemas.evaluation_data_schemas import EvaluationType
 from services.scenario_stats_service import get_authenticity_stats, get_scenario_stats_payload
+from services.runtime_config import get_redis_client
 from services.user_profile_service import serialize_user_brief
 from .. import data_blueprint
 from auth.access_control import require_scenario_membership
@@ -49,12 +50,18 @@ from .scenario_utils import (
 
 logger = logging.getLogger(__name__)
 
-# LLM auto-start cooldown: prevents re-triggering on every page load.
-# In-memory dict {scenario_id: last_trigger_timestamp}, per worker process.
-# Combined with the per-(scenario, model) lock in LLMAITaskRunner to prevent
-# duplicate runners. See LLMAITaskRunner docstring for full anti-DDoS strategy.
-_llm_auto_start_cooldowns: dict[int, float] = {}
 _LLM_AUTO_START_COOLDOWN_SECONDS = 300  # 5 minutes
+
+
+def _claim_llm_auto_start_cooldown(scenario_id: int) -> bool:
+    """Acquire a cross-worker cooldown token for auto-starting evaluators."""
+    key = f"llm:auto_start:scenario:{scenario_id}"
+    try:
+        redis_client = get_redis_client()
+        return bool(redis_client.set(key, str(int(time.time())), ex=_LLM_AUTO_START_COOLDOWN_SECONDS, nx=True))
+    except Exception as exc:
+        logger.warning("[LLM auto-start] Redis cooldown fallback for scenario %d: %s", scenario_id, exc)
+        return True
 
 
 def _normalize_role_value(role) -> str:
@@ -696,10 +703,7 @@ def get_scenario_detail(scenario_id):
     # Auto-start LLM evaluations with cooldown to prevent self-DDoS.
     # Guards: 5min cooldown per scenario + lock per (scenario, model) in runner.
     if llm_evaluators:
-        now = time.time()
-        last_trigger = _llm_auto_start_cooldowns.get(scenario_id, 0)
-        if now - last_trigger > _LLM_AUTO_START_COOLDOWN_SECONDS:
-            _llm_auto_start_cooldowns[scenario_id] = now
+        if _claim_llm_auto_start_cooldown(scenario_id):
             try:
                 from services.llm.llm_ai_task_runner import LLMAITaskRunner
                 # Filter out models that are already running (lock held)

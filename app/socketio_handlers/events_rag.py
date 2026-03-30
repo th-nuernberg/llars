@@ -27,12 +27,17 @@ from sqlalchemy import desc, select
 from auth.oidc_validator import validate_token, get_username
 from services.permission_service import PermissionService
 from services.rag.access_service import RAGAccessService
+from services.runtime_config import get_redis_client
 
 logger = logging.getLogger(__name__)
 
 # Room prefix for RAG queue subscriptions (per user)
 RAG_QUEUE_ROOM_PREFIX = "rag_queue_user_"
 RAG_QUEUE_SUBSCRIBERS = {}
+_REDIS_USERS_KEY = "rag_queue:usernames"
+_REDIS_SID_KEY_PREFIX = "rag_queue:sid:"
+_REDIS_USER_SIDS_PREFIX = "rag_queue:user_sids:"
+_REDIS_TTL_SECONDS = 86400
 
 
 def _queue_room(username: str) -> str:
@@ -41,14 +46,44 @@ def _queue_room(username: str) -> str:
 
 def _register_queue_subscriber(sid: str, username: str) -> None:
     RAG_QUEUE_SUBSCRIBERS[sid] = username
+    try:
+        redis_client = get_redis_client()
+        redis_client.setex(f"{_REDIS_SID_KEY_PREFIX}{sid}", _REDIS_TTL_SECONDS, username)
+        user_sids_key = f"{_REDIS_USER_SIDS_PREFIX}{username}"
+        redis_client.sadd(user_sids_key, sid)
+        redis_client.expire(user_sids_key, _REDIS_TTL_SECONDS)
+        redis_client.sadd(_REDIS_USERS_KEY, username)
+    except Exception as exc:
+        logger.debug("[RAG Socket] Redis subscriber register failed: %s", exc)
 
 
 def unregister_queue_subscriber(sid: str) -> None:
-    RAG_QUEUE_SUBSCRIBERS.pop(sid, None)
+    username = RAG_QUEUE_SUBSCRIBERS.pop(sid, None)
+    try:
+        redis_client = get_redis_client()
+        if username is None:
+            username = redis_client.get(f"{_REDIS_SID_KEY_PREFIX}{sid}")
+        redis_client.delete(f"{_REDIS_SID_KEY_PREFIX}{sid}")
+        if username:
+            user_sids_key = f"{_REDIS_USER_SIDS_PREFIX}{username}"
+            redis_client.srem(user_sids_key, sid)
+            if redis_client.scard(user_sids_key) <= 0:
+                redis_client.delete(user_sids_key)
+                redis_client.srem(_REDIS_USERS_KEY, username)
+    except Exception as exc:
+        logger.debug("[RAG Socket] Redis subscriber unregister failed: %s", exc)
 
 
 def _get_queue_subscriber_usernames() -> list:
-    return sorted(set(RAG_QUEUE_SUBSCRIBERS.values()))
+    local_usernames = sorted(set(RAG_QUEUE_SUBSCRIBERS.values()))
+    try:
+        redis_client = get_redis_client()
+        remote_usernames = sorted(set(redis_client.smembers(_REDIS_USERS_KEY) or []))
+        if remote_usernames:
+            return remote_usernames
+    except Exception as exc:
+        logger.debug("[RAG Socket] Redis subscriber lookup failed: %s", exc)
+    return local_usernames
 
 
 def _require_user(permission_key: str = None):

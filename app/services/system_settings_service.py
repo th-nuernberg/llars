@@ -138,8 +138,8 @@ def get_default_chunk_overlap() -> int:
 
 
 def get_batch_generation_max_parallel() -> int:
-    """Get max parallel outputs for batch generation (default: 5)."""
-    return get_setting('batch_generation_max_parallel', 5)
+    """Get max parallel outputs for batch generation (default: 4)."""
+    return get_setting('batch_generation_max_parallel', 4)
 
 
 def is_communication_enabled() -> bool:

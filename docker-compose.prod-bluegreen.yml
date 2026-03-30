@@ -16,6 +16,9 @@ services:
   backend-flask-service:
     container_name: llars_flask_${DEPLOY_COLOR}
 
+  backend-worker-service:
+    container_name: llars_worker_${DEPLOY_COLOR}
+
   frontend-vue-service:
     container_name: llars_frontend_${DEPLOY_COLOR}
 

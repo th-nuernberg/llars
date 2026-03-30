@@ -91,6 +91,40 @@ def _ensure_column(db, table_name: str, column_name: str, column_definition_sql:
     return True
 
 
+def _get_column_default(db, table_name: str, column_name: str):
+    result = db.session.execute(
+        text(
+            """
+            SELECT COLUMN_DEFAULT
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND COLUMN_NAME = :column_name
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    ).scalar()
+    return result
+
+
+def _ensure_column_default(db, table_name: str, column_name: str, default_expression_sql: str) -> bool:
+    _validate_identifier(table_name, "table_name")
+    _validate_identifier(column_name, "column_name")
+
+    if not _column_exists(db, table_name, column_name):
+        return False
+
+    current_default = _get_column_default(db, table_name, column_name)
+    if str(current_default) == str(default_expression_sql).strip("'"):
+        return False
+
+    db.session.execute(
+        text(f"ALTER TABLE `{table_name}` ALTER COLUMN `{column_name}` SET DEFAULT {default_expression_sql}")
+    )
+    db.session.commit()
+    return True
+
+
 def _unique_constraint_exists(db, table_name: str, constraint_name: str) -> bool:
     result = db.session.execute(
         text(
@@ -722,7 +756,13 @@ def apply_schema_patches(db) -> None:
             db,
             table_name="system_settings",
             column_name="batch_generation_max_parallel",
-            column_definition_sql="`batch_generation_max_parallel` INT NOT NULL DEFAULT 1",
+            column_definition_sql="`batch_generation_max_parallel` INT NOT NULL DEFAULT 4",
+        )
+        changed |= _ensure_column_default(
+            db,
+            table_name="system_settings",
+            column_name="batch_generation_max_parallel",
+            default_expression_sql="4",
         )
 
         # Analytics settings: custom dimensions
@@ -1240,6 +1280,75 @@ def apply_schema_patches(db) -> None:
                     PRIMARY KEY (`id`),
                     UNIQUE KEY `uix_scenario` (`scenario_id`),
                     INDEX `idx_computed_at` (`computed_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="scenario_stats_jobs",
+            create_sql=(
+                """
+                CREATE TABLE `scenario_stats_jobs` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `scenario_id` INT NOT NULL,
+                    `status` VARCHAR(20) NOT NULL DEFAULT 'idle',
+                    `priority` INT NOT NULL DEFAULT 0,
+                    `request_token` INT NOT NULL DEFAULT 0,
+                    `processing_token` INT NOT NULL DEFAULT 0,
+                    `worker_id` VARCHAR(255) NULL,
+                    `lease_expires_at` DATETIME NULL,
+                    `last_heartbeat_at` DATETIME NULL,
+                    `last_requested_at` DATETIME NULL,
+                    `started_at` DATETIME NULL,
+                    `completed_at` DATETIME NULL,
+                    `last_error` TEXT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_scenario_stats_job_scenario` (`scenario_id`),
+                    INDEX `ix_scenario_stats_jobs_status` (`status`),
+                    INDEX `ix_scenario_stats_jobs_lease` (`lease_expires_at`),
+                    INDEX `ix_scenario_stats_jobs_requested` (`last_requested_at`),
+                    CONSTRAINT `fk_scenario_stats_jobs_scenario` FOREIGN KEY (`scenario_id`)
+                        REFERENCES `rating_scenarios` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="llm_eval_runs",
+            create_sql=(
+                """
+                CREATE TABLE `llm_eval_runs` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `scenario_id` INT NOT NULL,
+                    `model_id` VARCHAR(255) NOT NULL,
+                    `task_type` VARCHAR(50) NULL,
+                    `status` VARCHAR(20) NOT NULL DEFAULT 'idle',
+                    `requested_all` TINYINT(1) NOT NULL DEFAULT 0,
+                    `thread_ids_json` JSON NULL,
+                    `request_token` INT NOT NULL DEFAULT 0,
+                    `processing_token` INT NOT NULL DEFAULT 0,
+                    `worker_id` VARCHAR(255) NULL,
+                    `lease_expires_at` DATETIME NULL,
+                    `last_heartbeat_at` DATETIME NULL,
+                    `last_requested_at` DATETIME NULL,
+                    `started_at` DATETIME NULL,
+                    `completed_at` DATETIME NULL,
+                    `last_error` TEXT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_llm_eval_run_scenario_model` (`scenario_id`, `model_id`),
+                    INDEX `ix_llm_eval_runs_status` (`status`),
+                    INDEX `ix_llm_eval_runs_lease` (`lease_expires_at`),
+                    INDEX `ix_llm_eval_runs_requested` (`last_requested_at`),
+                    CONSTRAINT `fk_llm_eval_runs_scenario` FOREIGN KEY (`scenario_id`)
+                        REFERENCES `rating_scenarios` (`id`) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             ),

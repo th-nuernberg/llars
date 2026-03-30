@@ -109,6 +109,7 @@ from db.models.llm_model import (
 from db.models.llm_model_permission import LLMModelPermission
 from db.models.llm_provider import LLMProvider
 from db.models.llm_task_result import LLMTaskResult
+from db.models.llm_eval_run import LLMEvalRun
 
 # Prompt Templates and LLM Usage Tracking
 from db.models.prompt_template import PromptTemplate
@@ -260,6 +261,7 @@ from db.models.messaging import (
 
 # Scenario Stats Cache
 from db.models.scenario_stats_cache import ScenarioStatsCache
+from db.models.scenario_stats_job import ScenarioStatsJob
 
 # DB Price Agent
 from db.models.db_agent import DbPriceScan, DbPriceEntry, DbTripSearch
@@ -344,6 +346,7 @@ __all__ = [
     'LLMModelPermission',
     'LLMProvider',
     'LLMTaskResult',
+    'LLMEvalRun',
     # Prompt Templates and Usage Tracking
     'PromptTemplate',
     'FieldPromptTemplate',
@@ -461,6 +464,7 @@ __all__ = [
     'MessagingLinkPreview',
     # Scenario Stats Cache
     'ScenarioStatsCache',
+    'ScenarioStatsJob',
     # DB Price Agent
     'DbPriceScan',
     'DbPriceEntry',

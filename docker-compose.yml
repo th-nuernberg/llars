@@ -165,6 +165,8 @@ services:
       - PROJECT_STATE=${PROJECT_STATE:-development}
       - FLASK_ENV=${FLASK_ENV:-development}
       - FLASK_APP=main
+      - LLARS_RUNTIME_ROLE=web
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
       # MariaDB (defaults are for development; override via .env for production)
       - MYSQL_DATABASE=${MYSQL_DATABASE:-database_llars}
       - MYSQL_USER=${MYSQL_USER:-dev_user}
@@ -184,6 +186,7 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-dev_redis_password}
+      - SOCKETIO_MESSAGE_QUEUE=${SOCKETIO_MESSAGE_QUEUE:-}
       - LLARS_SKIP_STARTUP_TASKS=${LLARS_SKIP_STARTUP_TASKS:-}
       # LiveKit (Voice/Video Calls)
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
@@ -205,6 +208,61 @@ services:
       interval: 10s         # Häufige Checks
       timeout: 10s
       retries: 180         # Viele Retries (entspricht 30min bei 10s Interval)
+
+  backend-worker-service:
+    container_name: llars_worker_service
+    build:
+      context: .
+      dockerfile: docker/flask/Dockerfile-flask
+    command: ["/usr/local/bin/start_llars_worker.sh"]
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+    volumes:
+      - ./app:/app
+      - ./docs:/app/docs:ro
+      - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
+      - ./docs/docs/projekte/anonymize/models/recommender_system:/app/models/anonymize/recommender_system:ro
+      - ./docs/docs/projekte/anonymize/database:/app/data/anonymize:ro
+      - rag_storage:/app/storage
+      - rag_docs:/app/rag_docs
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE:-development}
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - FLASK_APP=main
+      - LLARS_RUNTIME_ROLE=worker
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-database_llars}
+      - MYSQL_USER=${MYSQL_USER:-dev_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-dev_password_change_me}
+      - ANONYMIZED_TELEMETRY=False
+      - ALLOWED_ORIGINS=${PROJECT_URL:-http://localhost:55080},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT:-55080},http://localhost,http://localhost:${NGINX_EXTERNAL_PORT:-55080}
+      - ONCOCO_MODEL_PATH=/app/models/oncoco
+      - AUTHENTIK_API_TOKEN=${AUTHENTIK_API_TOKEN:-}
+      - REDIS_HOST=${REDIS_HOST:-llars-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-dev_redis_password}
+      - SOCKETIO_MESSAGE_QUEUE=${SOCKETIO_MESSAGE_QUEUE:-}
+      - STATS_WORKER_PROCESSES=${STATS_WORKER_PROCESSES:-2}
+      - LLM_EVAL_WORKER_PROCESSES=${LLM_EVAL_WORKER_PROCESSES:-2}
+      - APP_VERSION=${APP_VERSION:-dev}
+      - APP_COMMIT_HASH=${APP_COMMIT_HASH:-local}
+      - APP_BRANCH=${APP_BRANCH:-dev}
+    depends_on:
+      db-maria-service:
+        condition: service_healthy
+      llars-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import pathlib,sys; found=False\nfor p in pathlib.Path('/proc').iterdir():\n    if not p.name.isdigit():\n        continue\n    try:\n        if b'worker_main.py' in (p/'cmdline').read_bytes():\n            found=True\n            break\n    except Exception:\n        pass\nsys.exit(0 if found else 1)\""]
+      start_period: 30s
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   frontend-vue-service:
     container_name: llars_frontend_service

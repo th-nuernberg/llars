@@ -70,12 +70,15 @@ echo "=== LLARS Blue-Green Instant Rollback ==="
 echo "Current active: $ACTIVE"
 echo "Rolling back to: $PREVIOUS"
 
+PREVIOUS_WORKER_CONTAINER="llars_worker_${PREVIOUS}"
+ACTIVE_WORKER_CONTAINER="llars_worker_${ACTIVE}"
+
 # =============================================================================
 # Verify previous containers are still running
 # =============================================================================
 
 echo ""
-echo "[1/4] Verifying $PREVIOUS containers..."
+echo "[1/5] Verifying $PREVIOUS web containers..."
 
 ALL_RUNNING=true
 for svc in flask frontend yjs supervisor; do
@@ -105,12 +108,50 @@ if [ "$flask_health" != "healthy" ]; then
   exit 1
 fi
 
+previous_worker_status=$(docker inspect --format='{{.State.Status}}' "$PREVIOUS_WORKER_CONTAINER" 2>/dev/null || echo "not_found")
+echo "  $PREVIOUS_WORKER_CONTAINER: $previous_worker_status"
+
+# =============================================================================
+# Hand worker ownership back to previous color
+# =============================================================================
+
+echo ""
+echo "[2/5] Handing over worker ownership..."
+
+active_worker_status=$(docker inspect --format='{{.State.Status}}' "$ACTIVE_WORKER_CONTAINER" 2>/dev/null || echo "not_found")
+if [ "$active_worker_status" = "running" ]; then
+  docker stop "$ACTIVE_WORKER_CONTAINER" >/dev/null
+fi
+
+if [ "$previous_worker_status" = "not_found" ]; then
+  echo "WARNING: $PREVIOUS_WORKER_CONTAINER does not exist. Continuing rollback without a background worker."
+else
+  docker start "$PREVIOUS_WORKER_CONTAINER" >/dev/null || true
+  previous_worker_health=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$PREVIOUS_WORKER_CONTAINER" 2>/dev/null || echo "unknown")
+  if [ "$previous_worker_health" != "none" ]; then
+    elapsed=0
+    max_wait=120
+    while [ "$elapsed" -lt "$max_wait" ]; do
+      previous_worker_health=$(docker inspect --format='{{.State.Health.Status}}' "$PREVIOUS_WORKER_CONTAINER" 2>/dev/null || echo "unknown")
+      if [ "$previous_worker_health" = "healthy" ]; then
+        echo "  $PREVIOUS_WORKER_CONTAINER: healthy"
+        break
+      fi
+      sleep 5
+      elapsed=$((elapsed + 5))
+    done
+    if [ "$previous_worker_health" != "healthy" ]; then
+      echo "WARNING: $PREVIOUS_WORKER_CONTAINER did not become healthy (status: $previous_worker_health)"
+    fi
+  fi
+fi
+
 # =============================================================================
 # Switch upstream back to previous color
 # =============================================================================
 
 echo ""
-echo "[2/4] Updating upstream → $PREVIOUS"
+echo "[3/5] Updating upstream → $PREVIOUS"
 
 CONF_FILE="$DEPLOY_PATH/docker/nginx/active_upstream.conf"
 cat > "$CONF_FILE" <<CONF
@@ -136,7 +177,7 @@ CONF
 # =============================================================================
 
 echo ""
-echo "[3/4] Reloading nginx..."
+echo "[4/5] Reloading nginx..."
 
 ensure_production_nginx
 
@@ -153,7 +194,7 @@ fi
 # =============================================================================
 
 echo ""
-echo "[4/4] Updating state..."
+echo "[5/5] Updating state..."
 
 echo "$PREVIOUS" > "$STATE_DIR/active_color"
 echo "$ACTIVE" > "$STATE_DIR/previous_color"

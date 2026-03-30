@@ -67,10 +67,12 @@ def _import_all_models():
     from db.models.prompt_template import PromptTemplate  # noqa
     from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget  # noqa
     from db.models.llm_task_result import LLMTaskResult  # noqa
+    from db.models.llm_eval_run import LLMEvalRun  # noqa
     from db.models.conference import Conference, Paper, PaperAuthor  # noqa
     from db.models.referral import ReferralCampaign, ReferralLink, ReferralRegistration  # noqa
     from db.models.generation import GenerationJob, GeneratedOutput  # noqa
     from db.models.scenario_stats_cache import ScenarioStatsCache  # noqa
+    from db.models.scenario_stats_job import ScenarioStatsJob  # noqa
     from db.models.user_llm_provider import UserLLMProvider  # noqa
     try:
         from db.models.user_llm_provider import UserLLMProviderShare  # noqa

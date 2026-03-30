@@ -6436,7 +6436,7 @@
       "batchGeneration": {
         "title": "Batch Generation",
         "maxParallel": "Max parallel outputs",
-        "maxParallelHint": "Global cap for concurrently processed outputs in batch generation (default: 1)."
+        "maxParallelHint": "Global cap for concurrently processed outputs in batch generation (default: 4, recommended initial range: 4-6)."
       },
       "referral": {
         "title": "Referral System",

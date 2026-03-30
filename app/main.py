@@ -8,11 +8,11 @@ from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
 from routes.registry import register_all_blueprints
 from services.api_metrics_service import create_metrics_middleware
+from services.runtime_config import get_redis_client, get_redis_url, get_runtime_role, is_web_runtime
 from werkzeug.middleware.proxy_fix import ProxyFix
 import logging
 import re
 import os
-import redis
 
 
 class _SocketIOAccessLogFilter(logging.Filter):
@@ -68,16 +68,7 @@ create_metrics_middleware(app)
 
 # Initialize Redis client for server-authoritative sessions (Wizard Sessions, etc.)
 # Redis provides persistent session storage that survives browser closures and server restarts
-redis_client = redis.Redis(
-    host=os.environ.get('REDIS_HOST', 'llars-redis'),
-    port=int(os.environ.get('REDIS_PORT', 6379)),
-    db=int(os.environ.get('REDIS_DB', 0)),
-    password=os.environ.get('REDIS_PASSWORD', None),
-    decode_responses=True,  # Return strings instead of bytes
-    socket_connect_timeout=5,
-    socket_timeout=5,
-    retry_on_timeout=True
-)
+redis_client = get_redis_client()
 
 # CORS configuration - restrict in production!
 allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost,http://localhost:80,http://localhost:5173').split(',')
@@ -95,7 +86,17 @@ else:
 
 
 def _skip_startup_tasks() -> bool:
+    if get_runtime_role() == 'standby':
+        return True
     return os.environ.get('LLARS_SKIP_STARTUP_TASKS', '').lower() in ('1', 'true', 'yes')
+
+
+def _should_run_one_time_startup_tasks() -> bool:
+    if _skip_startup_tasks() or not is_web_runtime():
+        return False
+    if os.environ.get('FLASK_ENV', 'production') == 'development':
+        return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+    return True
 
 # SocketIO with increased timeouts for long-running LLM streams
 # ping_timeout: How long to wait for pong before disconnecting (default: 20s)
@@ -115,10 +116,15 @@ socketio_transports = None
 if socketio_async_mode == 'threading':
     socketio_transports = ['polling']
 
+socketio_message_queue = os.environ.get('SOCKETIO_MESSAGE_QUEUE', '').strip() or None
+if socketio_message_queue is None and socketio_async_mode != 'threading':
+    socketio_message_queue = get_redis_url()
+
 socketio = SocketIO(
     app,
     cors_allowed_origins=socket_cors,
     async_mode=socketio_async_mode,
+    message_queue=socketio_message_queue,
     ping_timeout=120,  # 2 minutes - allow for long LLM responses
     ping_interval=30,  # Send ping every 30 seconds
     allow_upgrades=socketio_allow_upgrades,
@@ -133,6 +139,11 @@ socketio = SocketIO(
 # In development mode, use much higher limits to support E2E testing
 is_development = os.environ.get('FLASK_ENV', 'production') == 'development'
 rate_limit_defaults = ["10000 per day", "1000 per hour"] if is_development else ["5000 per day", "500 per hour"]
+rate_limit_storage_uri = os.environ.get('RATE_LIMIT_STORAGE_URI', '').strip()
+if not rate_limit_storage_uri:
+    rate_limit_storage_uri = "memory://" if is_development else get_redis_url(
+        db_override=int(os.environ.get('REDIS_RATE_LIMIT_DB', os.environ.get('REDIS_DB', 0)))
+    )
 
 
 def _get_real_client_ip():
@@ -157,7 +168,7 @@ limiter = Limiter(
     app=app,
     key_func=_get_real_client_ip,
     default_limits=rate_limit_defaults,
-    storage_uri="memory://",  # In production: Redis verwenden
+    storage_uri=rate_limit_storage_uri,
 )
 
 # Exempt high-frequency and internal endpoints from rate limiting
@@ -249,7 +260,7 @@ def _should_start_background_threads() -> bool:
     In development, `flask run` spawns a reloader parent process and a child process.
     The child sets `WERKZEUG_RUN_MAIN=true`. Background threads must only start once.
     """
-    if _skip_startup_tasks():
+    if _skip_startup_tasks() or not is_web_runtime():
         return False
     if os.environ.get('FLASK_ENV', 'production') == 'development':
         return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
@@ -308,7 +319,8 @@ def fix_missing_chroma_collection_names():
         except Exception as e:
             print(f"[Startup] Error fixing chroma_collection_names: {e}")
 
-fix_missing_chroma_collection_names()
+if _should_run_one_time_startup_tasks():
+    fix_missing_chroma_collection_names()
 
 
 # Seed default LLM models into the database
@@ -327,7 +339,8 @@ def seed_llm_models():
         except Exception as e:
             print(f"[Startup] Error seeding LLM models: {e}")
 
-seed_llm_models()
+if _should_run_one_time_startup_tasks():
+    seed_llm_models()
 
 
 # Ensure LLM providers from environment variables (LiteLLM, OpenAI)
@@ -350,7 +363,8 @@ def ensure_llm_providers():
         except Exception as e:
             print(f"[Startup] Error setting up LLM providers: {e}")
 
-ensure_llm_providers()
+if _should_run_one_time_startup_tasks():
+    ensure_llm_providers()
 
 
 # Seed default field prompts for AI-assist features
@@ -372,189 +386,8 @@ def seed_field_prompts():
         except Exception as e:
             print(f"[Startup] Error seeding field prompts: {e}")
 
-seed_field_prompts()
-
-
-# Auto-start LLM evaluations for scenarios with configured evaluators
-def start_pending_llm_evaluations():
-    """
-    Start LLM evaluations for all scenarios that have pending evaluations.
-
-    This runs on startup to ensure LLM evaluators process any threads that
-    haven't been evaluated yet. Runs in background threads to not block startup.
-    """
-    if _skip_startup_tasks():
-        print("[Startup] Skipping LLM evaluation startup (LLARS_SKIP_STARTUP_TASKS=true)")
-        return
-
-    import json
-    import threading
-    from db.database import db
-    from db.models import (
-        RatingScenarios, ScenarioThreads, LLMTaskResult,
-        ComparisonSession, FeatureFunctionType
-    )
-
-    def _run_pending_evaluations():
-        """
-        Startup task: resume pending LLM evaluations from before server restart.
-
-        Safety filters (prevent self-DDoS, see LLMAITaskRunner docstring):
-        - Skip models with permanent failures (401/403/auth) → needs manual retry
-        - Skip models with 3+ errors in last 30 min → transient cooldown
-        - Skip items that already have results (success or error)
-        - Lock per (scenario, model) in runner prevents race conditions
-        """
-        with app.app_context():
-            try:
-                # Find all scenarios with LLM evaluators configured
-                scenarios = RatingScenarios.query.filter(
-                    RatingScenarios.config_json.isnot(None)
-                ).all()
-
-                scenarios_to_process = []
-                for scenario in scenarios:
-                    config = scenario.config_json
-                    if isinstance(config, str):
-                        try:
-                            config = json.loads(config)
-                        except (json.JSONDecodeError, TypeError):
-                            continue
-                    if not isinstance(config, dict):
-                        continue
-
-                    llm_evaluators = config.get('llm_evaluators') or config.get('selected_llms') or []
-                    if not llm_evaluators:
-                        continue
-
-                    # Get function type to handle comparison scenarios differently
-                    function_type = FeatureFunctionType.query.filter_by(
-                        function_type_id=scenario.function_type_id
-                    ).first()
-                    function_name = function_type.name if function_type else None
-
-                    # For comparison scenarios, use ComparisonSessions
-                    if function_name == "comparison":
-                        comparison_sessions = ComparisonSession.query.filter_by(
-                            scenario_id=scenario.id
-                        ).all()
-                        all_ids = {cs.id for cs in comparison_sessions}
-                    else:
-                        # For other scenarios, use ScenarioThreads
-                        scenario_threads = ScenarioThreads.query.filter_by(
-                            scenario_id=scenario.id
-                        ).all()
-                        all_ids = {st.thread_id for st in scenario_threads}
-
-                    if not all_ids:
-                        continue
-
-                    scenarios_to_process.append({
-                        'scenario': scenario,
-                        'llm_evaluators': llm_evaluators,
-                        'all_ids': all_ids,
-                        'is_comparison': function_name == "comparison",
-                    })
-
-                if not scenarios_to_process:
-                    print("[Startup] No scenarios with pending LLM evaluations")
-                    return
-
-                print(f"[Startup] Checking {len(scenarios_to_process)} scenarios for pending LLM evaluations...")
-
-                from services.llm.llm_ai_task_runner import LLMAITaskRunner
-
-                total_started = 0
-                for item in scenarios_to_process:
-                    scenario = item['scenario']
-                    llm_evaluators = item['llm_evaluators']
-                    all_ids = item['all_ids']
-
-                    for model_id in llm_evaluators:
-                        # Skip models with permanent failures (401/403/auth errors).
-                        # These will never succeed without user action (fix API key).
-                        permanent_failures = db.session.query(LLMTaskResult).filter(
-                            LLMTaskResult.scenario_id == scenario.id,
-                            LLMTaskResult.model_id == model_id,
-                            LLMTaskResult.error.isnot(None),
-                        ).limit(5).all()
-                        has_permanent = any(
-                            LLMAITaskRunner._is_permanent_failure(r.error)
-                            for r in permanent_failures if r.error
-                        )
-                        if has_permanent:
-                            print(
-                                f"[Startup] Skipping model {model_id} for scenario {scenario.id} "
-                                f"- permanent failure (auth/permission error). Use manual Start."
-                            )
-                            continue
-
-                        # Skip models that had recent errors (cooldown: 30 min)
-                        from datetime import datetime, timedelta
-                        cooldown_cutoff = datetime.utcnow() - timedelta(minutes=30)
-                        recent_errors = db.session.query(db.func.count()).filter(
-                            LLMTaskResult.scenario_id == scenario.id,
-                            LLMTaskResult.model_id == model_id,
-                            LLMTaskResult.error.isnot(None),
-                            LLMTaskResult.updated_at >= cooldown_cutoff,
-                        ).scalar() or 0
-
-                        if recent_errors >= 3:
-                            print(
-                                f"[Startup] Skipping model {model_id} for scenario {scenario.id} "
-                                f"- {recent_errors} recent errors (cooldown active)"
-                            )
-                            continue
-
-                        # Get IDs that already have successful results
-                        completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
-                            LLMTaskResult.scenario_id == scenario.id,
-                            LLMTaskResult.model_id == model_id,
-                            LLMTaskResult.payload_json.isnot(None),
-                            LLMTaskResult.error.is_(None),
-                        ).all()
-                        completed_ids = {row[0] for row in completed_rows if row[0]}
-
-                        # Also exclude items that have errors (don't retry on startup)
-                        errored_rows = db.session.query(LLMTaskResult.thread_id).filter(
-                            LLMTaskResult.scenario_id == scenario.id,
-                            LLMTaskResult.model_id == model_id,
-                            LLMTaskResult.error.isnot(None),
-                        ).all()
-                        errored_ids = {row[0] for row in errored_rows if row[0]}
-
-                        # Only start truly pending items (not completed, not errored)
-                        pending_ids = list(all_ids - completed_ids - errored_ids)
-
-                        if pending_ids:
-                            id_type = "sessions" if item['is_comparison'] else "threads"
-                            print(
-                                f"[Startup] Starting LLM evaluation: scenario={scenario.id} "
-                                f"({scenario.scenario_name}), model={model_id}, "
-                                f"pending_{id_type}={len(pending_ids)}/{len(all_ids)}"
-                            )
-                            LLMAITaskRunner.run_for_scenario_async(
-                                scenario.id,
-                                model_ids=[model_id],
-                                thread_ids=pending_ids,
-                            )
-                            total_started += 1
-
-                if total_started > 0:
-                    print(f"[Startup] Started {total_started} LLM evaluation tasks")
-                else:
-                    print("[Startup] All LLM evaluations are up to date")
-
-            except Exception as e:
-                print(f"[Startup] Error starting LLM evaluations: {e}")
-
-    # Safeguards: lock per (scenario, model), permanent failure detection,
-    # 30min error cooldown, skip errored items.
-    threading.Thread(target=_run_pending_evaluations, daemon=True).start()
-
-
-start_pending_llm_evaluations()
-
+if _should_run_one_time_startup_tasks():
+    seed_field_prompts()
 
 # Sync LLARS documentation to RAG collection for the chatbot
 def sync_documentation_collection():
@@ -584,7 +417,8 @@ def sync_documentation_collection():
             print(f"[Startup] Error syncing documentation: {e}")
 
 
-sync_documentation_collection()
+if _should_run_one_time_startup_tasks():
+    sync_documentation_collection()
 
 
 # Auto-start DB Price Agent scheduler for periodic price monitoring

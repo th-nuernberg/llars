@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -133,6 +134,16 @@ def invalidate_and_recompute(scenario_id: int) -> None:
 
 def trigger_recompute(scenario_id: int) -> None:
     """Queue a durable background recompute for full stats."""
+    try:
+        from flask import current_app
+        app = current_app._get_current_object()
+    except RuntimeError:
+        app = None
+
+    if app is not None and (app.testing or app.config.get('TESTING')):
+        recompute_stats_for_worker(scenario_id)
+        return
+
     try:
         row = ScenarioStatsCache.query.filter_by(scenario_id=scenario_id).first()
         if row:

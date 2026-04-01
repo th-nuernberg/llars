@@ -10,8 +10,11 @@ backlog = 2048
 # Worker processes
 # Multiple gevent workers let LLARS spread request and Socket.IO load across CPU cores.
 # CPU-heavy work is offloaded to dedicated backend workers, so the web tier stays responsive.
-# Auto-scale to CPU count: cpu_count * 2 + 1 (Gunicorn recommendation), capped at 25.
-# Override via GUNICORN_WORKERS env var (e.g. on low-memory dev machines).
+# Auto-scale to CPU count: cpu_count + 1 for gevent async workers.
+# Gevent workers handle concurrency via greenlets, so fewer processes are needed
+# than the sync formula (2*cpu+1). Each worker loads the full Flask app (~400MB+
+# Flair NER model), so more workers = more RAM. Capped at 13 to stay within
+# Docker memory limit (12GB). Override via GUNICORN_WORKERS env var.
 def _auto_workers() -> int:
     env_val = os.environ.get('GUNICORN_WORKERS', '').strip()
     if env_val:
@@ -20,7 +23,7 @@ def _auto_workers() -> int:
         cpu_count = len(os.sched_getaffinity(0))
     except AttributeError:
         cpu_count = os.cpu_count() or 4
-    return min(cpu_count * 2 + 1, 25)
+    return min(cpu_count + 1, 13)
 
 workers = _auto_workers()
 

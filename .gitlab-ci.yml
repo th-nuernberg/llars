@@ -352,13 +352,13 @@ security:routes:
       fi
     - pytest tests/security/test_route_security.py -q --confcutdir=tests/security
 
-# Security Scan (informational - doesn't block pipeline)
+# Security Scan — blocks pipeline on HIGH/CRITICAL vulnerabilities.
+# Known unfixable CVEs (torch, transformers, Flask pin) are in app/.pip-audit-ignore.
 security:scan:
   stage: security
   image: python:3.10-slim
   extends:
     - .ci_rules
-  allow_failure: true
   cache:
     key: security-scan
     paths:
@@ -767,8 +767,14 @@ smoke:production:
   after_script:
     - |
       if [ "$CI_JOB_STATUS" != "success" ]; then
-        echo "Smoke tests failed; triggering instant rollback."
-        bash scripts/ci/rollback_bluegreen.sh || bash scripts/ci/rollback_production.sh || true
+        echo "ERROR: Smoke tests failed — triggering instant rollback."
+        if bash scripts/ci/rollback_bluegreen.sh; then
+          echo "Automatic rollback (blue-green) succeeded."
+        elif bash scripts/ci/rollback_production.sh; then
+          echo "Automatic rollback (full) succeeded."
+        else
+          echo "CRITICAL: Both rollback mechanisms failed — MANUAL INTERVENTION REQUIRED"
+        fi
       fi
   extends:
     - .deploy_rules

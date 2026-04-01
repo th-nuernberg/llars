@@ -60,7 +60,6 @@ class LLMAIUserService:
             if ai_user is None:
                 ai_user = User(
                     username=username,
-                    api_key=str(uuid4()),
                     group=group,
                     is_active=True,
                     is_ai=True,
@@ -68,6 +67,7 @@ class LLMAIUserService:
                     collab_color=pick_collab_color(),
                 )
                 ai_user.set_password(secrets.token_urlsafe(24))
+                ai_user.set_api_key_hashed(str(uuid4()))
                 db.session.add(ai_user)
                 created += 1
                 continue

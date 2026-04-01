@@ -170,6 +170,52 @@ def _unique_index_exists(db, table_name: str, column_names: list[str]) -> bool:
     return False
 
 
+def _is_column_nullable(db, table_name: str, column_name: str) -> bool:
+    """Check if a column is nullable."""
+    result = db.session.execute(
+        text(
+            """
+            SELECT IS_NULLABLE
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND COLUMN_NAME = :column_name
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    ).scalar()
+    return result == 'YES'
+
+
+def _make_column_nullable(db, table_name: str, column_name: str, column_type: str) -> bool:
+    """
+    Make an existing NOT NULL column nullable.
+
+    Args:
+        db: SQLAlchemy instance
+        table_name: Table name
+        column_name: Column to alter
+        column_type: SQL type of the column (e.g. 'VARCHAR(100)')
+
+    Returns:
+        True if the column was altered, False if already nullable or doesn't exist.
+    """
+    _validate_identifier(table_name, "table_name")
+    _validate_identifier(column_name, "column_name")
+
+    if not _column_exists(db, table_name, column_name):
+        return False
+
+    if _is_column_nullable(db, table_name, column_name):
+        return False
+
+    db.session.execute(
+        text(f"ALTER TABLE `{table_name}` MODIFY COLUMN `{column_name}` {column_type} NULL")
+    )
+    db.session.commit()
+    return True
+
+
 def _table_exists(db, table_name: str) -> bool:
     _validate_identifier(table_name, "table_name")
     result = db.session.execute(
@@ -484,6 +530,19 @@ def apply_schema_patches(db) -> None:
             column_name="display_name",
             column_definition_sql="`display_name` VARCHAR(255) NULL",
         )
+
+        # API key hashing: add api_key_hash column for argon2id hashed keys
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="api_key_hash",
+            column_definition_sql="`api_key_hash` VARCHAR(255) NULL "
+                                  "COMMENT 'Argon2id hash of the API key'",
+        )
+        # Make api_key nullable for existing databases (was NOT NULL before).
+        # After migration, api_key is set to NULL and api_key_hash holds the argon2 hash.
+        # MariaDB allows multiple NULLs in UNIQUE columns, so keeping UNIQUE is safe.
+        changed |= _make_column_nullable(db, "users", "api_key", "VARCHAR(100) UNIQUE")
 
         # Scenarios: per-scenario config + comparison model config
         changed |= _ensure_column(

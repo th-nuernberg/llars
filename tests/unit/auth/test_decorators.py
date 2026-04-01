@@ -435,14 +435,18 @@ class TestGetOrCreateUser:
         """
         [USER-004] Automatische API Key Generierung
 
-        Neue User sollen einen UUID API Key erhalten.
+        Neue User sollen einen argon2-gehashten API Key erhalten.
+        Plaintext api_key wird nicht mehr gespeichert.
         """
         from auth.decorators import get_or_create_user
 
         user = get_or_create_user('apikey_test_user')
 
-        assert user.api_key is not None
-        assert len(user.api_key) > 20  # UUID is 36 chars
+        # Plaintext key is no longer stored
+        assert user.api_key is None
+        # Argon2 hash is stored instead
+        assert user.api_key_hash is not None
+        assert user.api_key_hash.startswith('$argon2')
 
     def test_USER_005_auto_avatar_seed(self, app, db, app_context):
         """

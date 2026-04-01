@@ -1,5 +1,5 @@
 # 1. Offizielles Node-Image als Grundlage:
-FROM public.ecr.aws/docker/library/node:23-slim
+FROM public.ecr.aws/docker/library/node:23.11.1-slim
 LABEL authors="philippsteigerwald"
 
 WORKDIR /yjs-server

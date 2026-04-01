@@ -252,8 +252,10 @@ def verify_api_key():
             'scopes': api_key.scopes.split(',') if api_key.scopes else [],
         })
 
-    # Fallback: Check legacy api_key field on User
-    user = User.query.filter_by(api_key=api_key_value).first()
+    # Fallback: Check legacy api_key field on User (argon2 hash, then plaintext)
+    user = User.find_by_api_key_hash(api_key_value)
+    if not user:
+        user = User.query.filter_by(api_key=api_key_value).first()
 
     if user:
         if not user.is_active:
@@ -291,21 +293,35 @@ def get_legacy_api_key():
     Get the current user's legacy API key.
 
     DEPRECATED: Use /api-keys instead.
+    Since keys are now hashed, the stored key cannot be retrieved.
+    Users must use /api-keys to create new managed keys or /api-key/regenerate
+    to get a new legacy key.
     """
     user = g.authentik_user
 
-    # Ensure user has a legacy API key
-    if not user.api_key:
-        import secrets
-        user.api_key = secrets.token_urlsafe(32)
-        db.session.commit()
+    # If user still has a plaintext key (not yet migrated), return it
+    if user.api_key:
+        return jsonify({
+            'success': True,
+            'api_key': user.api_key,
+            'username': user.username,
+            'deprecated': True,
+            'message': 'This endpoint is deprecated. Use /api/auth/api-keys instead.',
+            'usage': {
+                'header': 'X-API-Key: <your-api-key>',
+            }
+        })
 
+    # Key is hashed — cannot be retrieved. Inform user to regenerate or use new system.
     return jsonify({
         'success': True,
-        'api_key': user.api_key,
+        'api_key': None,
+        'api_key_exists': user.api_key_hash is not None,
         'username': user.username,
         'deprecated': True,
-        'message': 'This endpoint is deprecated. Use /api/auth/api-keys instead.',
+        'message': 'API key is hashed and cannot be retrieved. '
+                   'Use POST /api/auth/api-key/regenerate to get a new key, '
+                   'or use /api/auth/api-keys for better key management.',
         'usage': {
             'header': 'X-API-Key: <your-api-key>',
         }
@@ -320,20 +336,23 @@ def regenerate_legacy_api_key():
     Regenerate the current user's legacy API key.
 
     DEPRECATED: Use /api-keys to create new keys instead.
+    Returns the new key once — it is stored hashed and cannot be retrieved later.
     """
     import secrets
     user = g.authentik_user
 
-    old_key_prefix = user.api_key[:8] if user.api_key else None
-    user.api_key = secrets.token_urlsafe(32)
+    new_key = secrets.token_urlsafe(32)
+    user.set_api_key_hashed(new_key)
     db.session.commit()
 
-    logger.info(f"[ApiKey] User {user.username} regenerated legacy API key (old prefix: {old_key_prefix})")
+    logger.info(f"[ApiKey] User {user.username} regenerated legacy API key (now hashed)")
 
     return jsonify({
         'success': True,
-        'api_key': user.api_key,
-        'message': 'Legacy API key regenerated. Consider using /api/auth/api-keys for better key management.',
+        'api_key': new_key,
+        'message': 'Legacy API key regenerated (stored hashed). '
+                   'Save this key — it cannot be retrieved later. '
+                   'Consider using /api/auth/api-keys for better key management.',
         'deprecated': True,
         'username': user.username,
     })

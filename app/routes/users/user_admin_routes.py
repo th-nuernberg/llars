@@ -180,19 +180,19 @@ def create_admin_user():
         user = existing
         user.deleted_at = None
         user.is_active = is_active
-        if not user.api_key:
-            user.api_key = str(uuid.uuid4())
+        if not user.api_key and not user.api_key_hash:
+            user.set_api_key_hashed(str(uuid.uuid4()))
         if not user.group_id:
             user.group_id = group_id
     else:
         user = User(
             username=username,
             password_hash="",
-            api_key=str(uuid.uuid4()),
             group_id=group_id,
             is_active=is_active,
             deleted_at=None,
         )
+        user.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(user)
 
     if first_name:

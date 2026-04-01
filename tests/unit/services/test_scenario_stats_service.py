@@ -468,37 +468,6 @@ class TestKrippendorffAlpha:
         assert _sss()._calculate_krippendorff_alpha(matrix) == 1.0
 
 
-# =============================================================================
-# TESTS: Caching
-# =============================================================================
-
-class TestStatsCache:
-    def test_STATS_047_cache_miss_returns_none(self, app, db, app_context):
-        """[STATS-047] Cache miss returns None."""
-        assert _sss()._get_cached_stats(999999) is None
-
-    def test_STATS_048_set_and_get_cache(self, app, db, app_context):
-        """[STATS-048] Set then get returns cached data."""
-        m = _sss()
-        test_data = {"test": "value"}
-        m._set_cached_stats(888888, test_data)
-        assert m._get_cached_stats(888888) == test_data
-        m.invalidate_stats_cache(888888)
-
-    def test_STATS_049_invalidate_cache(self, app, db, app_context):
-        """[STATS-049] Invalidate removes cached entry."""
-        m = _sss()
-        m._set_cached_stats(777777, {"foo": "bar"})
-        m.invalidate_stats_cache(777777)
-        assert m._get_cached_stats(777777) is None
-
-    def test_STATS_050_expired_cache_returns_none(self, app, db, app_context):
-        """[STATS-050] Expired cache entry returns None."""
-        m = _sss()
-        m._stats_cache[666666] = (time.time() - 200, {"old": "data"})
-        assert m._get_cached_stats(666666) is None
-        m._stats_cache.pop(666666, None)
-
 
 # =============================================================================
 # TESTS: DB-backed lookups

@@ -27,7 +27,8 @@ class UserService:
     @staticmethod
     def get_user_by_api_key(api_key: str) -> Optional['User']:
         """
-        Get user by API key.
+        Get user by API key. Checks argon2-hashed keys first, then
+        falls back to plaintext lookup for migration compatibility.
 
         Args:
             api_key: The API key to look up
@@ -38,9 +39,14 @@ class UserService:
         if not api_key:
             return None
 
-        # Import here to avoid circular imports
         from db.models import User
 
+        # Try argon2-hashed key first (secure path)
+        user = User.find_by_api_key_hash(api_key)
+        if user:
+            return user
+
+        # Plaintext fallback for migration period
         return User.query.filter_by(api_key=api_key).first()
 
     @staticmethod
@@ -167,10 +173,10 @@ class UserService:
             api_key = str(uuid4())
 
         try:
-            # Create new user
+            # Create new user — API key is hashed with argon2, plaintext is never stored
             new_user = User(username=username)
             new_user.set_password(password)
-            new_user.api_key = api_key
+            new_user.set_api_key_hashed(api_key)
 
             # Assign group
             if group_name:

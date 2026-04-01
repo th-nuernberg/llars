@@ -71,7 +71,7 @@ def register():
         "success": True,
         "message": "User registered successfully",
         "data": {
-            "api_key": new_user.api_key,
+            "api_key": api_key,  # Return the plaintext key once (stored hashed)
             "group": new_user.group.name
         }
     }), 201
@@ -161,7 +161,7 @@ def register_admin():
         "success": True,
         "message": "Admin user registered successfully",
         "data": {
-            "api_key": new_user.api_key,
+            "api_key": api_key,  # Return the plaintext key once (stored hashed)
             "group": new_user.group.name
         }
     }), 201

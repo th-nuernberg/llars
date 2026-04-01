@@ -8,14 +8,24 @@ Calculates inter-rater reliability metrics for LLM and human evaluations:
 - Kendall's Tau (rank correlation)
 - Spearman's Rho (rank correlation)
 - Percent Agreement
+
+Performance: Inner math loops use NumPy broadcasting instead of O(n^2) Python loops.
+Independent agreement tasks (per-dimension, per-evaluator-pair) are distributed
+across CPU cores via ProcessPoolExecutor. See _compute_numeric_metrics_task() and
+_parallel_compute_dimensional_metrics().
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import time
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 from typing import Any, Dict, List, Optional, Tuple
 import math
+
+import numpy as np
 
 from db import db
 from db.models import (
@@ -32,6 +42,79 @@ from db.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Maximum workers for ProcessPoolExecutor — use half of available cores to avoid
+# starving the Flask/Gunicorn workers that handle concurrent HTTP requests.
+_MAX_AGREEMENT_WORKERS = max(1, (os.cpu_count() or 4) // 2)
+
+# Minimum number of independent tasks before spawning worker processes.
+# Below this threshold the overhead of pickling/IPC exceeds the parallelism gain.
+_MIN_TASKS_FOR_PARALLEL = 3
+
+
+def _compute_numeric_metrics_task(task: Dict[str, Any]) -> Dict[str, Any]:
+    """Top-level picklable function for ProcessPoolExecutor.
+
+    Computes numeric agreement metrics for a single dimension or evaluator group.
+    Must be a module-level function (not a method) so it can be pickled and sent
+    to worker processes. Receives only plain dicts/lists (no Flask context, no
+    SQLAlchemy objects).
+
+    Args:
+        task: {
+            'dim_id': str,
+            'data': {item_id: {rater_id: value}},
+            'raters': [rater_id, ...],
+            'items': [item_id, ...],
+        }
+
+    Returns:
+        {'dim_id': str, 'metrics': dict} with the same structure as
+        AgreementMetricsService._calculate_numeric_metrics().
+    """
+    dim_id = task["dim_id"]
+    evaluations = {
+        "data": task["data"],
+        "raters": task["raters"],
+        "items": task["items"],
+    }
+    metrics = AgreementMetricsService._calculate_numeric_metrics(evaluations)
+    return {"dim_id": dim_id, "metrics": metrics}
+
+
+def _parallel_compute_dimensional_metrics(
+    tasks: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """Distribute per-dimension agreement computation across CPU cores.
+
+    Uses ProcessPoolExecutor to run _compute_numeric_metrics_task in parallel.
+    Each task contains only serializable data (plain dicts/lists) -- no Flask
+    app context or SQLAlchemy session is required by the worker, since all DB
+    reads happen before task construction.
+
+    Falls back to sequential execution if process pool creation fails (e.g.,
+    inside a daemonized Gunicorn worker where fork may be restricted).
+
+    Args:
+        tasks: List of task dicts, one per dimension. See _compute_numeric_metrics_task.
+
+    Returns:
+        {dim_id: metrics_dict} mapping dimension IDs to their computed metrics.
+    """
+    dim_results: Dict[str, Dict[str, Any]] = {}
+    try:
+        with ProcessPoolExecutor(max_workers=min(_MAX_AGREEMENT_WORKERS, len(tasks))) as pool:
+            for result in pool.map(_compute_numeric_metrics_task, tasks):
+                dim_results[result["dim_id"]] = result["metrics"]
+    except (RuntimeError, OSError) as exc:
+        # Fallback: some environments (daemonized processes, restricted fork)
+        # cannot spawn subprocesses. Run sequentially instead.
+        logger.warning("ProcessPoolExecutor failed (%s), falling back to sequential", exc)
+        for task in tasks:
+            result = _compute_numeric_metrics_task(task)
+            dim_results[result["dim_id"]] = result["metrics"]
+
+    return dim_results
 
 
 class AgreementMetricsService:
@@ -786,7 +869,11 @@ class AgreementMetricsService:
         Calculate agreement metrics per dimension, then average across dimensions.
 
         Falls back to _calculate_numeric_metrics if no dimensional data is available.
+        When enough dimensions are present (>= _MIN_TASKS_FOR_PARALLEL), distributes
+        per-dimension metric computation across CPU cores via ProcessPoolExecutor.
         """
+        t0 = time.time()
+
         if not scenario_id:
             return AgreementMetricsService._calculate_numeric_metrics(evaluations)
 
@@ -803,19 +890,32 @@ class AgreementMetricsService:
         if not dim_data:
             return AgreementMetricsService._calculate_numeric_metrics(evaluations)
 
-        # Calculate metrics for each dimension
-        dim_results = {}
-        for dim_id in dim_data["dimensions"]:
+        dimensions = dim_data["dimensions"]
+        n_dims = len(dimensions)
+
+        # Build tasks: one per dimension, with only serializable data (no Flask/DB objects)
+        tasks = []
+        for dim_id in dimensions:
             d = dim_data["per_dimension"][dim_id]
-            dim_evals = {
+            tasks.append({
+                "dim_id": dim_id,
+                "data": dict(d["data"]),  # ensure plain dict, not defaultdict
                 "raters": d["raters"],
                 "items": d["items"],
-                "data": d["data"],
-            }
-            dim_results[dim_id] = AgreementMetricsService._calculate_numeric_metrics(dim_evals)
+            })
+
+        # Parallel path: distribute per-dimension computation across CPU cores
+        # when there are enough dimensions to amortize process-spawn overhead.
+        if n_dims >= _MIN_TASKS_FOR_PARALLEL:
+            dim_results = _parallel_compute_dimensional_metrics(tasks)
+        else:
+            # Sequential path: not worth the IPC overhead for few dimensions
+            dim_results = {}
+            for task in tasks:
+                result = _compute_numeric_metrics_task(task)
+                dim_results[result["dim_id"]] = result["metrics"]
 
         # Aggregate: average across dimensions for each metric type
-        # ICC disabled - needs more items (10+) to be meaningful
         metric_keys = ["krippendorff_alpha", "percent_agreement", "cohens_kappa",
                         "spearman_rho", "kendall_w"]
         results = {}
@@ -823,8 +923,8 @@ class AgreementMetricsService:
         for metric_key in metric_keys:
             values = []
             per_dim_breakdown = {}
-            for dim_id in dim_data["dimensions"]:
-                metric = dim_results[dim_id].get(metric_key)
+            for dim_id in dimensions:
+                metric = dim_results.get(dim_id, {}).get(metric_key)
                 if metric and metric.get("value") is not None:
                     values.append(metric["value"])
                     per_dim_breakdown[dim_id] = {
@@ -855,6 +955,10 @@ class AgreementMetricsService:
                     "interpretation": interp,
                     "per_dimension": per_dim_breakdown,
                 }
+
+        elapsed = time.time() - t0
+        mode = "parallel" if n_dims >= _MIN_TASKS_FOR_PARALLEL else "sequential"
+        logger.info("Agreement computed in %.2fs (numpy+%s, %d dimensions)", elapsed, mode, n_dims)
 
         return results
 
@@ -998,75 +1102,141 @@ class AgreementMetricsService:
         level: str = "ordinal",
     ) -> Optional[float]:
         """
-        Calculate Krippendorff's Alpha.
+        Calculate Krippendorff's Alpha using NumPy-vectorized operations.
 
-        Simplified implementation for ordinal and nominal data.
+        Builds items x raters matrix with NaN for missing values, then computes
+        observed and expected disagreement via broadcasting instead of O(n^2) Python
+        loops. Mathematical results are identical to the original loop-based version.
+
+        For nominal level: disagreement = (v1 != v2) -> 0 or 1
+        For ordinal/interval level: disagreement = (v1 - v2)^2
+
+        Verification: 3 raters, 4 items, ordinal
+        data = {1: {'A': 3, 'B': 3, 'C': 2}, 2: {'A': 1, 'B': 1, 'C': 1},
+                3: {'A': 4, 'B': 3, 'C': 4}, 4: {'A': 2, 'B': 2, 'C': 3}}
+        Expected alpha = 0.7871 (verified: identical to original Python loop impl)
         """
-        # Build reliability matrix
-        values_list = []
-        for item in items:
-            item_values = []
-            for rater in raters:
-                val = data.get(item, {}).get(rater)
-                if val is not None:
-                    try:
-                        item_values.append(float(val))
-                    except (ValueError, TypeError):
-                        item_values.append(val)
-            if len(item_values) >= 2:
-                values_list.append(item_values)
+        t0 = time.time()
+        n_items = len(items)
+        n_raters = len(raters)
 
-        if len(values_list) < 2:
+        if n_items < 2 or n_raters < 2:
             return None
 
-        # Calculate observed disagreement
-        all_pairs = []
-        for item_values in values_list:
-            for i, v1 in enumerate(item_values):
-                for v2 in item_values[i + 1:]:
-                    all_pairs.append((v1, v2))
+        # Build items x raters matrix (NaN for missing ratings).
+        # For nominal data with non-numeric categories, map categories to integers.
+        if level == "nominal":
+            # Collect all unique categories and map to integers for matrix ops
+            category_set: set = set()
+            for item in items:
+                item_data = data.get(item, {})
+                for rater in raters:
+                    val = item_data.get(rater)
+                    if val is not None:
+                        category_set.add(val)
+            if len(category_set) < 1:
+                return None
+            cat_to_int = {cat: idx for idx, cat in enumerate(sorted(category_set, key=str))}
 
-        if not all_pairs:
+            matrix = np.full((n_items, n_raters), np.nan)
+            for i, item in enumerate(items):
+                item_data = data.get(item, {})
+                for j, rater in enumerate(raters):
+                    val = item_data.get(rater)
+                    if val is not None:
+                        matrix[i, j] = cat_to_int[val]
+        else:
+            # Ordinal/interval: values are numeric
+            matrix = np.full((n_items, n_raters), np.nan)
+            for i, item in enumerate(items):
+                item_data = data.get(item, {})
+                for j, rater in enumerate(raters):
+                    val = item_data.get(rater)
+                    if val is not None:
+                        try:
+                            matrix[i, j] = float(val)
+                        except (ValueError, TypeError):
+                            pass
+
+        # Filter to items with at least 2 non-NaN ratings
+        valid_counts = np.sum(~np.isnan(matrix), axis=1)
+        valid_mask = valid_counts >= 2
+        matrix = matrix[valid_mask]
+
+        if matrix.shape[0] < 2:
             return None
 
-        # Calculate Do (observed disagreement)
-        do_sum = 0
-        for v1, v2 in all_pairs:
+        # --- Observed disagreement (Do) ---
+        # For each item (row), compute pairwise disagreement among non-NaN values.
+        # Use vectorized approach: for each row, extract valid values and use
+        # broadcasting to compute all pairwise differences at once.
+        do_sum = 0.0
+        do_pairs = 0
+
+        for row in matrix:
+            vals = row[~np.isnan(row)]
+            n_vals = len(vals)
+            if n_vals < 2:
+                continue
             if level == "nominal":
-                do_sum += 0 if v1 == v2 else 1
-            else:  # ordinal/interval
-                try:
-                    do_sum += (float(v1) - float(v2)) ** 2
-                except (ValueError, TypeError):
-                    do_sum += 0 if v1 == v2 else 1
+                # Broadcasting: vals[:, None] != vals[None, :] gives pairwise inequality
+                # Upper triangle only (avoid double-counting and self-pairs)
+                disagreements = vals[:, None] != vals[None, :]
+                # Sum upper triangle
+                triu_idx = np.triu_indices(n_vals, k=1)
+                do_sum += np.sum(disagreements[triu_idx])
+            else:
+                # Squared differences via broadcasting
+                diffs = vals[:, None] - vals[None, :]
+                sq_diffs = diffs ** 2
+                triu_idx = np.triu_indices(n_vals, k=1)
+                do_sum += np.sum(sq_diffs[triu_idx])
+            do_pairs += n_vals * (n_vals - 1) // 2
 
-        do = do_sum / len(all_pairs) if all_pairs else 0
+        if do_pairs == 0:
+            return None
 
-        # Calculate De (expected disagreement)
-        all_values = []
-        for item_values in values_list:
-            all_values.extend(item_values)
+        do = do_sum / do_pairs
 
-        de_sum = 0
-        pair_count = 0
-        for i, v1 in enumerate(all_values):
-            for v2 in all_values[i + 1:]:
-                if level == "nominal":
-                    de_sum += 0 if v1 == v2 else 1
-                else:
-                    try:
-                        de_sum += (float(v1) - float(v2)) ** 2
-                    except (ValueError, TypeError):
-                        de_sum += 0 if v1 == v2 else 1
-                pair_count += 1
+        # --- Expected disagreement (De) ---
+        # Pool all non-NaN values across the entire matrix, then compute
+        # pairwise disagreement using vectorized broadcasting.
+        all_values = matrix[~np.isnan(matrix)]
+        n_total = len(all_values)
 
-        de = de_sum / pair_count if pair_count > 0 else 1
+        if n_total < 2:
+            return None
+
+        if level == "nominal":
+            # For nominal: De = sum of (v_i != v_j) for all i < j, divided by pair count
+            # Efficient: count frequency of each category, then De = 1 - sum(f_k^2) / total_pairs
+            # where f_k is the count of category k.
+            unique_vals, counts = np.unique(all_values, return_counts=True)
+            # Number of same-category pairs = sum(c_k * (c_k - 1) / 2)
+            same_pairs = np.sum(counts * (counts - 1)) // 2
+            total_pairs = n_total * (n_total - 1) // 2
+            de = 1.0 - (same_pairs / total_pairs) if total_pairs > 0 else 1.0
+        else:
+            # For ordinal/interval: De = mean of (v_i - v_j)^2 for all i < j
+            # Efficient formula: sum((v_i - v_j)^2) for all pairs
+            #   = n * sum(v_i^2) - (sum(v_i))^2
+            # Divided by number of pairs = n*(n-1)/2
+            sum_sq = np.sum(all_values ** 2)
+            sum_v = np.sum(all_values)
+            total_pairs = n_total * (n_total - 1) // 2
+            # sum of (vi - vj)^2 for all i<j = n*sum(vi^2) - sum(vi)^2
+            # n*sum(vi^2) - (sum vi)^2 = sum_{i<j} (vi - vj)^2  (upper triangle)
+            de_numerator = n_total * sum_sq - sum_v ** 2
+            de = de_numerator / total_pairs if total_pairs > 0 else 1.0
 
         # Calculate alpha
         if de == 0:
             return 1.0 if do == 0 else None
 
-        alpha = 1 - (do / de)
+        alpha = 1.0 - (do / de)
+        elapsed = time.time() - t0
+        logger.debug("Krippendorff alpha (numpy) computed in %.4fs: alpha=%.4f, items=%d, raters=%d, level=%s",
+                      elapsed, alpha, matrix.shape[0], n_raters, level)
         return round(alpha, 4)
 
     @staticmethod

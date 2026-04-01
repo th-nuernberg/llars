@@ -310,9 +310,9 @@ def seed_demo_scenarios(db):
         evaluator_user = User(
             username='evaluator',
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
+        evaluator_user.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(evaluator_user)
         print("  Created user: evaluator")
 
@@ -320,9 +320,9 @@ def seed_demo_scenarios(db):
         researcher_user = User(
             username='researcher',
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
+        researcher_user.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(researcher_user)
         print("  Created user: researcher")
 
@@ -330,9 +330,9 @@ def seed_demo_scenarios(db):
         ijcai_reviewer_1 = User(
             username='ijcai_reviewer_1',
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
+        ijcai_reviewer_1.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(ijcai_reviewer_1)
         print("  Created user: ijcai_reviewer_1")
 
@@ -340,9 +340,9 @@ def seed_demo_scenarios(db):
         ijcai_reviewer_2 = User(
             username='ijcai_reviewer_2',
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
+        ijcai_reviewer_2.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(ijcai_reviewer_2)
         print("  Created user: ijcai_reviewer_2")
 

@@ -10,9 +10,18 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 import json
+import logging
+import os
 import time
 import numpy as np
+
+_perf_log = logging.getLogger('stats_perf')
+
+# ProcessPoolExecutor config — shared with agreement_metrics_service.py constants.
+# Use half of available cores to avoid starving Flask/Gunicorn workers.
+_MAX_STATS_WORKERS = max(1, (os.cpu_count() or 4) // 2)
 
 from db.database import db
 from db.models import (
@@ -69,34 +78,6 @@ def _get_function_type_or_raise(function_type_id: int) -> FeatureFunctionType:
         raise NotFoundError("Function type does not exist")
     return function_type
 
-
-# Simple TTL cache for expensive stats computations.
-# Key: scenario_id, Value: (timestamp, result_dict)
-_stats_cache: Dict[int, tuple] = {}
-_STATS_CACHE_TTL = 120  # seconds
-
-
-def _get_cached_stats(scenario_id: int) -> Optional[Dict]:
-    """Return cached stats if still valid, else None."""
-    entry = _stats_cache.get(scenario_id)
-    if entry and (time.time() - entry[0]) < _STATS_CACHE_TTL:
-        return entry[1]
-    return None
-
-
-def _set_cached_stats(scenario_id: int, data: Dict) -> None:
-    """Cache stats result. Evict old entries if cache grows too large."""
-    if len(_stats_cache) > 100:
-        cutoff = time.time() - _STATS_CACHE_TTL
-        to_remove = [k for k, (ts, _) in _stats_cache.items() if ts < cutoff]
-        for k in to_remove:
-            del _stats_cache[k]
-    _stats_cache[scenario_id] = (time.time(), data)
-
-
-def invalidate_stats_cache(scenario_id: int) -> None:
-    """Invalidate cached stats for a scenario (call after rating/ranking changes)."""
-    _stats_cache.pop(scenario_id, None)
 
 
 _DEFAULT_BUCKET_COLOR_PALETTE = [
@@ -950,9 +931,6 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
         evaluator_stats.extend(llm_stats)
 
     # Calculate agreement metrics for ranking/rating scenarios
-    import logging as _logging
-    _perf_log = _logging.getLogger('stats_perf')
-
     all_stats = rater_stats + evaluator_stats
     alpha = None
     if function_type.name == "ranking" and len(all_stats) >= 2:
@@ -1259,7 +1237,15 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
 
 def _calculate_krippendorff_alpha(ratings_matrix: np.ndarray) -> Optional[float]:
-    """Calculate Krippendorff's Alpha for nominal data (binary)."""
+    """Calculate Krippendorff's Alpha for nominal data (binary).
+
+    Uses NumPy broadcasting for vectorized pairwise disagreement computation
+    instead of nested Python loops. Mathematically identical to the original.
+
+    Args:
+        ratings_matrix: raters x items matrix with NaN for missing ratings.
+                        Values are 0.0 (real) or 1.0 (fake).
+    """
     if ratings_matrix.size == 0:
         return None
 
@@ -1278,17 +1264,19 @@ def _calculate_krippendorff_alpha(ratings_matrix: np.ndarray) -> Optional[float]
     if n_total < 2:
         return None
 
-    # Observed disagreement: average pairwise disagreement per unit
+    # Observed disagreement: pairwise disagreement per column (item),
+    # vectorized via broadcasting within each column.
     D_o = 0.0
     for col in range(ratings.shape[1]):
         col_ratings = ratings[:, col]
         col_ratings = col_ratings[~np.isnan(col_ratings)]
         if len(col_ratings) < 2:
             continue
-        for i in range(len(col_ratings)):
-            for j in range(i + 1, len(col_ratings)):
-                if col_ratings[i] != col_ratings[j]:
-                    D_o += 1
+        # Broadcasting: count pairs where values differ (upper triangle only)
+        disagreements = col_ratings[:, None] != col_ratings[None, :]
+        triu_idx = np.triu_indices(len(col_ratings), k=1)
+        D_o += np.sum(disagreements[triu_idx])
+
     if ratings.shape[1] > 0:
         D_o = D_o / ratings.shape[1]
 
@@ -1317,6 +1305,74 @@ def _interpret_alpha(alpha: Optional[float]) -> str:
     if alpha >= 0.4:
         return "Moderat"
     return "Gering"
+
+
+def _compute_alpha_for_ratings_dict(
+    task: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Top-level picklable function for ProcessPoolExecutor.
+
+    Computes Krippendorff's Alpha for a single ratings dict (no Flask context needed).
+    Used to parallelize the 'all', 'humans', 'llms' alpha computations.
+
+    Args:
+        task: {'key': str, 'ratings': {thread_id: {evaluator_id: score}}}
+
+    Returns:
+        {'key': str, 'alpha': float or None}
+    """
+    ratings_dict = task["ratings"]
+
+    # Inline alpha computation (same as calculate_alpha inner function but standalone)
+    units_with_values = []
+    all_values_list = []
+
+    for thread_id, evaluator_scores in ratings_dict.items():
+        values = list(evaluator_scores.values())
+        if len(values) >= 2:
+            units_with_values.append(np.array(values, dtype=np.float64))
+            all_values_list.extend(values)
+
+    if len(units_with_values) < 2 or len(all_values_list) < 4:
+        return {"key": task["key"], "alpha": None}
+
+    # Observed disagreement
+    do_sum = 0.0
+    pair_count_observed = 0
+    for vals in units_with_values:
+        n = len(vals)
+        if n < 2:
+            continue
+        diffs = vals[:, None] - vals[None, :]
+        sq_diffs = diffs ** 2
+        triu_idx = np.triu_indices(n, k=1)
+        do_sum += np.sum(sq_diffs[triu_idx])
+        pair_count_observed += n * (n - 1) // 2
+
+    if pair_count_observed == 0:
+        return {"key": task["key"], "alpha": None}
+
+    do = do_sum / pair_count_observed
+
+    # Expected disagreement via efficient formula
+    all_values = np.array(all_values_list, dtype=np.float64)
+    n_total = len(all_values)
+    total_pairs = n_total * (n_total - 1) // 2
+    if total_pairs == 0:
+        return {"key": task["key"], "alpha": None}
+
+    sum_sq = np.sum(all_values ** 2)
+    sum_v = np.sum(all_values)
+    de_numerator = n_total * sum_sq - sum_v ** 2
+    # n*sum(vi^2) - (sum vi)^2 = sum_{i<j} (vi - vj)^2  (upper triangle only)
+    de = de_numerator / total_pairs
+
+    if de == 0:
+        alpha = 1.0 if do == 0 else None
+    else:
+        alpha = round(1.0 - (do / de), 4)
+
+    return {"key": task["key"], "alpha": alpha}
 
 
 def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
@@ -1393,52 +1449,58 @@ def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
                 pass
 
     def calculate_alpha(ratings_dict: Dict[int, Dict[str, float]]) -> Optional[float]:
-        """Calculate Krippendorff's Alpha for interval data."""
-        # Collect all values per unit (thread)
+        """Calculate Krippendorff's Alpha for interval data.
+
+        Uses NumPy broadcasting for vectorized pairwise squared-difference
+        computation. Mathematically identical to the original O(n^2) loop version.
+        """
+        # Collect all values per unit (thread) — only units with 2+ raters
         units_with_values = []
-        all_values = []
+        all_values_list = []
 
         for thread_id, evaluator_scores in ratings_dict.items():
             values = list(evaluator_scores.values())
-            if len(values) >= 2:  # Need at least 2 raters per unit
-                units_with_values.append(values)
-                all_values.extend(values)
+            if len(values) >= 2:
+                units_with_values.append(np.array(values, dtype=np.float64))
+                all_values_list.extend(values)
 
-        if len(units_with_values) < 2 or len(all_values) < 4:
+        if len(units_with_values) < 2 or len(all_values_list) < 4:
             return None
 
-        # Calculate observed disagreement (Do)
-        # Sum of squared differences within each unit, normalized
+        # Calculate observed disagreement (Do) via broadcasting per unit
         do_sum = 0.0
         pair_count_observed = 0
 
-        for values in units_with_values:
-            n = len(values)
-            for i in range(n):
-                for j in range(i + 1, n):
-                    do_sum += (values[i] - values[j]) ** 2
-                    pair_count_observed += 1
+        for vals in units_with_values:
+            n = len(vals)
+            if n < 2:
+                continue
+            # Broadcasting: (vi - vj)^2 for all i < j
+            diffs = vals[:, None] - vals[None, :]
+            sq_diffs = diffs ** 2
+            triu_idx = np.triu_indices(n, k=1)
+            do_sum += np.sum(sq_diffs[triu_idx])
+            pair_count_observed += n * (n - 1) // 2
 
         if pair_count_observed == 0:
             return None
 
         do = do_sum / pair_count_observed
 
-        # Calculate expected disagreement (De)
-        # Sum of squared differences across all values
-        de_sum = 0.0
+        # Calculate expected disagreement (De) via efficient formula:
+        # sum((vi - vj)^2) for all i<j = n*sum(vi^2) - sum(vi)^2
+        all_values = np.array(all_values_list, dtype=np.float64)
         n_total = len(all_values)
-        pair_count_expected = 0
+        total_pairs = n_total * (n_total - 1) // 2
 
-        for i in range(n_total):
-            for j in range(i + 1, n_total):
-                de_sum += (all_values[i] - all_values[j]) ** 2
-                pair_count_expected += 1
-
-        if pair_count_expected == 0:
+        if total_pairs == 0:
             return None
 
-        de = de_sum / pair_count_expected
+        sum_sq = np.sum(all_values ** 2)
+        sum_v = np.sum(all_values)
+        de_numerator = n_total * sum_sq - sum_v ** 2
+        # n*sum(vi^2) - (sum vi)^2 = sum_{i<j} (vi - vj)^2  (upper triangle only)
+        de = de_numerator / total_pairs
 
         # Calculate alpha
         if de == 0:
@@ -1453,11 +1515,31 @@ def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
         all_ratings[tid].update(human_ratings.get(tid, {}))
         all_ratings[tid].update(llm_ratings.get(tid, {}))
 
-    return {
-        "all": calculate_alpha(all_ratings),
-        "humans": calculate_alpha(human_ratings),
-        "llms": calculate_alpha(llm_ratings),
-    }
+    # Compute three independent alpha values in parallel via ProcessPoolExecutor.
+    # Each task contains only plain dicts (serializable, no Flask context needed).
+    t0 = time.time()
+    tasks = [
+        {"key": "all", "ratings": dict(all_ratings)},
+        {"key": "humans", "ratings": dict(human_ratings)},
+        {"key": "llms", "ratings": dict(llm_ratings)},
+    ]
+
+    result = {"all": None, "humans": None, "llms": None}
+    try:
+        with ProcessPoolExecutor(max_workers=min(_MAX_STATS_WORKERS, 3)) as pool:
+            for res in pool.map(_compute_alpha_for_ratings_dict, tasks):
+                result[res["key"]] = res["alpha"]
+    except (RuntimeError, OSError):
+        # Fallback to sequential if process spawning fails (daemonized workers etc.)
+        for task in tasks:
+            res = _compute_alpha_for_ratings_dict(task)
+            result[res["key"]] = res["alpha"]
+
+    _perf_log.info(
+        "[StatsPerf] scenario=%s rating_krippendorff_alpha (parallel): %.3fs",
+        scenario_id, time.time() - t0,
+    )
+    return result
 
 
 def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
@@ -2818,27 +2900,37 @@ def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
     # Build evaluator list
     evaluators = list(user_info.values())
 
-    # Calculate pairwise agreement (exact match after rounding)
-    agreements = {}
+    # Vectorized pairwise agreement (exact match after rounding).
+    # Build items x evaluators matrix, then use NumPy broadcasting for all pairs.
     user_list = list(users_set)
+    n_users = len(user_list)
+    user_idx = {uid: idx for idx, uid in enumerate(user_list)}
 
-    for i, user1 in enumerate(user_list):
-        for user2 in user_list[i+1:]:
-            # Find common items
-            common_items = []
-            for item_id, user_scores in item_ratings.items():
-                if user1 in user_scores and user2 in user_scores:
-                    common_items.append((user_scores[user1], user_scores[user2]))
+    all_item_ids = list(item_ratings.keys())
+    n_items = len(all_item_ids)
 
-            if len(common_items) >= 1:
-                # Calculate agreement (percentage of exact matches, rounded to integers)
-                agreements_count = sum(
-                    1 for s1, s2 in common_items if round(s1) == round(s2)
-                )
-                agreement = agreements_count / len(common_items)
+    # Build matrix: items x evaluators (NaN = missing)
+    rating_matrix = np.full((n_items, n_users), np.nan)
+    for i_idx, item_id in enumerate(all_item_ids):
+        for uid, score in item_ratings[item_id].items():
+            if uid in user_idx:
+                rating_matrix[i_idx, user_idx[uid]] = score
 
-                # Store with sorted key for consistency
-                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+    # Round for agreement comparison (matching original behavior)
+    rounded_matrix = np.round(rating_matrix)
+
+    agreements = {}
+    for i in range(n_users):
+        for j in range(i + 1, n_users):
+            # Mask: both evaluators have rated this item
+            both_rated = ~np.isnan(rating_matrix[:, i]) & ~np.isnan(rating_matrix[:, j])
+            n_common = int(np.sum(both_rated))
+            if n_common >= 1:
+                agree_count = int(np.sum(
+                    rounded_matrix[both_rated, i] == rounded_matrix[both_rated, j]
+                ))
+                agreement = agree_count / n_common
+                key = f"{min(str(user_list[i]), str(user_list[j]))}-{max(str(user_list[i]), str(user_list[j]))}"
                 agreements[key] = round(agreement, 3)
 
     return {
@@ -3575,24 +3667,43 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
 
     evaluators = list(user_info.values())
 
-    # Calculate pairwise agreement at feature level
-    # For each pair: % of features where both assigned the same bucket
-    agreements = {}
+    # Vectorized pairwise agreement at feature level.
+    # Build a features x evaluators matrix mapping bucket → integer.
+    # NaN where evaluator did not rate a feature. Then use NumPy broadcasting
+    # to compute agreement for all evaluator pairs at once.
     user_list = list(users_set)
+    n_users = len(user_list)
+    user_idx = {uid: idx for idx, uid in enumerate(user_list)}
 
-    for i, user1 in enumerate(user_list):
-        for user2 in user_list[i + 1:]:
-            shared_count = 0
-            agree_count = 0
-            for feature_id, evaluator_buckets in feature_buckets.items():
-                if user1 in evaluator_buckets and user2 in evaluator_buckets:
-                    shared_count += 1
-                    if evaluator_buckets[user1] == evaluator_buckets[user2]:
-                        agree_count += 1
+    all_feature_ids = list(feature_buckets.keys())
+    n_features = len(all_feature_ids)
 
+    # Map bucket IDs to integers for efficient matrix comparison
+    all_buckets = set()
+    for fb in feature_buckets.values():
+        all_buckets.update(fb.values())
+    bucket_to_int = {b: idx for idx, b in enumerate(sorted(all_buckets, key=str))}
+
+    # Build matrix: features x evaluators (NaN = missing)
+    feat_matrix = np.full((n_features, n_users), np.nan)
+    for f_idx, fid in enumerate(all_feature_ids):
+        for uid, bucket_val in feature_buckets[fid].items():
+            if uid in user_idx:
+                feat_matrix[f_idx, user_idx[uid]] = bucket_to_int[bucket_val]
+
+    # For each evaluator pair: count features where both rated, and where they agree
+    agreements = {}
+    for i in range(n_users):
+        for j in range(i + 1, n_users):
+            # Mask: both have rated (neither is NaN)
+            both_rated = ~np.isnan(feat_matrix[:, i]) & ~np.isnan(feat_matrix[:, j])
+            shared_count = int(np.sum(both_rated))
             if shared_count >= 1:
+                agree_count = int(np.sum(
+                    feat_matrix[both_rated, i] == feat_matrix[both_rated, j]
+                ))
                 agreement = agree_count / shared_count
-                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                key = f"{min(str(user_list[i]), str(user_list[j]))}-{max(str(user_list[i]), str(user_list[j]))}"
                 agreements[key] = round(agreement, 3)
 
     return {

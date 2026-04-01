@@ -166,7 +166,7 @@ services:
       - FLASK_ENV=${FLASK_ENV:-development}
       - FLASK_APP=main
       - LLARS_RUNTIME_ROLE=web
-      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-}
       # MariaDB (defaults are for development; override via .env for production)
       - MYSQL_DATABASE=${MYSQL_DATABASE:-database_llars}
       - MYSQL_USER=${MYSQL_USER:-dev_user}
@@ -204,10 +204,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
-      start_period: 1800s   # 30 Minuten maximale Startzeit
-      interval: 10s         # Häufige Checks
+      start_period: 120s    # 2 Minuten maximale Startzeit (Flair-Modell lädt schnell genug)
+      interval: 10s
       timeout: 10s
-      retries: 180         # Viele Retries (entspricht 30min bei 10s Interval)
+      retries: 3
 
   backend-worker-service:
     container_name: llars_worker_service
@@ -247,8 +247,8 @@ services:
       - REDIS_DB=${REDIS_DB:-0}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-dev_redis_password}
       - SOCKETIO_MESSAGE_QUEUE=${SOCKETIO_MESSAGE_QUEUE:-}
-      - STATS_WORKER_PROCESSES=${STATS_WORKER_PROCESSES:-2}
-      - LLM_EVAL_WORKER_PROCESSES=${LLM_EVAL_WORKER_PROCESSES:-2}
+      - STATS_WORKER_PROCESSES=${STATS_WORKER_PROCESSES:-}
+      - LLM_EVAL_WORKER_PROCESSES=${LLM_EVAL_WORKER_PROCESSES:-}
       - APP_VERSION=${APP_VERSION:-dev}
       - APP_COMMIT_HASH=${APP_COMMIT_HASH:-local}
       - APP_BRANCH=${APP_BRANCH:-dev}

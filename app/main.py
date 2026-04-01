@@ -389,6 +389,33 @@ def seed_field_prompts():
 if _should_run_one_time_startup_tasks():
     seed_field_prompts()
 
+
+# Migrate plaintext API keys to argon2 hashes
+def migrate_api_key_hashes():
+    """
+    One-time migration: hash any remaining plaintext API keys with argon2id.
+    Idempotent — only processes users with api_key set but api_key_hash missing.
+    """
+    if _skip_startup_tasks():
+        print("[Startup] Skipping API key hash migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from migrations.hash_api_keys import migrate_api_keys_to_hash
+    from db.database import db
+
+    with app.app_context():
+        try:
+            migrated = migrate_api_keys_to_hash(db)
+            if migrated > 0:
+                print(f"[Startup] Migrated {migrated} API keys from plaintext to argon2 hash")
+            else:
+                print("[Startup] No plaintext API keys to migrate")
+        except Exception as e:
+            print(f"[Startup] Error migrating API keys: {e}")
+
+if _should_run_one_time_startup_tasks():
+    migrate_api_key_hashes()
+
+
 # Sync LLARS documentation to RAG collection for the chatbot
 def sync_documentation_collection():
     """

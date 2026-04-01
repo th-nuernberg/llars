@@ -47,6 +47,7 @@ python-dateutil==2.9.0
 # Offline Anonymize Tool (NER + Recommender)
 flair==0.15.1
 scikit-learn==1.5.0
+numpy>=1.26.0  # Explicit: used for vectorized agreement metrics (Krippendorff, etc.)
 
 # System monitoring for OnCoCo
 psutil==6.1.0
@@ -67,6 +68,9 @@ Pillow==12.1.1
 
 # Conference Wizard (DuckDuckGo search)
 ddgs>=7.0.0
+
+# API key hashing (PHC winner, timing-safe verification)
+argon2-cffi==23.1.0
 
 # Redis for server-authoritative sessions (Wizard Sessions, etc.)
 redis==5.0.1

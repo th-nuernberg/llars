@@ -1,5 +1,5 @@
 # /docker/flask/Dockerfile-flask
-FROM public.ecr.aws/docker/library/python:3.10-slim
+FROM public.ecr.aws/docker/library/python:3.10.20-slim
 LABEL authors="philippsteigerwald"
 
 WORKDIR /app

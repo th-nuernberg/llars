@@ -297,7 +297,7 @@ class TestUserCreation:
         """
         [USER-040] Create User - Erfolgreich
 
-        User sollte erfolgreich erstellt werden.
+        User sollte erfolgreich erstellt werden mit argon2-gehashtem API Key.
         """
         from services.user_service import UserService
 
@@ -309,7 +309,10 @@ class TestUserCreation:
         assert success is True
         assert user is not None
         assert user.username == 'new_user_040'
-        assert user.api_key is not None
+        # API key is now hashed, not stored plaintext
+        assert user.api_key is None
+        assert user.api_key_hash is not None
+        assert user.api_key_hash.startswith('$argon2')
         assert user.group is not None
         assert error is None
 
@@ -317,7 +320,7 @@ class TestUserCreation:
         """
         [USER-041] Create User - Mit API Key
 
-        User mit explizitem API Key sollte erstellt werden.
+        User mit explizitem API Key sollte mit argon2 Hash erstellt werden.
         """
         from services.user_service import UserService
 
@@ -328,7 +331,11 @@ class TestUserCreation:
         )
 
         assert success is True
-        assert user.api_key == 'explicit-api-key-041'
+        # Plaintext key is no longer stored
+        assert user.api_key is None
+        # Hash is stored and can verify the original key
+        assert user.api_key_hash is not None
+        assert user.verify_api_key('explicit-api-key-041')
 
     def test_USER_042_create_user_with_group(self, app, db, app_context):
         """
@@ -486,7 +493,7 @@ class TestUserCreation:
         """
         [USER-050] Create User - Auto API Key
 
-        API Key sollte automatisch generiert werden.
+        API Key sollte automatisch generiert und als argon2 Hash gespeichert werden.
         """
         from services.user_service import UserService
 
@@ -496,8 +503,10 @@ class TestUserCreation:
         )
 
         assert success is True
-        assert user.api_key is not None
-        assert len(user.api_key) == 36  # UUID format
+        # Plaintext is cleared, hash is stored
+        assert user.api_key is None
+        assert user.api_key_hash is not None
+        assert user.api_key_hash.startswith('$argon2')
 
     def test_USER_051_create_user_new_group_created(self, app, db, app_context):
         """

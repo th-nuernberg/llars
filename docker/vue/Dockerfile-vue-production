@@ -11,7 +11,7 @@
 # ============================================
 
 # Stage 1: Build
-FROM public.ecr.aws/docker/library/node:23-alpine AS builder
+FROM public.ecr.aws/docker/library/node:23.11.1-alpine AS builder
 
 WORKDIR /app
 
@@ -63,7 +63,7 @@ RUN npm run build
 # ============================================
 # Stage 2: Production - nginx serves static files
 # ============================================
-FROM public.ecr.aws/docker/library/nginx:alpine AS production
+FROM public.ecr.aws/docker/library/nginx:1.28.3-alpine AS production
 
 # Copy custom nginx config for SPA
 COPY docker/vue/nginx-frontend.conf /etc/nginx/nginx.conf

@@ -113,14 +113,15 @@ def get_or_create_user(username: str):
         # Assign unique collab color - prefer one that's not already in use
         collab_color = pick_collab_color()
 
-        # Create new user
+        # Create new user - API key is hashed with argon2, plaintext is never stored
+        api_key_plaintext = str(uuid.uuid4())
         user = User(
             username=username,
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=group_id,
             collab_color=collab_color
         )
+        user.set_api_key_hashed(api_key_plaintext)
         db.session.add(user)
         db.session.commit()
         logger.info(f"Created new user from Authentik login: {username} with collab_color={collab_color}")
@@ -434,8 +435,26 @@ def api_key_or_token_required(f):
                 logger.debug(f"System API key authenticated for {request.path}")
                 return f(*args, **kwargs)
 
-            # Check if it's a user's personal API key
-            user = User.query.filter_by(api_key=api_key).first()
+            # Check user's personal API keys in order:
+            # 1. Modern UserApiKey table (SHA-256 hashed, multiple keys per user)
+            # 2. Argon2-hashed legacy key (api_key_hash column on User)
+            # 3. Plaintext legacy key fallback (api_key column, migration period only)
+            from db.models import UserApiKey
+
+            user_api_key = UserApiKey.find_by_key(api_key)
+            if user_api_key:
+                user = user_api_key.user
+                user_api_key.update_last_used()
+                from db.database import db as _db
+                _db.session.commit()
+            else:
+                # Try argon2-hashed legacy key
+                user = User.find_by_api_key_hash(api_key)
+
+            if not user:
+                # Plaintext fallback for migration period (keys not yet hashed)
+                user = User.query.filter_by(api_key=api_key).first()
+
             if user:
                 denied = _check_user_account_state(user)
                 if denied is not None:

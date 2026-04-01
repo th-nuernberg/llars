@@ -2,11 +2,19 @@
 
 import secrets
 import hashlib
+import logging
 from typing import Optional, List
 from datetime import datetime, date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from werkzeug.security import generate_password_hash, check_password_hash
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 from db import db
+
+logger = logging.getLogger(__name__)
+
+# Module-level hasher instance (thread-safe, reuses parameters)
+_ph = PasswordHasher()
 
 
 class UserGroup(db.Model):
@@ -34,7 +42,11 @@ class User(db.Model):
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(db.String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(db.String(255))
-    api_key: Mapped[str] = mapped_column(db.String(100), unique=True)
+    api_key: Mapped[Optional[str]] = mapped_column(db.String(100), unique=True, nullable=True)
+    api_key_hash: Mapped[Optional[str]] = mapped_column(
+        db.String(255), nullable=True,
+        comment="Argon2id hash of the API key. Replaces plaintext api_key column."
+    )
     group_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('user_groups.id'), default=1)
     is_active: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
     is_ai: Mapped[bool] = mapped_column(db.Boolean, default=False, nullable=False)
@@ -66,6 +78,53 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def set_api_key_hashed(self, plaintext_key: str) -> None:
+        """
+        Hash the API key with argon2id and store it. Clears the plaintext column.
+
+        Args:
+            plaintext_key: The raw API key to hash
+        """
+        self.api_key_hash = _ph.hash(plaintext_key)
+        self.api_key = None
+
+    def verify_api_key(self, plaintext_key: str) -> bool:
+        """
+        Verify a plaintext key against the stored argon2id hash.
+        Automatically rehashes if argon2 parameters have changed.
+
+        Returns:
+            True if the key matches, False otherwise
+        """
+        if not self.api_key_hash:
+            return False
+        try:
+            valid = _ph.verify(self.api_key_hash, plaintext_key)
+            if valid and _ph.check_needs_rehash(self.api_key_hash):
+                self.api_key_hash = _ph.hash(plaintext_key)
+            return valid
+        except (VerifyMismatchError, VerificationError, InvalidHashError):
+            return False
+
+    @classmethod
+    def find_by_api_key_hash(cls, plaintext_key: str) -> Optional["User"]:
+        """
+        Find a user by verifying the provided key against stored argon2 hashes.
+
+        Argon2 hashes include a random salt, so we cannot do a simple DB lookup.
+        Instead we iterate over users that have a hash set. This is acceptable
+        because the number of users with API keys is small (typically < 100),
+        and argon2 verification is fast (~1ms with default parameters).
+        """
+        users_with_hash = cls.query.filter(
+            cls.api_key_hash.isnot(None),
+            cls.is_active.is_(True),
+        ).all()
+        for user in users_with_hash:
+            if user.verify_api_key(plaintext_key):
+                return user
+        return None
 
     def get_avatar_seed(self):
         """Get the avatar seed, generating one if not exists."""

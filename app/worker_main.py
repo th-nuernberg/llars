@@ -136,8 +136,16 @@ def main() -> int:
         resumed = LLMEvalQueueService.enqueue_pending_evaluations_from_scenarios()
         logger.info("[WorkerMain] Enqueued %s pending LLM evaluation runs on startup", resumed)
 
-    stats_worker_processes = max(1, int(os.environ.get("STATS_WORKER_PROCESSES", 2)))
-    llm_eval_worker_processes = max(1, int(os.environ.get("LLM_EVAL_WORKER_PROCESSES", 2)))
+    # Auto-scale worker counts based on CPU cores (cpu_count // 2 each, min 2).
+    # Override via STATS_WORKER_PROCESSES / LLM_EVAL_WORKER_PROCESSES env vars.
+    try:
+        cpu_count = len(os.sched_getaffinity(0))
+    except AttributeError:
+        cpu_count = os.cpu_count() or 4
+    default_workers = max(2, cpu_count // 2)
+
+    stats_worker_processes = max(1, int(os.environ.get("STATS_WORKER_PROCESSES", "") or default_workers))
+    llm_eval_worker_processes = max(1, int(os.environ.get("LLM_EVAL_WORKER_PROCESSES", "") or default_workers))
 
     processes = []
     processes.extend(_spawn_named_processes("stats", stats_worker_processes, _run_stats_worker))

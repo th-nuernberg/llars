@@ -37,8 +37,13 @@ def seed_bootstrap_admin(db):
 
     The admin user is created with:
     - Username: 'admin' (fixed, used by SYSTEM_ADMIN_API_KEY)
-    - API Key: from SYSTEM_ADMIN_API_KEY env var
+    - API Key: from SYSTEM_ADMIN_API_KEY env var (stored hashed with argon2)
     - Group: Admin group
+
+    Note: The SYSTEM_ADMIN_API_KEY is also checked via hmac.compare_digest in
+    system_api_key_required — that path is separate and remains unchanged.
+    The api_key_hash here enables the admin key to also work through
+    api_key_or_token_required for user-level API access.
 
     The admin role assignment happens separately in permissions.py
 
@@ -51,12 +56,26 @@ def seed_bootstrap_admin(db):
     # Check if admin user already exists
     existing_admin = User.query.filter_by(username='admin').first()
     if existing_admin:
-        # Update API key if it changed
+        # Rehash API key if env var changed or key is still plaintext
         system_api_key = os.getenv('SYSTEM_ADMIN_API_KEY')
-        if system_api_key and existing_admin.api_key != system_api_key:
-            existing_admin.api_key = system_api_key
-            db.session.commit()
-            print("Updated admin user API key from environment.")
+        if system_api_key:
+            needs_update = False
+            # Migrate plaintext to hash
+            if existing_admin.api_key == system_api_key:
+                needs_update = True
+            # Key changed — verify against hash, update if mismatch
+            elif existing_admin.api_key_hash and not existing_admin.verify_api_key(system_api_key):
+                needs_update = True
+            # No hash set yet
+            elif not existing_admin.api_key_hash:
+                needs_update = True
+
+            if needs_update:
+                existing_admin.set_api_key_hashed(system_api_key)
+                db.session.commit()
+                print("Updated admin user API key hash from environment.")
+            else:
+                print("Bootstrap admin user already exists.")
         else:
             print("Bootstrap admin user already exists.")
         return
@@ -71,17 +90,17 @@ def seed_bootstrap_admin(db):
     # Get API key from environment (or generate one)
     api_key = os.getenv('SYSTEM_ADMIN_API_KEY') or str(uuid.uuid4())
 
-    # Create admin user
+    # Create admin user — API key stored as argon2 hash, never plaintext
     admin_user = User(
         username='admin',
         password_hash='',  # Auth via Authentik, no local password
-        api_key=api_key,
         group_id=admin_group.id
     )
+    admin_user.set_api_key_hashed(api_key)
     db.session.add(admin_user)
     db.session.commit()
 
-    print(f"Created bootstrap admin user with API key from environment.")
+    print(f"Created bootstrap admin user with hashed API key from environment.")
     print(f"  Username: admin")
     print(f"  API Key: {api_key[:8]}...{api_key[-4:]}")
 

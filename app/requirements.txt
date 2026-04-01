@@ -57,7 +57,7 @@ docker==7.1.0
 beautifulsoup4==4.12.3
 lxml==5.3.0
 playwright==1.49.1
-aiohttp==3.13.3  # Async HTTP for Playwright image downloads
+aiohttp==3.13.4  # Async HTTP for Playwright image downloads (CVE-2026-22815 fix)
 
 # Document Processing (PDF, Word, Excel, PowerPoint)
 PyMuPDF==1.24.10

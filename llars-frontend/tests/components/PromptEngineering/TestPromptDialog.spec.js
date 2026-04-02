@@ -12,6 +12,9 @@
  * transitioning from false to true. Tests that need streaming must mount with
  * modelValue=false and then setProps({ modelValue: true }).
  *
+ * Timeout: Raised to 15s because Vuetify mount overhead reaches 3-5s on CI Docker
+ * runners, pushing tests past the default 5s limit under load.
+ *
  * Test IDs: COMP_TPD_001 - COMP_TPD_053
  */
 
@@ -97,12 +100,15 @@ const LBtnStub = {
 
 // --- Helpers ---
 
+/** Track mounted wrappers for proper cleanup in afterEach */
+let activeWrapper = null
+
 /**
  * Mount the dialog with sensible defaults.
  * Stubs v-dialog to avoid Vuetify overlay issues, plus L-components and LlmModelSelect.
  */
 function mountDialog(props = {}, options = {}) {
-  return mount(TestPromptDialog, {
+  const wrapper = mount(TestPromptDialog, {
     props: {
       modelValue: true,
       prompt: 'Test prompt {{variable}}',
@@ -123,6 +129,8 @@ function mountDialog(props = {}, options = {}) {
     attachTo: document.body,
     ...options,
   })
+  activeWrapper = wrapper
+  return wrapper
 }
 
 /**
@@ -162,6 +170,13 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  // Properly unmount the Vue component before clearing the DOM.
+  // Without this, onUnmounted never fires and socket listeners / internal state
+  // can leak between tests, gradually slowing down later tests in CI.
+  if (activeWrapper) {
+    activeWrapper.unmount()
+    activeWrapper = null
+  }
   document.body.innerHTML = ''
 })
 
@@ -169,7 +184,9 @@ afterEach(() => {
 // Rendering
 // =======================================================================
 
-describe('TestPromptDialog', () => {
+// CI Docker runners can be 10x slower than local dev — bump per-test timeout
+// to prevent flaky timeouts on Vuetify-heavy mounts (observed: 5274ms in CI).
+describe('TestPromptDialog', { timeout: 15_000 }, () => {
   describe('Rendering', () => {
     it('COMP_TPD_001: renders dialog content when modelValue is true', () => {
       const wrapper = mountDialog({ modelValue: true })

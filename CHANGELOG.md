@@ -16,12 +16,30 @@ tagged on `main` after each dev-to-main merge.
 
 ## [Unreleased]
 
-### Changed
-- **CI Security-Scan ist jetzt wirklich informational** - `security:scan` ist in GitLab nun `allow_failure`, damit Nightly- und Deploy-Pipelines nicht mehr an extern wechselnden Advisory-Feeds scheitern, obwohl der eigentliche Code unveraendert ist.
+---
+
+## [1.5.0] - 2026-04-02
+
+### Security
+- **API Keys mit argon2id gehasht** - Plaintext-Keys werden beim Startup automatisch migriert. Neue Keys werden nur noch als Hash gespeichert. Backward-kompatibel waehrend Migration.
+- **Docker Base Images gepinnt** - Alle Dockerfiles nutzen jetzt spezifische Versionen (python:3.10.20-slim, nginx:1.28.3-alpine, node:23.11.1-slim/alpine, mariadb:11.2.6) statt floating Tags. Supply-Chain-Schutz.
+- **Security-Scan blockiert Pipeline** - `allow_failure: true` entfernt von `security:scan`. Vulnerabilities muessen gefixt oder explizit ignoriert werden.
+- **CVE-2026-22815 (aiohttp)** gefixt - Upgrade 3.13.3 auf 3.13.4
+- **lodash-es Prototype Pollution** gefixt (GHSA-f23m, GHSA-r5fr)
+- **picomatch ReDoS + Method Injection** gefixt (GHSA-3v7f, GHSA-c2c7)
+- **Rollback Error-Handling** - Kein stilles `|| true` mehr; explizite Fehlermeldung wenn beide Rollback-Mechanismen scheitern
+
+### Performance
+- **Agreement-Berechnung 241x schneller** - Krippendorffs Alpha, Fleiss Kappa, Heatmaps nutzen jetzt NumPy-Vektorisierung statt Python-Loops. ProcessPoolExecutor verteilt unabhaengige Berechnungen auf alle CPU-Kerne.
+- **Gunicorn Workers auto-skaliert** - `cpu_count + 1` (13 auf Production) statt hardcoded 4. Gevent-optimiert.
+- **Stats/LLM Workers auto-skaliert** - `cpu_count // 2` (6 je auf Production) statt hardcoded 2.
+- **CI Backend-Tests 3.7x schneller** - pytest-xdist verteilt 3110 Tests auf 12 Kerne (18min auf 5min).
+- **Flask RAM -50%** - Von 11.17GB auf 5.5GB durch korrekte Worker-Anzahl fuer gevent.
 
 ### Fixed
-- **Nightly-Pipeline-Blocker durch `pip-audit` entschärft** - `CVE-2026-4539` fuer das transitive `pygments 2.19.2` wurde temporaer in die Ignore-Liste aufgenommen. Ausloeser war die fehlgeschlagene Scheduled-Pipeline `31528` vom 2026-03-25 auf demselben Commit `a253566f`, der am 2026-03-24 in Pipeline `31506` bereits erfolgreich deployt hatte.
-- **Deploy-Policy im Changelog dokumentiert** - Sicherheits-Feeds koennen sich ohne Codeaenderung aendern; darum werden transitive CVEs ohne belastbare Fix-Version temporaer kuratiert ignoriert und spaeter gezielt bereinigt, statt Nightly-Deploys unvorhersehbar zu blockieren.
+- **Flaky TestPromptDialog in CI** - Timeout auf 15s erhoeht, proper Vue unmount im afterEach verhindert Socket-Listener-Leaks.
+- **Dead Code entfernt** - Alte `_stats_cache` Funktionen (ersetzt durch 2-Tier Cache Service).
+- **Healthcheck start_period** von 30min auf 2min reduziert.
 
 ---
 

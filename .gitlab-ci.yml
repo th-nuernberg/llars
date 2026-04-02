@@ -228,8 +228,8 @@ test:unit:backend:
       fi
   script:
     - source .venv/bin/activate
-    - echo "Running Backend Unit Tests..."
-    - pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=term-missing
+    - echo "Running Backend Unit Tests (parallel across CPU cores)..."
+    - pytest tests/unit/ -n auto --dist loadfile --cov=app --cov-report=xml --cov-report=term-missing
   coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
     reports:

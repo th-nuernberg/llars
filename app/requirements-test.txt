@@ -67,3 +67,4 @@ redis==5.0.1
 pytest>=7.0.0
 pytest-cov>=4.0.0
 pytest-flask>=1.3.0
+pytest-xdist>=3.5.0  # Parallel test execution across CPU cores (-n auto)

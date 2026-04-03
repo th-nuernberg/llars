@@ -1166,68 +1166,66 @@ class AgreementMetricsService:
         if matrix.shape[0] < 2:
             return None
 
-        # --- Observed disagreement (Do) ---
-        # For each item (row), compute pairwise disagreement among non-NaN values.
-        # Use vectorized approach: for each row, extract valid values and use
-        # broadcasting to compute all pairwise differences at once.
-        do_sum = 0.0
-        do_pairs = 0
-
-        for row in matrix:
-            vals = row[~np.isnan(row)]
-            n_vals = len(vals)
-            if n_vals < 2:
-                continue
-            if level == "nominal":
-                # Broadcasting: vals[:, None] != vals[None, :] gives pairwise inequality
-                # Upper triangle only (avoid double-counting and self-pairs)
-                disagreements = vals[:, None] != vals[None, :]
-                # Sum upper triangle
-                triu_idx = np.triu_indices(n_vals, k=1)
-                do_sum += np.sum(disagreements[triu_idx])
-            else:
-                # Squared differences via broadcasting
-                diffs = vals[:, None] - vals[None, :]
-                sq_diffs = diffs ** 2
-                triu_idx = np.triu_indices(n_vals, k=1)
-                do_sum += np.sum(sq_diffs[triu_idx])
-            do_pairs += n_vals * (n_vals - 1) // 2
-
-        if do_pairs == 0:
-            return None
-
-        do = do_sum / do_pairs
-
-        # --- Expected disagreement (De) ---
-        # Pool all non-NaN values across the entire matrix, then compute
-        # pairwise disagreement using vectorized broadcasting.
+        # --- Coincidence matrix approach (Krippendorff 2011, Sec. 4) ---
+        # Correctly handles missing data by weighting each unit's contribution
+        # by 1/(m_u - 1) where m_u is the number of raters for that unit.
+        # Without this weighting, units with fewer raters are over-counted.
         all_values = matrix[~np.isnan(matrix)]
         n_total = len(all_values)
 
         if n_total < 2:
             return None
 
-        if level == "nominal":
-            # For nominal: De = sum of (v_i != v_j) for all i < j, divided by pair count
-            # Efficient: count frequency of each category, then De = 1 - sum(f_k^2) / total_pairs
-            # where f_k is the count of category k.
-            unique_vals, counts = np.unique(all_values, return_counts=True)
-            # Number of same-category pairs = sum(c_k * (c_k - 1) / 2)
-            same_pairs = np.sum(counts * (counts - 1)) // 2
-            total_pairs = n_total * (n_total - 1) // 2
-            de = 1.0 - (same_pairs / total_pairs) if total_pairs > 0 else 1.0
-        else:
-            # For ordinal/interval: De = mean of (v_i - v_j)^2 for all i < j
-            # Efficient formula: sum((v_i - v_j)^2) for all pairs
-            #   = n * sum(v_i^2) - (sum(v_i))^2
-            # Divided by number of pairs = n*(n-1)/2
-            sum_sq = np.sum(all_values ** 2)
-            sum_v = np.sum(all_values)
-            total_pairs = n_total * (n_total - 1) // 2
-            # sum of (vi - vj)^2 for all i<j = n*sum(vi^2) - sum(vi)^2
-            # n*sum(vi^2) - (sum vi)^2 = sum_{i<j} (vi - vj)^2  (upper triangle)
-            de_numerator = n_total * sum_sq - sum_v ** 2
-            de = de_numerator / total_pairs if total_pairs > 0 else 1.0
+        unique_vals = np.unique(all_values)
+        n_cats = len(unique_vals)
+        val_to_idx = {v: i for i, v in enumerate(unique_vals)}
+
+        # Build coincidence matrix O (symmetric).
+        # o_ck = sum_u [ n_uc * n_uk / (m_u - 1) ]  for c != k
+        # o_cc = sum_u [ n_uc * (n_uc - 1) / (m_u - 1) ]
+        # where n_uc = count of value c in unit u, m_u = total raters in unit u.
+        coincidence = np.zeros((n_cats, n_cats))
+        for row in matrix:
+            vals = row[~np.isnan(row)]
+            m_u = len(vals)
+            if m_u < 2:
+                continue
+            # Count frequency of each category in this unit
+            for a in range(m_u):
+                ci = val_to_idx[vals[a]]
+                for b in range(m_u):
+                    if a != b:
+                        cj = val_to_idx[vals[b]]
+                        coincidence[ci, cj] += 1.0 / (m_u - 1)
+
+        # n_c = marginal sums (row or column sums — matrix is symmetric)
+        n_c = np.sum(coincidence, axis=1)
+        n = np.sum(n_c)  # total pairable values
+
+        # Build difference metric matrix delta_ck^2
+        # Nominal: delta = 1 for c != k
+        # Interval: delta = (v_c - v_k)^2
+        # Ordinal: delta = [sum_{g=c}^{k} n_g - (n_c + n_k)/2]^2
+        #   (Krippendorff 2011, Sec. 4 — cumulative frequency distance)
+        delta_sq = np.zeros((n_cats, n_cats))
+        for c in range(n_cats):
+            for k in range(n_cats):
+                if c != k:
+                    if level == "nominal":
+                        delta_sq[c, k] = 1.0
+                    elif level == "ordinal":
+                        lo, hi = min(c, k), max(c, k)
+                        cum_sum = np.sum(n_c[lo:hi + 1])
+                        delta_sq[c, k] = (cum_sum - (n_c[c] + n_c[k]) / 2.0) ** 2
+                    else:  # interval
+                        delta_sq[c, k] = (unique_vals[c] - unique_vals[k]) ** 2
+
+        # Do = sum_{c,k} o_ck * delta_ck / n  (all pairs, not just upper triangle)
+        do = np.sum(coincidence * delta_sq) / n if n > 0 else 0.0
+
+        # De = sum_{c,k} n_c * n_k * delta_ck / (n * (n-1))
+        nc_outer = np.outer(n_c, n_c)
+        de = np.sum(nc_outer * delta_sq) / (n * (n - 1)) if n > 1 else 1.0
 
         # Calculate alpha
         if de == 0:

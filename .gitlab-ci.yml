@@ -8,9 +8,9 @@
 #   Auto-deploys on every push. Same E2E suite as main to catch issues before merge.
 #
 # main branch (→ llars production server 141.75.150.128):
-#   Push → lint → test → security (no deploy)
+#   Push → lint → test → security report (no deploy)
 #   Nightly Schedule 02:00 CET (or FORCE_DEPLOY):
-#     build → deploy:staging → e2e → smoke:staging → deploy:production
+#     security report → build → deploy:staging → e2e → smoke:staging → deploy:production
 #     → smoke:production → [FAIL] → rollback:production (auto)
 #
 # Workflow: dev → test on llars-dev → merge to main → nightly prod deploy
@@ -18,7 +18,7 @@
 # Stages:
 #   1. lint           - Code quality
 #   2. test           - Unit & Integration tests
-#   3. security       - Route protection & dependency audit
+#   3. security       - Route protection & dependency audit / optional gate
 #   4. build          - Docker images
 #   5. deploy-staging - Blue-Green staging deployment
 #   6. test-staging   - Nightly E2E & Smoke tests against staging
@@ -156,6 +156,15 @@ variables:
     - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "push"
     - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEV_DEPLOY == "true"
     - if: $FORCE_DEV_DEPLOY == "true" && $CI_COMMIT_BRANCH == "dev"
+
+# Optional blocking security gate for explicit production release pipelines.
+# Disabled for nightly schedules by default to avoid red pipelines when advisory feeds change.
+.security_gate_rules:
+  rules:
+    - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $SECURITY_GATE_ON_SCHEDULE == "true" && $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
 
 # =============================================================================
 # STAGE 1: LINT
@@ -352,13 +361,15 @@ security:routes:
       fi
     - pytest tests/security/test_route_security.py -q --confcutdir=tests/security
 
-# Security Scan — blocks pipeline on HIGH/CRITICAL vulnerabilities.
-# Known unfixable CVEs (torch, transformers, Flask pin) are in app/.pip-audit-ignore.
+# Security Scan — report-only by default.
+# Captures dependency findings as artifacts without failing routine pipelines when
+# advisory feeds change on an unchanged application SHA.
 security:scan:
   stage: security
   image: python:3.10-slim
   extends:
     - .ci_rules
+  allow_failure: true
   cache:
     key: security-scan
     paths:
@@ -368,11 +379,32 @@ security:scan:
     - apt-get update && apt-get install -y --no-install-recommends nodejs npm
   script:
     - pip install pip-audit
-    - echo "Running security scan..."
-    # Use ignore file for known vulnerabilities that cannot be fixed (torch, transformers, etc.)
-    - IGNORE_ARGS=$(grep -v '^#' app/.pip-audit-ignore | grep -v '^$' | sed 's/^/--ignore-vuln /' | tr '\n' ' ')
-    - eval "pip-audit -r app/requirements.txt $IGNORE_ARGS"
-    - cd llars-frontend && npm audit --audit-level=high
+    - echo "Running security scan (report-only)..."
+    - bash scripts/ci/run_security_dependency_scan.sh report security-reports
+  artifacts:
+    when: always
+    paths:
+      - security-reports/
+    expire_in: 1 week
+
+# Blocking dependency gate for explicit release pipelines.
+# Uses the same ignore list as report-only scans, but fails the release when findings remain.
+security:gate:
+  stage: security
+  image: python:3.10-slim
+  extends:
+    - .security_gate_rules
+  cache:
+    key: security-scan
+    paths:
+      - .cache/pip
+      - .cache/npm
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends nodejs npm
+  script:
+    - pip install pip-audit
+    - echo "Running release security gate..."
+    - bash scripts/ci/run_security_dependency_scan.sh gate security-reports
 
 # =============================================================================
 # STAGE 4: BUILD

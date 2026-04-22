@@ -60,12 +60,14 @@ from .crawler_collection import (
     update_collection_for_crawl,
     update_collection_stats,
 )
+from .crawler_state_store import CrawlerStateStore
 from .crawler_jobs import (
     get_job_status,
     get_all_jobs,
     list_jobs,
     cancel_job,
     create_job_entry,
+    sync_job_state,
     update_job_started,
     update_job_completed,
     update_job_failed,
@@ -128,6 +130,7 @@ class CrawlerService:
         self.active_crawls: Dict[str, Dict] = {}
         self._socketio = None
         self._background_threads: Dict[str, threading.Thread] = {}
+        self.state_store = CrawlerStateStore()
 
     # =========================================================================
     # SOCKETIO CONFIGURATION
@@ -150,19 +153,23 @@ class CrawlerService:
 
     def get_job_status(self, job_id: str) -> Optional[Dict]:
         """Get status of a crawl job. See crawler_jobs.get_job_status()."""
-        return get_job_status(job_id, self.active_crawls)
+        return get_job_status(job_id, self.active_crawls, state_store=self.state_store)
 
     def get_all_jobs(self) -> List[Dict]:
         """Get all crawl jobs. See crawler_jobs.get_all_jobs()."""
-        return get_all_jobs(self.active_crawls)
+        return get_all_jobs(self.active_crawls, state_store=self.state_store)
 
     def list_jobs(self) -> List[Dict]:
         """List all crawl jobs. See crawler_jobs.list_jobs()."""
-        return list_jobs(self.active_crawls)
+        return list_jobs(self.active_crawls, state_store=self.state_store)
 
     def cancel_job(self, job_id: str) -> bool:
         """Cancel a running job. See crawler_jobs.cancel_job()."""
-        return cancel_job(job_id, self.active_crawls)
+        return cancel_job(job_id, self.active_crawls, state_store=self.state_store)
+
+    def _persist_job_state(self, job_id: str, updates: Optional[Dict] = None) -> Optional[Dict]:
+        """Persist the latest job snapshot to shared storage."""
+        return sync_job_state(job_id, self.active_crawls, self.state_store, updates)
 
     # =========================================================================
     # BACKGROUND CRAWL (Main Entry Point)
@@ -235,6 +242,7 @@ class CrawlerService:
             use_vision_llm=actual_use_vision_llm,
             take_screenshots=actual_take_screenshots
         )
+        self.state_store.persist_job(job_id, self.active_crawls[job_id])
 
         # Pre-create collection (so frontend gets ID immediately)
         if not existing_collection_id:
@@ -323,14 +331,18 @@ class CrawlerService:
 
             self.active_crawls[job_id]['collection_id'] = new_collection_id
             self.active_crawls[job_id]['existing_collection_id'] = new_collection_id
+            self._persist_job_state(job_id)
             logger.info(f"[Job {job_id}] Pre-created crawl collection {new_collection_id}")
 
             return new_collection_id
 
         except Exception as e:
             logger.error(f"[Job {job_id}] Could not create collection: {e}")
-            self.active_crawls[job_id]['status'] = 'failed'
-            self.active_crawls[job_id]['error'] = str(e)
+            self._persist_job_state(job_id, {
+                'status': 'failed',
+                'stage': 'failed',
+                'error': str(e),
+            })
             emit_error(self._socketio, job_id, str(e))
             emit_jobs_updated(self._socketio, self.get_all_jobs())
             raise
@@ -368,7 +380,7 @@ class CrawlerService:
         from db.tables import RAGCollection
         from services.rag.collection_embedding_service import get_collection_embedding_service
 
-        update_job_started(job_id, self.active_crawls)
+        update_job_started(job_id, self.active_crawls, state_store=self.state_store)
         crawler_type = "Playwright" if use_playwright else "Basic"
 
         # Wait for frontend to subscribe to room
@@ -385,7 +397,7 @@ class CrawlerService:
             'message': f'Crawl gestartet ({crawler_type})...',
             'crawler_type': crawler_type,
             'use_vision_llm': use_vision_llm
-        }, self.active_crawls)
+        }, self.active_crawls, state_store=self.state_store)
 
         try:
             # Get or create collection
@@ -413,14 +425,14 @@ class CrawlerService:
             update_collection_stats(collection_id, brand_color)
 
             # Mark job completed
-            update_job_completed(job_id, self.active_crawls)
+            update_job_completed(job_id, self.active_crawls, state_store=self.state_store)
 
             # Emit completion
             self._emit_crawl_complete(job_id, collection_id, total_pages, crawler_type)
 
         except Exception as e:
             logger.error(f"[Job {job_id}] Background crawl failed: {e}")
-            update_job_failed(job_id, str(e), self.active_crawls)
+            update_job_failed(job_id, str(e), self.active_crawls, state_store=self.state_store)
             try:
                 db.session.rollback()
             except Exception:
@@ -477,6 +489,7 @@ class CrawlerService:
         self.active_crawls[job_id]['urls_total'] = 0
         self.active_crawls[job_id]['urls_completed'] = 0
         self.active_crawls[job_id]['images_extracted'] = 0
+        self._persist_job_state(job_id)
 
         return collection_id
 
@@ -515,7 +528,7 @@ class CrawlerService:
             'current_url': urls[0] if urls else '',
             'crawler_type': crawler_type,
             'message': 'URL-Erkundung gestartet...'
-        }, self.active_crawls)
+        }, self.active_crawls, state_store=self.state_store)
 
         discovered_urls: List[str] = []
         last_emit_time = [0]
@@ -539,7 +552,7 @@ class CrawlerService:
                 'current_url': current_url,
                 'crawler_type': crawler_type,
                 'message': f'{count} URLs gefunden...'
-            }, self.active_crawls)
+            }, self.active_crawls, state_store=self.state_store)
 
         for url_index, url in enumerate(urls):
             logger.info(f"[Job {job_id}] Discovery URL {url_index + 1}/{len(urls)}: {url}")
@@ -572,7 +585,7 @@ class CrawlerService:
             'urls_completed': 0,
             'crawler_type': crawler_type,
             'message': f'{len(discovered_urls)} URLs gefunden, Crawling startet...'
-        }, self.active_crawls)
+        }, self.active_crawls, state_store=self.state_store)
 
         return discovered_urls
 
@@ -601,7 +614,8 @@ class CrawlerService:
                 take_screenshots=take_screenshots,
                 crawler_type=crawler_type,
                 active_crawls=self.active_crawls,
-                socketio=self._socketio
+                socketio=self._socketio,
+                state_store=self.state_store,
             )
         else:
             return process_urls_basic(
@@ -612,7 +626,8 @@ class CrawlerService:
                 seen_hashes_global=seen_hashes_global,
                 crawler_type=crawler_type,
                 active_crawls=self.active_crawls,
-                socketio=self._socketio
+                socketio=self._socketio,
+                state_store=self.state_store,
             )
 
     def _emit_crawl_complete(

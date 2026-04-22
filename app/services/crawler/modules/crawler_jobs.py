@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 
 def get_job_status(
     job_id: str,
-    active_crawls: Dict[str, Dict]
+    active_crawls: Dict[str, Dict],
+    state_store=None,
 ) -> Optional[Dict]:
     """
     Get the current status of a crawl job.
@@ -59,7 +60,14 @@ def get_job_status(
     # First check in-memory status (for active/recent jobs)
     status = active_crawls.get(job_id)
     if status:
+        if state_store:
+            state_store.persist_job(job_id, status)
         return status
+
+    if state_store:
+        redis_status = state_store.get_job(job_id)
+        if redis_status:
+            return redis_status
 
     # Fall back to database recovery (for historical jobs)
     return _get_persisted_job_status(job_id)
@@ -138,7 +146,7 @@ def _get_persisted_job_status(job_id: str) -> Optional[Dict]:
 # JOB LISTING
 # =============================================================================
 
-def get_all_jobs(active_crawls: Dict[str, Dict]) -> List[Dict]:
+def get_all_jobs(active_crawls: Dict[str, Dict], state_store=None) -> List[Dict]:
     """
     Get all crawl jobs for dashboard display.
 
@@ -151,9 +159,19 @@ def get_all_jobs(active_crawls: Dict[str, Dict]) -> List[Dict]:
     Returns:
         List of job dicts with job_id included in each entry
     """
-    jobs = []
+    jobs_by_id: Dict[str, Dict] = {}
+
+    if state_store:
+        for job in state_store.list_jobs():
+            job_id = str(job.get('job_id', ''))
+            if job_id:
+                jobs_by_id[job_id] = job
+
     for job_id, status in active_crawls.items():
-        jobs.append({'job_id': job_id, **status})
+        existing = jobs_by_id.get(job_id, {})
+        jobs_by_id[job_id] = {**existing, 'job_id': job_id, **status}
+
+    jobs = list(jobs_by_id.values())
 
     # Sort by start time, newest first
     jobs.sort(
@@ -164,7 +182,7 @@ def get_all_jobs(active_crawls: Dict[str, Dict]) -> List[Dict]:
     return jobs
 
 
-def list_jobs(active_crawls: Dict[str, Dict]) -> List[Dict]:
+def list_jobs(active_crawls: Dict[str, Dict], state_store=None) -> List[Dict]:
     """
     Alias for get_all_jobs() for API compatibility.
 
@@ -174,14 +192,14 @@ def list_jobs(active_crawls: Dict[str, Dict]) -> List[Dict]:
     Returns:
         List of all job dicts
     """
-    return get_all_jobs(active_crawls)
+    return get_all_jobs(active_crawls, state_store=state_store)
 
 
 # =============================================================================
 # JOB CONTROL
 # =============================================================================
 
-def cancel_job(job_id: str, active_crawls: Dict[str, Dict]) -> bool:
+def cancel_job(job_id: str, active_crawls: Dict[str, Dict], state_store=None) -> bool:
     """
     Cancel a running crawl job.
 
@@ -201,8 +219,20 @@ def cancel_job(job_id: str, active_crawls: Dict[str, Dict]) -> bool:
     """
     if job_id in active_crawls:
         active_crawls[job_id]['status'] = 'cancelled'
+        active_crawls[job_id]['stage'] = 'cancelled'
+        if state_store:
+            state_store.persist_job(job_id, active_crawls[job_id])
         logger.info(f"[CrawlerJobs] Job {job_id} marked for cancellation")
         return True
+
+    if state_store:
+        status = state_store.get_job(job_id, refresh_ttl=False)
+        if status:
+            status['status'] = 'cancelled'
+            status['stage'] = 'cancelled'
+            state_store.persist_job(job_id, status)
+            logger.info(f"[CrawlerJobs] Job {job_id} marked for cancellation via shared state")
+            return True
 
     logger.warning(f"[CrawlerJobs] Cannot cancel job {job_id}: not found")
     return False
@@ -248,6 +278,7 @@ def create_job_entry(
     return {
         # Job identification
         'status': 'queued',
+        'stage': 'queued',
         'urls': urls,
         'collection_name': collection_name,
         'existing_collection_id': existing_collection_id,
@@ -276,7 +307,26 @@ def create_job_entry(
     }
 
 
-def update_job_started(job_id: str, active_crawls: Dict[str, Dict]) -> None:
+def sync_job_state(
+    job_id: str,
+    active_crawls: Dict[str, Dict],
+    state_store=None,
+    updates: Optional[Dict] = None,
+) -> Optional[Dict]:
+    """Merge updates into the in-memory job and persist a shared snapshot."""
+    job = active_crawls.get(job_id)
+    if not job:
+        return None
+
+    if updates:
+        job.update(updates)
+
+    if state_store:
+        return state_store.persist_job(job_id, job)
+    return dict(job)
+
+
+def update_job_started(job_id: str, active_crawls: Dict[str, Dict], state_store=None) -> None:
     """
     Mark a job as started (running).
 
@@ -289,13 +339,17 @@ def update_job_started(job_id: str, active_crawls: Dict[str, Dict]) -> None:
     from datetime import datetime
 
     if job_id in active_crawls:
-        active_crawls[job_id]['status'] = 'running'
-        active_crawls[job_id]['started_at'] = datetime.now().isoformat()
+        sync_job_state(job_id, active_crawls, state_store, {
+            'status': 'running',
+            'stage': 'running',
+            'started_at': datetime.now().isoformat(),
+        })
 
 
 def update_job_completed(
     job_id: str,
-    active_crawls: Dict[str, Dict]
+    active_crawls: Dict[str, Dict],
+    state_store=None,
 ) -> None:
     """
     Mark a job as completed.
@@ -309,14 +363,18 @@ def update_job_completed(
     from datetime import datetime
 
     if job_id in active_crawls:
-        active_crawls[job_id]['status'] = 'completed'
-        active_crawls[job_id]['completed_at'] = datetime.now().isoformat()
+        sync_job_state(job_id, active_crawls, state_store, {
+            'status': 'completed',
+            'stage': 'completed',
+            'completed_at': datetime.now().isoformat(),
+        })
 
 
 def update_job_failed(
     job_id: str,
     error: str,
-    active_crawls: Dict[str, Dict]
+    active_crawls: Dict[str, Dict],
+    state_store=None,
 ) -> None:
     """
     Mark a job as failed.
@@ -329,5 +387,8 @@ def update_job_failed(
         active_crawls: Dict of active jobs
     """
     if job_id in active_crawls:
-        active_crawls[job_id]['status'] = 'failed'
-        active_crawls[job_id]['error'] = error
+        sync_job_state(job_id, active_crawls, state_store, {
+            'status': 'failed',
+            'stage': 'failed',
+            'error': error,
+        })

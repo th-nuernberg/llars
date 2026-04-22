@@ -513,7 +513,7 @@ class CollectionEmbeddingService:
         try:
             from services.crawler.web_crawler import crawler_service
             job = crawler_service.get_job_status(source_job_id)
-            return job and job.get('status') in ('queued', 'running')
+            return job and job.get('status') in ('queued', 'planning', 'running')
         except Exception as e:
             logger.debug(f"[CollectionEmbedding] Could not read crawler job {source_job_id}: {e}")
             return False

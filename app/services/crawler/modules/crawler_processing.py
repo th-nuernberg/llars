@@ -41,7 +41,8 @@ def process_urls_basic(
     seen_hashes_global: Set[str],
     crawler_type: str,
     active_crawls: Dict[str, Dict],
-    socketio: Any
+    socketio: Any,
+    state_store: Any = None,
 ) -> int:
     """
     Fetch URLs in parallel using the basic crawler (requests + BeautifulSoup).
@@ -103,6 +104,8 @@ def process_urls_basic(
                 logger.error(f"[Job {job_id}] Fetch failed for {url}: {e}")
                 active_crawls[job_id]['errors'].append({'url': url, 'error': str(e)})
                 active_crawls[job_id]['urls_completed'] += 1
+                if state_store:
+                    state_store.persist_job(job_id, active_crawls[job_id])
                 continue
 
             active_crawls[job_id]['urls_completed'] += 1
@@ -130,7 +133,8 @@ def process_urls_basic(
                 active_crawls=active_crawls,
                 socketio=socketio,
                 collection_id=collection_id,
-                doc_update=doc_update
+                doc_update=doc_update,
+                state_store=state_store,
             )
 
     return total_pages
@@ -144,7 +148,8 @@ def _emit_basic_progress(
     active_crawls: Dict[str, Dict],
     socketio: Any,
     collection_id: int,
-    doc_update: Dict
+    doc_update: Dict,
+    state_store: Any = None,
 ) -> None:
     """Emit progress events for basic crawler."""
     emit_progress(socketio, job_id, {
@@ -157,7 +162,7 @@ def _emit_basic_progress(
         'urls_completed': active_crawls[job_id]['urls_completed'],
         'images_extracted': active_crawls[job_id].get('images_extracted', 0),
         'crawler_type': crawler_type
-    }, active_crawls)
+    }, active_crawls, state_store=state_store)
 
     page_payload = {
         'url': url,
@@ -189,7 +194,8 @@ def process_urls_playwright(
     take_screenshots: bool,
     crawler_type: str,
     active_crawls: Dict[str, Dict],
-    socketio: Any
+    socketio: Any,
+    state_store: Any = None,
 ) -> int:
     """
     Fetch URLs with Playwright (screenshots + vision) using async worker pool.
@@ -312,7 +318,8 @@ def process_urls_playwright(
             total_urls=total_urls,
             crawler_type=crawler_type,
             active_crawls=active_crawls,
-            socketio=socketio
+            socketio=socketio,
+            state_store=state_store,
         )
 
         # Wait for next result (with timeout to check start_queue)
@@ -352,7 +359,8 @@ def process_urls_playwright(
                 active_crawls=active_crawls,
                 socketio=socketio,
                 collection_id=collection_id,
-                doc_update=doc_update
+                doc_update=doc_update,
+                state_store=state_store,
             )
 
         except Exception as e:
@@ -389,7 +397,8 @@ def _process_start_events(
     total_urls: int,
     crawler_type: str,
     active_crawls: Dict[str, Dict],
-    socketio: Any
+    socketio: Any,
+    state_store: Any = None,
 ) -> None:
     """Process 'starting URL' events from the async thread."""
     while not start_queue.empty():
@@ -414,7 +423,7 @@ def _process_start_events(
                     'screenshots_taken': active_crawls[job_id].get('screenshots_taken', 0),
                     'crawler_type': crawler_type,
                     'message': 'Crawle Seite...'
-                }, active_crawls)
+                }, active_crawls, state_store=state_store)
         except Exception:
             break
 
@@ -450,7 +459,8 @@ def _emit_playwright_progress(
     active_crawls: Dict[str, Dict],
     socketio: Any,
     collection_id: int,
-    doc_update: Dict
+    doc_update: Dict,
+    state_store: Any = None,
 ) -> None:
     """Emit progress events for Playwright crawler."""
     emit_progress(socketio, job_id, {
@@ -466,7 +476,7 @@ def _emit_playwright_progress(
         'images_extracted': active_crawls[job_id].get('images_extracted', 0),
         'screenshots_taken': active_crawls[job_id].get('screenshots_taken', 0),
         'crawler_type': crawler_type
-    }, active_crawls)
+    }, active_crawls, state_store=state_store)
 
     page_payload = {
         'url': url,

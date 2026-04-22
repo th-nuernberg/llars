@@ -31,7 +31,8 @@ def emit_progress(
     socketio: Any,
     session_id: str,
     data: dict,
-    active_crawls: Dict[str, Dict]
+    active_crawls: Dict[str, Dict],
+    state_store: Any = None,
 ) -> None:
     """
     Emit crawl progress update via WebSocket.
@@ -62,6 +63,10 @@ def emit_progress(
     if socketio:
         from socketio_handlers.events_crawler import emit_crawler_progress
         emit_crawler_progress(socketio, session_id, data)
+
+    if state_store:
+        from .crawler_jobs import sync_job_state
+        sync_job_state(session_id, active_crawls, state_store, data)
 
     # Special handling for Chatbot Builder Wizard integration
     # When a crawl is started from the wizard, we also update the wizard's progress tracker

@@ -627,7 +627,7 @@ function subscribeToProgress(jobId = null) {
 
   // Crawler progress
   socket.value.on('crawler:progress', handleCrawlerProgress)
-  socket.value.on('crawler:status', handleCrawlerProgress)
+  socket.value.on('crawler:status', handleCrawlerStatus)
   socket.value.on('crawler:page_crawled', handlePageCrawled)
   socket.value.on('crawler:complete', handleCrawlerComplete)
   socket.value.on('crawler:error', handleCrawlerError)
@@ -667,7 +667,7 @@ function unsubscribeFromProgress() {
 
   // Crawler events
   socket.value.off('crawler:progress', handleCrawlerProgress)
-  socket.value.off('crawler:status', handleCrawlerProgress)
+  socket.value.off('crawler:status', handleCrawlerStatus)
   socket.value.off('crawler:page_crawled', handlePageCrawled)
   socket.value.off('crawler:complete', handleCrawlerComplete)
   socket.value.off('crawler:error', handleCrawlerError)
@@ -837,7 +837,51 @@ function handleCrawlerProgress(data) {
   }
 
   updateCrawlProgress(progressData)
+  if (errors.value.crawl === t('admin.chatbotBuilder.errors.sessionUnavailable')) {
+    clearError('crawl')
+  }
   updateElapsedTime()
+}
+
+function isCrawlerSessionUnavailable(data) {
+  const message = String(data?.error || data?.message || '').toLowerCase()
+  return data?.session_available === false ||
+    data?.live_updates_available === false ||
+    message.includes('session not found')
+}
+
+async function resyncAfterCrawlerSessionLoss() {
+  updateCrawlProgress({
+    message: t('admin.chatbotBuilder.errors.sessionResyncing')
+  })
+
+  if (!chatbotId.value) return
+
+  try {
+    await syncWizardFromBackend(chatbotId.value)
+    if (collectionId.value) {
+      requestCollectionDocuments({ force: true })
+    }
+    if (buildStatus.value !== BUILD_STATUS.CRAWLING) {
+      clearError('crawl')
+    }
+  } catch (error) {
+    logI18n('warn', 'logs.admin.chatbotWizard.syncFailed', error)
+  }
+}
+
+function handleCrawlerStatus(data) {
+  // Filter: Only process events for THIS wizard's crawler job
+  if (crawlerJobId.value && data?.session_id && data.session_id !== crawlerJobId.value) {
+    return
+  }
+
+  if (isCrawlerSessionUnavailable(data)) {
+    void resyncAfterCrawlerSessionLoss()
+    return
+  }
+
+  handleCrawlerProgress(data)
 }
 
 function handlePageCrawled(data) {
@@ -890,16 +934,8 @@ function handleCrawlerError(data) {
   const message = data?.error || t('admin.chatbotBuilder.errors.crawlingFailed')
   logI18n('error', 'logs.admin.chatbotWizard.crawlerError', data)
 
-  if (typeof message === 'string' && message.toLowerCase().includes('session not found')) {
-    if (chatbotId.value) {
-      syncWizardFromBackend(chatbotId.value).then(() => {
-        if (buildStatus.value !== BUILD_STATUS.CRAWLING) {
-          clearError('crawl')
-        }
-      }).catch(() => {})
-    }
-
-    setError('crawl', t('admin.chatbotBuilder.errors.sessionUnavailable'))
+  if (isCrawlerSessionUnavailable(data)) {
+    void resyncAfterCrawlerSessionLoss()
     return
   }
 

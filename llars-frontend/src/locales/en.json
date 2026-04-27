@@ -6615,6 +6615,7 @@
         "socketUnavailable": "Live updates unavailable (Socket.IO)",
         "crawlingFailed": "Crawling failed",
         "sessionUnavailable": "Crawler session no longer available (backend restarted or crawl finished). Live updates are unavailable.",
+        "sessionResyncing": "Crawler live session is no longer available. Synchronizing the current status from the backend...",
         "embeddingFailed": "Embedding failed",
         "createFailed": "Error creating"
       }

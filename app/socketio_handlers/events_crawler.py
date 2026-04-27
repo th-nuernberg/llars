@@ -103,9 +103,13 @@ def register_crawler_events(socketio):
                 **status
             })
         else:
-            emit('crawler:error', {
+            emit('crawler:status', {
                 'session_id': session_id,
-                'error': 'Session not found'
+                'status': 'unavailable',
+                'stage': 'unavailable',
+                'session_available': False,
+                'live_updates_available': False,
+                'message': 'Session not found'
             })
 
     logger.info("[Crawler Socket] Event handlers registered")

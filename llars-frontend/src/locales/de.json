@@ -6457,6 +6457,7 @@
         "socketUnavailable": "Live-Updates nicht verfügbar (Socket.IO)",
         "crawlingFailed": "Crawling fehlgeschlagen",
         "sessionUnavailable": "Crawler-Session nicht mehr verfügbar (Backend neu gestartet oder Crawl beendet). Live-Updates sind nicht verfügbar.",
+        "sessionResyncing": "Crawler-Live-Session nicht mehr verfügbar. Der aktuelle Status wird aus dem Backend synchronisiert...",
         "embeddingFailed": "Embedding fehlgeschlagen",
         "createFailed": "Fehler beim Erstellen"
       }

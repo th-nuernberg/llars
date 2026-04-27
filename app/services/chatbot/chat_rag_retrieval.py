@@ -172,7 +172,13 @@ class ChatRAGRetrieval:
             logger.debug(f"[ChatRAGRetrieval] Lexical FTS fallback for collection {collection.id}: {exc}")
 
         # SQL LIKE fallback
-        return self._lexical_search_sql_fallback(collection, tokens, limit)
+        sql_results = self._lexical_search_sql_fallback(collection, tokens, limit)
+        if sql_results:
+            return sql_results
+
+        # Last-resort fallback: search the raw document files when chunks are not
+        # available yet or the vectorstore/index is out of sync with the DB.
+        return self._lexical_search_file_fallback(collection, tokens, limit)
 
     def _lexical_search_sql_fallback(
         self,
@@ -260,6 +266,193 @@ class ChatRAGRetrieval:
 
         return results
 
+    def _lexical_search_file_fallback(
+        self,
+        collection: RAGCollection,
+        tokens: List[str],
+        limit: int
+    ) -> List[Dict[str, Any]]:
+        """Search raw document files when no chunks/index entries are available."""
+        from sqlalchemy import and_, or_
+
+        if not collection or not tokens:
+            return []
+
+        docs = (
+            db.session.query(RAGDocument)
+            .outerjoin(
+                CollectionDocumentLink,
+                and_(
+                    CollectionDocumentLink.document_id == RAGDocument.id,
+                    CollectionDocumentLink.collection_id == collection.id
+                )
+            )
+            .filter(
+                or_(
+                    CollectionDocumentLink.id.isnot(None),
+                    RAGDocument.collection_id == collection.id
+                )
+            )
+            .order_by(RAGDocument.uploaded_at.desc(), RAGDocument.id.desc())
+            .limit(max(limit * 10, 40))
+            .all()
+        )
+
+        results: List[Dict[str, Any]] = []
+        lowered_tokens = [t.lower() for t in tokens if t]
+
+        for doc in docs:
+            text = self._read_document_file(doc.file_path)
+            if not text:
+                continue
+
+            title = (
+                doc.title
+                or doc.original_filename
+                or doc.filename
+                or 'Unbekannt'
+            )
+            metadata_text = "\n".join(
+                part for part in [
+                    title,
+                    doc.description or "",
+                    doc.original_filename or "",
+                    doc.filename or "",
+                ] if part
+            )
+            searchable_text = f"{metadata_text}\n{text}"
+            normalized_text = searchable_text.lower()
+
+            matched_tokens = [token for token in lowered_tokens if token in normalized_text]
+            if not matched_tokens:
+                continue
+
+            excerpt = self._extract_matching_excerpt(text, matched_tokens)
+            score = min(1.0, len(set(matched_tokens)) / max(1, len(set(lowered_tokens))))
+
+            results.append({
+                'content': excerpt,
+                'score': score,
+                'document_id': doc.id,
+                'title': title,
+                'filename': doc.filename,
+                'chunk_index': 0,
+                'page_number': None,
+                'start_char': None,
+                'end_char': None,
+                'vector_id': None,
+                'metadata': {
+                    'document_id': doc.id,
+                    'filename': doc.filename,
+                    'collection_id': collection.id,
+                    'matched_tokens': matched_tokens,
+                    'source': 'file_fallback',
+                }
+            })
+
+        results.sort(
+            key=lambda item: (
+                float(item.get('score') or 0.0),
+                len(item.get('content') or ""),
+            ),
+            reverse=True
+        )
+        return results[:limit]
+
+    @staticmethod
+    def _read_document_file(file_path: Optional[str]) -> str:
+        """Read a raw document file for lexical fallback."""
+        if not file_path or not os.path.exists(file_path):
+            return ""
+        try:
+            with open(file_path, "r", encoding="utf-8") as handle:
+                return handle.read()
+        except UnicodeDecodeError:
+            try:
+                with open(file_path, "r", encoding="latin-1", errors="replace") as handle:
+                    return handle.read()
+            except Exception as exc:
+                logger.debug(f"[ChatRAGRetrieval] Failed to read document file {file_path}: {exc}")
+                return ""
+        except Exception as exc:
+            logger.debug(f"[ChatRAGRetrieval] Failed to read document file {file_path}: {exc}")
+            return ""
+
+    @staticmethod
+    def _extract_matching_excerpt(text: str, tokens: List[str], window: int = 220) -> str:
+        """Extract a short excerpt around the first token match."""
+        if not text:
+            return ""
+
+        lower_text = text.lower()
+        first_index = -1
+        for token in tokens:
+            idx = lower_text.find(token)
+            if idx != -1 and (first_index == -1 or idx < first_index):
+                first_index = idx
+
+        if first_index == -1:
+            excerpt = text[: window * 2]
+            return excerpt.strip()
+
+        start = max(0, first_index - window)
+        end = min(len(text), first_index + window)
+        excerpt = text[start:end].strip()
+        if start > 0:
+            excerpt = f"...{excerpt}"
+        if end < len(text):
+            excerpt = f"{excerpt}..."
+        return excerpt
+
+    def _lexical_fallback_search(self, query: str, final_k: int) -> List[Dict[str, Any]]:
+        """Fallback retrieval path when semantic search returns no usable results."""
+        tokens = self.extract_lexical_tokens(query)
+        if not tokens:
+            return []
+
+        all_results: List[Dict[str, Any]] = []
+        per_collection_limit = max(final_k * 2, 5)
+
+        for cc in sorted(self.chatbot.collections, key=lambda x: -x.priority):
+            collection = cc.collection
+            if not collection:
+                continue
+
+            try:
+                results = self.lexical_search_collection(collection, query, tokens, limit=per_collection_limit)
+            except Exception as exc:
+                logger.warning(
+                    f"[ChatRAGRetrieval] Lexical fallback failed for collection {collection.id}: {exc}"
+                )
+                continue
+
+            for result in results:
+                result['score'] = float(result.get('score') or 0.0) * cc.weight
+                result['collection_id'] = collection.id
+                result['collection_name'] = collection.display_name
+            all_results.extend(results)
+
+        deduped: List[Dict[str, Any]] = []
+        seen_keys = set()
+        for result in sorted(all_results, key=lambda item: float(item.get('score') or 0.0), reverse=True):
+            dedupe_key = (
+                result.get('document_id'),
+                result.get('chunk_index'),
+                result.get('content'),
+            )
+            if dedupe_key in seen_keys:
+                continue
+            seen_keys.add(dedupe_key)
+            deduped.append(result)
+
+        if deduped:
+            logger.info(
+                f"[ChatRAGRetrieval] Using lexical fallback for chatbot {self.chatbot.id}: "
+                f"{len(deduped)} results for query '{query[:50]}...'"
+            )
+
+        return deduped[:final_k]
+
     def get_multi_collection_context(self, query: str) -> Tuple[str, List[Dict]]:
         """
         Retrieve context from multiple collections using semantic (vector) search.
@@ -289,6 +482,10 @@ class ChatRAGRetrieval:
                 logger.error(f"Error searching collection {collection.name}: {e}")
 
         if not all_results:
+            lexical_results = self._lexical_fallback_search(query, final_k)
+            if lexical_results:
+                return self._build_context_and_sources(lexical_results)
+
             logger.warning(
                 f"[ChatRAGRetrieval] No RAG results for chatbot {self.chatbot.id} "
                 f"(query='{query[:50]}...') using model "
@@ -344,6 +541,11 @@ class ChatRAGRetrieval:
             ]
 
         filtered_results = filtered_results[:final_k]
+
+        if not filtered_results:
+            lexical_results = self._lexical_fallback_search(query, final_k)
+            if lexical_results:
+                return self._build_context_and_sources(lexical_results)
 
         # Build context and sources
         return self._build_context_and_sources(filtered_results)

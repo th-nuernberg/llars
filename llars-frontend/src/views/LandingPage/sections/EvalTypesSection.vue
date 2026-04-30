@@ -37,6 +37,7 @@ const evalTypes = [
   { key: 'comparison',   icon: 'mdi-compare-horizontal',   color: '#88c4c8' },
   { key: 'labeling',     icon: 'mdi-label-multiple',       color: '#a8c5e2' },
   { key: 'authenticity', icon: 'mdi-shield-search',        color: '#e8a087' },
+  { key: 'mail_rating',  icon: 'mdi-email-check',          color: '#c9a8e2' },
 ]
 </script>
 
@@ -84,7 +85,10 @@ const evalTypes = [
   border-radius: 16px 4px 16px 4px;
   padding: 28px 20px;
   text-align: center;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  /* opacity/transform must be in this list so the global [data-reveal] fade-up
+   * is not stripped by CSS shorthand replacement when the scoped rule wins. */
+  transition: opacity 0.6s ease, transform 0.6s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .eval-type-card:hover {

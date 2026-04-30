@@ -7250,6 +7250,7 @@
     }
   },
   "landing": {
+    "skipLink": "Zum Inhalt springen",
     "hero": {
       "badge": "Akzeptiert bei IJCAI 2026",
       "headline": "Kollaboratives Prompt Engineering, Batch-Generierung & Hybride Evaluation",
@@ -7336,6 +7337,10 @@
         "authenticity": {
           "title": "Authentizität",
           "desc": "Mensch-vs-KI-Erkennung"
+        },
+        "mail_rating": {
+          "title": "Mail-Rating",
+          "desc": "Qualitätsbewertung von E-Mail-Verläufen"
         }
       }
     },

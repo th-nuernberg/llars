@@ -67,7 +67,9 @@ const heroRef = ref(null)
 const { glowX, glowY } = useCursorGlow(heroRef)
 
 function openDemo() {
-  window.open('https://www.youtube.com/watch?v=5YXPqh5JklA', '_blank')
+  // noopener,noreferrer mirrors the rel="..." on the equivalent footer anchor
+  // and prevents reverse-tabnabbing + Referer leakage to youtube.com.
+  window.open('https://www.youtube.com/watch?v=5YXPqh5JklA', '_blank', 'noopener,noreferrer')
 }
 </script>
 

@@ -17,9 +17,8 @@
         </div>
 
         <div class="pipeline-arrow" data-reveal data-reveal-delay="100" aria-hidden="true">
-          <v-icon :size="isMobile ? 24 : 28" color="#b0ca97">
-            {{ isMobile ? 'mdi-arrow-down' : 'mdi-arrow-right' }}
-          </v-icon>
+          <v-icon class="pipeline-arrow-h" size="28" color="#b0ca97">mdi-arrow-right</v-icon>
+          <v-icon class="pipeline-arrow-v" size="24" color="#b0ca97">mdi-arrow-down</v-icon>
         </div>
 
         <!-- Step 2: Batch Generation -->
@@ -32,9 +31,8 @@
         </div>
 
         <div class="pipeline-arrow" data-reveal data-reveal-delay="200" aria-hidden="true">
-          <v-icon :size="isMobile ? 24 : 28" color="#D1BC8A">
-            {{ isMobile ? 'mdi-arrow-down' : 'mdi-arrow-right' }}
-          </v-icon>
+          <v-icon class="pipeline-arrow-h" size="28" color="#D1BC8A">mdi-arrow-right</v-icon>
+          <v-icon class="pipeline-arrow-v" size="24" color="#D1BC8A">mdi-arrow-down</v-icon>
         </div>
 
         <!-- Step 3: Hybrid Evaluation -->
@@ -57,11 +55,9 @@
 <script setup>
 import { computed } from 'vue'
 import { useTheme } from 'vuetify'
-import { useMobile } from '@/composables/useMobile'
 
 const theme = useTheme()
 const isDarkMode = computed(() => theme.global.current.value.dark)
-const { isMobile } = useMobile()
 </script>
 
 <style scoped>
@@ -138,6 +134,12 @@ const { isMobile } = useMobile()
   opacity: 0.5;
 }
 
+/* Show horizontal arrow at desktop, vertical at the same breakpoint where
+ * the flex container switches to column (768px below). Avoids mismatch
+ * between layout and icon when CSS = 768px but JS isMobile = 600px. */
+.pipeline-arrow-v { display: none; }
+.pipeline-arrow-h { display: inline-flex; }
+
 .flow-note {
   text-align: center;
   font-size: 0.85rem;
@@ -162,5 +164,8 @@ const { isMobile } = useMobile()
   .pipeline-section {
     padding: 60px 16px;
   }
+
+  .pipeline-arrow-h { display: none; }
+  .pipeline-arrow-v { display: inline-flex; }
 }
 </style>

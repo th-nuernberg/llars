@@ -22,8 +22,9 @@
 
       <LBtn
         variant="primary"
-        :size="isMobile ? 'x-small' : 'small'"
+        size="small"
         :prepend-icon="isMobile ? '' : 'mdi-login'"
+        :aria-label="$t('auth.login')"
         @click="$router.push('/login')"
         class="nav-login-btn"
       >

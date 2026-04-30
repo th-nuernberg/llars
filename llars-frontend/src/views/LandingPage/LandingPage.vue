@@ -1,7 +1,7 @@
 <template>
   <div class="landing-page" :class="{ 'dark-mode': isDarkMode }">
     <!-- Skip to content link for accessibility -->
-    <a href="#landing-main" class="skip-link">Skip to content</a>
+    <a href="#landing-main" class="skip-link">{{ $t('landing.skipLink') }}</a>
 
     <LandingNav />
 

@@ -489,19 +489,42 @@ class ChatRAGRetrieval:
             # Diagnose why both semantic and lexical retrieval came up empty.
             # The most common cause in production is an embedding-model
             # mismatch (collection embedded with model A, runtime only has
-            # model B), and the second is empty collection_chunks. Log enough
-            # context to tell the two apart from a single warning line.
+            # model B), and the second is no chunks reachable from the
+            # collection. Log enough context to tell the two apart from a
+            # single warning line.
+            #
+            # Chunks belong to documents, not collections directly, and a
+            # document is reachable via either the explicit CollectionDocumentLink
+            # (multi-collection case) or the legacy RAGDocument.collection_id
+            # fk — the same OR clause as _lexical_search_sql_fallback above.
+            from sqlalchemy import and_, or_
             collection_diag = []
             for cc in self.chatbot.collections or []:
                 col = getattr(cc, 'collection', None)
                 if not col:
                     continue
                 try:
-                    from db.tables import CollectionChunk
-                    chunk_count = CollectionChunk.query.filter_by(
-                        collection_id=col.id
-                    ).count()
-                except Exception:
+                    chunk_count = (
+                        db.session.query(RAGDocumentChunk.id)
+                        .join(RAGDocument, RAGDocument.id == RAGDocumentChunk.document_id)
+                        .outerjoin(
+                            CollectionDocumentLink,
+                            and_(
+                                CollectionDocumentLink.document_id == RAGDocument.id,
+                                CollectionDocumentLink.collection_id == col.id,
+                            ),
+                        )
+                        .filter(or_(
+                            CollectionDocumentLink.id.isnot(None),
+                            RAGDocument.collection_id == col.id,
+                        ))
+                        .count()
+                    )
+                except Exception as exc:
+                    logger.debug(
+                        "[ChatRAGRetrieval] chunk_count failed for collection %s: %s",
+                        col.id, exc,
+                    )
                     chunk_count = 'unknown'
                 collection_diag.append({
                     'id': col.id,

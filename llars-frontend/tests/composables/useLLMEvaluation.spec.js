@@ -2,7 +2,7 @@
  * useLLMEvaluation Composable Tests
  *
  * Tests for the LLM evaluation monitoring composable.
- * Test IDs: LLM_EVAL_001 - LLM_EVAL_040
+ * Test IDs: LLM_EVAL_001 - LLM_EVAL_042
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -449,7 +449,7 @@ describe('useLLMEvaluation Composable', () => {
       warnSpy.mockRestore()
     })
 
-    it('LLM_EVAL_029: fetchAgreementMetrics passes include_llm=false for filter=human', async () => {
+    it('LLM_EVAL_041: fetchAgreementMetrics passes include_llm=false for filter=human', async () => {
       axios.get.mockResolvedValue({ data: {} })
       const llm = useLLMEvaluation(42)
       axios.get.mockClear()
@@ -463,7 +463,7 @@ describe('useLLMEvaluation Composable', () => {
       )
     })
 
-    it('LLM_EVAL_030: fetchAgreementMetrics passes include_human=false for filter=llm', async () => {
+    it('LLM_EVAL_042: fetchAgreementMetrics passes include_human=false for filter=llm', async () => {
       axios.get.mockResolvedValue({ data: {} })
       const llm = useLLMEvaluation(42)
       axios.get.mockClear()

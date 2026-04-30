@@ -202,6 +202,14 @@ class ChatService:
                 cc.collection.id for cc in (self.chatbot.collections or [])
                 if getattr(cc, 'collection', None)
             ]
+            # `_prompt_settings` is only set on AgentChatService, not on the
+            # base ChatService used by the dominant non-agent code path. Read
+            # the citation flag through the prompt builder helper so the log
+            # reflects the actual configuration in both cases.
+            try:
+                require_citations = self.prompt_builder.get_require_citations()
+            except Exception:
+                require_citations = None
             logger.warning(
                 "[ChatService] RAG fallback fired for chatbot=%s "
                 "collections=%s rag_enabled=%s require_citations=%s "
@@ -210,8 +218,7 @@ class ChatService:
                 self.chatbot.id,
                 collection_ids,
                 self.chatbot.rag_enabled,
-                getattr(self, '_prompt_settings', None)
-                    and getattr(self._prompt_settings, 'rag_require_citations', None),
+                require_citations,
                 self.chatbot.rag_min_relevance,
                 self.chatbot.rag_retrieval_k,
                 retrieval_time_ms,

@@ -2326,22 +2326,28 @@ const filteredProgress = computed(() => {
 // ===== Computed: Agreement Metrics =====
 
 const liveAgreementMetrics = computed(() => {
-  // Merge metrics from both sources:
-  // - agreementMetrics: from useLLMEvaluation (full AgreementMetricsService)
-  // - liveStats.agreementMetrics: from useScenarioStats (partial, only alpha)
+  // Merge metrics from two sources:
+  // - agreementMetrics: from useLLMEvaluation, recomputed when the human/llm/all
+  //   filter changes (full AgreementMetricsService output).
+  // - liveStats.agreementMetrics: from useScenarioStats, always covers all
+  //   raters. Only used as a fallback when the filter is "all" — otherwise
+  //   it would override the filtered values with the union and undo the filter.
   const fromService = agreementMetrics.value
   const fromStats = props.liveStats?.agreementMetrics
+  const filterIsAll = evaluatorTypeFilter.value === 'all'
+  const allowStatsFallback = filterIsAll
 
   if (!fromService && !fromStats) return null
 
-  // Prefer full metrics from AgreementMetricsService, fallback to stats
+  const fallback = (svc, stats) => svc ?? (allowStatsFallback ? stats : null) ?? null
+
   return {
     // Core agreement metrics
-    alpha: fromService?.alpha ?? fromStats?.alpha ?? null,
-    kappa: fromService?.kappa ?? fromStats?.kappa ?? null,
-    fleiss: fromService?.fleiss ?? fromStats?.fleiss ?? null,
-    accuracy: fromService?.accuracy ?? fromStats?.accuracy ?? null,
-    interpretation: fromService?.interpretation ?? fromStats?.interpretation ?? null,
+    alpha: fallback(fromService?.alpha, fromStats?.alpha),
+    kappa: fallback(fromService?.kappa, fromStats?.kappa),
+    fleiss: fallback(fromService?.fleiss, fromStats?.fleiss),
+    accuracy: fallback(fromService?.accuracy, fromStats?.accuracy),
+    interpretation: fallback(fromService?.interpretation, fromStats?.interpretation),
     kendall: fromService?.kendall ?? null,
     spearman: fromService?.spearman ?? null,
     // New metrics
@@ -4226,12 +4232,25 @@ onUnmounted(() => {
   disconnect()
 })
 
-watch(() => props.scenario?.id, (newId) => {
-  if (newId) {
-    // connectToScenario also fetches agreement metrics
-    connectToScenario(newId)
+watch(() => props.scenario?.id, async (newId) => {
+  if (!newId) return
+  // connectToScenario also fetches agreement metrics, but always with the
+  // default ("all") filter. Re-issue the fetch with the current filter so a
+  // user-selected human/llm view is honoured when switching scenarios.
+  await connectToScenario(newId)
+  if (evaluatorTypeFilter.value !== 'all') {
+    fetchAgreementMetrics({ filter: evaluatorTypeFilter.value })
   }
 }, { immediate: true })
+
+// Refetch agreement metrics whenever the human/llm/all filter changes so
+// Krippendorff α and the other inter-rater metrics are recomputed over the
+// chosen rater group instead of always reflecting the union.
+watch(evaluatorTypeFilter, (newFilter) => {
+  if (props.scenario?.id) {
+    fetchAgreementMetrics({ filter: newFilter })
+  }
+})
 
 // Initialize selected dimension when dimensions change
 watch(dimensions, (newDimensions) => {

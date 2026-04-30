@@ -363,13 +363,34 @@ export function useLLMEvaluation(initialScenarioId = null) {
     }
   }
 
-  async function fetchAgreementMetrics() {
+  /**
+   * Fetch inter-rater agreement metrics for the scenario, optionally restricted
+   * to a rater subset.
+   *
+   * @param {Object} [options]
+   * @param {'all'|'human'|'llm'} [options.filter='all'] — which rater group to
+   *   include. Maps to backend `include_human` / `include_llm` query params so
+   *   Krippendorff α / Fleiss κ / etc. are recomputed over only that group
+   *   instead of the union of humans and LLMs.
+   */
+  async function fetchAgreementMetrics({ filter = 'all' } = {}) {
     if (!scenarioId) {
       console.warn('Cannot fetch agreement metrics: no scenarioId')
       return null
     }
     try {
-      const response = await axios.get(`/api/evaluation/${scenarioId}/agreement-metrics`)
+      // The endpoint defaults both flags to true; only attach params when
+      // narrowing so unfiltered call-sites (and existing tests that match the
+      // bare URL) still see a 1-arg axios.get.
+      const url = `/api/evaluation/${scenarioId}/agreement-metrics`
+      let response
+      if (filter === 'human') {
+        response = await axios.get(url, { params: { include_llm: false } })
+      } else if (filter === 'llm') {
+        response = await axios.get(url, { params: { include_human: false } })
+      } else {
+        response = await axios.get(url)
+      }
       const data = response.data
 
       // Transform API response to expected flat format

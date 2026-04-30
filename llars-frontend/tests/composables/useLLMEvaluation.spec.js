@@ -448,6 +448,34 @@ describe('useLLMEvaluation Composable', () => {
 
       warnSpy.mockRestore()
     })
+
+    it('LLM_EVAL_029: fetchAgreementMetrics passes include_llm=false for filter=human', async () => {
+      axios.get.mockResolvedValue({ data: {} })
+      const llm = useLLMEvaluation(42)
+      axios.get.mockClear()
+      axios.get.mockResolvedValue({ data: { metrics: {} } })
+
+      await llm.fetchAgreementMetrics({ filter: 'human' })
+
+      expect(axios.get).toHaveBeenCalledWith(
+        '/api/evaluation/42/agreement-metrics',
+        { params: { include_llm: false } }
+      )
+    })
+
+    it('LLM_EVAL_030: fetchAgreementMetrics passes include_human=false for filter=llm', async () => {
+      axios.get.mockResolvedValue({ data: {} })
+      const llm = useLLMEvaluation(42)
+      axios.get.mockClear()
+      axios.get.mockResolvedValue({ data: { metrics: {} } })
+
+      await llm.fetchAgreementMetrics({ filter: 'llm' })
+
+      expect(axios.get).toHaveBeenCalledWith(
+        '/api/evaluation/42/agreement-metrics',
+        { params: { include_human: false } }
+      )
+    })
   })
 
   // ==================== Fetch Result ====================

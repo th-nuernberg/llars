@@ -486,10 +486,37 @@ class ChatRAGRetrieval:
             if lexical_results:
                 return self._build_context_and_sources(lexical_results)
 
+            # Diagnose why both semantic and lexical retrieval came up empty.
+            # The most common cause in production is an embedding-model
+            # mismatch (collection embedded with model A, runtime only has
+            # model B), and the second is empty collection_chunks. Log enough
+            # context to tell the two apart from a single warning line.
+            collection_diag = []
+            for cc in self.chatbot.collections or []:
+                col = getattr(cc, 'collection', None)
+                if not col:
+                    continue
+                try:
+                    from db.tables import CollectionChunk
+                    chunk_count = CollectionChunk.query.filter_by(
+                        collection_id=col.id
+                    ).count()
+                except Exception:
+                    chunk_count = 'unknown'
+                collection_diag.append({
+                    'id': col.id,
+                    'name': col.name,
+                    'chroma_collection_name': getattr(col, 'chroma_collection_name', None),
+                    'embedding_status': getattr(col, 'embedding_status', None),
+                    'chunks': chunk_count,
+                })
             logger.warning(
-                f"[ChatRAGRetrieval] No RAG results for chatbot {self.chatbot.id} "
-                f"(query='{query[:50]}...') using model "
-                f"{self.rag_pipeline.model_name if self.rag_pipeline else 'none'}"
+                "[ChatRAGRetrieval] No RAG results for chatbot=%s query=%r "
+                "model=%s collections=%s",
+                self.chatbot.id,
+                query[:80],
+                self.rag_pipeline.model_name if self.rag_pipeline else 'none',
+                collection_diag,
             )
             return "", []
 

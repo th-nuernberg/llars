@@ -59,11 +59,19 @@ def get_agreement_metrics(scenario_id):
 
     require_scenario_membership(scenario_id, g.authentik_user)
 
+    # Parse query parameters
+    include_llm = request.args.get('include_llm', 'true').lower() == 'true'
+    include_human = request.args.get('include_human', 'true').lower() == 'true'
+
     # For large scenarios, return cached alpha from stats cache to avoid
     # blocking the gevent worker with expensive Krippendorff computation.
+    # Cached values cover all raters (no filter) — when the caller asks for a
+    # filtered view (humans-only or LLMs-only) we have to recompute live, even
+    # though that is slower, because the cache cannot answer the question.
     from db.models import ScenarioItems
     item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
-    if item_count > 200:
+    is_filtered = not (include_llm and include_human)
+    if item_count > 200 and not is_filtered:
         from services.scenario_stats_cache_service import get_cached_stats
         cached = get_cached_stats(scenario_id)
         alpha = cached.get('krippendorff_alpha')
@@ -81,10 +89,6 @@ def get_agreement_metrics(scenario_id):
             'note': 'Detailed metrics unavailable for large scenarios (>200 items). '
                     'Krippendorff Alpha from cached stats.',
         })
-
-    # Parse query parameters
-    include_llm = request.args.get('include_llm', 'true').lower() == 'true'
-    include_human = request.args.get('include_human', 'true').lower() == 'true'
 
     # Calculate metrics
     metrics = AgreementMetricsService.calculate_all_metrics(

@@ -190,8 +190,33 @@ class ChatService:
             rag_context, sources = self._get_multi_collection_context(message)
             retrieval_time_ms = int((time.time() - retrieval_start) * 1000)
 
-        # If RAG is enabled but no context, avoid hallucinations
+        # If RAG is enabled but no context, avoid hallucinations.
+        # Log a single structured line that captures the full retrieval state so
+        # admins can tell at a glance whether the fallback fired because the
+        # collection is empty, the embeddings are missing/incompatible, or the
+        # query simply doesn't match. Without this, "Das kann ich dir leider
+        # nicht beantworten" is indistinguishable from a working chatbot that
+        # genuinely had no relevant context.
         if self._requires_sources() and not sources and not files:
+            collection_ids = [
+                cc.collection.id for cc in (self.chatbot.collections or [])
+                if getattr(cc, 'collection', None)
+            ]
+            logger.warning(
+                "[ChatService] RAG fallback fired for chatbot=%s "
+                "collections=%s rag_enabled=%s require_citations=%s "
+                "min_relevance=%s retrieval_k=%s retrieval_time_ms=%s "
+                "query_len=%s",
+                self.chatbot.id,
+                collection_ids,
+                self.chatbot.rag_enabled,
+                getattr(self, '_prompt_settings', None)
+                    and getattr(self._prompt_settings, 'rag_require_citations', None),
+                self.chatbot.rag_min_relevance,
+                self.chatbot.rag_retrieval_k,
+                retrieval_time_ms,
+                len(message or ''),
+            )
             response_text = self.get_unknown_answer()
             response_time_ms = int((time.time() - start_time) * 1000)
 

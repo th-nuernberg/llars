@@ -20,6 +20,9 @@ FUNCTION_TYPE_UI_META = {
     "mail_rating": {"display_name": "Verlaufsbewertung", "emoji": "✉️"},
     "comparison": {"display_name": "Gegenüberstellung", "emoji": "⚖️"},
     "authenticity": {"display_name": "Fake/Echt", "emoji": "🕵️"},
+    "labeling": {"display_name": "Labeling", "emoji": "🏷️"},
+    "communication_comparison": {"display_name": "Kommunikations-Vergleich", "emoji": "💬"},
+    "conversation_labeling": {"display_name": "Konversationslabeling", "emoji": "🗂️"},
 }
 
 

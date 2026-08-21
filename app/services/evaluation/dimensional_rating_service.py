@@ -345,7 +345,11 @@ class DimensionalRatingService:
                 'item_id': item.item_id,
                 'subject': item.subject,
                 'sender': item.sender,
-                'chat_id': item.chat_id
+                'chat_id': item.chat_id,
+                # Per-item research metadata consumed by the rating interface's
+                # item_header_template ({{variable}} substitution). Mirrors the
+                # session_service payload so both read-paths behave identically.
+                'metadata_json': item.metadata_json or {}
             },
             'messages': messages_data,
             'content': DimensionalRatingService._build_content_text(messages_data),

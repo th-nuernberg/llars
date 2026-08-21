@@ -1,8 +1,20 @@
 """
 LLM AI Task Runner
 
-Executes scenario tasks (ranking, rating, authenticity) for LLM evaluators.
-Broadcasts progress updates via WebSocket for real-time UI feedback.
+Executes scenario evaluation tasks (ranking, rating, authenticity, comparison,
+labeling, mail_rating) for configured LLM evaluator models.
+
+Key responsibilities:
+- Iterate over scenario items and send each to the configured LLM model
+- Parse structured JSON responses and store results in LLMTaskResult
+- Broadcast progress updates via Socket.IO for real-time UI feedback
+- Prevent self-DDoS through 6 layers of protection (see LLMAITaskRunner docstring)
+
+Trigger points (see CLAUDE.md "LLM Evaluator Auto-Start"):
+- Worker startup (worker_main.py) - durable queue resume for pending evaluations
+- Scenario GET (scenario_manager_api.py) - 5min cooldown per scenario
+- Scenario creation / thread addition - immediate, one-shot
+- Manual Start/Retry button (llm_evaluation_routes.py) - clears errors first
 """
 
 from __future__ import annotations
@@ -29,8 +41,10 @@ from db.models import (
     ScenarioThreads,
 )
 from llm.openai_utils import extract_message_text
+from services.evaluation.dimensional_rating_service import DimensionalRatingService
 from services.llm.llm_client_factory import LLMClientFactory
 from services.llm.llm_execution_service import LLMExecutionService
+from services.runtime_config import is_worker_runtime
 from services.system_settings_service import get_setting
 
 logger = logging.getLogger(__name__)
@@ -136,6 +150,25 @@ def _broadcast_scenario_completed(scenario_id: int, summary: dict):
     except Exception as e:
         logger.debug(f"[LLM AI Runner] Failed to broadcast scenario completion: {e}")
 
+
+def _broadcast_model_aborted(scenario_id: int, model_id: str, task_type: str, error: str):
+    """Broadcast that a model's evaluation was aborted (non-retryable error or too many failures)."""
+    from datetime import datetime
+    socketio = _get_socketio()
+    if not socketio:
+        return
+    try:
+        socketio.emit('llm_eval:model_aborted', {
+            'scenario_id': scenario_id,
+            'model_id': model_id,
+            'task_type': task_type,
+            'error': error,
+            'timestamp': datetime.utcnow().isoformat(),
+        }, room=f'llm_eval_scenario_{scenario_id}')
+    except Exception as e:
+        logger.debug(f"[LLM AI Runner] Failed to broadcast model_aborted: {e}")
+
+
 def _safe_int(value: Any, default: int) -> int:
     try:
         return int(value)
@@ -200,10 +233,156 @@ class LLMResponseError(Exception):
         self.raw_response = raw_response
 
 
-class LLMAITaskRunner:
-    """Run scenario tasks for configured LLM evaluators."""
+class LLMNonRetryableError(Exception):
+    """Raised for auth/permission errors that should abort entire model evaluation."""
+    def __init__(self, message: str, status_code: int = None):
+        super().__init__(message)
+        self.status_code = status_code
 
-    MAX_RETRIES = 2
+
+class LLMAITaskRunner:
+    """
+    Executes LLM evaluation tasks (ranking, rating, authenticity, etc.) for scenarios.
+
+    Anti-DDoS Protection (6 layers):
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    This class previously caused 100% CPU / server crashes due to race conditions
+    and uncontrolled retries (see commits b70e670d, e16d4a30, 95d1555b).
+
+    Current safeguards:
+
+    1. **Lock per (scenario_id, model_id)** - Thread-safe set (_active_locks) prevents
+       duplicate runners. If startup triggers a runner and a user opens the same scenario,
+       the second call is silently skipped instead of spawning a parallel thread.
+
+    2. **Permanent failure detection** - Errors with HTTP 401/403/404/422 or auth-related
+       keywords are classified as permanent. Auto-start paths (startup + scenario GET)
+       skip these models entirely. Only the manual "Start/Retry" button in the Assessors
+       tab can retry, and it clears old error records first (see llm_evaluation_routes.py).
+
+    3. **Cooldown per scenario** (5 min) - scenario_manager_api.py limits auto-start on
+       GET /scenarios/<id> to once per 5 minutes via Redis TTL shared across workers.
+
+    4. **Error cooldown** (30 min) - Queue resume skips models with 3+ errors in the last
+       30 minutes, preventing restart loops for transient failures.
+
+    5. **Circuit breaker** - MAX_CONSECUTIVE_FAILURES (3) consecutive errors for the same
+       model in one run → abort remaining items, broadcast model_aborted via Socket.IO.
+
+    6. **Total failure cap** - MAX_TOTAL_FAILURES (30) across all items in one run →
+       abort, preventing runaway loops even with intermittent successes.
+
+    Auto-Start Trigger Points:
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    - Worker startup (worker_main.py) → queues pending work, skips permanent failures + errored items
+    - Scenario GET (scenario_manager_api.py) → 5min cooldown, skips running models
+    - Scenario creation (POST) → fires once, no cooldown needed
+    - Threads added to scenario (POST) → only for newly added thread_ids
+
+    Manual Start (Assessors Tab "Start/Retry" button):
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    POST /api/evaluation/llm/<scenario_id>/start clears error records first,
+    then calls run_for_scenario_async. This bypasses permanent failure detection
+    because the user may have fixed the underlying issue (e.g. rotated API key).
+    """
+
+    # JSON parse retries per LLM request (invalid JSON → re-prompt with correction)
+    MAX_RETRIES = 3
+    # Consecutive failures before circuit breaker trips (aborts remaining items)
+    MAX_CONSECUTIVE_FAILURES = 3
+    # Total failures across all items before aborting the entire model run
+    MAX_TOTAL_FAILURES = 30
+    # HTTP status codes that trigger immediate LLMNonRetryableError (no retry within _request_json)
+    _NON_RETRYABLE_CODES = {401, 403}
+    # HTTP status codes treated as permanent failures (no auto-retry on startup/scenario GET).
+    # Only manual "Start/Retry" button can retry these.
+    _PERMANENT_FAILURE_CODES = {401, 403, 404, 422}
+
+    # --- Active task lock ---
+    # Thread-safe set tracking which (scenario_id, model_id) combinations have a
+    # runner thread currently active. Prevents duplicate parallel execution.
+    # Used by: run_for_scenario() (acquire/release), is_running() (status endpoint),
+    #          scenario_manager_api.py (pre-filter before spawning async runner).
+    _active_locks: set[tuple[int, str]] = set()
+    _active_locks_guard = threading.Lock()
+
+    @classmethod
+    def _try_acquire(cls, scenario_id: int, model_id: str) -> bool:
+        """Attempt to acquire the lock for a (scenario, model) pair. Returns False if already held."""
+        key = (scenario_id, model_id)
+        with cls._active_locks_guard:
+            if key in cls._active_locks:
+                return False
+            cls._active_locks.add(key)
+            return True
+
+    @classmethod
+    def _release(cls, scenario_id: int, model_id: str) -> None:
+        """Release the lock for a (scenario, model) pair. Always called in finally block."""
+        key = (scenario_id, model_id)
+        with cls._active_locks_guard:
+            cls._active_locks.discard(key)
+
+    @classmethod
+    def is_running(cls, scenario_id: int, model_id: str) -> bool:
+        """Check if a runner is active for this (scenario, model). Used by status endpoint."""
+        try:
+            from services.background_jobs import LLMEvalQueueService
+            if LLMEvalQueueService.is_active(scenario_id, model_id):
+                return True
+        except Exception:
+            pass
+        key = (scenario_id, model_id)
+        with cls._active_locks_guard:
+            return key in cls._active_locks
+
+    @staticmethod
+    def _is_non_retryable_error(exc: Exception) -> bool:
+        """
+        Check if a live API exception should immediately abort (no retry within _request_json).
+        Raises LLMNonRetryableError which breaks the entire model's item loop.
+        """
+        status_code = getattr(exc, 'status_code', None)
+        if status_code in LLMAITaskRunner._NON_RETRYABLE_CODES:
+            return True
+        exc_str = str(exc)
+        for code in LLMAITaskRunner._NON_RETRYABLE_CODES:
+            if f"Error code: {code}" in exc_str or f"status_code={code}" in exc_str:
+                return True
+        return False
+
+    @staticmethod
+    def _is_permanent_failure(error_str: str) -> bool:
+        """
+        Check if a *stored* error string (from DB) indicates a permanent failure.
+        Used by auto-start paths to skip items/models that will never succeed
+        without user intervention (e.g. invalid API key, model not found).
+        Manual "Start/Retry" button bypasses this by clearing error records first.
+        """
+        if not error_str:
+            return False
+        lower = error_str.lower()
+        for code in LLMAITaskRunner._PERMANENT_FAILURE_CODES:
+            if f"error code: {code}" in lower or f"status_code={code}" in lower:
+                return True
+        if any(kw in lower for kw in ("unauthorized", "forbidden", "authentication", "invalid api key", "invalid_api_key")):
+            return True
+        return False
+
+    @staticmethod
+    def _check_circuit_breaker(consecutive_failures: int, model_id: str, scenario_id: int, task_type: str) -> bool:
+        """
+        Return True if circuit breaker is tripped and the item loop should break.
+        Broadcasts model_aborted via Socket.IO so the frontend shows the failure.
+        """
+        if consecutive_failures >= LLMAITaskRunner.MAX_CONSECUTIVE_FAILURES:
+            logger.error(
+                "[LLM AI Runner] Circuit breaker: %d consecutive failures for model %s "
+                "in scenario %s (%s). Aborting remaining items.",
+                consecutive_failures, model_id, scenario_id, task_type,
+            )
+            return True
+        return False
 
     @staticmethod
     def run_for_scenario_async(
@@ -212,6 +391,22 @@ class LLMAITaskRunner:
         model_ids: Optional[List[str]] = None,
         thread_ids: Optional[List[int]] = None,
     ) -> None:
+        """
+        Queue a durable LLM evaluation run from web processes or execute it directly
+        when already inside the dedicated worker runtime.
+        """
+        if not is_worker_runtime():
+            try:
+                from services.background_jobs import LLMEvalQueueService
+                LLMEvalQueueService.enqueue_for_scenario(
+                    scenario_id,
+                    model_ids=model_ids,
+                    thread_ids=thread_ids,
+                )
+            except Exception as exc:
+                logger.warning("[LLM AI Runner] Queue enqueue failed: %s", exc)
+            return
+
         def _runner():
             try:
                 from main import app
@@ -222,7 +417,8 @@ class LLMAITaskRunner:
                         thread_ids=thread_ids,
                     )
             except Exception as exc:
-                logger.warning(f"[LLM AI Runner] Async run failed: {exc}")
+                import traceback
+                logger.warning(f"[LLM AI Runner] Async run failed: {exc}\n{traceback.format_exc()}")
 
         thread = threading.Thread(target=_runner, daemon=True)
         thread.start()
@@ -233,7 +429,15 @@ class LLMAITaskRunner:
         *,
         model_ids: Optional[List[str]] = None,
         thread_ids: Optional[List[int]] = None,
+        use_process_lock: bool = True,
     ) -> None:
+        """
+        Main entry point: run LLM evaluations for a scenario.
+
+        Acquires a lock per (scenario_id, model_id) before starting each model's
+        runner. If the lock is already held (another thread is processing), that
+        model is silently skipped. The lock is always released in a finally block.
+        """
         scenario = RatingScenarios.query.get(scenario_id)
         if not scenario:
             logger.warning("[LLM AI Runner] Scenario not found: %s", scenario_id)
@@ -248,44 +452,90 @@ class LLMAITaskRunner:
         if not resolved_models:
             return
 
-        # Comparison scenarios use ComparisonSessions, not ScenarioThreads
+        # Chat-based comparison uses ComparisonSessions; pairwise comparison
+        # (created via wizard/generation) uses standard items and _run_comparison.
         if function_name == "comparison":
             session_ids = LLMAITaskRunner._resolve_comparison_session_ids(scenario, thread_ids)
-            if not session_ids:
-                logger.info("[LLM AI Runner] No comparison sessions for scenario %s", scenario_id)
+            if session_ids:
+                for model_id in resolved_models:
+                    if use_process_lock and not LLMAITaskRunner._try_acquire(scenario_id, model_id):
+                        logger.info("[LLM AI Runner] Already running: scenario=%s model=%s", scenario_id, model_id)
+                        continue
+                    try:
+                        LLMAITaskRunner._run_comparison_sessions(model_id, session_ids, scenario.id)
+                    finally:
+                        if use_process_lock:
+                            LLMAITaskRunner._release(scenario_id, model_id)
                 return
-            for model_id in resolved_models:
-                LLMAITaskRunner._run_comparison_sessions(model_id, session_ids, scenario.id)
-            return
+            # No ComparisonSessions → pairwise comparison, fall through to item-based flow
 
         scenario_thread_ids = LLMAITaskRunner._resolve_thread_ids(scenario, thread_ids)
         if not scenario_thread_ids:
             return
 
         for model_id in resolved_models:
-            if function_name == "ranking":
-                LLMAITaskRunner._run_ranking(model_id, scenario_thread_ids, scenario.id)
-            elif function_name == "rating":
-                LLMAITaskRunner._run_rating(model_id, scenario_thread_ids, scenario.id)
-            elif function_name == "authenticity":
-                LLMAITaskRunner._run_authenticity(model_id, scenario_thread_ids, scenario.id)
-            elif function_name == "mail_rating":
-                LLMAITaskRunner._run_mail_rating(model_id, scenario_thread_ids, scenario.id)
-            elif function_name in ("labeling", "text_classification"):
-                task_type = "labeling" if function_name == "labeling" else "text_classification"
-                LLMAITaskRunner._run_text_classification(
-                    model_id,
-                    scenario_thread_ids,
-                    scenario.id,
-                    scenario,
-                    task_type=task_type,
+            if use_process_lock and not LLMAITaskRunner._try_acquire(scenario_id, model_id):
+                logger.info("[LLM AI Runner] Already running: scenario=%s model=%s", scenario_id, model_id)
+                continue
+            try:
+                LLMAITaskRunner._run_model_for_scenario(
+                    model_id, function_name, scenario_thread_ids, scenario,
                 )
-            else:
-                logger.info(
-                    "[LLM AI Runner] Task type '%s' not supported for model %s",
-                    function_name,
-                    model_id,
-                )
+            finally:
+                if use_process_lock:
+                    LLMAITaskRunner._release(scenario_id, model_id)
+
+    @staticmethod
+    def _run_model_for_scenario(
+        model_id: str,
+        function_name: Optional[str],
+        scenario_thread_ids: List[int],
+        scenario: RatingScenarios,
+    ) -> None:
+        """Dispatch to the appropriate runner method based on function_name."""
+        scenario_id = scenario.id
+        # Copilot suggestion runs are queued under "copilot:<model>" so their
+        # queue rows/locks never collide with a regular evaluator on the same
+        # model. See LabelingCopilotService (services/evaluation).
+        if model_id.startswith("copilot:"):
+            from services.evaluation.labeling_copilot_service import LabelingCopilotService
+            LLMAITaskRunner._run_copilot_suggestions(
+                LabelingCopilotService.strip_queue_prefix(model_id),
+                scenario_thread_ids,
+                scenario,
+            )
+            return
+        if function_name == "ranking":
+            LLMAITaskRunner._run_ranking(model_id, scenario_thread_ids, scenario_id)
+        elif function_name == "rating":
+            LLMAITaskRunner._run_rating(model_id, scenario_thread_ids, scenario_id)
+        elif function_name == "authenticity":
+            LLMAITaskRunner._run_authenticity(model_id, scenario_thread_ids, scenario_id)
+        elif function_name == "mail_rating":
+            LLMAITaskRunner._run_mail_rating(model_id, scenario_thread_ids, scenario_id)
+        elif function_name == "comparison":
+            LLMAITaskRunner._run_comparison(model_id, scenario_thread_ids, scenario_id)
+        elif function_name in ("labeling", "text_classification", "conversation_labeling"):
+            # conversation_labeling reuses the classification runner; its task
+            # rows are keyed the same way, the scenario just holds more items.
+            task_type = (
+                "text_classification"
+                if function_name == "text_classification"
+                else "labeling"
+            )
+            LLMAITaskRunner._run_text_classification(
+                model_id,
+                scenario_thread_ids,
+                scenario_id,
+                scenario,
+                task_type=task_type,
+            )
+        else:
+            logger.info(
+                "[LLM AI Runner] Task type '%s' not supported for model %s",
+                function_name,
+                model_id,
+            )
 
     @staticmethod
     def _resolve_model_ids(
@@ -343,6 +593,191 @@ class LLMAITaskRunner:
         return available
 
     @staticmethod
+    def _to_config_dict(raw: Any) -> Dict[str, Any]:
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return raw if isinstance(raw, dict) else {}
+
+    @staticmethod
+    def _normalize_scenario_criteria(value: Any) -> List[str]:
+        criteria: List[str] = []
+        seen = set()
+
+        if isinstance(value, str):
+            value = [part.strip() for part in value.replace(";", "\n").split("\n")]
+
+        if not isinstance(value, list):
+            return criteria
+
+        for item in value:
+            if isinstance(item, str):
+                text = item.strip()
+            elif isinstance(item, dict):
+                text = str(
+                    item.get("name")
+                    or item.get("label")
+                    or item.get("id")
+                    or ""
+                ).strip()
+            else:
+                text = str(item or "").strip()
+
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            criteria.append(text)
+
+        return criteria
+
+    @staticmethod
+    def _build_scenario_guidance_block_from_config(config_raw: Any) -> str:
+        config = LLMAITaskRunner._to_config_dict(config_raw)
+        task_description = config.get("task_description")
+        if not isinstance(task_description, str):
+            task_description = ""
+        task_description = task_description.strip()
+        criteria = LLMAITaskRunner._normalize_scenario_criteria(
+            config.get("evaluation_criteria")
+        )
+
+        if not task_description and not criteria:
+            return ""
+
+        lines = ["Zusätzliche Szenario-Vorgaben:"]
+        if task_description:
+            lines.append(f"Aufgabenbeschreibung: {task_description}")
+        if criteria:
+            lines.append("Evaluationskriterien:")
+            lines.extend(f"- {criterion}" for criterion in criteria)
+        lines.append(
+            "Nutze diese Vorgaben als primäre Bewertungsgrundlage, sofern sie zum Inhalt passen."
+        )
+        return "\n".join(lines)
+
+    @staticmethod
+    def _build_scenario_guidance_block(scenario_id: int) -> str:
+        scenario = RatingScenarios.query.get(scenario_id)
+        if not scenario:
+            return ""
+        return LLMAITaskRunner._build_scenario_guidance_block_from_config(
+            scenario.config_json
+        )
+
+    @staticmethod
+    def _prepend_scenario_guidance(user_prompt: str, scenario_guidance: str) -> str:
+        if not scenario_guidance:
+            return user_prompt
+        return f"{scenario_guidance}\n\n{user_prompt}"
+
+    @staticmethod
+    def _get_comparison_prompt_settings(scenario_id: int) -> Tuple[str, str]:
+        """
+        Resolve comparison prompt settings from scenario config.
+
+        Supports both flat config_json and nested config_json.eval_config.config.
+        Returns a tuple of (test_instruction, criteria_markdown_or_bullets).
+        """
+        return LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+            scenario_id,
+            default_task_description="Welche Antwort ist besser?",
+        )
+
+    @staticmethod
+    def _get_scenario_briefing_prompt_settings_from_config(
+        config_raw: Any,
+        default_task_description: str = "",
+    ) -> Tuple[str, str]:
+        """
+        Resolve briefing prompt settings from a config object.
+
+        Supports both flat config and nested eval_config.config payloads.
+        Returns a tuple of (task_description, criteria_markdown_or_bullets).
+        """
+
+        def _as_localized_text(value: Any) -> str:
+            if isinstance(value, str):
+                return value.strip()
+            if isinstance(value, dict):
+                for key in ("de", "en"):
+                    text = value.get(key)
+                    if isinstance(text, str) and text.strip():
+                        return text.strip()
+                for text in value.values():
+                    if isinstance(text, str) and text.strip():
+                        return text.strip()
+            return ""
+
+        def _normalize_markdown_block(value: Any) -> str:
+            text = _as_localized_text(value)
+            if not text:
+                return ""
+            lines = [line.rstrip() for line in text.splitlines()]
+            cleaned_lines = [line for line in lines if line.strip()]
+            return "\n".join(cleaned_lines).strip()
+
+        config = LLMAITaskRunner._to_config_dict(config_raw)
+        eval_config = config.get("eval_config")
+        if isinstance(eval_config, dict):
+            nested = eval_config.get("config")
+            if isinstance(nested, dict):
+                eval_config = nested
+        if not isinstance(eval_config, dict):
+            eval_config = config
+
+        task_description = (
+            _normalize_markdown_block(eval_config.get("taskDescriptionMarkdown"))
+            or _normalize_markdown_block(eval_config.get("task_description_markdown"))
+            or _normalize_markdown_block(config.get("taskDescriptionMarkdown"))
+            or _normalize_markdown_block(config.get("task_description_markdown"))
+            or _as_localized_text(eval_config.get("question"))
+            or _as_localized_text(config.get("task_description"))
+            or default_task_description
+        )
+        criteria_markdown = (
+            _normalize_markdown_block(eval_config.get("criteriaMarkdown"))
+            or _normalize_markdown_block(eval_config.get("criteria_markdown"))
+            or _normalize_markdown_block(config.get("criteriaMarkdown"))
+            or _normalize_markdown_block(config.get("evaluation_criteria_markdown"))
+        )
+
+        if criteria_markdown:
+            return task_description, criteria_markdown
+
+        criteria_raw = eval_config.get("criteria")
+        if criteria_raw is None:
+            criteria_raw = config.get("evaluation_criteria")
+        normalized_criteria = LLMAITaskRunner._normalize_scenario_criteria(criteria_raw)
+        criteria_block = "\n".join(
+            f"- {criterion}" for criterion in normalized_criteria if criterion
+        )
+
+        return task_description, criteria_block
+
+    @staticmethod
+    def _get_scenario_briefing_prompt_settings(
+        scenario_id: int,
+        default_task_description: str = "",
+    ) -> Tuple[str, str]:
+        """
+        Resolve briefing prompt settings from scenario config.
+
+        Supports both flat config_json and nested config_json.eval_config.config.
+        Returns a tuple of (task_description, criteria_markdown_or_bullets).
+        """
+
+        scenario = RatingScenarios.query.get(scenario_id)
+        if not scenario:
+            return default_task_description, ""
+
+        return LLMAITaskRunner._get_scenario_briefing_prompt_settings_from_config(
+            scenario.config_json,
+            default_task_description=default_task_description,
+        )
+
+    @staticmethod
     def _run_comparison_sessions(
         model_id: str,
         session_ids: Iterable[int],
@@ -355,8 +790,26 @@ class LLMAITaskRunner:
         compares the two responses and picks a winner.
         """
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        comparison_question, comparison_criteria = LLMAITaskRunner._get_comparison_prompt_settings(scenario_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
+        criteria_block = ""
+        if comparison_criteria:
+            criteria_block = f"Bewertungskriterien:\n{comparison_criteria}\n\n"
+
+        consecutive_failures = 0
+        total_failures = 0
         for session_id in session_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "comparison_session"):
+                _broadcast_model_aborted(scenario_id, model_id, "comparison_session",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "comparison_session",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
+                break
             try:
                 session = ComparisonSession.query.get(session_id)
                 if not session:
@@ -386,6 +839,8 @@ class LLMAITaskRunner:
                         evaluated_indices = existing.payload_json.get('evaluated_indices', [])
                         if msg.idx in evaluated_indices:
                             continue
+                    if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
+                        continue
 
                     # Parse the bot_pair content (JSON with llm1 and llm2 responses)
                     try:
@@ -414,15 +869,21 @@ class LLMAITaskRunner:
                         "Antworte ausschließlich im JSON-Format."
                     )
                     user_prompt = (
+                        f"Testanweisung: {comparison_question}\n\n"
+                        f"{criteria_block}"
                         f"Nutzeranfrage: {user_question}\n\n"
                         f"Antwort A (LLM 1):\n{llm1_response}\n\n"
                         f"Antwort B (LLM 2):\n{llm2_response}\n\n"
-                        "Welche Antwort ist besser? Gib JSON im Format:\n"
+                        "Halte dich an die Testanweisung und gib JSON im Format:\n"
                         "{\n"
                         '  "winner": "A" | "B" | "tie",\n'
                         '  "confidence": 1-5,\n'
                         '  "reasoning": "Begründung für die Entscheidung"\n'
                         "}"
+                    )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
                     )
 
                     raw_response = None
@@ -484,9 +945,25 @@ class LLMAITaskRunner:
                         task_type="comparison",
                         result=comparison_data,
                     )
+                consecutive_failures = 0
+
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=session_id,
+                    model_id=model_id,
+                    task_type="comparison",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "comparison_session", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=session_id,
@@ -504,6 +981,8 @@ class LLMAITaskRunner:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 logger.warning(
                     "[LLM AI Runner] Comparison session %s failed: %s",
                     session_id,
@@ -610,9 +1089,48 @@ class LLMAITaskRunner:
             return
 
         bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
+        task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+            scenario_id
+        )
+        task_block = (
+            f"Aufgabenbeschreibung:\n{task_description}\n\n"
+            if task_description
+            else ""
+        )
+        criteria_block = (
+            f"Bewertungskriterien:\n{criteria_markdown}\n\n"
+            if criteria_markdown
+            else ""
+        )
+        task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+            scenario_id
+        )
+        task_block = (
+            f"Aufgabenbeschreibung:\n{task_description}\n\n"
+            if task_description
+            else ""
+        )
+        criteria_block = (
+            f"Bewertungskriterien:\n{criteria_markdown}\n\n"
+            if criteria_markdown
+            else ""
+        )
         thread_ids_list = list(thread_ids)
+        consecutive_failures = 0
+        total_failures = 0
 
         for thread_id in thread_ids_list:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "ranking"):
+                _broadcast_model_aborted(scenario_id, model_id, "ranking",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "ranking",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -622,13 +1140,16 @@ class LLMAITaskRunner:
                 ).first()
                 if existing and existing.payload_json:
                     continue
+                # Skip items with permanent errors (auth/permission) - only manual retry
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
+                    continue
 
                 features = Feature.query.filter_by(thread_id=thread_id).all()
 
                 # NEW: If no Features, try EvaluationItem/Message approach
                 if not features:
                     LLMAITaskRunner._run_ranking_for_item(
-                        client, model_id, thread_id, scenario_id, bucket_keys
+                        client, api_model_id, model_id, thread_id, scenario_id, bucket_keys
                     )
                     continue
 
@@ -689,7 +1210,7 @@ Antworte AUSSCHLIESSLICH im JSON-Format mit den Feature-IDs (Zahlen)."""
 
                     user_prompt = f"""Bewerte die folgenden Zusammenfassungen basierend auf dem Originaltext.
 
-ORIGINALTEXT:
+{task_block}{criteria_block}ORIGINALTEXT:
 {source_text[:2000]}{"..." if len(source_text) > 2000 else ""}
 
 ZUSAMMENFASSUNGEN (zufällig sortiert):
@@ -711,6 +1232,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                     )
                     context_section = f"\nKONTEXT:\n{source_text[:1500]}...\n" if source_text else ""
                     user_prompt = (
+                        f"{task_block}{criteria_block}"
                         f"Ordne alle Feature-IDs genau einmal einem Bucket zu. "
                         f"Erlaubte Buckets: {buckets_list}.\n"
                         f"{context_section}\n"
@@ -718,6 +1240,10 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                         + "\n".join(feature_lines)
                         + f"\n\nGib JSON im Format:\n{json_example}"
                     )
+                user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                    user_prompt,
+                    scenario_guidance,
+                )
 
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
@@ -761,9 +1287,25 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                     task_type="ranking",
                     result=bucket_map,
                 )
+                consecutive_failures = 0
+
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="ranking",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "ranking", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -782,6 +1324,8 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Ranking failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -795,6 +1339,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
     @staticmethod
     def _run_ranking_for_item(
         client,
+        api_model_id: str,
         model_id: str,
         thread_id: int,
         scenario_id: int,
@@ -807,8 +1352,11 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
         The item content (from Message) is evaluated and assigned to a quality bucket.
         """
         from db.models import EvaluationItem
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
         try:
+            _, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+
             # Check if already processed
             existing = LLMTaskResult.query.filter_by(
                 scenario_id=scenario_id,
@@ -838,6 +1386,19 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
             # Get the main content (typically the generated text to rank)
             item_content = messages[0].content if messages else ""
             item_subject = item.subject or "Item"
+            task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+                scenario_id
+            )
+            task_block = (
+                f"Aufgabenbeschreibung:\n{task_description}\n\n"
+                if task_description
+                else ""
+            )
+            criteria_block = (
+                f"Bewertungskriterien:\n{criteria_markdown}\n\n"
+                if criteria_markdown
+                else ""
+            )
 
             # Detect if this is a summary (from sender or subject)
             is_summary = any(
@@ -873,7 +1434,7 @@ Antworte AUSSCHLIESSLICH im JSON-Format."""
 
                 user_prompt = f"""Bewerte die folgende Zusammenfassung:
 
-TITEL: {item_subject}
+{task_block}{criteria_block}TITEL: {item_subject}
 
 INHALT:
 {item_content[:3000]}{"..." if len(item_content) > 3000 else ""}
@@ -889,7 +1450,7 @@ Antworte im JSON-Format:
                     "Du bist ein strenger Evaluator für Qualitäts-Rankings. "
                     "Antworte ausschließlich im JSON-Format."
                 )
-                user_prompt = f"""Bewerte den folgenden Text und ordne ihn einem Bucket zu.
+                user_prompt = f"""{task_block}{criteria_block}Bewerte den folgenden Text und ordne ihn einem Bucket zu.
 
 TITEL: {item_subject}
 
@@ -900,6 +1461,10 @@ Erlaubte Buckets: {", ".join(bucket_keys)}
 
 Antworte im JSON-Format:
 {{"bucket": "<bucket_name>", "reasoning": "<kurze Begründung>"}}"""
+            user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                user_prompt,
+                scenario_guidance,
+            )
 
             raw_response = None
             payload, raw_response = LLMAITaskRunner._request_json(
@@ -972,6 +1537,10 @@ Antworte im JSON-Format:
                 result=result_payload,
             )
 
+        except LLMNonRetryableError:
+            db.session.rollback()
+            raise
+
         except LLMResponseError as exc:
             db.session.rollback()
             LLMAITaskRunner._store_error(
@@ -1004,8 +1573,23 @@ Antworte im JSON-Format:
     def _run_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         scenario = RatingScenarios.query.get(scenario_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block_from_config(
+            scenario.config_json if scenario else {}
+        )
+        consecutive_failures = 0
+        total_failures = 0
 
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "rating"):
+                _broadcast_model_aborted(scenario_id, model_id, "rating",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "rating",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1014,6 +1598,8 @@ Antworte im JSON-Format:
                     task_type="rating",
                 ).first()
                 if existing and existing.payload_json:
+                    continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
                     continue
 
                 # Try EvaluationItem model first (new model)
@@ -1030,16 +1616,13 @@ Antworte im JSON-Format:
                         for msg in messages
                     ]
 
-                    # Get dimensional rating config from scenario
-                    config = scenario.config_json or {} if scenario else {}
-                    dimensions = config.get('dimensions', [
-                        {'id': 'coherence', 'name': {'de': 'Kohärenz', 'en': 'Coherence'}},
-                        {'id': 'fluency', 'name': {'de': 'Flüssigkeit', 'en': 'Fluency'}},
-                        {'id': 'relevance', 'name': {'de': 'Relevanz', 'en': 'Relevance'}},
-                        {'id': 'consistency', 'name': {'de': 'Konsistenz', 'en': 'Consistency'}}
-                    ])
-                    scale_min = config.get('min', 1)
-                    scale_max = config.get('max', 5)
+                    # Get dimensional rating config via DimensionalRatingService (handles defaults)
+                    dim_config = DimensionalRatingService.get_scenario_config(scenario_id)
+                    if not isinstance(dim_config, dict) or 'error' in dim_config:
+                        dim_config = {}
+                    dimensions = dim_config.get("dimensions", [])
+                    scale_min = dim_config.get("min", 1)
+                    scale_max = dim_config.get("max", 5)
 
                     dimension_names = [d.get('name', {}).get('en', d.get('id', 'unknown')) for d in dimensions]
                     dim_list_str = ", ".join(dimension_names)
@@ -1062,6 +1645,10 @@ Antworte im JSON-Format:
                         f"Subject: {eval_item.subject or 'N/A'}\n\n"
                         "Content:\n"
                         + "\n".join(message_lines)
+                    )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
                     )
 
                     raw_response = None
@@ -1107,7 +1694,7 @@ Antworte im JSON-Format:
                     feature_lines = []
                     for feature in features:
                         feature_lines.append(
-                            f"- ID {feature.feature_id} (Typ: {feature.feature_type.name}, Modell: {feature.llm.name}): {feature.content}"
+                            f"- ID {feature.feature_id} (Typ: {feature.feature_type.name}, Modell: {feature.model_id or 'Unknown'}): {feature.content}"
                         )
 
                     system_prompt = (
@@ -1123,6 +1710,10 @@ Antworte im JSON-Format:
                         + "\n".join(message_lines)
                         + "\n\nFeatures:\n"
                         + "\n".join(feature_lines)
+                    )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
                     )
 
                     raw_response = None
@@ -1174,9 +1765,25 @@ Antworte im JSON-Format:
                     task_type="rating",
                     result=payload_out,
                 )
+                consecutive_failures = 0
+
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="rating",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "rating", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1195,6 +1802,8 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Rating failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1208,8 +1817,21 @@ Antworte im JSON-Format:
     @staticmethod
     def _run_authenticity(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
+        consecutive_failures = 0
+        total_failures = 0
 
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "authenticity"):
+                _broadcast_model_aborted(scenario_id, model_id, "authenticity",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "authenticity",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1218,6 +1840,8 @@ Antworte im JSON-Format:
                     task_type="authenticity",
                 ).first()
                 if existing and existing.payload_json:
+                    continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
                     continue
 
                 messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
@@ -1237,6 +1861,10 @@ Antworte im JSON-Format:
                     "}\n\n"
                     "Konversation:\n"
                     + "\n".join(message_lines)
+                )
+                user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                    user_prompt,
+                    scenario_guidance,
                 )
 
                 raw_response = None
@@ -1281,9 +1909,25 @@ Antworte im JSON-Format:
                     task_type="authenticity",
                     result=vote_data,
                 )
+                consecutive_failures = 0
+
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="authenticity",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "authenticity", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1302,6 +1946,8 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Authenticity failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1316,27 +1962,29 @@ Antworte im JSON-Format:
     def _run_mail_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         """Rate entire email conversations using configured dimensions."""
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
-        # Load scenario config to get dimensions
-        scenario = RatingScenarios.query.get(scenario_id)
-        config = scenario.config_json if scenario else {}
-        if isinstance(config, str):
-            import json
-            try:
-                config = json.loads(config)
-            except (json.JSONDecodeError, TypeError):
-                config = {}
-
-        # Get dimensions from config (check multiple locations)
-        eval_config = config.get("eval_config", {}) or {}
-        eval_config_inner = eval_config.get("config", {}) or {}
-        dimensions = config.get("dimensions", []) or eval_config.get("dimensions", []) or eval_config_inner.get("dimensions", [])
-
-        # Get global scale settings
-        global_min = config.get("min", eval_config.get("min", eval_config_inner.get("min", 1)))
-        global_max = config.get("max", eval_config.get("max", eval_config_inner.get("max", 5)))
+        # Load scenario config with proper defaults via DimensionalRatingService
+        dim_config = DimensionalRatingService.get_scenario_config(scenario_id)
+        if not isinstance(dim_config, dict) or 'error' in dim_config:
+            dim_config = {}
+        dimensions = dim_config.get("dimensions", [])
+        global_min = dim_config.get("min", 1)
+        global_max = dim_config.get("max", 5)
+        consecutive_failures = 0
+        total_failures = 0
 
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "mail_rating"):
+                _broadcast_model_aborted(scenario_id, model_id, "mail_rating",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "mail_rating",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1345,6 +1993,8 @@ Antworte im JSON-Format:
                     task_type="mail_rating",
                 ).first()
                 if existing and existing.payload_json:
+                    continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
                     continue
 
                 thread = EmailThread.query.filter_by(thread_id=thread_id).first()
@@ -1396,6 +2046,10 @@ Antworte im JSON-Format:
                         "Konversation:\n"
                         + "\n".join(message_lines)
                     )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
+                    )
                 else:
                     # Fallback to simple rating if no dimensions configured
                     system_prompt = (
@@ -1413,6 +2067,10 @@ Antworte im JSON-Format:
                         f"Betreff: {thread.subject or 'Kein Betreff'}\n\n"
                         "Konversation:\n"
                         + "\n".join(message_lines)
+                    )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
                     )
 
                 raw_response = None
@@ -1457,9 +2115,25 @@ Antworte im JSON-Format:
                     task_type="mail_rating",
                     result=rating_data,
                 )
+                consecutive_failures = 0
+
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="mail_rating",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "mail_rating", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1478,6 +2152,8 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Mail rating failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1487,6 +2163,108 @@ Antworte im JSON-Format:
                     task_type="mail_rating",
                     error=str(exc),
                 )
+
+    @staticmethod
+    def _localized_label_text(value: Any) -> Optional[str]:
+        """Pick a display string from a plain string or a ``{de, en, …}`` dict."""
+        if isinstance(value, str):
+            return value.strip() or None
+        if isinstance(value, dict):
+            for key in ("de", "en"):
+                text = value.get(key)
+                if isinstance(text, str) and text.strip():
+                    return text.strip()
+            for text in value.values():
+                if isinstance(text, str) and text.strip():
+                    return text.strip()
+        return None
+
+    @staticmethod
+    def _label_source_list(config: Dict[str, Any]) -> List[Any]:
+        """First non-empty label/category list across the shapes LLARS uses:
+        top-level ``labels``/``categories`` or the same nested under
+        ``eval_config.config`` (or ``eval_config``)."""
+        candidates = [config.get("labels"), config.get("categories")]
+        eval_config = config.get("eval_config")
+        if isinstance(eval_config, dict):
+            inner = eval_config.get("config")
+            inner = inner if isinstance(inner, dict) else eval_config
+            candidates += [inner.get("labels"), inner.get("categories")]
+        for candidate in candidates:
+            if isinstance(candidate, list) and candidate:
+                return candidate
+        return []
+
+    @staticmethod
+    def _extract_labels_from_config(config: Dict[str, Any]) -> Tuple[List[str], Dict[str, str]]:
+        """Resolve ``(custom_labels, label_descriptions)`` for a labeling scenario,
+        robust across every label shape LLARS produces:
+
+        - ``classification_labels``: ``[str]`` (+ optional ``label_descriptions`` map)
+        - ``labels`` / ``categories``: ``[str]`` OR ``[{id, name|label, description}]``
+        - the same lists nested under ``eval_config.config``
+
+        The LLM emits the label **id** (so it lines up with the human
+        ``category_id`` in IRR); the human-readable name/description rides along as
+        its meaning so an opaque id (``cat_1782…``) is never sent unexplained.
+        Mirrors the ``unsure`` escape label when the scenario allows it.
+        """
+        custom_labels: List[str] = []
+        label_descriptions: Dict[str, str] = {}
+
+        if isinstance(config.get("classification_labels"), list):
+            custom_labels = [
+                label for label in config["classification_labels"] if isinstance(label, str)
+            ]
+            if isinstance(config.get("label_descriptions"), dict):
+                label_descriptions = {
+                    key: value
+                    for key, value in config["label_descriptions"].items()
+                    if isinstance(key, str) and isinstance(value, str)
+                }
+        else:
+            for item in LLMAITaskRunner._label_source_list(config):
+                name_text = None
+                description = None
+                if isinstance(item, str):
+                    label = item.strip()
+                elif isinstance(item, dict):
+                    # Scenario shapes name the label field 'name' (categories) or
+                    # 'label' (labels); accept either.
+                    name_text = LLMAITaskRunner._localized_label_text(
+                        item.get("name") or item.get("label")
+                    )
+                    label = item.get("id") or name_text
+                    description = LLMAITaskRunner._localized_label_text(item.get("description"))
+                else:
+                    continue
+                if not label:
+                    continue
+                label = str(label)
+                custom_labels.append(label)
+                meaning = description
+                if name_text and name_text != label:
+                    meaning = f"{name_text} — {description}" if description else name_text
+                if meaning:
+                    label_descriptions[label] = str(meaning)
+
+            # Mirror the human "unsure" escape label when the scenario offers it.
+            inner_cfg = config
+            eval_config = config.get("eval_config")
+            if isinstance(eval_config, dict) and isinstance(eval_config.get("config"), dict):
+                inner_cfg = eval_config["config"]
+            if isinstance(inner_cfg, dict) and inner_cfg.get("allowUnsure"):
+                unsure = inner_cfg.get("unsureOption") or {}
+                uid = str(unsure.get("id") or "unsure")
+                uname = LLMAITaskRunner._localized_label_text(unsure.get("name"))
+                if uid not in custom_labels:
+                    custom_labels.append(uid)
+                    if uname and uname != uid:
+                        label_descriptions[uid] = uname
+
+        if not custom_labels:
+            custom_labels = ["positive", "negative", "neutral"]
+        return custom_labels, label_descriptions
 
     @staticmethod
     def _run_text_classification(
@@ -1508,61 +2286,32 @@ Antworte im JSON-Format:
                 config = {}
         if not isinstance(config, dict):
             config = {}
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block_from_config(config)
+        if not scenario_guidance:
+            # Wizard-created labeling scenarios keep the task + inclusion criteria
+            # under eval_config.config.{taskDescriptionMarkdown,criteriaMarkdown},
+            # which the generic guidance builder (top-level task_description /
+            # evaluation_criteria) never sees -> without this fallback the LLM
+            # classifies with NO instructions and NO criteria. Reuse the briefing
+            # resolver, which reads the nested markdown fields correctly.
+            task_desc, criteria_md = (
+                LLMAITaskRunner._get_scenario_briefing_prompt_settings_from_config(config)
+            )
+            briefing = []
+            if task_desc:
+                briefing.append(f"Aufgabenbeschreibung:\n{task_desc}")
+            if criteria_md:
+                briefing.append(f"Kriterien:\n{criteria_md}")
+            if briefing:
+                scenario_guidance = (
+                    "Zusätzliche Szenario-Vorgaben:\n"
+                    + "\n\n".join(briefing)
+                    + "\n\nNutze diese Vorgaben als primäre Bewertungsgrundlage."
+                )
 
-        custom_labels = []
-        label_descriptions = {}
-
-        if isinstance(config.get("classification_labels"), list):
-            custom_labels = [label for label in config.get("classification_labels", []) if isinstance(label, str)]
-            if isinstance(config.get("label_descriptions"), dict):
-                label_descriptions = {
-                    key: value
-                    for key, value in config.get("label_descriptions", {}).items()
-                    if isinstance(key, str) and isinstance(value, str)
-                }
-        elif isinstance(config.get("labels"), list):
-            custom_labels = [label for label in config.get("labels", []) if isinstance(label, str)]
-        else:
-            categories = []
-            if isinstance(config.get("categories"), list):
-                categories = config.get("categories", [])
-            else:
-                eval_config = config.get("eval_config")
-                if isinstance(eval_config, dict):
-                    eval_config_inner = eval_config.get("config")
-                    if isinstance(eval_config_inner, dict) and isinstance(eval_config_inner.get("categories"), list):
-                        categories = eval_config_inner.get("categories", [])
-                    elif isinstance(eval_config.get("categories"), list):
-                        categories = eval_config.get("categories", [])
-
-            for category in categories:
-                label = None
-                description = None
-
-                if isinstance(category, str):
-                    label = category
-                elif isinstance(category, dict):
-                    label = category.get("id")
-                    name = category.get("name")
-                    if not label:
-                        if isinstance(name, dict):
-                            label = name.get("de") or name.get("en")
-                        elif isinstance(name, str):
-                            label = name
-
-                    desc = category.get("description")
-                    if isinstance(desc, dict):
-                        description = desc.get("de") or desc.get("en")
-                    elif isinstance(desc, str):
-                        description = desc
-
-                if label:
-                    custom_labels.append(str(label))
-                    if description:
-                        label_descriptions[str(label)] = str(description)
-
-        if not custom_labels:
-            custom_labels = ["positive", "negative", "neutral"]
+        custom_labels, label_descriptions = (
+            LLMAITaskRunner._extract_labels_from_config(config)
+        )
 
         labels_text = ", ".join(f'"{label}"' for label in custom_labels)
         descriptions_text = ""
@@ -1572,7 +2321,19 @@ Antworte im JSON-Format:
             )
             descriptions_text = f"\n\nLabel-Beschreibungen:\n{descriptions_text}"
 
+        consecutive_failures = 0
+        total_failures = 0
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, task_type):
+                _broadcast_model_aborted(scenario_id, model_id, task_type,
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, task_type,
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1581,6 +2342,8 @@ Antworte im JSON-Format:
                     task_type=task_type,
                 ).first()
                 if existing and existing.payload_json:
+                    continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
                     continue
 
                 messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
@@ -1605,6 +2368,10 @@ Antworte im JSON-Format:
                     '  "reasoning": "Kurze Begründung"\n'
                     "}\n\n"
                     f"Text:\n{text_content}"
+                )
+                user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                    user_prompt,
+                    scenario_guidance,
                 )
 
                 raw_response = None
@@ -1649,9 +2416,25 @@ Antworte im JSON-Format:
                     task_type=task_type,
                     result=classification_data,
                 )
+                consecutive_failures = 0
+
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type=task_type,
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, task_type, str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1670,6 +2453,8 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] %s failed for thread %s: %s", task_type, thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1681,11 +2466,409 @@ Antworte im JSON-Format:
                 )
 
     @staticmethod
+    def _run_copilot_suggestions(
+        model_id: str,
+        thread_ids: Iterable[int],
+        scenario: RatingScenarios,
+    ) -> None:
+        """Batch-generate labeling co-pilot suggestions (pre-annotations).
+
+        Modeled on _run_text_classification, but the prompt comes from the
+        scenario-owned copilot template (placeholders {item}/{context}/{labels}/
+        {codebook}, replaced verbatim - no str.format, templates may contain
+        JSON braces) and results are cached per (item, prompt_version, model):
+        items whose cache row already matches the CURRENT prompt_version are
+        skipped; stale rows (older prompt_version) are regenerated in place.
+        Anti-DDoS layers (circuit breaker, permanent-failure skip, failure cap)
+        are identical to the other runner loops.
+        """
+        from services.evaluation.labeling_copilot_service import (
+            DEFAULT_COPILOT_PROMPT,
+            LabelingCopilotService,
+        )
+
+        task_type = LabelingCopilotService.TASK_TYPE
+        scenario_id = scenario.id
+        copilot_cfg = LabelingCopilotService.get_copilot_config(scenario)
+        if not copilot_cfg:
+            logger.info("[Copilot] Scenario %s has no enabled copilot config", scenario_id)
+            return
+
+        # The labeling config that sits AROUND the copilot block. Conversation
+        # labeling reads context_window / no_future_messages from it so the
+        # model's {context} window matches what the rater sees.
+        conversation_cfg = LabelingCopilotService.locate_inner_config(scenario.config_json) or {}
+
+        # Scenario parts: generate ONLY for items in copilot-enabled parts
+        # (token saving + the calibration phases must stay suggestion-free).
+        # None = parts inactive → full scenario scope as before.
+        from services.evaluation.scenario_parts_service import ScenarioPartsService
+        part_gate = ScenarioPartsService.copilot_item_ids(scenario)
+        if part_gate is not None:
+            thread_ids = [tid for tid in thread_ids if tid in part_gate]
+            if not thread_ids:
+                logger.info(
+                    "[Copilot] Scenario %s has no items in copilot-enabled parts",
+                    scenario_id,
+                )
+                return
+
+        config = LLMAITaskRunner._to_config_dict(scenario.config_json)
+        options = LabelingCopilotService.extract_label_options(config)
+        if not options:
+            logger.warning("[Copilot] Scenario %s has no label options, skipping", scenario_id)
+            return
+
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+
+        allowed_ids = [option["id"] for option in options]
+        labels_block = "\n".join(
+            f"- {option['id']}: {option['name']}"
+            + (f" — {option['description']}" if option["description"] else "")
+            for option in options
+        )
+        ids_text = ", ".join(f'"{label_id}"' for label_id in allowed_ids)
+        try:
+            top_k = max(1, min(2, int(copilot_cfg.get("top_k") or 1)))
+        except (TypeError, ValueError):
+            top_k = 1
+        prompt_version = str(copilot_cfg.get("prompt_version") or 1)
+        template = (copilot_cfg.get("prompt") or "").strip() or DEFAULT_COPILOT_PROMPT
+        codebook = (copilot_cfg.get("codebook") or "").strip() or "(kein zusätzliches Codebook)"
+        task_description = str(config.get("task_description") or "").strip()
+
+        system_prompt = (
+            "Du bist ein Annotations-Assistent, der Label-Vorschläge mit Begründung "
+            "und Textbelegen liefert. Antworte ausschließlich im JSON-Format."
+        )
+        # Fixed output contract, appended AFTER the user template so a custom
+        # prompt can never break the parseable response format.
+        format_instruction = (
+            "\n\nAntworte AUSSCHLIESSLICH mit JSON in diesem Format:\n"
+            '{"suggestions": [{"label_id": "<erlaubte ID>", '
+            '"rationale": "1-2 Sätze Begründung", '
+            '"evidence": "kurzes wörtliches Textzitat als Beleg", '
+            '"confidence": "high|medium|low"}]}\n'
+            f"Gib genau {top_k} Vorschlag/Vorschläge, absteigend nach Eignung sortiert. "
+            f"Erlaubte label_id-Werte: {ids_text}"
+        )
+
+        consecutive_failures = 0
+        total_failures = 0
+        for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, task_type):
+                _broadcast_model_aborted(scenario_id, model_id, task_type,
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[Copilot] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, task_type,
+                                         f"Too many failures ({total_failures}). Generation stopped.")
+                break
+            try:
+                existing = LLMTaskResult.query.filter_by(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type=task_type,
+                ).first()
+                # Cache hit only when the stored suggestions match the CURRENT
+                # prompt version; stale rows get regenerated (re-run after edit).
+                if existing and existing.payload_json and str(existing.prompt_version or "") == prompt_version:
+                    continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
+                    continue
+
+                item = EvaluationItem.query.get(thread_id)
+
+                # --- conversation labeling: one call PER SPAN ---------------
+                # A span is the decision unit here, so a single suggestion for
+                # the whole conversation would be useless. All spans of one
+                # conversation share ONE cache row (payload_json["spans"]) —
+                # LLMTaskResult is keyed per item, and ~92 rows per item would
+                # blow up the table for no gain.
+                spans = LabelingCopilotService.spans_for_item(item)
+                if spans:
+                    # Reading order = insertion order. Ordering by timestamp
+                    # would be wrong: the importer stamps "now" when the payload
+                    # carries none, so ties are possible.
+                    conv_messages = Message.query.filter_by(
+                        thread_id=thread_id
+                    ).order_by(Message.message_id.asc()).all()
+
+                    span_payloads = dict(
+                        ((existing.payload_json or {}).get("spans") or {})
+                        if existing and str(existing.prompt_version or "") == prompt_version
+                        else {}
+                    )
+
+                    produced = 0
+                    for span in spans:
+                        span_id = str(span.get("span_id") or "")
+                        if not span_id or span_id in span_payloads:
+                            continue  # already generated for this prompt version
+                        msg = (
+                            conv_messages[span["message_index"]]
+                            if 0 <= int(span.get("message_index", -1)) < len(conv_messages)
+                            else None
+                        )
+                        if msg is None:
+                            continue
+                        span_text = str(msg.content or "")[span.get("start", 0):span.get("end", 0)]
+                        if not span_text.strip():
+                            continue
+
+                        span_context = LabelingCopilotService.build_span_context(
+                            conv_messages, span, copilot_cfg, conversation_cfg
+                        )
+                        span_prompt = (
+                            template
+                            .replace("{labels}", labels_block)
+                            .replace("{codebook}", codebook)
+                            .replace("{context}", span_context)
+                            .replace("{item}", span_text)
+                        ) + format_instruction
+
+                        s_started = time.monotonic()
+                        s_payload, s_raw = LLMAITaskRunner._request_json(
+                            client, api_model_id, system_prompt, span_prompt,
+                            trace={
+                                "task": task_type, "scenario_id": scenario_id,
+                                "thread_id": thread_id, "span_id": span_id,
+                                "model_id": model_id,
+                            },
+                        )
+                        s_duration = int((time.monotonic() - s_started) * 1000)
+                        s_suggestions = LLMAITaskRunner._validate_copilot_payload(
+                            s_payload, allowed_ids, top_k
+                        )
+                        if s_suggestions is None:
+                            raise ValueError(f"Invalid {task_type} payload for span {span_id}")
+
+                        span_payloads[span_id] = {"suggestions": s_suggestions}
+                        produced += 1
+
+                        # Persist after EVERY span: a conversation is ~92 calls,
+                        # and losing all of them to one late failure would be a
+                        # real cost. Partial progress is resumable via the
+                        # "already generated" skip above.
+                        payload_json = {"spans": span_payloads}
+                        if existing:
+                            existing.payload_json = payload_json
+                            existing.raw_response = s_raw
+                            existing.error = None
+                            existing.prompt_version = prompt_version
+                            existing.processing_time_ms = s_duration
+                            db.session.add(existing)
+                        else:
+                            existing = LLMTaskResult(
+                                scenario_id=scenario_id, thread_id=thread_id,
+                                model_id=model_id, task_type=task_type,
+                                payload_json=payload_json, raw_response=s_raw,
+                                error=None, prompt_version=prompt_version,
+                                processing_time_ms=s_duration,
+                            )
+                            db.session.add(existing)
+                        db.session.commit()
+
+                    if produced:
+                        _broadcast_task_completed(
+                            scenario_id=scenario_id, model_id=model_id,
+                            thread_id=thread_id, task_type=task_type,
+                            result={"spans": span_payloads},
+                        )
+                    consecutive_failures = 0
+                    continue
+                # --- end conversation labeling -----------------------------
+
+                messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
+                if messages:
+                    item_text = "\n".join(f"{msg.sender}: {msg.content}" for msg in messages)
+                else:
+                    item_text = (item.subject or "") if item else ""
+                if not item_text.strip():
+                    continue
+
+                # {context}: per-item research context when provided (e.g. the
+                # surrounding conversation for VRM units), else the scenario task
+                # description.
+                item_meta = (item.metadata_json or {}) if item else {}
+                context_text = str(
+                    item_meta.get("context") or item_meta.get("reference") or task_description or ""
+                ).strip() or "(kein zusätzlicher Kontext)"
+
+                user_prompt = (
+                    template
+                    .replace("{labels}", labels_block)
+                    .replace("{codebook}", codebook)
+                    .replace("{context}", context_text)
+                    .replace("{item}", item_text)
+                ) + format_instruction
+
+                started = time.monotonic()
+                payload, raw_response = LLMAITaskRunner._request_json(
+                    client,
+                    api_model_id,
+                    system_prompt,
+                    user_prompt,
+                    trace={
+                        "task": task_type,
+                        "scenario_id": scenario_id,
+                        "thread_id": thread_id,
+                        "model_id": model_id,
+                    },
+                )
+                duration_ms = int((time.monotonic() - started) * 1000)
+                suggestions = LLMAITaskRunner._validate_copilot_payload(payload, allowed_ids, top_k)
+                if suggestions is None:
+                    raise ValueError(f"Invalid {task_type} payload")
+
+                payload_json = {"suggestions": suggestions}
+                if existing:
+                    existing.payload_json = payload_json
+                    existing.raw_response = raw_response
+                    existing.error = None
+                    existing.prompt_version = prompt_version
+                    existing.processing_time_ms = duration_ms
+                    db.session.add(existing)
+                else:
+                    db.session.add(LLMTaskResult(
+                        scenario_id=scenario_id,
+                        thread_id=thread_id,
+                        model_id=model_id,
+                        task_type=task_type,
+                        payload_json=payload_json,
+                        raw_response=raw_response,
+                        error=None,
+                        prompt_version=prompt_version,
+                        processing_time_ms=duration_ms,
+                    ))
+                db.session.commit()
+
+                _broadcast_task_completed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type=task_type,
+                    result=payload_json,
+                )
+                consecutive_failures = 0
+
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type=task_type,
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, task_type, str(exc))
+                logger.error("[Copilot] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
+
+            except LLMResponseError as exc:
+                db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type=task_type,
+                    error=str(exc),
+                    raw_response=exc.raw_response,
+                )
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type=task_type,
+                    error=str(exc),
+                )
+            except Exception as exc:
+                db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
+                logger.warning("[Copilot] Generation failed for thread %s: %s", thread_id, exc)
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type=task_type,
+                    error=str(exc),
+                )
+
+    @staticmethod
+    def _validate_copilot_payload(
+        payload: Any,
+        allowed_ids: List[str],
+        top_k: int,
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Normalize a copilot response to a ranked suggestion list.
+
+        Accepts {"suggestions": [...]} or a bare single suggestion object.
+        Each entry must reference an allowed label id (case-insensitive match
+        is canonicalized); duplicates are dropped, the list is trimmed to
+        top_k. Returns None when nothing valid remains.
+        """
+        if not isinstance(payload, dict):
+            return None
+        raw_suggestions = payload.get("suggestions")
+        if raw_suggestions is None and payload.get("label_id"):
+            raw_suggestions = [payload]
+        if not isinstance(raw_suggestions, list):
+            return None
+
+        canonical = {label_id.lower(): label_id for label_id in allowed_ids}
+        suggestions: List[Dict[str, Any]] = []
+        seen = set()
+        for entry in raw_suggestions:
+            if not isinstance(entry, dict):
+                continue
+            raw_id = str(entry.get("label_id") or entry.get("label") or "").strip()
+            label_id = canonical.get(raw_id.lower())
+            if not label_id or label_id in seen:
+                continue
+            seen.add(label_id)
+            confidence = str(entry.get("confidence") or "").strip().lower()
+            if confidence not in ("high", "medium", "low"):
+                confidence = "medium"
+            suggestions.append({
+                "label_id": label_id,
+                "rationale": str(entry.get("rationale") or "").strip(),
+                "evidence": str(entry.get("evidence") or "").strip(),
+                "confidence": confidence,
+            })
+            if len(suggestions) >= top_k:
+                break
+        return suggestions or None
+
+    @staticmethod
     def _run_comparison(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         """Compare two responses/texts and choose the better one."""
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        comparison_question, comparison_criteria = LLMAITaskRunner._get_comparison_prompt_settings(scenario_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
+        criteria_block = ""
+        if comparison_criteria:
+            criteria_block = f"Bewertungskriterien:\n{comparison_criteria}\n\n"
+
+        consecutive_failures = 0
+        total_failures = 0
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "comparison"):
+                _broadcast_model_aborted(scenario_id, model_id, "comparison",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "comparison",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1694,6 +2877,8 @@ Antworte im JSON-Format:
                     task_type="comparison",
                 ).first()
                 if existing and existing.payload_json:
+                    continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
                     continue
 
                 thread = EmailThread.query.filter_by(thread_id=thread_id).first()
@@ -1715,15 +2900,21 @@ Antworte im JSON-Format:
                     "Antworte ausschließlich im JSON-Format."
                 )
                 user_prompt = (
+                    f"Testanweisung: {comparison_question}\n\n"
+                    f"{criteria_block}"
                     "Vergleiche die folgenden zwei Texte/Antworten.\n\n"
                     f"Text A:\n{text_a}\n\n"
                     f"Text B:\n{text_b}\n\n"
-                    "Gib JSON im Format:\n"
+                    "Halte dich an die Testanweisung und gib JSON im Format:\n"
                     "{\n"
                     '  "winner": "A" | "B" | "tie",\n'
                     '  "confidence": 1-5,\n'
                     '  "reasoning": "Begründung für die Entscheidung"\n'
                     "}"
+                )
+                user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                    user_prompt,
+                    scenario_guidance,
                 )
 
                 raw_response = None
@@ -1768,9 +2959,25 @@ Antworte im JSON-Format:
                     task_type="comparison",
                     result=comparison_data,
                 )
+                consecutive_failures = 0
+
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="comparison",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "comparison", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1789,6 +2996,8 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Comparison failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1845,13 +3054,32 @@ Antworte im JSON-Format:
                     _truncate(user_prompt, log_prompt_max),
                 )
 
-            response = LLMExecutionService.execute_chat_completion(
-                client,
-                model=model_id,
-                messages=messages,
-                extra_body={"response_format": {"type": "json_object"}},
-                model_key=model_id,
-            )
+            try:
+                response = LLMExecutionService.execute_chat_completion(
+                    client,
+                    model=model_id,
+                    messages=messages,
+                    extra_body={"response_format": {"type": "json_object"}},
+                    model_key=model_id,
+                )
+            except Exception as api_exc:
+                if LLMAITaskRunner._is_non_retryable_error(api_exc):
+                    logger.warning(
+                        "[LLM AI Runner] Non-retryable API error %s: %s",
+                        trace_label, api_exc,
+                    )
+                    raise LLMNonRetryableError(
+                        str(api_exc),
+                        status_code=getattr(api_exc, 'status_code', None),
+                    ) from api_exc
+                last_error = str(api_exc)
+                logger.warning(
+                    "[LLM AI Runner] API error attempt=%s %s: %s",
+                    attempt + 1, trace_label, api_exc,
+                )
+                if attempt == LLMAITaskRunner.MAX_RETRIES:
+                    raise LLMResponseError(str(api_exc), raw_response=last_raw)
+                continue
             content = extract_message_text(response.choices[0].message) if response.choices else ""
             last_raw = content or ""
             if log_responses and _should_log(trace, log_prompts=log_prompts, log_responses=log_responses, log_tasks=log_tasks):

@@ -305,7 +305,7 @@ function emitUpdate(value) {
 }
 
 .dimension-weight {
-  font-size: 0.7rem;
+  font-size: 0.8rem; /* raised from 0.7rem for readability on small screens */
   font-weight: 500;
   padding: 2px 5px;
   border-radius: 4px;

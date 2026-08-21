@@ -21,10 +21,57 @@ from auth.decorators import authentik_required
 from db import db
 from db.models import User, UserApiKey
 from decorators.error_handler import handle_api_errors, ValidationError, NotFoundError
+from decorators.permission_decorator import require_permission
 
 logger = logging.getLogger(__name__)
 
 api_key_bp = Blueprint('api_key', __name__, url_prefix='/api/auth')
+
+# Hardened scope vocabulary for user-issued API keys.
+# Keep this list deliberately tight — narrower than what the runtime
+# decorator (`require_api_scope`) actually accepts, because we don't
+# want users minting keys with strings we don't yet enforce.
+ALLOWED_API_KEY_SCOPES = frozenset({
+    'scenario:read',
+    'scenario:write',
+    'chatbot:read',
+    'chatbot:write',
+    'admin:*',  # extra-gated below: requires feature:api_keys:admin_scope
+})
+
+# Maximum keys per user (defence-in-depth; same value as the legacy check).
+MAX_KEYS_PER_USER = 10
+
+
+def _normalize_scopes(raw):
+    """
+    Accept scopes as either a CSV string ('scenario:read,scenario:write')
+    or a JSON list (['scenario:read', 'scenario:write']) and return a
+    deduplicated, sorted CSV string after validating against the allow-
+    list. Raises ValidationError on any unknown scope.
+    """
+    if raw is None or raw == '':
+        return None
+
+    if isinstance(raw, str):
+        items = [s.strip() for s in raw.split(',')]
+    elif isinstance(raw, (list, tuple)):
+        items = [str(s).strip() for s in raw]
+    else:
+        raise ValidationError("scopes must be a CSV string or array of strings")
+
+    items = [s for s in items if s]
+    if not items:
+        return None
+
+    invalid = [s for s in items if s not in ALLOWED_API_KEY_SCOPES]
+    if invalid:
+        raise ValidationError(
+            f"Unknown scope(s): {invalid}. "
+            f"Allowed: {sorted(ALLOWED_API_KEY_SCOPES)}"
+        )
+
+    return ','.join(sorted(set(items)))
 
 
 @api_key_bp.route('/api-keys', methods=['GET'])
@@ -49,20 +96,29 @@ def list_api_keys():
 
 @api_key_bp.route('/api-keys', methods=['POST'])
 @authentik_required
+@require_permission('feature:api_keys:create')
 @handle_api_errors(logger_name='api_key')
 def create_api_key():
     """
     Create a new API key.
 
+    Auth: requires `feature:api_keys:create` (granted to admin + researcher
+    by default). The `admin:*` scope additionally requires the
+    `feature:api_keys:admin_scope` permission (admin-only by default), so
+    a researcher can mint Scenario keys but never a god-mode key.
+
     Request body:
         {
             "name": "My API Key",
-            "scopes": "wizard,read"  (optional)
+            "scopes": ["scenario:read", "scenario:write"]   (optional)
+            // or "scenario:read,scenario:write"             (CSV also accepted)
         }
 
     Returns:
         201: New API key with the full key value (only shown once!)
     """
+    from services.permission_service import PermissionService
+
     user = g.authentik_user
     data = request.get_json() or {}
 
@@ -73,10 +129,24 @@ def create_api_key():
     if len(name) > 100:
         raise ValidationError("Name must be 100 characters or less")
 
-    # Check key limit (max 10 per user)
+    # Validate + normalize scope list against the allowlist.
+    scopes_csv = _normalize_scopes(data.get('scopes'))
+
+    # Extra gate: admin:* may only be issued by users who hold the
+    # explicit admin_scope permission. Without this, a researcher could
+    # mint themselves an unrestricted key.
+    if scopes_csv and 'admin:*' in scopes_csv.split(','):
+        if not PermissionService.check_permission(
+            user.username, 'feature:api_keys:admin_scope'
+        ):
+            raise ValidationError(
+                "Only administrators may issue API keys with the 'admin:*' scope."
+            )
+
+    # Hard cap on key count per user (defence-in-depth).
     existing_count = UserApiKey.query.filter_by(user_id=user.id).count()
-    if existing_count >= 10:
-        raise ValidationError("Maximum of 10 API keys per user")
+    if existing_count >= MAX_KEYS_PER_USER:
+        raise ValidationError(f"Maximum of {MAX_KEYS_PER_USER} API keys per user")
 
     # Generate new key
     full_key, key_hash, key_prefix = UserApiKey.generate_key()
@@ -86,12 +156,15 @@ def create_api_key():
         name=name,
         key_hash=key_hash,
         key_prefix=key_prefix,
-        scopes=data.get('scopes'),
+        scopes=scopes_csv,
     )
     db.session.add(api_key)
     db.session.commit()
 
-    logger.info(f"[ApiKey] User {user.username} created API key: {name} ({key_prefix}...)")
+    logger.info(
+        f"[ApiKey] User {user.username} created API key: {name} "
+        f"(prefix={key_prefix}, scopes={scopes_csv or 'none'})"
+    )
 
     return jsonify({
         'success': True,
@@ -124,6 +197,7 @@ def get_api_key(key_id: int):
 
 @api_key_bp.route('/api-keys/<int:key_id>', methods=['PUT'])
 @authentik_required
+@require_permission('feature:api_keys:create')
 @handle_api_errors(logger_name='api_key')
 def update_api_key(key_id: int):
     """
@@ -172,6 +246,7 @@ def update_api_key(key_id: int):
 
 @api_key_bp.route('/api-keys/<int:key_id>', methods=['DELETE'])
 @authentik_required
+@require_permission('feature:api_keys:create')
 @handle_api_errors(logger_name='api_key')
 def delete_api_key(key_id: int):
     """
@@ -212,13 +287,13 @@ def verify_api_key():
     """
     Verify an API key without full authentication.
 
-    Send the API key via X-API-Key header or api_key query param.
+    Send the API key via X-API-Key header only.
 
     Returns:
         200: Key is valid with user info
         401: Invalid key
     """
-    api_key_value = request.headers.get('X-API-Key') or request.args.get('api_key')
+    api_key_value = request.headers.get('X-API-Key') or ''
 
     if not api_key_value:
         return jsonify({
@@ -252,8 +327,10 @@ def verify_api_key():
             'scopes': api_key.scopes.split(',') if api_key.scopes else [],
         })
 
-    # Fallback: Check legacy api_key field on User
-    user = User.query.filter_by(api_key=api_key_value).first()
+    # Fallback: Check legacy api_key field on User (argon2 hash, then plaintext)
+    user = User.find_by_api_key_hash(api_key_value)
+    if not user:
+        user = User.query.filter_by(api_key=api_key_value).first()
 
     if user:
         if not user.is_active:
@@ -291,24 +368,37 @@ def get_legacy_api_key():
     Get the current user's legacy API key.
 
     DEPRECATED: Use /api-keys instead.
+    Since keys are now hashed, the stored key cannot be retrieved.
+    Users must use /api-keys to create new managed keys or /api-key/regenerate
+    to get a new legacy key.
     """
     user = g.authentik_user
 
-    # Ensure user has a legacy API key
-    if not user.api_key:
-        import secrets
-        user.api_key = secrets.token_urlsafe(32)
-        db.session.commit()
+    # If user still has a plaintext key (not yet migrated), return it
+    if user.api_key:
+        return jsonify({
+            'success': True,
+            'api_key': user.api_key,
+            'username': user.username,
+            'deprecated': True,
+            'message': 'This endpoint is deprecated. Use /api/auth/api-keys instead.',
+            'usage': {
+                'header': 'X-API-Key: <your-api-key>',
+            }
+        })
 
+    # Key is hashed — cannot be retrieved. Inform user to regenerate or use new system.
     return jsonify({
         'success': True,
-        'api_key': user.api_key,
+        'api_key': None,
+        'api_key_exists': user.api_key_hash is not None,
         'username': user.username,
         'deprecated': True,
-        'message': 'This endpoint is deprecated. Use /api/auth/api-keys instead.',
+        'message': 'API key is hashed and cannot be retrieved. '
+                   'Use POST /api/auth/api-key/regenerate to get a new key, '
+                   'or use /api/auth/api-keys for better key management.',
         'usage': {
             'header': 'X-API-Key: <your-api-key>',
-            'query': '?api_key=<your-api-key>',
         }
     })
 
@@ -321,20 +411,23 @@ def regenerate_legacy_api_key():
     Regenerate the current user's legacy API key.
 
     DEPRECATED: Use /api-keys to create new keys instead.
+    Returns the new key once — it is stored hashed and cannot be retrieved later.
     """
     import secrets
     user = g.authentik_user
 
-    old_key_prefix = user.api_key[:8] if user.api_key else None
-    user.api_key = secrets.token_urlsafe(32)
+    new_key = secrets.token_urlsafe(32)
+    user.set_api_key_hashed(new_key)
     db.session.commit()
 
-    logger.info(f"[ApiKey] User {user.username} regenerated legacy API key (old prefix: {old_key_prefix})")
+    logger.info(f"[ApiKey] User {user.username} regenerated legacy API key (now hashed)")
 
     return jsonify({
         'success': True,
-        'api_key': user.api_key,
-        'message': 'Legacy API key regenerated. Consider using /api/auth/api-keys for better key management.',
+        'api_key': new_key,
+        'message': 'Legacy API key regenerated (stored hashed). '
+                   'Save this key — it cannot be retrieved later. '
+                   'Consider using /api/auth/api-keys for better key management.',
         'deprecated': True,
         'username': user.username,
     })

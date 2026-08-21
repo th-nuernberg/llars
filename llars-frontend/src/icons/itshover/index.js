@@ -1,6 +1,12 @@
+// Global hover animations for all itshover icons
+import './hover-animations.css'
+
 import AdminDashboardIcon from './AdminDashboardIcon.vue'
+import AiLookupIcon from './AiLookupIcon.vue'
 import AnonymizeIcon from './AnonymizeIcon.vue'
 import AlphaAIcon from './AlphaAIcon.vue'
+import ArenaIcon from './ArenaIcon.vue'
+import AutoAdvanceIcon from './AutoAdvanceIcon.vue'
 import BatchGenerationIcon from './BatchGenerationIcon.vue'
 import AlphaBIcon from './AlphaBIcon.vue'
 import ArrowBackIcon from './ArrowBackIcon.vue'
@@ -13,6 +19,7 @@ import BellIcon from './BellIcon.vue'
 import BoltIcon from './BoltIcon.vue'
 import BookIcon from './BookIcon.vue'
 import CalendarIcon from './CalendarIcon.vue'
+import CampaignIcon from './CampaignIcon.vue'
 import ChatbotIcon from './ChatbotIcon.vue'
 import ChatbotManageIcon from './ChatbotManageIcon.vue'
 import ChartBarIcon from './ChartBarIcon.vue'
@@ -22,13 +29,16 @@ import ClipboardIcon from './ClipboardIcon.vue'
 import ClockIcon from './ClockIcon.vue'
 import CloudIcon from './CloudIcon.vue'
 import CodeIcon from './CodeIcon.vue'
+import CommunicationIcon from './CommunicationIcon.vue'
 import CopyIcon from './CopyIcon.vue'
 import DatabaseIcon from './DatabaseIcon.vue'
+import DealIcon from './DealIcon.vue'
 import DotIcon from './DotIcon.vue'
 import DownloadIcon from './DownloadIcon.vue'
 import EqualIcon from './EqualIcon.vue'
 import EvaluationAssistantIcon from './EvaluationAssistantIcon.vue'
 import EvaluationIcon from './EvaluationIcon.vue'
+import EvaluationsIcon from './EvaluationsIcon.vue'
 import EyeIcon from './EyeIcon.vue'
 import EyeOffIcon from './EyeOffIcon.vue'
 import FileIcon from './FileIcon.vue'
@@ -36,9 +46,14 @@ import FilePlusIcon from './FilePlusIcon.vue'
 import FilterIcon from './FilterIcon.vue'
 import FlaskIcon from './FlaskIcon.vue'
 import FolderIcon from './FolderIcon.vue'
+import FormatBoldIcon from './FormatBoldIcon.vue'
+import FormatItalicIcon from './FormatItalicIcon.vue'
+import FormatStrikethroughIcon from './FormatStrikethroughIcon.vue'
 import FolderPlusIcon from './FolderPlusIcon.vue'
 import FullscreenIcon from './FullscreenIcon.vue'
 import GearIcon from './GearIcon.vue'
+import GithubIcon from './GithubIcon.vue'
+import CursorClickIcon from './CursorClickIcon.vue'
 import GeminiIcon from './GeminiIcon.vue'
 import GlobeIcon from './GlobeIcon.vue'
 import GridIcon from './GridIcon.vue'
@@ -47,8 +62,6 @@ import HistoryCircleIcon from './HistoryCircleIcon.vue'
 import HomeIcon from './HomeIcon.vue'
 import ImageIcon from './ImageIcon.vue'
 import InfoCircleIcon from './InfoCircleIcon.vue'
-import LatexCollabAiIcon from './LatexCollabAiIcon.vue'
-import LatexDocIcon from './LatexDocIcon.vue'
 import LightbulbIcon from './LightbulbIcon.vue'
 import LinkIcon from './LinkIcon.vue'
 import LitellmIcon from './LitellmIcon.vue'
@@ -62,6 +75,7 @@ import OllamaIcon from './OllamaIcon.vue'
 import OncocoIcon from './OncocoIcon.vue'
 import OpenAiIcon from './OpenAiIcon.vue'
 import PaletteIcon from './PaletteIcon.vue'
+import PdfDownloadIcon from './PdfDownloadIcon.vue'
 import PauseIcon from './PauseIcon.vue'
 import PencilIcon from './PencilIcon.vue'
 import PinIcon from './PinIcon.vue'
@@ -71,6 +85,7 @@ import PlusIcon from './PlusIcon.vue'
 import QuestionIcon from './QuestionIcon.vue'
 import RagIcon from './RagIcon.vue'
 import RefreshIcon from './RefreshIcon.vue'
+import ReplyIcon from './ReplyIcon.vue'
 import RobotIcon from './RobotIcon.vue'
 import ScaleIcon from './ScaleIcon.vue'
 import SchoolIcon from './SchoolIcon.vue'
@@ -86,8 +101,12 @@ import StopIcon from './StopIcon.vue'
 import SwapIcon from './SwapIcon.vue'
 import TagIcon from './TagIcon.vue'
 import TextIcon from './TextIcon.vue'
+import TicketIcon from './TicketIcon.vue'
 import ThumbDownIcon from './ThumbDownIcon.vue'
 import ThumbUpIcon from './ThumbUpIcon.vue'
+import TrainIcon from './TrainIcon.vue'
+import TrainOutboundIcon from './TrainOutboundIcon.vue'
+import TrainReturnIcon from './TrainReturnIcon.vue'
 import TrashIcon from './TrashIcon.vue'
 import TriangleAlertIcon from './TriangleAlertIcon.vue'
 import TrophyIcon from './TrophyIcon.vue'
@@ -97,16 +116,24 @@ import UserCheckIcon from './UserCheckIcon.vue'
 import UserPlusIcon from './UserPlusIcon.vue'
 import UsersGroupIcon from './UsersGroupIcon.vue'
 import UsersIcon from './UsersIcon.vue'
+import ViewCardsIcon from './ViewCardsIcon.vue'
+import ViewListIcon from './ViewListIcon.vue'
+import ViewSplitIcon from './ViewSplitIcon.vue'
+import SpanSplitIcon from './SpanSplitIcon.vue'
+import SpanMergeIcon from './SpanMergeIcon.vue'
 import VllmIcon from './VllmIcon.vue'
 import WandIcon from './WandIcon.vue'
+import WelcomeIcon from './WelcomeIcon.vue'
 import XIcon from './XIcon.vue'
-import ZoteroIcon from './ZoteroIcon.vue'
 
 export const iconComponents = {
   'admin-dashboard': AdminDashboardIcon,
+  'ai-lookup': AiLookupIcon,
   'anonymize': AnonymizeIcon,
   'alpha-a': AlphaAIcon,
+  'arena': ArenaIcon,
   'alpha-b': AlphaBIcon,
+  'auto-advance': AutoAdvanceIcon,
   'batch-generation': BatchGenerationIcon,
   'arrow-back': ArrowBackIcon,
   'arrow-down': ArrowNarrowDownIcon,
@@ -117,6 +144,7 @@ export const iconComponents = {
   'bolt': BoltIcon,
   'book': BookIcon,
   'calendar': CalendarIcon,
+  'campaign': CampaignIcon,
   'chatbot': ChatbotIcon,
   'chatbot-manage': ChatbotManageIcon,
   'chart-bar': ChartBarIcon,
@@ -128,13 +156,16 @@ export const iconComponents = {
   'clock': ClockIcon,
   'cloud': CloudIcon,
   'code': CodeIcon,
+  'communication': CommunicationIcon,
   'copy': CopyIcon,
   'database': DatabaseIcon,
+  'deal': DealIcon,
   'dot': DotIcon,
   'download': DownloadIcon,
   'equal': EqualIcon,
   'evaluation-assistant': EvaluationAssistantIcon,
   'evaluation': EvaluationIcon,
+  'evaluations': EvaluationsIcon,
   'eye': EyeIcon,
   'eye-off': EyeOffIcon,
   'file': FileIcon,
@@ -143,8 +174,13 @@ export const iconComponents = {
   'flask': FlaskIcon,
   'folder': FolderIcon,
   'folder-plus': FolderPlusIcon,
+  'format-bold': FormatBoldIcon,
+  'format-italic': FormatItalicIcon,
+  'format-strikethrough': FormatStrikethroughIcon,
   'fullscreen': FullscreenIcon,
   'gear': GearIcon,
+  'github': GithubIcon,
+  'cursor-click': CursorClickIcon,
   'gemini': GeminiIcon,
   'globe': GlobeIcon,
   'grid': GridIcon,
@@ -153,8 +189,6 @@ export const iconComponents = {
   'home': HomeIcon,
   'image': ImageIcon,
   'info-circle': InfoCircleIcon,
-  'latex-collab-ai': LatexCollabAiIcon,
-  'latex-doc': LatexDocIcon,
   'lightbulb': LightbulbIcon,
   'link': LinkIcon,
   'litellm': LitellmIcon,
@@ -168,6 +202,7 @@ export const iconComponents = {
   'oncoco': OncocoIcon,
   'openai': OpenAiIcon,
   'palette': PaletteIcon,
+  'pdf-download': PdfDownloadIcon,
   'pause': PauseIcon,
   'pencil': PencilIcon,
   'pin': PinIcon,
@@ -177,6 +212,7 @@ export const iconComponents = {
   'question': QuestionIcon,
   'rag': RagIcon,
   'refresh': RefreshIcon,
+  'reply': ReplyIcon,
   'robot': RobotIcon,
   'scale': ScaleIcon,
   'school': SchoolIcon,
@@ -191,8 +227,12 @@ export const iconComponents = {
   'swap': SwapIcon,
   'tag': TagIcon,
   'text': TextIcon,
+  'ticket': TicketIcon,
   'thumb-down': ThumbDownIcon,
   'thumb-up': ThumbUpIcon,
+  'train': TrainIcon,
+  'train-outbound': TrainOutboundIcon,
+  'train-return': TrainReturnIcon,
   'trash': TrashIcon,
   'triangle-alert': TriangleAlertIcon,
   'trophy': TrophyIcon,
@@ -202,10 +242,15 @@ export const iconComponents = {
   'user-plus': UserPlusIcon,
   'users-group': UsersGroupIcon,
   'users': UsersIcon,
+  'view-cards': ViewCardsIcon,
+  'view-list': ViewListIcon,
+  'view-split': ViewSplitIcon,
+  'span-split': SpanSplitIcon,
+  'span-merge': SpanMergeIcon,
   'vllm': VllmIcon,
   'wand': WandIcon,
+  'welcome': WelcomeIcon,
   'x': XIcon,
-  'zotero': ZoteroIcon,
 }
 
 const explicitAliases = {
@@ -214,16 +259,58 @@ const explicitAliases = {
   'mdi-circle': 'dot',
   'mdi-circle-outline': 'dot',
   'mdi-circle-small': 'dot',
+  'mdi-format-bold': 'format-bold',
+  'mdi-format-italic': 'format-italic',
+  'mdi-format-strikethrough': 'format-strikethrough',
+  'mdi-format-strikethrough-variant': 'format-strikethrough',
   'mdi-exit-run': 'arrow-left',
   'mdi-login': 'arrow-right',
   'mdi-logout': 'arrow-left',
   'mdi-menu-right': 'arrow-right',
   'mdi-open-in-new': 'arrow-right',
   'mdi-progress-clock': 'clock',
+  'mdi-vote': 'evaluations',
+  'mdi-vote-outline': 'evaluations',
+  'mdi-reply': 'reply',
   'mdi-timeline-clock-outline': 'clock',
   'mdi-timer-outline': 'clock',
   'mdi-unordered-list': 'unordered-list',
   'mdi-view-list': 'unordered-list',
+  'mdi-view-grid': 'view-cards',
+  'mdi-view-grid-outline': 'view-cards',
+  'mdi-view-list-outline': 'view-list',
+  'mdi-view-module': 'view-cards',
+  // Layout-toggle icons (used by ComparisonInterface). Resolved here so the
+  // generic `view`->`eye` fallback further below doesn't swallow them.
+  'mdi-view-stream': 'view-list',
+  'mdi-view-stream-outline': 'view-list',
+  'mdi-view-sequential-outline': 'view-list',
+  'mdi-view-split-vertical': 'view-split',
+  'mdi-view-parallel': 'view-split',
+  // Auto-advance toggle in ComparisonInterface — map MDI fallbacks to the
+  // custom LLARS icon so legacy templates keep working.
+  'mdi-fast-forward': 'auto-advance',
+  'mdi-fast-forward-outline': 'auto-advance',
+  'mdi-skip-next': 'auto-advance',
+  'mdi-skip-next-circle-outline': 'auto-advance',
+  // Invitation / referral codes (Register.vue Einladungscode-Feld). The
+  // default token resolver doesn't catch "ticket"/"confirmation" → would
+  // fall through to QuestionIcon. Explicit alias keeps the field icon
+  // semantically meaningful.
+  'mdi-ticket-confirmation': 'ticket',
+  'mdi-ticket': 'ticket',
+  'mdi-ticket-outline': 'ticket',
+  // Admin referral campaigns (megaphone-style icon).
+  'mdi-bullhorn': 'campaign',
+  'mdi-bullhorn-variant': 'campaign',
+  'mdi-bullhorn-outline': 'campaign',
+  // Floating window minimize button — visually a horizontal line.
+  'mdi-window-minimize': 'minus',
+  'mdi-window-maximize': 'fullscreen',
+  'mdi-window-close': 'x',
+  // Welcome / greeting mail (Mail-Center "Willkommen" template) — waving hand.
+  'mdi-hand-wave': 'welcome',
+  'mdi-hand-wave-outline': 'welcome',
 }
 
 const normalizeIconName = (iconName) => iconName
@@ -269,7 +356,8 @@ export const resolveIconKey = (iconName) => {
     return 'users'
   }
 
-  if (tokens.includes('shield') || tokens.includes('sword')) return 'shield-check'
+  if (tokens.includes('sword')) return 'arena'
+  if (tokens.includes('shield')) return 'shield-check'
   if (tokens.includes('lock') || tokens.includes('key') || tokens.includes('gate')) return 'lock'
 
   if (hasAny(tokens, ['trash', 'delete', 'remove'])) return 'trash'
@@ -320,6 +408,8 @@ export const resolveIconKey = (iconName) => {
   if (tokens.includes('filter') || tokens.includes('tune')) return 'filter'
   if (hasAny(tokens, ['cloud', 'wifi', 'ethernet', 'connection', 'network'])) return 'cloud'
 
+  if (hasAny(tokens, ['reply', 'respond'])) return 'reply'
+  if (hasAny(tokens, ['bullhorn', 'megaphone', 'announce', 'campaign'])) return 'campaign'
   if (hasAny(tokens, ['chat', 'message', 'comment', 'bubble', 'thought', 'emoticon', 'face', 'agent'])) return 'chat'
   if (tokens.includes('bell')) return 'bell'
   if (tokens.includes('calendar')) return 'calendar'
@@ -327,11 +417,22 @@ export const resolveIconKey = (iconName) => {
   if (hasAny(tokens, ['tag', 'label', 'identifier'])) return 'tag'
   if (hasAny(tokens, ['pin', 'bookmark', 'flag'])) return 'pin'
 
+  // Invitation / referral / voucher patterns → ticket icon. Catches
+  // mdi-ticket-* variants, mdi-coupon, mdi-invitation etc.
+  if (hasAny(tokens, ['ticket', 'voucher', 'coupon', 'invitation', 'invite', 'pass'])) return 'ticket'
+
   if (hasAny(tokens, ['grid', 'apps', 'dashboard', 'table', 'view', 'matrix', 'puzzle', 'cube', 'sitemap', 'card'])) return 'grid'
   if (hasAny(tokens, ['list', 'playlist', 'menu'])) return 'unordered-list'
 
+  // GitHub vor der generischen code-Zeile, damit mdi-github das Brand-Icon
+  // bekommt statt in 'code' zu fallen (wie gitlab).
+  if (tokens.includes('github')) return 'github'
+  if (hasAny(tokens, ['cursor', 'click', 'tap', 'gesture', 'pointer'])) return 'cursor-click'
   if (hasAny(tokens, ['code', 'braces', 'json', 'console', 'api', 'function', 'sigma', 'division', 'calculator', 'numeric', 'source', 'gitlab', 'docker', 'vector', 'polygon'])) return 'code'
-  if (hasAny(tokens, ['text', 'format', 'bold', 'italic', 'underline', 'header', 'quote', 'title', 'pilcrow', 'markdown', 'language', 'keyboard'])) return 'text'
+  if (hasAny(tokens, ['format']) && tokens.includes('bold')) return 'format-bold'
+  if (hasAny(tokens, ['format']) && tokens.includes('italic')) return 'format-italic'
+  if (hasAny(tokens, ['format']) && hasAny(tokens, ['strikethrough', 'strike'])) return 'format-strikethrough'
+  if (hasAny(tokens, ['text', 'format', 'underline', 'header', 'quote', 'title', 'pilcrow', 'markdown', 'language', 'keyboard'])) return 'text'
 
   if (hasAny(tokens, ['image', 'photo', 'camera'])) return 'image'
   if (hasAny(tokens, ['link', 'chain', 'paperclip', 'attachment'])) return 'link'

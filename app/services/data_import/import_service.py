@@ -15,7 +15,7 @@ import hashlib
 from db.database import db
 from db.models.scenario import (
     EmailThread, Message as DBMessage, RatingScenarios, ScenarioThreads,
-    Feature as DBFeature, FeatureType, LLM
+    Feature as DBFeature, FeatureType
 )
 
 from .format_detector import FormatDetector
@@ -415,7 +415,9 @@ class ImportService:
             raise ValueError(f"Session not found: {session_id}")
 
         if not session.transformed_items:
+            session.status = "error"
             session.errors.append("No items to import")
+            logger.warning(f"Import aborted for session {session_id}: no transformed items available")
             return session
 
         session.status = "importing"
@@ -425,12 +427,26 @@ class ImportService:
         source = source_name or f"Import-{session.session_id[:8]}"
         function_type_id = self._get_function_type_id(final_task_type)
 
+        # Scenario parts (labeling phases): once a scenario's parts are
+        # RESOLVED, every added item must be assigned to a part explicitly —
+        # an unscoped bulk import would silently break the partition the
+        # study relies on. (The FIRST wizard import is fine: parts are still
+        # unresolved size-specs at that point and get resolved below.)
+        if scenario_id:
+            from services.evaluation.scenario_parts_service import ScenarioPartsService
+            rejection = ScenarioPartsService.reject_unscoped_import(scenario_id)
+            if rejection:
+                session.status = "error"
+                session.errors.append(rejection)
+                logger.warning("Import aborted for session %s: %s", session_id, rejection)
+                return session
+
         try:
             imported = 0
             imported_threads = []
 
-            # Pre-cache FeatureTypes and LLMs to avoid per-item DB lookups
-            type_cache, llm_cache = self._ensure_feature_types_and_llms(
+            # Pre-cache FeatureTypes to avoid per-item DB lookups
+            type_cache = self._ensure_feature_types(
                 session.transformed_items
             )
 
@@ -445,9 +461,13 @@ class ImportService:
                         if not force_new_threads:
                             existing = self._find_existing_thread(item, function_type_id)
                             if existing:
+                                # llm_cache is unused by _handle_existing_thread —
+                                # was leftover from an earlier refactor and
+                                # caused a NameError on every existing-item
+                                # import. Pass type_cache only.
                                 self._handle_existing_thread(
                                     existing, item, final_task_type, source,
-                                    type_cache, llm_cache
+                                    type_cache=type_cache,
                                 )
                                 imported += 1
                                 imported_threads.append(existing)
@@ -469,12 +489,16 @@ class ImportService:
                 if batch_new_threads:
                     db.session.flush()
 
-                # Create messages + features for the batch
+                # Create messages + features for the batch.
+                # Features are persisted whenever the ImportItem carries them —
+                # this covers RANKING (legacy) and COMPARISON (Turing-Test
+                # pairs from study_llars.json), and degrades gracefully for
+                # task types where features are absent on the input.
                 for thread, item in batch_new_threads:
                     self._create_messages_for_item(thread, item, source)
-                    if item.features and final_task_type == TaskType.RANKING:
+                    if item.features:
                         self._create_features_cached(
-                            thread, item, source, type_cache, llm_cache
+                            thread, item, source, type_cache
                         )
                     imported += 1
                     imported_threads.append(thread)
@@ -490,6 +514,15 @@ class ImportService:
                 self._link_threads_to_scenario(scenario_id, imported_threads)
                 session.options["scenario_id"] = scenario_id
                 logger.info(f"Linked {len(imported_threads)} threads to existing scenario_id={scenario_id}")
+
+                # Scenario parts: the wizard creates the scenario (with
+                # unresolved size-specs) BEFORE this import — resolve the
+                # specs against the just-linked items in the SAME
+                # transaction. Raises when the declared structure can't be
+                # satisfied (e.g. sizes exceed the import) → import fails as
+                # a whole instead of silently dropping the study's gates.
+                from services.evaluation.scenario_parts_service import ScenarioPartsService
+                ScenarioPartsService.resolve_after_import(scenario_id)
             elif create_scenario and imported_threads:
                 scenario = self._create_scenario(
                     source_name=source,
@@ -576,15 +609,19 @@ class ImportService:
         else:
             logger.debug(f"Thread already exists with messages: {item.id}")
 
-        if item.features and task_type == TaskType.RANKING:
+        # Backfill features for any task type that carries them (RANKING
+        # historically, COMPARISON since the Turing-Test pipeline). This
+        # also lets a re-import recover the candidates for items that were
+        # imported earlier with the broken `features`-dropping codepath.
+        if item.features:
             existing_features = DBFeature.query.filter_by(
                 item_id=existing.thread_id
             ).count()
             if existing_features == 0:
                 logger.info(f"Thread exists without features, creating: {item.id}")
-                if type_cache is not None and llm_cache is not None:
+                if type_cache is not None:
                     self._create_features_cached(
-                        existing, item, source, type_cache, llm_cache
+                        existing, item, source, type_cache
                     )
                 else:
                     self._create_features_for_item(existing, item, source)
@@ -609,6 +646,7 @@ class ImportService:
             subject=subject,
             sender=source,
             function_type_id=function_type_id,
+            metadata_json=item.metadata or None,
         )
 
     def _create_thread(
@@ -636,39 +674,27 @@ class ImportService:
 
         return thread
 
-    def _ensure_feature_types_and_llms(
+    def _ensure_feature_types(
         self,
         items: list[ImportItem]
-    ) -> tuple[dict[str, FeatureType], dict[str, LLM]]:
-        """Pre-create all needed FeatureTypes and LLMs in a single flush."""
+    ) -> dict[str, FeatureType]:
+        """Pre-create all needed FeatureTypes in a single flush."""
         needed_types = set()
-        needed_llms = set()
 
         for item in items:
             if item.features:
                 for f in item.features:
                     needed_types.add(f.type or "Summary")
-                    needed_llms.add(f.generated_by or "Imported")
 
-        if not needed_types and not needed_llms:
-            return {}, {}
+        if not needed_types:
+            return {}
 
         # Load existing from DB
-        type_cache = {}
-        if needed_types:
-            type_cache = {
-                ft.name: ft for ft in FeatureType.query.filter(
-                    FeatureType.name.in_(needed_types)
-                ).all()
-            }
-
-        llm_cache = {}
-        if needed_llms:
-            llm_cache = {
-                llm_obj.name: llm_obj for llm_obj in LLM.query.filter(
-                    LLM.name.in_(needed_llms)
-                ).all()
-            }
+        type_cache = {
+            ft.name: ft for ft in FeatureType.query.filter(
+                FeatureType.name.in_(needed_types)
+            ).all()
+        }
 
         # Create missing entries
         new_entries = False
@@ -679,17 +705,10 @@ class ImportService:
             new_entries = True
             logger.info(f"Created FeatureType: {name}")
 
-        for name in needed_llms - set(llm_cache.keys()):
-            llm_obj = LLM(name=name)
-            db.session.add(llm_obj)
-            llm_cache[name] = llm_obj
-            new_entries = True
-            logger.info(f"Created LLM: {name}")
-
         if new_entries:
-            db.session.flush()  # Single flush for all new types/LLMs
+            db.session.flush()
 
-        return type_cache, llm_cache
+        return type_cache
 
     def _create_features_cached(
         self,
@@ -697,36 +716,34 @@ class ImportService:
         item: ImportItem,
         source: str,
         type_cache: dict[str, FeatureType],
-        llm_cache: dict[str, LLM]
     ) -> None:
-        """Create features using pre-cached FeatureTypes and LLMs (no per-item DB lookups)."""
+        """Create features using pre-cached FeatureTypes (no per-item DB lookups)."""
         if not item.features:
             return
 
         for feature in item.features:
             feature_type_name = feature.type or "Summary"
-            llm_name = feature.generated_by or source or "Imported"
+            model_id = feature.generated_by or source or "Imported"
 
             feature_type = type_cache.get(feature_type_name)
-            llm = llm_cache.get(llm_name)
 
-            if not feature_type or not llm:
+            if not feature_type:
                 # Fallback to DB lookup if cache miss
-                logger.warning(f"Cache miss for feature_type={feature_type_name} or llm={llm_name}")
+                logger.warning(f"Cache miss for feature_type={feature_type_name}")
                 self._create_features_for_item(thread, item, source)
                 return
 
             existing = DBFeature.query.filter_by(
                 item_id=thread.thread_id,
                 type_id=feature_type.type_id,
-                llm_id=llm.llm_id
+                model_id=model_id
             ).first()
 
             if not existing:
                 db_feature = DBFeature(
                     item_id=thread.thread_id,
                     type_id=feature_type.type_id,
-                    llm_id=llm.llm_id,
+                    model_id=model_id,
                     content=feature.content
                 )
                 db.session.add(db_feature)
@@ -897,31 +914,24 @@ class ImportService:
                 db.session.flush()
                 logger.info(f"Created FeatureType: {feature_type_name}")
 
-            # Get or create LLM entry for the model/source
-            llm_name = feature.generated_by or source or "Imported"
-            llm = LLM.query.filter_by(name=llm_name).first()
-            if not llm:
-                llm = LLM(name=llm_name)
-                db.session.add(llm)
-                db.session.flush()
-                logger.info(f"Created LLM: {llm_name}")
+            model_id = feature.generated_by or source or "Imported"
 
             # Check if feature already exists (avoid duplicates)
             existing = DBFeature.query.filter_by(
                 item_id=thread.thread_id,
                 type_id=feature_type.type_id,
-                llm_id=llm.llm_id
+                model_id=model_id
             ).first()
 
             if not existing:
                 db_feature = DBFeature(
                     item_id=thread.thread_id,
                     type_id=feature_type.type_id,
-                    llm_id=llm.llm_id,
+                    model_id=model_id,
                     content=feature.content
                 )
                 db.session.add(db_feature)
-                logger.debug(f"Created Feature for item {thread.thread_id}: {feature_type_name} by {llm_name}")
+                logger.debug(f"Created Feature for item {thread.thread_id}: {feature_type_name} by {model_id}")
 
         logger.info(f"Created {len(item.features)} features for item {thread.thread_id}")
 

@@ -105,18 +105,6 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 | - Workspaces ansehen | ✅ | ✅ | ✅ | ✅ |
 | - Dokumente editieren | ✅ | ✅ | ✅ | ❌ |
 | - Workspaces teilen | ✅ | ✅ | ✅ | ❌ |
-| **LaTeX Collab** |
-| - Kachel sichtbar | ✅ | ✅ | ✅ | ✅ |
-| - Workspaces ansehen | ✅ | ✅ | ✅ | ✅ |
-| - Dokumente editieren | ✅ | ✅ | ✅ | ❌ |
-| - PDF kompilieren | ✅ | ✅ | ✅ | ❌ |
-| - Workspaces teilen | ✅ | ✅ | ✅ | ❌ |
-| **LaTeX AI** |
-| - Kachel sichtbar | ✅ | ✅ | ✅ | ❌ |
-| - AI-Features nutzen | ✅ | ✅ | ✅ | ❌ |
-| - Ghost Text | ✅ | ✅ | ✅ | ❌ |
-| - @-Commands | ✅ | ✅ | ✅ | ❌ |
-| - Zitations-Suche | ✅ | ✅ | ✅ | ❌ |
 
 ### Prompt Engineering
 
@@ -251,8 +239,6 @@ for (const role of roles) {
 | Prompt Engineering | ✅ | ✅ | ✅ | ✅ |
 | Chat | ✅ | ✅ | ✅ | ✅ |
 | Markdown Collab | ✅ | ✅ | ✅ | ✅ |
-| LaTeX Collab | ✅ | ✅ | ✅ | ✅ |
-| LaTeX AI | ✅ | ✅ | ✅ | ❌ |
 | Anonymize | ✅ | ✅ | ❌ | ✅ |
 | KAIMO | ✅ | ✅ | ❌ | ✅ |
 | Admin | ✅ | ❌ | ⚠️ | ❌ |
@@ -304,7 +290,6 @@ test.describe('Tile Visibility by Role', () => {
     await expect(page.locator('text=Chat')).toBeVisible()
     await expect(page.locator('text=Judge')).not.toBeVisible()
     await expect(page.locator('text=Admin')).not.toBeVisible()
-    await expect(page.locator('text=LaTeX AI')).not.toBeVisible()
   })
 })
 ```
@@ -319,7 +304,6 @@ test.describe('Tile Visibility by Role', () => {
 | NAV-R02 | Researcher → /judge | Redirect zu /Home | E2E |
 | NAV-R03 | Researcher → /oncoco | Redirect zu /Home | E2E |
 | NAV-V01 | Evaluator → /admin | Redirect zu /Home | E2E |
-| NAV-V02 | Evaluator → /LatexCollabAI | Redirect zu /Home | E2E |
 | NAV-C01 | Chatbot_Mgr → /Ranker | Redirect zu /Home | E2E |
 | NAV-C02 | Chatbot_Mgr → /judge | Redirect zu /Home | E2E |
 
@@ -341,7 +325,6 @@ test.describe('Tile Visibility by Role', () => {
 - [ ] Ranking/Rating/Authenticity sichtbar
 - [ ] KAIMO sichtbar + bewertbar
 - [ ] Collab-Editoren nutzbar
-- [ ] LaTeX AI nutzbar
 - [ ] Anonymize nutzbar
 - [ ] Kein Judge/OnCoCo
 - [ ] Kein Admin-Zugang
@@ -359,7 +342,6 @@ test.describe('Tile Visibility by Role', () => {
 - [ ] Keine Edit-Buttons
 - [ ] KAIMO + Authenticity Votes funktionieren
 - [ ] Anonymize funktioniert
-- [ ] Kein LaTeX AI
 - [ ] Kein Admin
 
 ---

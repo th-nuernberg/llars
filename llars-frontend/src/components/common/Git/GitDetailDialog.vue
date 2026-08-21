@@ -462,7 +462,7 @@ const props = defineProps({
   entityMode: { type: String, default: 'workspace' },
   selectedDocumentId: { type: Number, default: null },
   canCommit: { type: Boolean, default: false },
-  apiPrefix: { type: String, default: '/api/latex-collab' },
+  apiPrefix: { type: String, default: '/api/markdown-collab' },
   getContent: { type: Function, default: null },
   beforeRollback: { type: Function, default: null },
   beforeCommit: { type: Function, default: null },

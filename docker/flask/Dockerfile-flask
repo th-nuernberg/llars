@@ -1,21 +1,16 @@
 # /docker/flask/Dockerfile-flask
-# syntax=docker/dockerfile:1
-
-# Verwenden eines offiziellen Python-Images als Basis
-FROM public.ecr.aws/docker/library/python:3.10-slim
+FROM public.ecr.aws/docker/library/python:3.10.20-slim
 LABEL authors="philippsteigerwald"
 
-# Setzt das Arbeitsverzeichnis im Container
 WORKDIR /app
 
-# Installiert curl und notwendige Systembibliotheken für Playwright
+# System-Abhaengigkeiten (klein, aendert sich selten)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    gosu \
     libgomp1 \
     default-mysql-client \
-    latexmk \
-    texlive-full \
     # Playwright dependencies
     libnss3 \
     libnspr4 \
@@ -41,12 +36,19 @@ RUN curl -L https://github.com/vi/websocat/releases/download/v1.8.0/websocat.x86
     -o /usr/local/bin/websocat && \
     chmod +x /usr/local/bin/websocat
 
-# Erstellt das Verzeichnis für die Modelle
-RUN mkdir -p /app/models
+RUN mkdir -p /app/models && \
+    mkdir -p /app/storage/rag_images /app/storage/screenshots
 
-# Kopiert die requirements.txt und installiert nur die Abhängigkeiten
+# Layer 3a: Schwere ML-Dependencies separat (torch ~2.5GB, transformers, flair)
+# Aendert sich sehr selten → eigener cached Layer
+COPY app/requirements-heavy.txt /app/requirements-heavy.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r /app/requirements-heavy.txt
+
+# Layer 3b: Restliche Python-Dependencies (BuildKit Cache fuer schnelle Updates)
 COPY app/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r /app/requirements.txt
 
 # Playwright browser install location (shared, not user-home dependent)
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
@@ -55,28 +57,36 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN groupadd -r flaskuser && useradd -r -g flaskuser -u 1001 -m flaskuser && \
     mkdir -p /ms-playwright
 
+# Pre-create runtime data dirs and chown to flaskuser. The crawler writes
+# scraped pages to /app/data/rag/crawls/ at runtime; if the dir doesn't
+# exist at image-build-time it gets created on first write with whatever
+# uid the gunicorn worker happens to have. A previous image had
+# flaskuser=997, the current one is 1001 — the dir kept the old 997
+# ownership and silently broke every crawl with EACCES (Errno 13). Pin
+# the floor here so any future uid drift can't recreate the bug.
+RUN mkdir -p /app/data/rag/crawls /app/data/rag/screenshots && \
+    chown -R flaskuser:flaskuser /app/data && \
+    chmod 755 /app/data/rag/crawls /app/data/rag/screenshots
+
 # Installiert Playwright Chromium Browser (cached at /ms-playwright)
 RUN playwright install chromium && \
     chown -R flaskuser:flaskuser /ms-playwright
 
-# Kopiert den Rest des Codes
+# Layer 4: Anwendungscode (aendert sich haeufig)
 COPY app /app/
-# Kopiert das Start-Skript außerhalb des Anwendungs-Verzeichnisses, damit es durch Volumes nicht überschrieben wird
 COPY docker/flask/start_flask.sh /usr/local/bin/start_flask.sh
+COPY docker/flask/start_llars_worker.sh /usr/local/bin/start_llars_worker.sh
 COPY docker/flask/healthcheck.sh /usr/local/bin/healthcheck.sh
 COPY docker/flask/gunicorn.conf.py /usr/local/bin/gunicorn.conf.py
-RUN chmod +x /usr/local/bin/start_flask.sh
-RUN chmod +x /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/start_flask.sh && \
+    chmod +x /usr/local/bin/start_llars_worker.sh && \
+    chmod +x /usr/local/bin/healthcheck.sh
 
-# Setzt die benötigten Umgebungsvariablen für Flask
 ENV FLASK_APP=main
 
-# Set permissions
+# Set permissions (includes /app/storage for Docker volume mounts)
 RUN chown -R flaskuser:flaskuser /app && \
-    chown -R flaskuser:flaskuser /app/models
+    chown -R flaskuser:flaskuser /app/models && \
+    chown -R flaskuser:flaskuser /app/storage
 
-# Switch to non-root user
-USER flaskuser
-
-# Definiert den Startbefehl für den Container
 CMD ["/usr/local/bin/start_flask.sh"]

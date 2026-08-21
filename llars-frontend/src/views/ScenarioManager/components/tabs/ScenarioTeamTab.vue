@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="tab-header">
       <h3>{{ $t('scenarioManager.team.title') }}</h3>
-      <LBtn v-if="scenario?.is_owner" variant="primary" @click="showInviteDialog = true">
+      <LBtn v-if="canManage" variant="primary" @click="showInviteDialog = true">
         <LIcon start>mdi-account-plus</LIcon>
         {{ $t('scenarioManager.team.invite') }}
       </LBtn>
@@ -14,7 +14,7 @@
       <div class="stat-card">
         <LIcon size="24" color="primary">mdi-account-check</LIcon>
         <div class="stat-info">
-          <span class="stat-value">{{ evaluators.length }}</span>
+          <span class="stat-value">{{ assessors.length }}</span>
           <span class="stat-label">{{ $t('scenarioManager.team.evaluators') }}</span>
         </div>
       </div>
@@ -27,12 +27,12 @@
       </div>
     </div>
 
-    <!-- Team Members List -->
+    <!-- Human Assessors (evaluation_role='assessor') -->
     <div class="section">
       <h4 class="section-title">{{ $t('scenarioManager.team.humanEvaluators') }}</h4>
       <div class="members-list">
         <div
-          v-for="member in evaluators"
+          v-for="member in assessors"
           :key="member.user_id"
           class="member-card"
           :class="{ 'is-rejected': member.invitation_status === 'rejected' }"
@@ -48,21 +48,26 @@
           <div class="member-info">
             <span class="member-name">{{ member.display_name || member.username }}</span>
             <div class="member-meta">
-              <LTag :variant="getRoleVariant(member.role)" size="sm">
-                {{ $t(`scenarioManager.team.roles.${member.role?.toLowerCase() || 'evaluator'}`) }}
-              </LTag>
-              <!-- Owner indicator -->
-              <LTag v-if="isOwner(member)" variant="primary" size="sm">
-                {{ $t('scenarioManager.team.roles.owner') }}
+              <!-- Use tags from API if available, otherwise fall back to role -->
+              <LTag
+                v-for="tag in getMemberTags(member)"
+                :key="tag"
+                :variant="getTagVariant(tag)"
+                size="sm"
+              >
+                {{ $t(`scenarioManager.team.roles.${tag.toLowerCase()}`) }}
               </LTag>
               <!-- Invitation Status Badge -->
               <LTag
-                v-if="member.invitation_status && member.invitation_status !== 'accepted' && member.role !== 'OWNER'"
+                v-if="member.invitation_status && member.invitation_status !== 'accepted' && !isOwner(member)"
                 :variant="getInvitationVariant(member.invitation_status)"
                 size="sm"
               >
                 {{ $t(`scenarioManager.invitation.${member.invitation_status}`) }}
               </LTag>
+              <!-- Origin pill: referral-link color = link identity (consistent
+                   LLARS-wide); tooltip explains how they joined this scenario. -->
+              <LUserOrigin :origin="member.origin" size="sm" />
             </div>
           </div>
           <div class="member-stats">
@@ -71,10 +76,10 @@
               {{ member.completed || 0 }} / {{ member.total || 0 }}
             </span>
           </div>
-          <div class="member-actions" v-if="scenario?.is_owner && member.role !== 'OWNER'">
-            <!-- Re-invite button for rejected members -->
+          <div class="member-actions" v-if="canManage">
+            <!-- Re-invite button for rejected members (not applicable to owner) -->
             <LBtn
-              v-if="member.invitation_status === 'rejected'"
+              v-if="!isOwner(member) && member.invitation_status === 'rejected'"
               variant="primary"
               size="small"
               :loading="reinviting === member.user_id"
@@ -96,7 +101,8 @@
                   </template>
                   <v-list-item-title>{{ $t('scenarioManager.team.changeRole') }}</v-list-item-title>
                 </v-list-item>
-                <v-list-item @click="confirmRemoveMember(member)" class="text-error">
+                <!-- Remove option: not allowed for the scenario owner -->
+                <v-list-item v-if="!isOwner(member)" @click="confirmRemoveMember(member)" class="text-error">
                   <template #prepend>
                     <LIcon size="18" class="mr-2" color="error">mdi-account-remove</LIcon>
                   </template>
@@ -107,7 +113,7 @@
           </div>
         </div>
 
-        <div v-if="evaluators.length === 0" class="empty-list">
+        <div v-if="assessors.length === 0" class="empty-list">
           <p>{{ $t('scenarioManager.team.noEvaluators') }}</p>
         </div>
       </div>
@@ -117,7 +123,7 @@
     <div class="section">
       <div class="section-header">
         <h4 class="section-title">{{ $t('scenarioManager.team.llmEvaluators') }}</h4>
-        <LBtn v-if="scenario?.is_owner" variant="secondary" size="small" @click="showAddLLMDialog = true">
+        <LBtn v-if="canManage" variant="secondary" size="small" @click="showAddLLMDialog = true">
           <LIcon start size="16">mdi-plus</LIcon>
           {{ $t('scenarioManager.team.addLLM') }}
         </LBtn>
@@ -133,20 +139,69 @@
           </div>
           <div class="member-info">
             <span class="member-name">{{ llm.model_name }}</span>
-            <span class="member-detail">{{ llm.provider }}</span>
+            <div class="member-meta">
+              <span class="member-detail">{{ llm.provider }}</span>
+              <LTag v-if="llm.status === 'failed' || llm.status === 'stopped'" variant="danger" size="sm">
+                {{ $t(`scenarioManager.team.llm${llm.status === 'failed' ? 'Failed' : 'Stopped'}`) }}
+              </LTag>
+              <LTag v-else-if="llm.status === 'completed'" variant="success" size="sm">
+                {{ $t('scenarioManager.team.llmCompleted') }}
+              </LTag>
+              <LTag v-else-if="llm.status === 'running'" variant="info" size="sm">
+                {{ $t('scenarioManager.team.llmRunning') }}
+              </LTag>
+            </div>
           </div>
           <div class="member-stats">
             <span class="stat">
               <LIcon size="16">mdi-check-circle-outline</LIcon>
               {{ llm.completed || 0 }} / {{ llm.total || 0 }}
             </span>
+            <span
+              v-if="llm.errorCount > 0"
+              class="stat error-stat"
+              @click="openErrorDialog(llm)"
+            >
+              <LIcon size="16" color="#e8a087">mdi-alert-circle</LIcon>
+              <span class="error-count">{{ llm.errorCount }}</span>
+              {{ $t('scenarioManager.overview.failed') }}
+            </span>
             <span class="stat" v-if="llm.cost">
               <LIcon size="16">mdi-currency-usd</LIcon>
               {{ llm.cost.toFixed(4) }}
             </span>
           </div>
-          <div class="member-actions" v-if="scenario?.is_owner">
-            <v-btn icon size="small" variant="text" color="error" @click="confirmRemoveLLM(llm)">
+          <div class="member-actions" v-if="canManage">
+            <!-- Start button: model has not started yet -->
+            <LBtn
+              v-if="llm.completed === 0 && llm.errorCount === 0 && llm.status !== 'running'"
+              variant="primary"
+              size="small"
+              :loading="retryingModel === llm.id"
+              @click="retryLLM(llm)"
+            >
+              <LIcon start size="16">mdi-play</LIcon>
+              {{ $t('scenarioManager.team.startLLM') }}
+            </LBtn>
+            <!-- Retry button: model has errors -->
+            <LBtn
+              v-else-if="(llm.errorCount > 0 || llm.status === 'stopped' || llm.status === 'failed') && llm.status !== 'running'"
+              variant="accent"
+              size="small"
+              :loading="retryingModel === llm.id"
+              @click="retryLLM(llm)"
+            >
+              <LIcon start size="16">mdi-refresh</LIcon>
+              {{ $t('scenarioManager.team.retry') }}
+            </LBtn>
+            <v-btn
+              icon
+              size="small"
+              variant="text"
+              color="error"
+              :loading="removingLLM === llm.id"
+              @click="confirmRemoveLLM(llm)"
+            >
               <LIcon size="18">mdi-delete-outline</LIcon>
             </v-btn>
           </div>
@@ -224,15 +279,6 @@
             item-value="id"
             variant="outlined"
           />
-          <v-select
-            v-model="selectedTemplate"
-            :items="availableTemplates"
-            :label="$t('scenarioManager.team.selectTemplate')"
-            item-title="name"
-            item-value="id"
-            variant="outlined"
-            class="mt-4"
-          />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -268,6 +314,51 @@
       </v-card>
     </v-dialog>
 
+    <!-- Error Details Dialog -->
+    <v-dialog v-model="showErrorDialog" max-width="600" class="error-details-dialog">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <LIcon color="#e8a087" class="mr-2">mdi-alert-circle-outline</LIcon>
+          {{ $t('scenarioManager.team.errorDetailsTitle') }}
+          <span v-if="errorDialogModel" class="ml-2 text-subtitle-2 text-medium-emphasis">
+            — {{ errorDialogModel.model_name }}
+          </span>
+        </v-card-title>
+        <v-card-text>
+          <div v-if="errorDetailsLoading" class="text-center py-4">
+            <v-progress-circular indeterminate size="32" />
+          </div>
+          <div v-else-if="errorDetails.length === 0" class="text-center py-4 text-medium-emphasis">
+            {{ $t('scenarioManager.team.noErrors') }}
+          </div>
+          <div v-else class="error-list">
+            <div v-for="err in errorDetails" :key="err.id" class="error-item">
+              <div class="error-item-header">
+                <span class="error-item-label">{{ err.item_label }}</span>
+                <span class="error-item-date">{{ formatErrorDate(err.updated_at) }}</span>
+              </div>
+              <div class="error-item-message">{{ err.error }}</div>
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn
+            v-if="canManage && errorDetails.length > 0"
+            variant="accent"
+            :loading="retryingModel === errorDialogModel?.id"
+            @click="retryLLM(errorDialogModel); showErrorDialog = false"
+          >
+            <LIcon start size="16">mdi-refresh</LIcon>
+            {{ $t('scenarioManager.team.retryAll') }}
+          </LBtn>
+          <LBtn variant="text" @click="showErrorDialog = false">
+            {{ $t('common.close') || $t('common.cancel') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Change Role Dialog -->
     <v-dialog v-model="showRoleDialog" max-width="400">
       <v-card>
@@ -294,6 +385,15 @@
           >
             {{ $t('scenarioManager.team.viewerHint') }}
           </v-alert>
+          <v-alert
+            v-if="newRole === 'MANAGER'"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            {{ $t('scenarioManager.team.editorHint') }}
+          </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -310,10 +410,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
+import axios from 'axios'
 import { useScenarioManager } from '../../composables/useScenarioManager'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
+import { useAuth } from '@/composables/useAuth'
+import { useSnackbar } from '@/composables/useSnackbar'
+import { getSocket } from '@/services/socketService'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
 
@@ -325,10 +429,14 @@ const props = defineProps({
   liveStats: {
     type: Object,
     default: null
+  },
+  canManage: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['team-updated'])
+const emit = defineEmits(['team-updated', 'refreshStats'])
 
 const { t } = useI18n()
 const {
@@ -338,6 +446,9 @@ const {
   updateUserRole,
   getScenarioTeam
 } = useScenarioManager()
+const { formatModelName: registryFormatModelName } = useModelRegistry()
+const { getToken } = useAuth()
+const { showSuccess, showError } = useSnackbar()
 
 // State
 const showInviteDialog = ref(false)
@@ -346,49 +457,81 @@ const teamData = ref(null)
 const showAddLLMDialog = ref(false)
 const showRemoveDialog = ref(false)
 const selectedUsers = ref([])  // Array of user objects { username, display_name, ... }
-const inviteRole = ref('EVALUATOR')
+const inviteRole = ref('ASSESSOR')
 const inviting = ref(false)
 const memberToRemove = ref(null)
 const removing = ref(false)
 const userSearchRef = ref(null)
 
 const selectedLLM = ref(null)
-const selectedTemplate = ref(null)
 const addingLLM = ref(false)
 
 // Role change dialog
 const showRoleDialog = ref(false)
 const memberToChangeRole = ref(null)
-const newRole = ref('EVALUATOR')
+const newRole = ref('ASSESSOR')
 const changingRole = ref(false)
 
-// Mock data
-const availableLLMs = ref([
-  { id: 'gpt-4o', name: 'GPT-4o' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' }
-])
+// Error dialog and retry
+const showErrorDialog = ref(false)
+const errorDialogModel = ref(null)
+const errorDetails = ref([])
+const errorDetailsLoading = ref(false)
+const retryingModel = ref(null)
 
-const availableTemplates = ref([
-  { id: 'default', name: 'Standard' },
-  { id: 'detailed', name: 'Detailed' }
-])
+// LLM models the current user may use as an evaluator, loaded from the backend
+// (filtered to model_type === 'llm'; embeddings/rerankers can't label).
+const availableLLMs = ref([])
+const removingLLM = ref(null)
 
+// Models we just added/started but for which live stats haven't arrived yet.
+// The managed runner starts asynchronously, so without this the row would show
+// "0/0 · pending" with a Start button right after adding — inviting a confusing
+// redundant click (the runner is already running; a second start is a no-op).
+// We optimistically show these as "running" until real progress comes in.
+const startingModels = ref(new Set())
+function markStarting(modelId) {
+  if (!modelId) return
+  const next = new Set(startingModels.value)
+  next.add(modelId)
+  startingModels.value = next
+}
+// Drop the optimistic flag as soon as the backend reports real state for a model.
+watch(() => props.liveStats, () => {
+  if (!startingModels.value.size) return
+  const live = props.liveStats?.userStatsList?.filter(e => e.isLLM) || []
+  const next = new Set(startingModels.value)
+  let changed = false
+  for (const id of startingModels.value) {
+    const d = live.find(s => s.name === id || s.id === id)
+    if (d && (d.completed > 0 || d.errorCount > 0 ||
+              ['running', 'completed', 'failed', 'stopped'].includes(d.status))) {
+      next.delete(id)
+      changed = true
+    }
+  }
+  if (changed) startingModels.value = next
+}, { deep: true })
+
+
+// Role options for invite/change-role dialogs.
+// Maps to the backend role-change endpoint which accepts ASSESSOR, MANAGER, or VIEWER.
+// ASSESSOR → evaluation_role=assessor, MANAGER → manager_role=editor, VIEWER → manager_role=viewer
 const roleOptions = computed(() => [
-  { title: t('scenarioManager.team.roles.evaluator'), value: 'EVALUATOR' },
-  { title: t('scenarioManager.team.roles.viewer'), value: 'VIEWER' }
+  { title: t('scenarioManager.team.roles.assessor'), value: 'ASSESSOR' },
+  { title: t('scenarioManager.team.roles.editor'), value: 'MANAGER' },
+  { title: t('scenarioManager.team.roles.eval_viewer'), value: 'VIEWER' }
 ])
 
 // Usernames to exclude from search (already selected + already in team)
 const excludedUsernames = computed(() => {
   const selected = selectedUsers.value.map(u => u.username)
-  const existing = evaluators.value.map(u => u.username)
+  const existing = allHumanMembers.value.map(u => u.username)
   return [...new Set([...selected, ...existing])]
 })
 
-// Computed
-const evaluators = computed(() => {
-  // Use team data if available (includes invitation_status), otherwise fall back to scenario.users
+// Computed: all human team members enriched with live stats
+const allHumanMembers = computed(() => {
   let users = []
   if (teamData.value?.team) {
     users = teamData.value.team.filter(u => !u.is_ai)
@@ -396,18 +539,14 @@ const evaluators = computed(() => {
     users = props.scenario?.users?.filter(u => !u.is_llm) || []
   }
 
-  // Merge with live stats to get completed/total counts
-  // userStatsList contains all human users with their progress
   const userStats = props.liveStats?.userStatsList?.filter(e => !e.isLLM) || []
 
   return users.map(user => {
-    // Find matching stats by user_id, id, or username
     const stats = userStats.find(s =>
       s.id === user.user_id ||
       s.id === user.username ||
       s.name === user.username
     )
-
     return {
       ...user,
       completed: stats?.completed || 0,
@@ -415,6 +554,17 @@ const evaluators = computed(() => {
     }
   })
 })
+
+// Human Assessors: members with evaluation_role === 'assessor', with legacy fallback
+const assessors = computed(() =>
+  allHumanMembers.value.filter(u => {
+    // New API: use evaluation_role field from 2-axis role model
+    if (u.evaluation_role !== undefined) return u.evaluation_role === 'assessor'
+    // Legacy fallback: role-based filtering
+    return ['Assessor', 'Evaluator'].includes(u.role) ||
+           (isOwner(u) && u.role !== 'Viewer')
+  })
+)
 
 const llmEvaluators = computed(() => {
   const evaluators = props.scenario?.llm_evaluators || []
@@ -427,19 +577,17 @@ const llmEvaluators = computed(() => {
     if (typeof modelId === 'object' && modelId !== null) {
       return modelId
     }
-    // Otherwise, parse the model ID string
+
+    // Use the central model registry for consistent display names
+    const displayName = registryFormatModelName(modelId)
+
+    // Extract model_name and provider from the formatted display name
     let provider = 'Unknown'
-    let modelName = modelId
-    const parsed = parseUserProviderModelId(modelId)
-    if (parsed) {
-      provider = parsed.username
-        ? `${parsed.username}/${parsed.providerLabel}`
-        : parsed.providerLabel
-      modelName = parsed.modelName
-    } else {
-      const parts = modelId.split('/')
-      provider = parts.length > 1 ? parts[0] : 'Unknown'
-      modelName = parts.length > 1 ? parts.slice(1).join('/') : modelId
+    let modelName = displayName
+    const parts = displayName.split('/')
+    if (parts.length > 1) {
+      provider = parts[0]
+      modelName = parts.slice(1).join('/')
     }
 
     // Find matching live stats (name or id contains the model_id for LLMs)
@@ -449,28 +597,103 @@ const llmEvaluators = computed(() => {
       s.name?.includes(modelName)
     )
 
+    // Determine model status
+    const completed = liveData?.completed || 0
+    const total = liveData?.total || 0
+    const errorCount = liveData?.errorCount || 0
+    let status = 'pending'
+    if (liveData?.status) {
+      status = liveData.status
+    } else if (completed >= total && total > 0) {
+      status = 'completed'
+    } else if (errorCount > 0 && completed + errorCount < total) {
+      status = 'stopped'
+    } else if (errorCount > 0 && completed + errorCount >= total) {
+      status = 'failed'
+    } else if (completed > 0) {
+      status = 'running'
+    }
+    // Just added/started, backend hasn't reported yet → show as running (not a
+    // Start button) so the UI is consistent with the auto-start that fired.
+    if (status === 'pending' && startingModels.value.has(modelId)) {
+      status = 'running'
+    }
+
     return {
       id: modelId,
       model_name: modelName,
       provider: provider,
-      completed: liveData?.completed || 0,
-      total: liveData?.total || 0
+      completed,
+      total,
+      errorCount,
+      recentErrors: liveData?.recentErrors || [],
+      status,
     }
   })
 })
 
 // Methods
 function isOwner(member) {
-  return member.username === props.scenario?.created_by
+  return member.username === props.scenario?.owner_name
 }
 
 function getRoleVariant(role) {
   const map = {
-    'OWNER': 'primary',
-    'EVALUATOR': 'info',
-    'VIEWER': 'default'
+    'Owner': 'primary',
+    'Manager': 'secondary',
+    'Editor': 'secondary',
+    'Assessor': 'info',
+    'Evaluator': 'info',
+    'Viewer': 'info',
+    'Eval. Viewer': 'info'
   }
   return map[role] || 'default'
+}
+
+/**
+ * Get display tags for a member.
+ * Prefers `member.role_tags` (if present), then the API `tags` field,
+ * then derives tags from the 2-axis manager_role/evaluation_role fields.
+ */
+function getMemberTags(member) {
+  // Prefer explicit role_tags from the API
+  if (member.role_tags && Array.isArray(member.role_tags) && member.role_tags.length > 0) {
+    return member.role_tags
+  }
+  // Fall back to the `tags` field (built by _build_role_tags on the backend)
+  if (member.tags && Array.isArray(member.tags) && member.tags.length > 0) {
+    return member.tags
+  }
+  // Derive from 2-axis role model (manager_role + evaluation_role)
+  if (member.manager_role || member.evaluation_role) {
+    const tags = []
+    const mgr = { owner: 'Owner', editor: 'Editor', viewer: 'Viewer' }
+    if (member.manager_role && mgr[member.manager_role]) {
+      tags.push(mgr[member.manager_role])
+    }
+    const evalMap = { assessor: 'Assessor', viewer: 'Eval. Viewer' }
+    if (member.evaluation_role && evalMap[member.evaluation_role]) {
+      tags.push(evalMap[member.evaluation_role])
+    }
+    if (tags.length > 0) return tags
+  }
+  // Legacy fallback
+  const tags = []
+  if (isOwner(member)) tags.push('Owner')
+  if (member.role) tags.push(member.role)
+  return tags
+}
+
+function getTagVariant(tag) {
+  const map = {
+    'Owner': 'primary',
+    'Manager': 'secondary',
+    'Editor': 'secondary',
+    'Assessor': 'success',
+    'Viewer': 'info',
+    'Eval. Viewer': 'info'
+  }
+  return map[tag] || 'default'
 }
 
 function getInvitationVariant(status) {
@@ -495,7 +718,7 @@ async function doReinvite(member) {
 }
 
 async function loadTeamData() {
-  if (props.scenario?.id && props.scenario?.is_owner) {
+  if (props.scenario?.id && props.canManage) {
     try {
       teamData.value = await getScenarioTeam(props.scenario.id)
     } catch (err) {
@@ -555,8 +778,15 @@ async function removeMember() {
 
 function changeRole(member) {
   memberToChangeRole.value = member
-  // Set current role as default, but allow changing to other role
-  newRole.value = member.role === 'EVALUATOR' ? 'VIEWER' : 'EVALUATOR'
+  // Default to a different role than the member's current evaluation_role
+  if (member.evaluation_role === 'assessor') {
+    newRole.value = 'VIEWER'
+  } else if (member.manager_role === 'editor') {
+    newRole.value = 'ASSESSOR'
+  } else {
+    // Fallback: legacy role-based check
+    newRole.value = (member.role === 'Assessor' || member.role === 'Evaluator') ? 'VIEWER' : 'ASSESSOR'
+  }
   showRoleDialog.value = true
 }
 
@@ -578,34 +808,157 @@ async function confirmRoleChange() {
   }
 }
 
-function confirmRemoveLLM(llm) {
-  // TODO: Implement LLM removal
-  console.log('Remove LLM:', llm)
+async function openErrorDialog(llm) {
+  errorDialogModel.value = llm
+  errorDetails.value = []
+  errorDetailsLoading.value = true
+  showErrorDialog.value = true
+
+  try {
+    const response = await axios.get(
+      `/api/evaluation/llm/${props.scenario.id}/errors`,
+      {
+        params: { model_id: llm.id },
+        headers: { Authorization: `Bearer ${getToken()}` },
+      }
+    )
+    errorDetails.value = response.data.errors || []
+  } catch (err) {
+    console.error('Failed to load error details:', err)
+    errorDetails.value = []
+  } finally {
+    errorDetailsLoading.value = false
+  }
 }
 
+async function retryLLM(llm) {
+  if (!llm?.id || retryingModel.value) return
+  retryingModel.value = llm.id
+
+  try {
+    await axios.post(
+      `/api/evaluation/llm/${props.scenario.id}/start`,
+      { model_id: llm.id },
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    )
+    markStarting(llm.id)  // reflect "running" immediately
+    showSuccess(t('scenarioManager.team.llmStarted', { model: llm.model_name || llm.id }))
+    emit('refreshStats')
+  } catch (err) {
+    console.error('Failed to retry LLM evaluation:', err)
+    const detail = err.response?.data?.error || err.message
+    showError(t('scenarioManager.team.llmStartFailed', { model: llm.model_name || llm.id, error: detail }))
+  } finally {
+    retryingModel.value = null
+  }
+}
+
+function formatErrorDate(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString()
+}
+
+// Load the LLM models the current user can add as evaluators (llm type only).
+async function loadAvailableModels() {
+  try {
+    const response = await axios.get('/api/llm/models/available', {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    const models = response.data?.models || []
+    availableLLMs.value = models
+      .filter(m => m.model_type === 'llm' && m.is_active !== false)
+      .map(m => ({ id: m.model_id, name: m.display_name || m.model_id }))
+  } catch (err) {
+    console.error('Failed to load available LLM models:', err)
+    availableLLMs.value = []
+  }
+}
+
+// Remove an LLM assessor (like removing a human) + drop its stored results.
+async function confirmRemoveLLM(llm) {
+  if (!llm?.id || removingLLM.value) return
+  removingLLM.value = llm.id
+  try {
+    await axios.delete(
+      `/api/scenarios/${props.scenario.id}/llm-evaluators/${llm.id}`,
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    )
+    showSuccess(t('scenarioManager.team.llmRemoved', { model: llm.model_name || llm.id }))
+    emit('team-updated')
+    emit('refreshStats')
+  } catch (err) {
+    console.error('Failed to remove LLM evaluator:', err)
+    const detail = err.response?.data?.error || err.message
+    showError(t('scenarioManager.team.llmRemoveFailed', { model: llm.model_name || llm.id, error: detail }))
+  } finally {
+    removingLLM.value = null
+  }
+}
+
+// Add an LLM as an assessor — persists to the scenario config and (server-side)
+// auto-starts the managed runner, which then labels/annotates every item with
+// all its built-in safeguards (locks, cooldowns, circuit breaker, failure caps).
 async function addLLMEvaluator() {
+  if (!selectedLLM.value || addingLLM.value) return
   addingLLM.value = true
   try {
-    // TODO: Implement adding LLM evaluator
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const addedModel = selectedLLM.value
+    const { data } = await axios.post(
+      `/api/scenarios/${props.scenario.id}/llm-evaluators`,
+      { model_id: addedModel, autostart: true },
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    )
+    // Auto-started server-side → show it as running right away (no Start button).
+    if (data?.started) markStarting(addedModel)
+    showSuccess(t('scenarioManager.team.llmAdded', { model: addedModel }))
     showAddLLMDialog.value = false
+    selectedLLM.value = null
     emit('team-updated')
+    emit('refreshStats')
+  } catch (err) {
+    console.error('Failed to add LLM evaluator:', err)
+    const detail = err.response?.data?.error || err.message
+    showError(t('scenarioManager.team.llmAddFailed', { error: detail }))
   } finally {
     addingLLM.value = false
   }
+}
+
+// Socket listener for model_aborted events
+const onModelAborted = () => {
+  emit('refreshStats')
 }
 
 onMounted(async () => {
   if (props.scenario?.id) {
     // Load team data with invitation status (only for owners)
     await loadTeamData()
+
+    // Managers get the real model list for the "add LLM assessor" dialog.
+    if (props.canManage) {
+      loadAvailableModels()
+    }
+
+    // Listen for model aborted events to refresh stats
+    const socket = getSocket()
+    if (socket) {
+      socket.on('llm_eval:model_aborted', onModelAborted)
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  const socket = getSocket()
+  if (socket) {
+    socket.off('llm_eval:model_aborted', onModelAborted)
   }
 })
 </script>
 
 <style scoped>
 .team-tab {
-  max-width: 800px;
+  width: 100%;
 }
 
 .tab-header {
@@ -756,10 +1109,153 @@ onMounted(async () => {
   opacity: 0.8;
 }
 
+/* Error styles */
+.error-stat {
+  cursor: pointer;
+  color: #e8a087 !important;
+  transition: opacity 0.2s;
+}
+
+.error-stat:hover {
+  opacity: 0.8;
+}
+
+.error-count {
+  font-weight: 600;
+  color: #e8a087;
+}
+
+.error-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.error-item {
+  padding: 12px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+}
+
+.error-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.error-item-label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.error-item-date {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.error-item-message {
+  font-size: 0.8rem;
+  color: #e8a087;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .member-meta {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Mobile / responsive (<=768px)
+ *
+ * The member-card row (avatar + info + 4-column stats + actions) overflows on
+ * narrow screens. On mobile we stack the card into two rows:
+ *   Row 1: avatar + info
+ *   Row 2: stats + actions
+ * and let team-stats wrap. Desktop layout is untouched (rules scoped to media).
+ * ------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  /* Stat cards wrap instead of forcing a single overflowing row */
+  .team-stats {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .stat-card {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 140px;
+    padding: 12px 14px;
+  }
+
+  /* Stack the member card: avatar+info on top, stats+actions below */
+  .member-card {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 14px 16px;
+  }
+
+  /* Avatar + info share the first row */
+  .member-card .member-avatar {
+    order: 0;
+  }
+
+  .member-card .member-info {
+    order: 1;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* Stats + actions drop to a full-width second row */
+  .member-card .member-stats {
+    order: 2;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+
+  .member-card .member-actions {
+    order: 3;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  /* Prevent long model names / labels from forcing horizontal overflow */
+  .member-name {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  /* Enlarge small action buttons toward comfortable touch targets.
+   * size="small" LBtn defaults to ~32px; bump min-height to 40px on mobile. */
+  .member-actions :deep(.l-btn),
+  .member-actions :deep(.v-btn) {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  /* Constrain the Error-Details dialog so it never exceeds the viewport */
+  :deep(.error-details-dialog) > .v-overlay__content {
+    max-width: 95vw !important;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Single-column stat cards on very narrow screens */
+  .stat-card {
+    flex: 1 1 100%;
+  }
+
+  /* Keep stat text legible but compact */
+  .member-stats .stat {
+    font-size: 0.78rem;
+  }
 }
 </style>

@@ -926,4 +926,104 @@ describe('usePermissions Composable', () => {
       expect(perms2.hasPermission('feature:test:view')).toBe(true)
     })
   })
+
+  // ==================== Transient failure resilience ====================
+  //
+  // INCIDENT 2026-07-29: /api/permissions/my-permissions is polled every ~5s
+  // and was NOT exempt from the production rate limit (500/h per IP+endpoint).
+  // Once a rater exhausted the budget every poll returned 429 -- including the
+  // FIRST fetch after a fresh login. `permissions` then stayed [] and the
+  // router guard rejected every permission-gated route, bouncing raters back
+  // to /login mid-study (230x 429, 0x 401 on the worst-hit IP).
+  //
+  // The composable must therefore distinguish "this user has no permissions"
+  // (401/403) from "we could not find out" (429/5xx/network).
+
+  describe('Transient failure handling', () => {
+    const okResponse = {
+      data: {
+        success: true,
+        data: {
+          username: 'ieb-albrecht',
+          permissions: ['feature:labeling:view'],
+          roles: ['evaluator']
+        }
+      }
+    }
+
+    it('PERM_056: flags a cold-start 429 as unknown, not as "no permissions"', async () => {
+      const perms = usePermissions()
+
+      // The exact incident: very first fetch of the session is rate-limited.
+      axios.get.mockRejectedValueOnce({ response: { status: 429 } })
+      await perms.fetchPermissions()
+
+      expect(perms.hasPermission('feature:labeling:view')).toBe(false)
+      // ...but we must NOT present that as fact -- the guard checks this flag
+      // and lets the navigation through instead of ejecting the rater.
+      expect(perms.loadFailedTransiently.value).toBe(true)
+    })
+
+    it('PERM_057: treats 5xx and network errors as unknown too', async () => {
+      const perms = usePermissions()
+
+      axios.get.mockRejectedValueOnce({ response: { status: 503 } })
+      await perms.fetchPermissions()
+      expect(perms.loadFailedTransiently.value).toBe(true)
+
+      axios.get.mockRejectedValueOnce(new Error('Network Error'))
+      await perms.fetchPermissions(true)
+      expect(perms.loadFailedTransiently.value).toBe(true)
+    })
+
+    it('PERM_058: keeps already-loaded permissions when a later poll 429s', async () => {
+      const perms = usePermissions()
+      axios.get.mockResolvedValueOnce(okResponse)
+      await perms.fetchPermissions()
+      expect(perms.hasPermission('feature:labeling:view')).toBe(true)
+
+      axios.get.mockRejectedValueOnce({ response: { status: 429 } })
+      await perms.fetchPermissions(true)
+
+      // Stale but usable -- an established session must not degrade to empty.
+      expect(perms.hasPermission('feature:labeling:view')).toBe(true)
+      expect(perms.loadFailedTransiently.value).toBe(true)
+    })
+
+    it('PERM_059: clears permissions on 401 and does NOT flag it transient', async () => {
+      const perms = usePermissions()
+      axios.get.mockResolvedValueOnce(okResponse)
+      await perms.fetchPermissions()
+
+      axios.get.mockRejectedValueOnce({ response: { status: 401 } })
+      await perms.fetchPermissions(true)
+
+      expect(perms.hasPermission('feature:labeling:view')).toBe(false)
+      expect(perms.hasLoaded.value).toBe(false)
+      expect(perms.loadFailedTransiently.value).toBe(false)
+    })
+
+    it('PERM_060: 403 is an authoritative answer, not a transient failure', async () => {
+      const perms = usePermissions()
+
+      axios.get.mockRejectedValueOnce({ response: { status: 403 } })
+      await perms.fetchPermissions()
+
+      expect(perms.loadFailedTransiently.value).toBe(false)
+    })
+
+    it('PERM_061: a successful retry clears the transient flag', async () => {
+      const perms = usePermissions()
+
+      axios.get.mockRejectedValueOnce({ response: { status: 429 } })
+      await perms.fetchPermissions()
+      expect(perms.loadFailedTransiently.value).toBe(true)
+
+      axios.get.mockResolvedValueOnce(okResponse)
+      await perms.fetchPermissions(true)
+
+      expect(perms.loadFailedTransiently.value).toBe(false)
+      expect(perms.hasPermission('feature:labeling:view')).toBe(true)
+    })
+  })
 })

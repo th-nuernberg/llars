@@ -120,11 +120,11 @@
         </template>
 
         <template #item.actions="{ item }">
-          <v-btn icon size="small" variant="text" @click="viewThread(item)">
-            <LIcon size="18">mdi-eye-outline</LIcon>
+          <v-btn icon :size="isMobile ? 'default' : 'small'" variant="text" class="action-btn" @click="viewThread(item)">
+            <LIcon :size="isMobile ? 22 : 18">mdi-eye-outline</LIcon>
           </v-btn>
-          <v-btn icon size="small" variant="text" color="error" @click="confirmRemoveThread(item)">
-            <LIcon size="18">mdi-delete-outline</LIcon>
+          <v-btn icon :size="isMobile ? 'default' : 'small'" variant="text" color="error" class="action-btn" @click="confirmRemoveThread(item)">
+            <LIcon :size="isMobile ? 22 : 18">mdi-delete-outline</LIcon>
           </v-btn>
         </template>
       </v-data-table>
@@ -163,7 +163,7 @@
     </v-dialog>
 
     <!-- Import Dialog -->
-    <v-dialog v-model="showImportDialog" max-width="800" persistent>
+    <v-dialog v-model="showImportDialog" :max-width="isMobile ? undefined : 800" :width="isMobile ? '95vw' : undefined" :fullscreen="isMobile" persistent>
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon color="primary" class="mr-2">mdi-database-import-outline</LIcon>
@@ -315,6 +315,7 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useDataImport } from '../../composables/useDataImport'
 import { useScenarioManager } from '../../composables/useScenarioManager'
+import { useMobile } from '@/composables/useMobile'
 import ThreadDetailDialog from '../ThreadDetailDialog.vue'
 
 const props = defineProps({
@@ -331,6 +332,9 @@ const props = defineProps({
 const emit = defineEmits(['data-imported'])
 
 const { t } = useI18n()
+
+// Mobile detection drives larger touch targets + fullscreen dialog on phones
+const { isMobile } = useMobile()
 
 // Import composable
 const {
@@ -382,14 +386,22 @@ const sortOptions = computed(() => [
   { label: t('scenarioManager.data.sortSubject'), value: 'subject' }
 ])
 
-// Table headers
-const tableHeaders = computed(() => [
-  { title: t('scenarioManager.data.subject'), key: 'subject', sortable: true },
-  { title: t('scenarioManager.data.sender'), key: 'sender', sortable: true },
-  { title: t('scenarioManager.data.date'), key: 'created_at', sortable: true },
-  { title: t('scenarioManager.data.statusHeader'), key: 'status', sortable: true },
-  { title: '', key: 'actions', sortable: false, width: 100 }
-])
+// Table headers. On mobile we drop the Sender + Date columns so the table fits
+// the viewport (Subject + Status + Actions) instead of forcing a horizontal
+// swipe — the full detail is one tap away via the row's eye/detail dialog.
+const tableHeaders = computed(() => {
+  const all = [
+    { title: t('scenarioManager.data.subject'), key: 'subject', sortable: true },
+    { title: t('scenarioManager.data.sender'), key: 'sender', sortable: true },
+    { title: t('scenarioManager.data.date'), key: 'created_at', sortable: true },
+    { title: t('scenarioManager.data.statusHeader'), key: 'status', sortable: true },
+    { title: '', key: 'actions', sortable: false, width: 100 }
+  ]
+  if (isMobile.value) {
+    return all.filter(h => h.key !== 'sender' && h.key !== 'created_at')
+  }
+  return all
+})
 
 // Computed
 const canImport = computed(() => {
@@ -652,7 +664,7 @@ onMounted(() => {
 
 <style scoped>
 .data-tab {
-  max-width: 1200px;
+  width: 100%;
 }
 
 .tab-header {
@@ -909,5 +921,65 @@ onMounted(() => {
   font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
   margin-top: 2px;
+}
+
+/* ===== Mobile responsive (<= 768px) ===== */
+@media (max-width: 768px) {
+  /* Stats cards wrap/stack so they don't overflow horizontally */
+  .data-stats {
+    flex-wrap: wrap;
+  }
+
+  .stat-card {
+    flex: 1 1 100%;
+    padding: 12px 16px;
+  }
+
+  /* Search + sort stack and go full-width */
+  .threads-header {
+    flex-direction: column;
+  }
+
+  .search-field {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .sort-select {
+    width: 100%;
+  }
+
+  /* Legend stacks vertically */
+  .status-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .legend-items {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Larger touch targets for table action buttons (>= 38px) */
+  .action-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* Import method options stack to a single column */
+  .import-options {
+    grid-template-columns: 1fr;
+  }
+
+  .import-option {
+    padding: 16px;
+  }
+
+  /* Let remove-dialog actions stack if they wrap, no horizontal overflow */
+  :deep(.v-card-actions) {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
 }
 </style>

@@ -1,0 +1,535 @@
+{
+  "type": "communication_comparison",
+  "items": [
+    {
+      "label_de": "Beratungsfall 1",
+      "label_en": "Counselling case 1",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Hallo, ich schreibe das erste Mal hier. Seit Wochen schlafe ich kaum noch, weil mir vor dem Schlafengehen tausend Gedanken durch den Kopf gehen. Ich weiß gar nicht, wo ich anfangen soll.",
+          "en": "Hi, I'm writing here for the first time. For weeks I've barely slept because a thousand thoughts run through my head before bed. I don't even know where to start."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Schön, dass du den Schritt gewagt hast, dich hier zu melden. Es klingt sehr belastend, Nacht für Nacht von kreisenden Gedanken wachgehalten zu werden. Du musst heute gar nicht alles auf einmal sortieren. Magst du mir erzählen, welcher Gedanke abends am häufigsten wiederkommt?",
+          "en": "I'm glad you took the step to reach out here. It sounds exhausting to be kept awake night after night by racing thoughts. You don't have to sort everything out at once today. Would you like to tell me which thought comes back most often in the evenings?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Schlafstörungen sind ein häufiges Problem. Versuchen Sie es mit einer festen Schlafenszeit, keinem Koffein nach 14 Uhr und einer Bildschirmpause vor dem Zubettgehen. Auch eine Atemübung kann helfen. Wenn das nicht wirkt, sollten Sie einen Arzt aufsuchen.",
+          "en": "Sleep disorders are a common problem. Try a fixed bedtime, no caffeine after 2 p.m., and a screen break before bed. A breathing exercise can also help. If that doesn't work, you should see a doctor.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 2",
+      "label_en": "Counselling case 2",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Meine beste Freundin und ich haben uns letzte Woche heftig gestritten. Jetzt schreibt sie mir nicht mehr und ich fühle mich total schuldig, obwohl ich finde, dass auch sie etwas falsch gemacht hat.",
+          "en": "My best friend and I had a big fight last week. Now she's not texting me anymore and I feel totally guilty, even though I think she did something wrong too."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Das klingt nach einer richtig zwiespältigen Situation: Auf der einen Seite die Schuldgefühle, auf der anderen das Gefühl, selbst verletzt worden zu sein. Beides darf nebeneinander stehen. Was würde sich für dich gerade am ehesten erleichternd anfühlen, wenn du an diese Freundschaft denkst?",
+          "en": "That sounds like a really conflicted situation: on one hand the guilt, on the other the feeling of having been hurt yourself. Both can be true at once. What would feel most relieving to you right now when you think about this friendship?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Sie sollten ihr einfach schreiben und sich entschuldigen, dann ist die Sache geklärt. Freundschaften sind wichtig und Streit gehört dazu. Machen Sie den ersten Schritt, dann wird sie sicher antworten.",
+          "en": "You should just write to her and apologize, then the matter is settled. Friendships are important and arguments are part of them. Make the first move, then she'll surely answer.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 3",
+      "label_en": "Counselling case 3",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich studiere im dritten Semester und habe das Gefühl, dass alle um mich herum besser klarkommen als ich. In Lerngruppen traue ich mich kaum, etwas zu sagen.",
+          "en": "I'm in my third semester and feel like everyone around me is coping better than I am. In study groups I barely dare to say anything."
+        },
+        {
+          "role": "Berater",
+          "de": "Danke, dass du das so offen teilst. Dieses Gefühl, hinterherzuhinken, kennen tatsächlich sehr viele Studierende. Wann hast du das Gefühl, dass die anderen 'besser' sind, zum ersten Mal bemerkt?",
+          "en": "Thank you for sharing this so openly. This feeling of lagging behind is actually familiar to a great many students. When did you first notice this feeling that the others are 'better'?"
+        },
+        {
+          "role": "Klient",
+          "de": "Eigentlich schon im ersten Semester. Aber jetzt wird es schlimmer, weil bald die Prüfungen anstehen und ich Angst habe, mich zu blamieren.",
+          "en": "Actually already in the first semester. But now it's getting worse because exams are coming up soon and I'm afraid of embarrassing myself."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Es klingt, als würde die Prüfungszeit diesen alten Selbstzweifel jetzt richtig laut machen. Lass uns das mal auseinandernehmen: Wovor genau hast du am meisten Angst, wenn du an das Sich-Blamieren denkst, und was würde im schlimmsten Fall passieren?",
+          "en": "It sounds like the exam period is now making this old self-doubt really loud. Let's unpack that: what exactly are you most afraid of when you think about embarrassing yourself, and what would happen in the worst case?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Prüfungsangst ist gut behandelbar. Ich empfehle Ihnen einen Lernplan, ausreichend Pausen und positive Selbstgespräche. Sagen Sie sich jeden Morgen: 'Ich schaffe das.' Mit der richtigen Vorbereitung verschwindet die Angst von selbst.",
+          "en": "Exam anxiety is very treatable. I recommend a study plan, sufficient breaks, and positive self-talk. Tell yourself every morning: 'I can do this.' With the right preparation, the fear will disappear on its own.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 4",
+      "label_en": "Counselling case 4",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Seit mein Opa vor zwei Monaten gestorben ist, fühle ich mich wie taub. Ich kann nicht mal richtig weinen und frage mich, ob mit mir etwas nicht stimmt.",
+          "en": "Since my grandpa died two months ago, I've felt kind of numb. I can't even really cry and I wonder if something is wrong with me."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Es tut mir sehr leid, dass dein Opa gestorben ist. Diese Taubheit, die du beschreibst, ist eine ganz normale und häufige Reaktion in der Trauer – sie ist kein Zeichen, dass etwas mit dir nicht stimmt. Trauer hat kein 'richtig' oder 'falsch'. Magst du mir erzählen, was dich mit deinem Opa besonders verbunden hat?",
+          "en": "I'm very sorry your grandpa died. This numbness you describe is a completely normal and common reaction in grief - it's not a sign that something is wrong with you. Grief has no 'right' or 'wrong'. Would you like to tell me what especially connected you with your grandpa?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Trauer durchläuft fünf Phasen: Verleugnung, Wut, Verhandeln, Depression und Akzeptanz. Sie befinden sich offenbar noch in der ersten Phase. Geben Sie sich Zeit, dann kommen die Tränen schon. Das ist völlig normal.",
+          "en": "Grief goes through five stages: denial, anger, bargaining, depression, and acceptance. You're apparently still in the first stage. Give yourself time, then the tears will come. That's completely normal.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 5",
+      "label_en": "Counselling case 5",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe seit drei Monaten einen neuen Job und merke, dass ich abends oft nicht abschalten kann. Ich denke ständig an offene Aufgaben und habe Angst, etwas zu vergessen.",
+          "en": "I've had a new job for three months and notice I often can't switch off in the evenings. I constantly think about open tasks and am afraid of forgetting something."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Ein Jobwechsel ist eine große Umstellung, und es klingt, als würde dein Kopf gerade auf Hochtouren laufen, um nur ja nichts zu übersehen. Das ist verständlich in einer neuen Rolle. Gibt es einen Moment am Abend, in dem das Gedankenkreisen besonders stark wird?",
+          "en": "A job change is a big adjustment, and it sounds like your mind is currently running at full speed to make sure you don't miss anything. That's understandable in a new role. Is there a moment in the evening when the racing thoughts get particularly strong?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Work-Life-Balance ist entscheidend. Schreiben Sie eine To-do-Liste, schalten Sie nach Feierabend das Handy aus und gönnen Sie sich ein Hobby. So trennen Sie Arbeit und Freizeit klar voneinander. Das funktioniert bei den meisten Menschen sehr gut.",
+          "en": "Work-life balance is crucial. Write a to-do list, turn off your phone after work, and treat yourself to a hobby. That way you clearly separate work and leisure. This works very well for most people.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 6",
+      "label_en": "Counselling case 6",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich bin gerade in eine neue Stadt gezogen und kenne hier niemanden. Abends sitze ich allein in meiner Wohnung und fühle mich richtig einsam.",
+          "en": "I just moved to a new city and don't know anyone here. In the evenings I sit alone in my apartment and feel really lonely."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Ein Umzug in eine fremde Stadt kann sich anfangs wirklich leer und einsam anfühlen – du hast ja gerade dein ganzes vertrautes Umfeld zurückgelassen. Das ist eine große Veränderung. Wie geht es dir, seit du das hier ausgesprochen hast?",
+          "en": "Moving to an unfamiliar city can feel really empty and lonely at first - you've just left your entire familiar environment behind. That's a big change. How are you feeling since you put this into words here?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Einsamkeit nach einem Umzug ist normal. Treten Sie einem Sportverein bei, melden Sie sich für einen Kurs an oder nutzen Sie Apps, um neue Leute kennenzulernen. In ein paar Wochen haben Sie bestimmt schon neue Freunde gefunden.",
+          "en": "Loneliness after a move is normal. Join a sports club, sign up for a course, or use apps to meet new people. In a few weeks you'll surely have made new friends.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 7",
+      "label_en": "Counselling case 7",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Meine Eltern setzen mich unter Druck, ein bestimmtes Studienfach zu wählen, aber ich will eigentlich etwas ganz anderes machen. Ich habe Angst, sie zu enttäuschen.",
+          "en": "My parents are pressuring me to choose a particular field of study, but I actually want to do something completely different. I'm afraid of disappointing them."
+        },
+        {
+          "role": "Berater",
+          "de": "Das ist eine schwierige Lage – zwischen deinen eigenen Wünschen und den Erwartungen deiner Eltern zu stehen, kann sich sehr zerreißend anfühlen. Weißt du denn schon, was du selbst gern machen würdest?",
+          "en": "That's a difficult situation - standing between your own wishes and your parents' expectations can feel like being torn in two. Do you already know what you yourself would like to do?"
+        },
+        {
+          "role": "Klient",
+          "de": "Ja, ich würde gern etwas Kreatives machen, Grafikdesign. Aber meine Eltern sagen, davon könne man nicht leben.",
+          "en": "Yes, I'd like to do something creative, graphic design. But my parents say you can't make a living from that."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Du hast also schon eine klare Vorstellung – das ist wertvoll. Es klingt, als ginge es nicht nur um die Fachwahl, sondern auch darum, gesehen und ernst genommen zu werden mit dem, was dir wichtig ist. Was glaubst du, was deine Eltern eigentlich für dich befürchten?",
+          "en": "So you already have a clear idea - that's valuable. It sounds like this isn't just about the choice of subject, but also about being seen and taken seriously with what matters to you. What do you think your parents are actually afraid of for you?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Sie sind erwachsen und dürfen selbst entscheiden. Wählen Sie das, was Sie glücklich macht – Grafikdesign ist ein zukunftsträchtiges Feld. Ihre Eltern werden es schon akzeptieren. Lassen Sie sich nicht reinreden.",
+          "en": "You're an adult and may decide for yourself. Choose what makes you happy - graphic design is a promising field. Your parents will come to accept it. Don't let them tell you what to do.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 8",
+      "label_en": "Counselling case 8",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich vergleiche mich ständig mit anderen auf Social Media und fühle mich danach jedes Mal schlechter. Trotzdem kann ich nicht aufhören, die ganze Zeit zu scrollen.",
+          "en": "I constantly compare myself to others on social media and feel worse every time afterwards. Still, I can't stop scrolling all the time."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Da steckst du in einer richtigen Zwickmühle: Das Scrollen tut dir nicht gut, und trotzdem zieht es dich immer wieder hin. Dieser Widerspruch ist sehr menschlich und du bist damit nicht allein. Was glaubst du, suchst du in diesen Momenten, in denen du zum Handy greifst?",
+          "en": "You're in a real dilemma there: the scrolling isn't good for you, yet it keeps pulling you back. This contradiction is very human and you're not alone with it. What do you think you're looking for in those moments when you reach for your phone?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Social Media ist Gift für das Selbstwertgefühl. Löschen Sie am besten alle Apps von Ihrem Handy und setzen Sie sich tägliche Bildschirmzeit-Limits. Nach einer Woche Digital Detox werden Sie sich deutlich besser fühlen.",
+          "en": "Social media is poison for self-esteem. It's best to delete all apps from your phone and set yourself daily screen time limits. After a week of digital detox, you'll feel significantly better.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 9",
+      "label_en": "Counselling case 9",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Mein Partner und ich streiten in letzter Zeit fast täglich über Kleinigkeiten. Ich liebe ihn, aber ich bin so erschöpft von dieser ständigen Anspannung.",
+          "en": "My partner and I have been arguing almost daily about little things lately. I love him, but I'm so exhausted from this constant tension."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Das klingt nach einer wirklich zermürbenden Phase – wenn die Liebe da ist, aber die Reibung den Alltag bestimmt, ist das sehr kräftezehrend. Du sagst, es geht oft um Kleinigkeiten. Hast du eine Ahnung, ob hinter diesen kleinen Streits vielleicht ein größeres Thema steckt?",
+          "en": "That sounds like a really wearing phase - when love is there but friction dominates everyday life, it's very draining. You say it's often about little things. Do you have any sense whether there might be a bigger issue behind these small arguments?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Kommunikation ist der Schlüssel in jeder Beziehung. Setzen Sie sich zusammen, hören Sie einander aktiv zu und verwenden Sie Ich-Botschaften. Vielleicht hilft auch eine Paartherapie. Streit ist normal, solange man fair bleibt.",
+          "en": "Communication is the key in any relationship. Sit down together, listen actively to each other, and use I-statements. Couples therapy might also help. Arguing is normal as long as you stay fair.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 10",
+      "label_en": "Counselling case 10",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe vor Kurzem meine Ausbildung abgebrochen und schäme mich total dafür. Alle fragen, wie es läuft, und ich weiß nicht, was ich antworten soll.",
+          "en": "I recently dropped out of my apprenticeship and I'm totally ashamed of it. Everyone asks how it's going and I don't know what to answer."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Eine Ausbildung abzubrechen ist eine mutige Entscheidung, auch wenn sie sich gerade vor allem nach Scham anfühlt. Dass du nicht weißt, was du anderen sagen sollst, macht das Ganze noch belastender. Magst du mir erzählen, was dich zu der Entscheidung gebracht hat aufzuhören?",
+          "en": "Dropping out of an apprenticeship is a brave decision, even if right now it mostly feels like shame. Not knowing what to tell other people makes the whole thing even harder. Would you like to tell me what led you to the decision to stop?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Ein Ausbildungsabbruch ist kein Weltuntergang. Viele erfolgreiche Menschen haben mal etwas abgebrochen. Sagen Sie den Leuten einfach die Wahrheit, dann ist der Druck weg. Konzentrieren Sie sich jetzt auf Ihre nächsten Schritte.",
+          "en": "Dropping out of an apprenticeship is not the end of the world. Many successful people have quit something at some point. Just tell people the truth, then the pressure is gone. Now focus on your next steps.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 11",
+      "label_en": "Counselling case 11",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich fühle mich in letzter Zeit oft überfordert. Arbeit, Haushalt, Familie – ich funktioniere nur noch und habe das Gefühl, keine Zeit mehr für mich selbst zu haben.",
+          "en": "Lately I often feel overwhelmed. Work, household, family - I'm just functioning and feel like I no longer have any time for myself."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Es klingt, als wärst du im Dauerlauf, ohne jemals wirklich Pause machen zu dürfen. Dieses Gefühl, nur noch zu funktionieren, ist ein wichtiges Signal, das es ernst zu nehmen gilt. Wann hattest du das letzte Mal einen Moment, der wirklich nur dir gehört hat?",
+          "en": "It sounds like you're permanently on the go, without ever really being allowed a break. This feeling of just functioning is an important signal that should be taken seriously. When was the last time you had a moment that truly belonged only to you?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Sie machen offenbar zu viel auf einmal. Delegieren Sie Aufgaben, lernen Sie, Nein zu sagen, und planen Sie feste Zeitfenster nur für sich ein. Selbstfürsorge ist kein Luxus, sondern eine Notwendigkeit. Probieren Sie es eine Woche aus.",
+          "en": "You're obviously doing too much at once. Delegate tasks, learn to say no, and schedule fixed time slots just for yourself. Self-care is not a luxury but a necessity. Try it for a week.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 12",
+      "label_en": "Counselling case 12",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe mich gerade von meinem langjährigen Partner getrennt. Eigentlich war es meine Entscheidung, aber jetzt fühle ich mich trotzdem leer und zweifle an allem.",
+          "en": "I just broke up with my long-term partner. It was actually my decision, but now I still feel empty and doubt everything."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Auch wenn eine Trennung die eigene Entscheidung war, darf sie sehr weh tun und Leere hinterlassen – das eine schließt das andere nicht aus. Es zeigt, wie viel diese Beziehung dir bedeutet hat. Woran zweifelst du gerade am meisten, wenn du sagst, du zweifelst an allem?",
+          "en": "Even when a breakup is your own decision, it can still hurt a great deal and leave an emptiness behind - one doesn't exclude the other. It shows how much this relationship meant to you. What do you doubt most right now when you say you doubt everything?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Trennungen sind schmerzhaft, aber Sie haben sich ja bewusst dafür entschieden. Vertrauen Sie Ihrem Bauchgefühl. Mit der Zeit heilen alle Wunden. Lenken Sie sich ab, treffen Sie Freunde und schauen Sie nach vorne.",
+          "en": "Breakups are painful, but you made this decision consciously. Trust your gut feeling. Time heals all wounds. Distract yourself, meet friends, and look ahead.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 13",
+      "label_en": "Counselling case 13",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich bekomme bald mein erstes Kind und freue mich eigentlich. Gleichzeitig habe ich große Angst, keine gute Mutter zu sein. Darüber kann ich mit niemandem reden.",
+          "en": "I'm having my first child soon and I'm actually happy. At the same time, I'm really afraid of not being a good mother. I can't talk to anyone about this."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Wie schön, dass du diesen Raum hier nutzt, um darüber zu sprechen – gerade weil es so schwer ist, das woanders auszusprechen. Vorfreude und Angst können gut nebeneinander bestehen, und der Wunsch, eine gute Mutter zu sein, zeigt ja schon, wie ernst du diese Rolle nimmst. Was genau löst die Angst aus, wenn du an die Zeit nach der Geburt denkst?",
+          "en": "How wonderful that you're using this space here to talk about it - especially because it's so hard to say elsewhere. Anticipation and fear can sit side by side, and the very wish to be a good mother already shows how seriously you take the role. What exactly triggers the fear when you think about the time after the birth?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Diese Sorge haben fast alle werdenden Mütter. Sie werden eine tolle Mutter sein, das spürt man schon an Ihrer Frage. Lesen Sie Ratgeber, besuchen Sie einen Geburtsvorbereitungskurs und vertrauen Sie auf Ihren Instinkt. Es wird alles gut.",
+          "en": "Almost all expectant mothers have this worry. You'll be a great mother, you can already tell from your question. Read guidebooks, attend a childbirth class, and trust your instinct. Everything will be fine.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 14",
+      "label_en": "Counselling case 14",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "In Gruppen oder bei Präsentationen wird mir oft ganz schlecht, mein Herz rast und ich werde rot. Ich vermeide solche Situationen mittlerweile, wo ich nur kann.",
+          "en": "In groups or during presentations I often feel really sick, my heart races and I turn red. By now I avoid such situations wherever I can."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Das hört sich nach sehr unangenehmen körperlichen Reaktionen an, die in diesen Situationen über dich hereinbrechen – kein Wunder, dass du sie zu vermeiden versuchst. Gleichzeitig schränkt dich das Vermeiden ja auch ein. Wie wirkt sich das gerade auf deinen Alltag aus?",
+          "en": "Those sound like very unpleasant physical reactions that crash over you in these situations - no wonder you try to avoid them. At the same time, the avoidance also restricts you. How is that currently affecting your everyday life?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Das sind klassische Symptome einer sozialen Phobie. Vermeidung verschlimmert das Problem auf Dauer. Setzen Sie sich den Situationen schrittweise aus, üben Sie Atemtechniken und ziehen Sie eine Verhaltenstherapie in Betracht. Konfrontation ist hier der Schlüssel.",
+          "en": "These are classic symptoms of social phobia. Avoidance worsens the problem in the long run. Expose yourself to the situations step by step, practice breathing techniques, and consider behavioral therapy. Confrontation is the key here.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 15",
+      "label_en": "Counselling case 15",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Mein erwachsener Sohn hat den Kontakt zu mir abgebrochen und ich verstehe nicht, warum. Ich grüble Tag und Nacht und mache mir Vorwürfe.",
+          "en": "My adult son has cut off contact with me and I don't understand why. I brood day and night and blame myself."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Wie schmerzhaft das sein muss – nicht zu wissen, warum der eigene Sohn sich zurückgezogen hat, und dann ganz allein mit diesen Fragen und Selbstvorwürfen zu sein. Das Grübeln ist ein verständlicher Versuch, eine Erklärung zu finden. Gab es aus deiner Sicht einen Moment, an dem sich etwas zwischen euch verändert hat?",
+          "en": "How painful that must be - not knowing why your own son withdrew, and then being all alone with these questions and self-blame. The brooding is an understandable attempt to find an explanation. From your perspective, was there a moment when something changed between you?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Kontaktabbrüche in Familien sind leider häufig. Geben Sie ihm Zeit und Raum. Schreiben Sie ihm einen Brief, in dem Sie Ihre Liebe ausdrücken, aber drängen Sie ihn nicht. Vielleicht meldet er sich von selbst wieder. Hören Sie auf, sich Vorwürfe zu machen.",
+          "en": "Contact breakups in families are unfortunately common. Give him time and space. Write him a letter expressing your love, but don't push him. Maybe he'll get back in touch on his own. Stop blaming yourself.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 16",
+      "label_en": "Counselling case 16",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe das Gefühl, dass ich nie genug bin, egal wie sehr ich mich anstrenge. In der Arbeit, bei Freunden, überall. Diese innere Stimme ist so streng.",
+          "en": "I feel like I'm never enough, no matter how hard I try. At work, with friends, everywhere. This inner voice is so harsh."
+        },
+        {
+          "role": "Berater",
+          "de": "Diese strenge innere Stimme, die nie zufrieden ist, kann unglaublich erschöpfend sein – es klingt, als würdest du sie ständig mit dir herumtragen. Erkennst du diese Stimme von irgendwoher? Klingt sie vielleicht wie jemand, den du kennst?",
+          "en": "This harsh inner voice that is never satisfied can be incredibly exhausting - it sounds like you carry it around with you constantly. Do you recognize this voice from somewhere? Does it perhaps sound like someone you know?"
+        },
+        {
+          "role": "Klient",
+          "de": "Jetzt, wo Sie es sagen... sie klingt ein bisschen wie mein Vater. Dem konnte ich es auch nie recht machen.",
+          "en": "Now that you mention it... it sounds a bit like my father. I could never get it right for him either."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Das ist eine sehr wichtige Beobachtung, die du da gerade machst. Oft übernehmen wir solche Stimmen aus der Kindheit und tragen sie unbemerkt weiter, lange nachdem die ursprüngliche Person gar nicht mehr da ist. Wie ist es für dich, diesen Zusammenhang jetzt so deutlich zu sehen?",
+          "en": "That's a very important observation you're making right now. We often take on such voices from childhood and carry them on unnoticed, long after the original person is no longer there. How is it for you to see this connection so clearly now?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Das ist ein typischer Fall von erlerntem Perfektionismus durch elterliche Konditionierung. Sie müssen lernen, diese Glaubenssätze zu hinterfragen und durch positive zu ersetzen. Affirmationen vor dem Spiegel und Inner-Child-Arbeit können hier sehr wirksam sein.",
+          "en": "This is a typical case of learned perfectionism through parental conditioning. You need to learn to question these beliefs and replace them with positive ones. Affirmations in front of the mirror and inner-child work can be very effective here.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 17",
+      "label_en": "Counselling case 17",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe gerade meine Abschlussprüfung nicht bestanden und fühle mich wie ein totaler Versager. Ich weiß gar nicht, wie ich das meinen Eltern sagen soll.",
+          "en": "I just failed my final exam and feel like a total failure. I don't even know how to tell my parents."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Eine Prüfung nicht zu bestehen, kann sich erst mal anfühlen, als würde alles zusammenbrechen – das macht dich aber nicht zu einem Versager, auch wenn es sich gerade genau so anfühlt. Und dann ist da noch die Sorge, es deinen Eltern zu sagen. Wovor hast du bei diesem Gespräch am meisten Angst?",
+          "en": "Failing an exam can at first feel like everything is collapsing - but it doesn't make you a failure, even if it feels exactly like that right now. And then there's the worry about telling your parents. What are you most afraid of about that conversation?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Eine nicht bestandene Prüfung ist kein Beinbruch, Sie können sie ja wiederholen. Seien Sie ehrlich zu Ihren Eltern, sie werden Verständnis haben. Analysieren Sie, woran es gelegen hat, und bereiten Sie sich beim nächsten Mal besser vor. Kopf hoch!",
+          "en": "A failed exam is no big deal, you can just retake it. Be honest with your parents, they'll be understanding. Analyze what went wrong and prepare better next time. Chin up!",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 18",
+      "label_en": "Counselling case 18",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Seit ich im Homeoffice arbeite, verschwimmen bei mir alle Grenzen. Ich arbeite oft bis spät abends und habe das Gefühl, nie wirklich Feierabend zu haben.",
+          "en": "Since I started working from home, all boundaries blur for me. I often work until late in the evening and feel like I never really finish work."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Wenn Arbeit und Privatleben am selben Ort stattfinden, kann es tatsächlich sehr schwer werden, einen klaren Schlussstrich zu ziehen – du beschreibst das sehr treffend mit dem 'nie wirklich Feierabend'. Was würde sich für dich verändern, wenn es diesen klaren Übergang wieder gäbe?",
+          "en": "When work and private life happen in the same place, it can indeed become very hard to draw a clear line - you describe that very aptly with 'never really finishing work'. What would change for you if this clear transition existed again?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Im Homeoffice braucht es klare Strukturen. Richten Sie sich einen festen Arbeitsplatz ein, halten Sie feste Arbeitszeiten ein und schließen Sie abends bewusst den Laptop. Ein kurzer Spaziergang als 'Pendel-Ersatz' kann den Übergang markieren. Disziplin ist hier alles.",
+          "en": "Working from home requires clear structures. Set up a fixed workspace, keep fixed working hours, and consciously close the laptop in the evening. A short walk as a 'commute substitute' can mark the transition. Discipline is everything here.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 19",
+      "label_en": "Counselling case 19",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Eine Freundin hat mir kürzlich anvertraut, dass es ihr sehr schlecht geht. Ich will für sie da sein, aber ich merke, dass mich das selbst total mitnimmt und überfordert.",
+          "en": "A friend recently confided in me that she's doing very badly. I want to be there for her, but I notice it's really taking a toll on me and overwhelming me."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Es spricht für eure Freundschaft, dass du so für sie da sein möchtest – und gleichzeitig ist es völlig in Ordnung, dass dich das an deine eigenen Grenzen bringt. Auch wer hilft, braucht Halt. Hast du im Moment selbst jemanden, mit dem du über deine eigene Belastung sprechen kannst?",
+          "en": "It speaks to your friendship that you want to be there for her so much - and at the same time it's completely okay that this pushes you to your own limits. Even those who help need support. Do you yourself currently have someone you can talk to about your own burden?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Sie sind eine gute Freundin, aber Sie können sie nicht heilen. Raten Sie ihr dringend, professionelle Hilfe zu suchen, etwa bei einem Therapeuten oder einer Beratungsstelle. Achten Sie auf Ihre eigenen Grenzen und überfordern Sie sich nicht. Sie sind nicht für ihr Wohlergehen verantwortlich.",
+          "en": "You're a good friend, but you can't heal her. Strongly advise her to seek professional help, such as from a therapist or a counseling center. Pay attention to your own boundaries and don't overburden yourself. You're not responsible for her well-being.",
+          "source": "llm",
+          "generated_by": "GPT-4o"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 20",
+      "label_en": "Counselling case 20",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich bin jetzt seit einem Jahr in Rente und dachte, ich würde die freie Zeit genießen. Stattdessen fühle ich mich nutzlos und weiß morgens nicht, wofür ich aufstehen soll.",
+          "en": "I've been retired for a year now and thought I'd enjoy the free time. Instead, I feel useless and don't know what to get up for in the morning."
+        }
+      ],
+      "candidates": [
+        {
+          "de": "Der Übergang in die Rente ist eine viel größere Umstellung, als viele erwarten – plötzlich fällt eine Struktur weg, die einem jahrzehntelang Halt und Sinn gegeben hat. Dass du dich gerade nutzlos fühlst, ist ein verständlicher Teil dieser Suche nach einem neuen 'Wofür'. Was hat dir an deiner Arbeit früher am meisten gegeben?",
+          "en": "The transition into retirement is a much bigger adjustment than many expect - suddenly a structure falls away that gave you support and meaning for decades. That you currently feel useless is an understandable part of this search for a new 'what for'. What did your work give you that mattered most?",
+          "source": "human",
+          "generated_by": "human"
+        },
+        {
+          "de": "Der Ruhestand will gestaltet werden. Suchen Sie sich ein Ehrenamt, nehmen Sie ein altes Hobby wieder auf oder engagieren Sie sich im Verein. Struktur und Aufgaben geben dem Tag Sinn. Mit etwas Eigeninitiative finden Sie schnell wieder Freude am Leben.",
+          "en": "Retirement needs to be shaped. Find a volunteer activity, take up an old hobby again, or get involved in a club. Structure and tasks give the day meaning. With a bit of initiative, you'll quickly find joy in life again.",
+          "source": "llm",
+          "generated_by": "Mistral-Small"
+        }
+      ]
+    }
+  ]
+}

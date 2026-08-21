@@ -89,14 +89,24 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.oncoco import oncoco_bp
     app.register_blueprint(oncoco_bp)
 
-    # AI Writing Assistant
-    from routes.ai_writing import ai_writing_bp
-    app.register_blueprint(ai_writing_bp)
-
     # Batch Generation (Prompt Engineering → LLM → Evaluation pipeline)
     from routes.generation import generation_bp, generation_debug_bp
     app.register_blueprint(generation_bp)
-    app.register_blueprint(generation_debug_bp)
+    # SECURITY: generation_debug_bp exposes scenario introspection AND mutation
+    # helpers (inspect/verify/fix messages, add-llm-evaluators, trigger eval)
+    # behind only @api_key_or_token_required — i.e. any authenticated user could
+    # read/mutate ARBITRARY scenarios via IDOR. These are developer tools; only
+    # register them in development. In production the blueprint is absent (404).
+    import os as _os
+    if _os.environ.get('FLASK_ENV', 'production') == 'development':
+        app.register_blueprint(generation_debug_bp)
+    else:
+        print("[Registry] Skipping generation_debug_bp (non-development FLASK_ENV)")
+
+    # Automated Pipeline (Prompt → Generation → Evaluation → Analysis loop)
+    from routes.pipeline import pipeline_bp, pipeline_admin_bp
+    app.register_blueprint(pipeline_bp)
+    app.register_blueprint(pipeline_admin_bp)
 
     # ============================================================
     # Document & Knowledge Management
@@ -114,17 +124,21 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.markdown_collab import markdown_collab_bp
     app.register_blueprint(markdown_collab_bp)
 
-    # LaTeX Collab (split into 6 sub-blueprints)
-    from routes.latex_collab import register_latex_collab_routes
-    register_latex_collab_routes(app)
-
-    # Zotero Integration (for LaTeX Collab)
-    from routes.zotero import zotero_bp
-    app.register_blueprint(zotero_bp)
-
     # Anonymize (offline pseudonymization)
     from routes.anonymize import anonymize_bp
     app.register_blueprint(anonymize_bp)
+
+    # Anonymization Pipeline (batch processing and manual review)
+    from routes.anonymization import anonymization_bp
+    app.register_blueprint(anonymization_bp)
+
+    # Conference Manager (conference tracking, paper management)
+    from routes.conference_manager import conference_manager_bp
+    app.register_blueprint(conference_manager_bp)
+
+    # Messaging (text chat, voice/video calls, E2E encryption)
+    from routes.messaging import messaging_bp
+    app.register_blueprint(messaging_bp)
 
     # Web Crawler
     from routes.crawler import crawler_bp
@@ -137,6 +151,10 @@ def register_all_blueprints(app: Flask) -> None:
     # Wizard API (Programmatic Scenario Wizard for Claude Code)
     from routes.wizard import bp as wizard_bp
     app.register_blueprint(wizard_bp)
+
+    # DB Price Agent (Deutsche Bahn price monitoring)
+    from routes.db_agent.db_agent_routes import db_agent_bp
+    app.register_blueprint(db_agent_bp)
 
     # ============================================================
     # Project-Specific Features
@@ -160,6 +178,16 @@ def register_all_blueprints(app: Flask) -> None:
     # Demo Video Admin API (IJCAI 2026)
     from routes.demo_video import demo_video_bp
     app.register_blueprint(demo_video_bp)
+
+    # Inbound provider webhooks (Brevo open/click events). Unauthenticated —
+    # guarded by a shared secret token (BREVO_WEBHOOK_TOKEN), not a session.
+    from routes.webhooks_routes import webhooks_bp
+    app.register_blueprint(webhooks_bp)
+
+    # Public LLARS v1 API (programmatic scenario management — see
+    # docs/docs/guides/api-v1-scenarios.md). Mounted under /api/v1/*.
+    from routes.api_v1 import api_v1_bp
+    app.register_blueprint(api_v1_bp)
 
     # ============================================================
     # Development-Only Routes (hidden in production)
@@ -201,17 +229,19 @@ def get_blueprint_info() -> dict:
             {'name': 'evaluation', 'prefix': '/api/evaluation', 'description': 'Evaluation metrics (agreement metrics)'},
             {'name': 'judge', 'prefix': '/api/judge', 'description': 'LLM-as-Judge automated evaluation'},
             {'name': 'oncoco', 'prefix': '/api/oncoco', 'description': 'OnCoCo analysis'},
-            {'name': 'ai_writing', 'prefix': '/api/ai-writing', 'description': 'AI writing assistant for LaTeX/Markdown'},
             {'name': 'generation', 'prefix': '/api/generation', 'description': 'Batch generation pipeline (Prompt → LLM → Evaluation)'},
+            {'name': 'pipeline_admin', 'prefix': '/api/pipeline/admin', 'description': 'Pipeline Admin API (system API key, E2E testing)'},
         ],
         'knowledge_management': [
             {'name': 'rag', 'prefix': '/api/rag', 'description': 'RAG document management and search'},
             {'name': 'chatbot', 'prefix': '/api/chatbot', 'description': 'Chatbot interface'},
             {'name': 'crawler', 'prefix': '/api/crawler', 'description': 'Web crawler'},
             {'name': 'markdown_collab', 'prefix': '/api/markdown-collab', 'description': 'Markdown Collab workspaces and documents'},
-            {'name': 'latex_collab', 'prefix': '/api/latex-collab', 'description': 'LaTeX Collab workspaces and documents'},
-            {'name': 'zotero', 'prefix': '/api/zotero', 'description': 'Zotero reference manager integration'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
+            {'name': 'anonymization', 'prefix': '/api/anonymization', 'description': 'Conversation anonymization pipeline'},
+            {'name': 'anonymization', 'prefix': '/api/anonymization', 'description': 'Conversation anonymization pipeline'},
+            {'name': 'conference_manager', 'prefix': '/api/conference-manager', 'description': 'Conference tracking and paper management'},
+            {'name': 'messaging', 'prefix': '/api/messaging', 'description': 'Messaging with text chat and encryption'},
             {'name': 'import', 'prefix': '/api/import', 'description': 'Universal data import with AI assistance'},
             {'name': 'wizard', 'prefix': '/api/wizard', 'description': 'Scenario Wizard API for programmatic access (Claude Code)'},
         ],

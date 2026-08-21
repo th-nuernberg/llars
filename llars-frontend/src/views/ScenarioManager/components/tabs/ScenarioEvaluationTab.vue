@@ -1,44 +1,247 @@
 <template>
   <div class="evaluation-tab" :class="{ 'screenshot-font-boost': isScreenshotMode }">
     <!-- Summary Cards -->
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="summary-icon" style="background-color: rgba(176, 202, 151, 0.15);">
-          <LIcon color="#b0ca97" size="24">mdi-check-circle-outline</LIcon>
+    <Transition name="eval-fade" mode="out-in">
+      <div v-if="!statsLoading" key="summary" class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-icon" style="background-color: rgba(176, 202, 151, 0.15);">
+            <LIcon color="#b0ca97" size="24">mdi-check-circle-outline</LIcon>
+          </div>
+          <div class="summary-content">
+            <span class="summary-value">{{ summaryStats.totalEvaluations }}</span>
+            <span class="summary-label">{{ $t('scenarioManager.results.totalEvaluations') }}</span>
+          </div>
         </div>
-        <div class="summary-content">
-          <span class="summary-value">{{ summaryStats.totalEvaluations }}</span>
-          <span class="summary-label">{{ $t('scenarioManager.results.totalEvaluations') }}</span>
+
+        <div class="summary-card" v-if="hasHumans">
+          <div class="summary-icon" style="background-color: rgba(136, 196, 200, 0.15);">
+            <LIcon color="#88c4c8" size="24">mdi-account-multiple-outline</LIcon>
+          </div>
+          <div class="summary-content">
+            <span class="summary-value">{{ summaryStats.humanEvaluators }}</span>
+            <span class="summary-label">{{ $t('scenarioManager.results.humanEvaluators') }}</span>
+          </div>
+        </div>
+
+        <div class="summary-card" v-if="hasLLMs">
+          <div class="summary-icon" style="background-color: rgba(196, 160, 212, 0.15);">
+            <LIcon color="#c4a0d4" size="24">mdi-robot-outline</LIcon>
+          </div>
+          <div class="summary-content">
+            <span class="summary-value">{{ summaryStats.llmEvaluators }}</span>
+            <span class="summary-label">{{ $t('scenarioManager.results.llmEvaluators') }}</span>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-icon" style="background-color: rgba(209, 188, 138, 0.15);">
+            <LIcon color="#D1BC8A" size="24">mdi-percent</LIcon>
+          </div>
+          <div class="summary-content">
+            <span class="summary-value">{{ summaryStats.agreementRate }}%</span>
+            <span class="summary-label">{{ $t('scenarioManager.results.agreementRate') }}</span>
+          </div>
         </div>
       </div>
-
-      <div class="summary-card" v-if="hasHumans">
-        <div class="summary-icon" style="background-color: rgba(136, 196, 200, 0.15);">
-          <LIcon color="#88c4c8" size="24">mdi-account-multiple-outline</LIcon>
-        </div>
-        <div class="summary-content">
-          <span class="summary-value">{{ summaryStats.humanEvaluators }}</span>
-          <span class="summary-label">{{ $t('scenarioManager.results.humanEvaluators') }}</span>
-        </div>
-      </div>
-
-      <div class="summary-card" v-if="hasLLMs">
-        <div class="summary-icon" style="background-color: rgba(196, 160, 212, 0.15);">
-          <LIcon color="#c4a0d4" size="24">mdi-robot-outline</LIcon>
-        </div>
-        <div class="summary-content">
-          <span class="summary-value">{{ summaryStats.llmEvaluators }}</span>
-          <span class="summary-label">{{ $t('scenarioManager.results.llmEvaluators') }}</span>
+      <div v-else key="summary-skeleton" class="summary-grid">
+        <div v-for="n in 4" :key="n" class="summary-card summary-card--skeleton">
+          <div class="skeleton-block" style="width: 32px; height: 32px; border-radius: 8px;" />
+          <div class="summary-content">
+            <div class="skeleton-block" style="width: 48px; height: 24px;" />
+            <div class="skeleton-block" style="width: 80px; height: 12px;" />
+          </div>
         </div>
       </div>
+    </Transition>
 
-      <div class="summary-card">
-        <div class="summary-icon" style="background-color: rgba(209, 188, 138, 0.15);">
-          <LIcon color="#D1BC8A" size="24">mdi-percent</LIcon>
+    <!-- Einzelstimmen-Matrix: who (which evaluator) voted what (A/B/tie) per
+         comparison item. Only for pairwise scenarios (comparison + the
+         counselling-style communication_comparison). Reuses the per-vote
+         export, pivoted client-side into an item × evaluator grid. -->
+    <div class="section-card vote-matrix-section" v-if="isPairwiseScenario">
+      <div class="section-header">
+        <div class="section-title">
+          <LIcon color="accent" size="20" class="mr-2">mdi-vote-outline</LIcon>
+          <h3>{{ $t('scenarioManager.results.voteMatrix.title') }}</h3>
         </div>
-        <div class="summary-content">
-          <span class="summary-value">{{ summaryStats.agreementRate }}%</span>
-          <span class="summary-label">{{ $t('scenarioManager.results.agreementRate') }}</span>
+        <!-- Glanceable counts: comparisons × visible voters -->
+        <div v-if="hasVoteMatrix" class="vm-head-meta">
+          <span class="vm-head-stat" :title="$t('scenarioManager.results.voteMatrix.item')">
+            <LIcon size="14">mdi-format-list-numbered</LIcon>{{ voteMatrix.items.length }}
+          </span>
+          <span class="vm-head-stat" :title="$t('scenarioManager.results.voteMatrix.voters')">
+            <LIcon size="14">mdi-account-multiple-outline</LIcon>{{ visibleEvaluators.length }}
+          </span>
+        </div>
+      </div>
+      <div class="section-body">
+        <p class="section-desc">{{ $t('scenarioManager.results.voteMatrix.description') }}</p>
+
+        <!-- Voter filter: click a voter to hide them from the matrix + author
+             analysis (e.g. test accounts). Eye-off = excluded. -->
+        <div v-if="hasVoteMatrix && voteMatrix.evaluators.length > 1" class="vm-voter-filter">
+          <span class="vm-voter-filter-label">{{ $t('scenarioManager.results.voteMatrix.voters') }}</span>
+          <button
+            v-for="ev in voteMatrix.evaluators"
+            :key="`vf-${ev}`"
+            type="button"
+            class="vm-voter-chip"
+            :class="{ 'vm-voter-chip--off': excludedVoters.has(ev) }"
+            :title="excludedVoters.has(ev)
+              ? $t('scenarioManager.results.voteMatrix.voterInclude', { name: ev })
+              : $t('scenarioManager.results.voteMatrix.voterExclude', { name: ev })"
+            @click="toggleVoter(ev)"
+          >
+            <span v-if="originColor(ev)" class="vm-voter-dot" :style="{ backgroundColor: originColor(ev) }" />
+            <LIcon size="13">{{ excludedVoters.has(ev) ? 'mdi-eye-off-outline' : 'mdi-eye-outline' }}</LIcon>
+            {{ ev }}
+          </button>
+          <span v-if="excludedCount" class="vm-voter-hint">
+            {{ $t('scenarioManager.results.voteMatrix.votersExcluded', { n: excludedCount }) }}
+          </span>
+        </div>
+
+        <div v-if="votesLoading" class="vote-matrix-state">
+          <v-progress-circular indeterminate color="primary" size="28" />
+        </div>
+        <div v-else-if="!hasVoteMatrix" class="vote-matrix-state">
+          <LIcon size="40" color="grey-lighten-1">mdi-vote-outline</LIcon>
+          <p>{{ $t('scenarioManager.results.voteMatrix.noData') }}</p>
+        </div>
+        <div v-else class="vote-matrix-scroll">
+          <table class="vote-matrix-table">
+            <thead>
+              <tr>
+                <th class="vm-item-col">{{ $t('scenarioManager.results.voteMatrix.item') }}</th>
+                <th v-for="ev in visibleEvaluators" :key="ev" class="vm-eval-col" :title="ev">{{ ev }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(it, idx) in voteMatrix.items" :key="it.id">
+                <td class="vm-item-col">
+                  <span class="vm-item-idx">{{ idx + 1 }}</span>
+                  <span class="vm-item-subject" :title="it.subject">{{ it.subject }}</span>
+                </td>
+                <td v-for="ev in visibleEvaluators" :key="ev" class="vm-cell">
+                  <span v-if="voteCell(it.id, ev)" class="vm-vote">
+                    <LTag :variant="choiceVariant(voteCell(it.id, ev))" size="sm">
+                      {{ choiceLabel(voteCell(it.id, ev)) }}
+                    </LTag>
+                    <!-- Author of the chosen option (H = Mensch, sonst LLM-Kürzel),
+                         damit sichtbar ist, ob ein Mensch oder eine KI gewählt wurde. -->
+                    <span
+                      v-if="cellSourceMeta(it.id, ev)"
+                      class="vm-src-chip"
+                      :style="{ background: cellSourceMeta(it.id, ev).color }"
+                      :title="cellSourceMeta(it.id, ev).label"
+                    >{{ cellSourceMeta(it.id, ev).abbr }}</span>
+                  </span>
+                  <span v-else class="vm-empty-cell">–</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Quellen-Legende: nur wenn die Daten Autoren-Infos hergeben. -->
+        <div v-if="hasVoteMatrix && voteLegend.length" class="vm-legend">
+          <span class="vm-legend-label">{{ $t('scenarioManager.results.voteMatrix.sourceLegend') }}</span>
+          <span v-for="s in voteLegend" :key="s.key" class="vm-legend-item">
+            <span class="vm-src-chip" :style="{ background: s.color }">{{ s.abbr }}</span>
+            <span class="vm-legend-text">{{ s.label }}</span>
+          </span>
+        </div>
+
+        <!-- Voter-Herkunft-Legende: erklärt die Ref-Link-Farbpunkte an den
+             VOTERS-Chips oben (Farbe → Quelle, + Bestandsnutzer). Direkt unter
+             der SOURCE-Legende platziert. Rendert nichts ohne Referral-Quellen. -->
+        <LOriginLegend :origins="scenarioOriginsList" class="vm-origin-legend" />
+      </div>
+    </div>
+
+    <!-- Author-level analysis: how often a human vs an LLM answer was chosen.
+         Aggregates the per-vote authors (option A/B sources) into a system
+         ranking (win rate + 95% CI + Bradley–Terry strength) and head-to-head
+         win rates. Only shown when the data carries author info AND at least two
+         distinct authors actually met. The rater UI is unaffected. -->
+    <div class="section-card author-ranking-section" v-if="isPairwiseScenario && hasAuthorStats">
+      <div class="section-header">
+        <div class="section-title">
+          <LIcon color="success" size="20" class="mr-2">mdi-trophy-outline</LIcon>
+          <h3>{{ $t('scenarioManager.results.authorRanking.title') }}</h3>
+        </div>
+        <div class="vm-head-meta">
+          <span class="vm-head-stat" :title="$t('scenarioManager.results.voteMatrix.item')">
+            <LIcon size="14">mdi-swap-horizontal</LIcon>{{ authorStats.totalComparisons }}
+          </span>
+        </div>
+      </div>
+      <div class="section-body">
+        <p class="section-desc">{{ $t('scenarioManager.results.authorRanking.description') }}</p>
+
+        <div class="author-tables">
+          <!-- Table 1: system ranking -->
+          <div class="author-table-wrap">
+            <table class="author-table">
+              <thead>
+                <tr>
+                  <th class="at-left">{{ $t('scenarioManager.results.authorRanking.system') }}</th>
+                  <th>{{ $t('scenarioManager.results.authorRanking.winRate') }}</th>
+                  <th>{{ $t('scenarioManager.results.authorRanking.bt') }}</th>
+                  <th>{{ $t('scenarioManager.results.authorRanking.rank') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="s in authorStats.systems" :key="s.key" :class="{ 'at-human': s.key === 'human' }">
+                  <td class="at-left">
+                    {{ s.label }}
+                    <span v-if="s.key === 'human'" class="at-ref">({{ $t('scenarioManager.results.authorRanking.reference') }})</span>
+                  </td>
+                  <td class="at-wr-cell">
+                    <div class="at-wr">
+                      <span class="at-wr-num">{{ Math.round(s.winRatePct) }}%</span>
+                      <span class="at-ci">[{{ Math.round(s.ciLowPct) }}–{{ Math.round(s.ciHighPct) }}]</span>
+                    </div>
+                    <div class="at-wr-track">
+                      <div class="at-wr-fill" :class="{ 'at-wr-fill--top': s.rank === 1 }" :style="{ width: Math.max(0, Math.min(100, s.winRatePct)) + '%' }"></div>
+                    </div>
+                  </td>
+                  <td class="at-bt">{{ s.bt.toFixed(2) }}</td>
+                  <td><span class="at-rank" :class="{ 'at-rank--top': s.rank === 1 }">{{ s.rank }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table 2: pairwise win rates -->
+          <div class="author-table-wrap">
+            <table class="author-table">
+              <thead>
+                <tr>
+                  <th class="at-left">{{ $t('scenarioManager.results.authorRanking.pairing') }}</th>
+                  <th>{{ $t('scenarioManager.results.authorRanking.pairWinRate') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="p in authorStats.pairings" :key="p.aKey + '|' + p.bKey">
+                  <td class="at-left">{{ p.aLabel }} <span class="at-vs">vs.</span> {{ p.bLabel }}</td>
+                  <td class="at-pair-cell">
+                    <div class="at-pair-num">{{ Math.round(p.aRatePct) }} : {{ Math.round(p.bRatePct) }}</div>
+                    <div class="at-pair-bar" :title="`${p.aLabel} ${Math.round(p.aRatePct)}% · ${p.bLabel} ${Math.round(p.bRatePct)}%`">
+                      <!-- a gets its exact share; b flex-fills the remainder so the
+                           two segments always sum to exactly the track width. -->
+                      <div class="at-pair-a" :style="{ width: p.aRatePct + '%' }"></div>
+                      <div class="at-pair-b"></div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-if="authorStats.selfAgreement !== null" class="at-selfagree">
+              <LIcon size="13" class="mr-1">mdi-sync</LIcon>
+              {{ $t('scenarioManager.results.authorRanking.selfAgreement') }}: <strong>{{ Math.round(authorStats.selfAgreement) }}%</strong>
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -70,6 +273,28 @@
             <v-btn value="llm" size="small">
               <LIcon start size="16">mdi-robot</LIcon>
               {{ $t('scenarioManager.evaluation.filter.llm') }}
+            </v-btn>
+          </v-btn-toggle>
+
+          <!-- Co-Pilot filter (labeling only): recompute agreement over cells
+               labeled WITH vs WITHOUT a visible suggestion (anchoring view) -->
+          <v-btn-toggle
+            v-if="isLabelingScenario"
+            v-model="copilotMetricsFilter"
+            mandatory
+            density="compact"
+            class="evaluator-filter-toggle"
+          >
+            <v-btn value="all" size="small">
+              {{ $t('scenarioManager.evaluation.copilotFilter.all') }}
+            </v-btn>
+            <v-btn value="with" size="small">
+              <LIcon start size="16">mdi-robot-outline</LIcon>
+              {{ $t('scenarioManager.evaluation.copilotFilter.with') }}
+            </v-btn>
+            <v-btn value="without" size="small">
+              <LIcon start size="16">mdi-robot-off-outline</LIcon>
+              {{ $t('scenarioManager.evaluation.copilotFilter.without') }}
             </v-btn>
           </v-btn-toggle>
 
@@ -105,72 +330,79 @@
       </div>
 
       <!-- Total Progress Section -->
-      <div class="total-progress-section">
-        <div class="progress-header">
-          <h4 class="subsection-title">
-            <LIcon size="18" class="mr-2">mdi-progress-check</LIcon>
-            {{ $t('scenarioManager.evaluation.totalProgress') }}
-          </h4>
-          <div class="progress-stats">
-            <span class="progress-count">{{ filteredProgress.completed }} / {{ filteredProgress.total }}</span>
-            <span class="progress-percent">{{ filteredProgress.percent }}%</span>
+      <Transition name="eval-fade" mode="out-in">
+        <div v-if="!statsLoading" key="progress" class="total-progress-section">
+          <div class="progress-header">
+            <h4 class="subsection-title">
+              <LIcon size="18" class="mr-2">mdi-progress-check</LIcon>
+              {{ $t('scenarioManager.evaluation.totalProgress') }}
+            </h4>
+            <div class="progress-stats">
+              <span class="progress-count">{{ filteredProgress.completed }} / {{ filteredProgress.total }}</span>
+              <span class="progress-percent">{{ filteredProgress.percent }}%</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Main Progress Bar -->
-        <div class="progress-bar-container">
-          <div class="progress-bar-track">
-            <div
-              class="progress-bar-fill"
-              :style="{ width: filteredProgress.percent + '%' }"
-              :class="getProgressColorClass(filteredProgress.percent)"
-            ></div>
+          <!-- Main Progress Bar -->
+          <div class="progress-bar-container">
+            <div class="progress-bar-track">
+              <div
+                class="progress-bar-fill"
+                :style="{ width: filteredProgress.percent + '%' }"
+                :class="getProgressColorClass(filteredProgress.percent)"
+              ></div>
+            </div>
           </div>
-        </div>
 
-        <!-- Progress Legend (when filter is "all") -->
-        <div class="progress-legend" v-if="evaluatorTypeFilter === 'all' && hasHumans && hasLLMs">
-          <div class="legend-item human">
-            <LIcon size="14">mdi-account</LIcon>
-            <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.human') }}</span>
-            <span class="legend-value">{{ filteredProgress.human.completed }}/{{ filteredProgress.human.total }}</span>
-            <span class="legend-percent">({{ filteredProgress.human.percent }}%)</span>
+          <!-- Progress Legend (when filter is "all") -->
+          <div class="progress-legend" v-if="evaluatorTypeFilter === 'all' && hasHumans && hasLLMs">
+            <div class="legend-item human">
+              <LIcon size="14">mdi-account</LIcon>
+              <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+              <span class="legend-value">{{ filteredProgress.human.completed }}/{{ filteredProgress.human.total }}</span>
+              <span class="legend-percent">({{ filteredProgress.human.percent }}%)</span>
+            </div>
+            <div class="legend-item llm">
+              <LIcon size="14">mdi-robot</LIcon>
+              <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+              <span class="legend-value">{{ filteredProgress.llm.completed }}/{{ filteredProgress.llm.total }}</span>
+              <span class="legend-percent">({{ filteredProgress.llm.percent }}%)</span>
+            </div>
           </div>
-          <div class="legend-item llm">
-            <LIcon size="14">mdi-robot</LIcon>
-            <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
-            <span class="legend-value">{{ filteredProgress.llm.completed }}/{{ filteredProgress.llm.total }}</span>
-            <span class="legend-percent">({{ filteredProgress.llm.percent }}%)</span>
-          </div>
-        </div>
 
-        <!-- Evaluator count info -->
-        <div class="evaluator-count-info">
-          <span v-if="evaluatorTypeFilter === 'all'">
-            {{ filteredProgress.human.count + filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.evaluators') }}
-            ({{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.filter.human') }}, {{ filteredProgress.llm.count }} LLM)
-          </span>
-          <span v-else-if="evaluatorTypeFilter === 'human'">
-            {{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.humanEvaluators') }}
-          </span>
-          <span v-else>
-            {{ filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.llmEvaluators') }}
-          </span>
+          <!-- Evaluator count info -->
+          <div class="evaluator-count-info">
+            <span v-if="evaluatorTypeFilter === 'all'">
+              {{ filteredProgress.human.count + filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.evaluators') }}
+              ({{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.filter.human') }}, {{ filteredProgress.llm.count }} LLM)
+            </span>
+            <span v-else-if="evaluatorTypeFilter === 'human'">
+              {{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.humanEvaluators') }}
+            </span>
+            <span v-else>
+              {{ filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.llmEvaluators') }}
+            </span>
+          </div>
         </div>
-      </div>
+        <div v-else key="progress-skeleton" class="total-progress-section">
+          <div class="skeleton-block" style="height: 16px; width: 140px; margin-bottom: 8px;" />
+          <div class="skeleton-block" style="height: 24px; width: 100%; border-radius: 12px;" />
+        </div>
+      </Transition>
 
       <!-- Agreement Metrics -->
-      <div class="metrics-section" v-if="hasMetrics">
-        <h4 class="subsection-title">
-          {{ $t('scenarioManager.results.agreementMetrics') }}
-          <LTooltip :text="$t('scenarioManager.tooltips.agreementMetrics')" location="top">
-            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
-          </LTooltip>
-        </h4>
-        <p v-if="isRankingScenario" class="subsection-description text-medium-emphasis text-caption mb-2">
-          {{ $t('scenarioManager.results.rankingMetricsDescription') }}
-        </p>
-        <div class="metrics-grid">
+      <Transition name="eval-fade" mode="out-in">
+        <div v-if="hasMetrics" key="metrics" class="metrics-section">
+          <h4 class="subsection-title">
+            {{ $t('scenarioManager.results.agreementMetrics') }}
+            <LTooltip :text="$t('scenarioManager.tooltips.agreementMetrics')" location="top">
+              <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+            </LTooltip>
+          </h4>
+          <p v-if="isRankingScenario" class="subsection-description text-medium-emphasis text-caption mb-2">
+            {{ $t('scenarioManager.results.rankingMetricsDescription') }}
+          </p>
+          <div class="metrics-grid">
           <!-- Cohen's Kappa (Rating, Classification) -->
           <div class="metric-item" v-if="showKappa && liveAgreementMetrics?.kappa !== null && liveAgreementMetrics?.kappa !== undefined">
             <LTooltip location="top">
@@ -269,7 +501,7 @@
             </LTooltip>
           </div>
 
-          <!-- ICC (Intraclass Correlation Coefficient) - Rating only -->
+          <!-- ICC disabled - needs more items (10+) to be meaningful
           <div class="metric-item" v-if="showICC && liveAgreementMetrics?.icc !== null && liveAgreementMetrics?.icc !== undefined">
             <LTooltip location="top">
               <template #content>
@@ -293,6 +525,7 @@
               </div>
             </LTooltip>
           </div>
+          -->
 
           <!-- Kendall's W (Coefficient of Concordance) - Ranking only -->
           <div class="metric-item" v-if="showKendallW && liveAgreementMetrics?.kendallW !== null && liveAgreementMetrics?.kendallW !== undefined">
@@ -339,42 +572,6 @@
                   {{ liveAgreementMetrics.kendall?.toFixed(3) }}
                 </span>
                 <span class="metric-label">Kendall's τ <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
-              </div>
-            </LTooltip>
-          </div>
-
-          <!-- MAE (Mean Absolute Error) - Rating only -->
-          <div class="metric-item" v-if="showMAE && liveAgreementMetrics?.mae !== null && liveAgreementMetrics?.mae !== undefined">
-            <LTooltip location="top">
-              <template #content>
-                <div class="tooltip-content">
-                  <strong>{{ $t('scenarioManager.tooltips.mae.title') }}</strong>
-                  <p>{{ $t('scenarioManager.tooltips.mae.description') }}</p>
-                </div>
-              </template>
-              <div class="metric-content">
-                <span class="metric-value error-metric">
-                  {{ liveAgreementMetrics.mae?.toFixed(3) }}
-                </span>
-                <span class="metric-label">MAE <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
-              </div>
-            </LTooltip>
-          </div>
-
-          <!-- RMSE (Root Mean Squared Error) - Rating only -->
-          <div class="metric-item" v-if="showRMSE && liveAgreementMetrics?.rmse !== null && liveAgreementMetrics?.rmse !== undefined">
-            <LTooltip location="top">
-              <template #content>
-                <div class="tooltip-content">
-                  <strong>{{ $t('scenarioManager.tooltips.rmse.title') }}</strong>
-                  <p>{{ $t('scenarioManager.tooltips.rmse.description') }}</p>
-                </div>
-              </template>
-              <div class="metric-content">
-                <span class="metric-value error-metric">
-                  {{ liveAgreementMetrics.rmse?.toFixed(3) }}
-                </span>
-                <span class="metric-label">RMSE <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
               </div>
             </LTooltip>
           </div>
@@ -428,6 +625,18 @@
           </div>
         </div>
       </div>
+        <div v-else-if="statsLoading" key="metrics-skeleton" class="metrics-section">
+          <div class="metrics-grid">
+            <div v-for="n in metricsSkeletonCount" :key="n" class="metric-item metric-item--skeleton">
+              <div class="skeleton-block" style="width: 100%; height: 60px; border-radius: 8px;" />
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Type-Specific Sections (with skeleton fallback) -->
+      <Transition name="eval-fade" mode="out-in">
+        <div v-if="!statsLoading" key="type-content" class="type-specific-content">
 
       <!-- Confusion Matrix -->
       <div class="confusion-matrix-section" v-if="isAuthenticityScenario && hasConfusionMatrixData">
@@ -458,6 +667,70 @@
         />
       </div>
 
+      <!-- Authenticity Provenance Analysis -->
+      <div class="provenance-section" v-if="hasAuthenticityProvenance">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.authenticityProvenance') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.authenticityProvenance')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <p class="subsection-description text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.authenticityProvenanceDescription') }}
+        </p>
+
+        <div class="provenance-best-grid">
+          <div class="provenance-best-card" v-if="bestFoolingSource">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestFoolingLLM') }}</span>
+            <strong class="provenance-best-name">{{ bestFoolingSource.source }}</strong>
+            <span class="provenance-best-meta">
+              {{ bestFoolingSource.fool_rate }}% {{ $t('scenarioManager.results.foolRate') }}
+            </span>
+          </div>
+          <div class="provenance-best-card" v-if="humanFalsePositiveRate !== null">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.humanFalsePositiveRate') }}</span>
+            <strong class="provenance-best-name">{{ humanFalsePositiveRate }}%</strong>
+            <span class="provenance-best-meta">
+              {{ $t('scenarioManager.results.humanFalsePositiveRateDescription') }}
+            </span>
+          </div>
+        </div>
+
+        <div class="provenance-lists-grid">
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.sourceRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.foolRate') }}</span>
+            </div>
+            <div v-if="authenticityProvenanceSources.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in authenticityProvenanceSources"
+                :key="`auth-prov-${entry.source}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">
+                    {{ entry.source }}
+                    <span class="provenance-badge" :class="entry.is_fake ? 'badge-fake' : 'badge-real'">
+                      {{ entry.is_fake ? 'Fake' : 'Real' }}
+                    </span>
+                  </span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate" v-if="entry.is_fake">{{ entry.fool_rate }}%</span>
+                  <span class="provenance-rate" v-else>{{ entry.false_positive_rate }}% FP</span>
+                  <span class="provenance-count">n={{ entry.thread_count }} ({{ entry.total_votes }} {{ $t('scenarioManager.results.votes') }})</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Provenance Analysis (Ranking) -->
       <div class="provenance-section" v-if="hasProvenanceAnalysis">
         <h4 class="subsection-title">
@@ -479,21 +752,21 @@
         <div class="provenance-best-grid">
           <div class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestLLM') }}</span>
-            <strong class="provenance-best-name">{{ bestProvenanceLLM?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestProvenanceLLM ? formatProvenanceLabel(bestProvenanceLLM.label) : '-' }}</strong>
             <span v-if="bestProvenanceLLM" class="provenance-best-meta">
               {{ formatProvenanceRate(bestProvenanceLLM.top_bucket_rate) }}% | {{ bestProvenanceLLM.top_bucket_count }}/{{ bestProvenanceLLM.total }}
             </span>
           </div>
-          <div class="provenance-best-card">
+          <div v-if="hasMultipleProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestPrompt') }}</span>
             <strong class="provenance-best-name">{{ bestProvenancePrompt?.label || '-' }}</strong>
             <span v-if="bestProvenancePrompt" class="provenance-best-meta">
               {{ formatProvenanceRate(bestProvenancePrompt.top_bucket_rate) }}% | {{ bestProvenancePrompt.top_bucket_count }}/{{ bestProvenancePrompt.total }}
             </span>
           </div>
-          <div class="provenance-best-card">
+          <div v-if="hasMultipleProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
-            <strong class="provenance-best-name">{{ bestProvenanceCombination?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestProvenanceCombination ? formatProvenanceLabel(bestProvenanceCombination.label) : '-' }}</strong>
             <span v-if="bestProvenanceCombination" class="provenance-best-meta">
               {{ formatProvenanceRate(bestProvenanceCombination.top_bucket_rate) }}% | {{ bestProvenanceCombination.top_bucket_count }}/{{ bestProvenanceCombination.total }}
             </span>
@@ -517,7 +790,7 @@
               >
                 <div class="provenance-row-main">
                   <span class="provenance-rank">#{{ index + 1 }}</span>
-                  <span class="provenance-label">{{ entry.label }}</span>
+                  <span class="provenance-label">{{ formatProvenanceLabel(entry.label) }}</span>
                 </div>
                 <div class="provenance-row-stats">
                   <span class="provenance-rate">{{ formatProvenanceRate(entry.top_bucket_rate) }}%</span>
@@ -530,7 +803,7 @@
             </div>
           </div>
 
-          <div class="provenance-list-card">
+          <div v-if="hasMultipleProvenancePrompts" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.promptRanking') }}</span>
               <span>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</span>
@@ -556,7 +829,7 @@
             </div>
           </div>
 
-          <div class="provenance-list-card">
+          <div v-if="hasMultipleProvenancePrompts" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
               <span>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</span>
@@ -1008,21 +1281,21 @@
         <div class="provenance-best-grid">
           <div class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestLLM') }}</span>
-            <strong class="provenance-best-name">{{ bestRatingProvenanceLLM?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestRatingProvenanceLLM ? formatProvenanceLabel(bestRatingProvenanceLLM.label) : '-' }}</strong>
             <span v-if="bestRatingProvenanceLLM" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenanceLLM.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceLLM.avg_score) }} Ø
             </span>
           </div>
-          <div class="provenance-best-card">
+          <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestPrompt') }}</span>
             <strong class="provenance-best-name">{{ bestRatingProvenancePrompt?.label || '-' }}</strong>
             <span v-if="bestRatingProvenancePrompt" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenancePrompt.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenancePrompt.avg_score) }} Ø
             </span>
           </div>
-          <div class="provenance-best-card">
+          <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
-            <strong class="provenance-best-name">{{ bestRatingProvenanceCombination?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestRatingProvenanceCombination ? formatProvenanceLabel(bestRatingProvenanceCombination.label) : '-' }}</strong>
             <span v-if="bestRatingProvenanceCombination" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenanceCombination.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceCombination.avg_score) }} Ø
             </span>
@@ -1046,7 +1319,7 @@
               >
                 <div class="provenance-row-main">
                   <span class="provenance-rank">#{{ index + 1 }}</span>
-                  <span class="provenance-label">{{ entry.label }}</span>
+                  <span class="provenance-label">{{ formatProvenanceLabel(entry.label) }}</span>
                 </div>
                 <div class="provenance-row-stats">
                   <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
@@ -1059,7 +1332,7 @@
             </div>
           </div>
 
-          <div class="provenance-list-card">
+          <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.promptRanking') }}</span>
               <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
@@ -1085,7 +1358,7 @@
             </div>
           </div>
 
-          <div class="provenance-list-card">
+          <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
               <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
@@ -1108,6 +1381,129 @@
                 <div class="provenance-row-stats">
                   <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
                   <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conversation Partner Provenance (Mail Rating) -->
+      <div class="provenance-section" v-if="hasConversationProvenance">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.conversationProvenance') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.conversationProvenance')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <p class="subsection-description text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.conversationProvenanceDescription') }}
+        </p>
+        <p class="provenance-metric-explainer text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.ratingProvenanceMetricExplanation', { threshold: conversationProvenanceThresholdPercent }) }}
+        </p>
+
+        <div class="provenance-best-grid">
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCounselorSource') }}</span>
+            <strong class="provenance-best-name">{{ bestCounselorSource?.label || '-' }}</strong>
+            <span v-if="bestCounselorSource" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestCounselorSource.avg_normalized_score) }}% | {{ formatProvenanceScore(bestCounselorSource.avg_score) }} Ø
+            </span>
+          </div>
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestClientSource') }}</span>
+            <strong class="provenance-best-name">{{ bestClientSource?.label || '-' }}</strong>
+            <span v-if="bestClientSource" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestClientSource.avg_normalized_score) }}% | {{ formatProvenanceScore(bestClientSource.avg_score) }} Ø
+            </span>
+          </div>
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCounselorClientPair') }}</span>
+            <strong class="provenance-best-name">{{ bestConversationCombination?.label || '-' }}</strong>
+            <span v-if="bestConversationCombination" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestConversationCombination.avg_normalized_score) }}% | {{ formatProvenanceScore(bestConversationCombination.avg_score) }} Ø
+            </span>
+          </div>
+        </div>
+
+        <div class="provenance-lists-grid">
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.counselorSourceRanking') }}</span>
+              <span>
+                {{ $t('scenarioManager.results.assignments') }}: {{ currentConversationProvenanceSegment?.total_assignments || 0 }}
+                · {{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}
+              </span>
+            </div>
+            <div v-if="currentConversationProvenanceSegment?.by_counselor_source?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentConversationProvenanceSegment.by_counselor_source.slice(0, 8)"
+                :key="`conv-prov-counselor-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø (n={{ entry.total }})</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.clientSourceRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
+            </div>
+            <div v-if="currentConversationProvenanceSegment?.by_client_source?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentConversationProvenanceSegment.by_client_source.slice(0, 8)"
+                :key="`conv-prov-client-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø (n={{ entry.total }})</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.counselorClientRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
+            </div>
+            <div v-if="currentConversationProvenanceSegment?.by_combination?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentConversationProvenanceSegment.by_combination.slice(0, 8)"
+                :key="`conv-prov-combo-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø (n={{ entry.total }})</span>
                 </div>
               </div>
             </div>
@@ -1224,6 +1620,30 @@
             :low-label="$t('scenarioManager.results.lowAgreement')"
             :high-label="$t('scenarioManager.results.highAgreement')"
             @cell-click="openAgreementDetail"
+          />
+        </div>
+      </div>
+
+      <!-- Pairwise Cohen's-κ matrix (labeling): chance-corrected agreement per
+           rater pair — complements the raw percent-agreement heatmap above. -->
+      <div class="agreement-heatmap-section" v-if="isLabelingScenario && hasKappaMatrix">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.kappaMatrix') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.kappaMatrix')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <div class="heatmap-container">
+          <LAgreementHeatmap
+            :evaluators="kappaEvaluators"
+            :agreements="kappaAgreements"
+            value-format="decimal"
+            :show-values="true"
+            :show-hover-info="true"
+            :show-legend="true"
+            :show-evaluator-type-legend="true"
+            low-label="κ ≤ 0"
+            high-label="κ = 1"
           />
         </div>
       </div>
@@ -1539,11 +1959,46 @@
         </div>
       </div>
 
-      <!-- No Results Yet -->
-      <div v-if="!hasMetrics && filteredDistributionData.length === 0" class="empty-state">
+      <!-- No Results Yet — also check ranking bucket data + provenance + authenticity -->
+      <div v-if="!hasMetrics && filteredDistributionData.length === 0 && !hasBucketDistribution && !hasProvenanceAnalysis && !hasAuthenticityProvenance && !hasConfusionMatrixData" class="empty-state">
         <LIcon size="48" color="grey-lighten-1">mdi-chart-box-outline</LIcon>
         <p>{{ $t('scenarioManager.evaluation.noResultsYet') }}</p>
       </div>
+
+        </div>
+        <div v-else key="type-skeleton" class="type-skeleton-section">
+          <!-- Ranking skeleton -->
+          <template v-if="isRankingType">
+            <div class="skeleton-provenance-grid">
+              <div v-for="n in 3" :key="n" class="skeleton-block" style="height: 80px; border-radius: 8px;" />
+            </div>
+            <div class="skeleton-block" style="height: 200px; border-radius: 8px; margin-top: 16px;" />
+          </template>
+
+          <!-- Rating / Mail Rating skeleton -->
+          <template v-else-if="isRatingType">
+            <div class="skeleton-block" style="height: 180px; border-radius: 8px;" />
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+              <div class="skeleton-block" style="height: 200px; border-radius: 8px;" />
+              <div class="skeleton-block" style="height: 200px; border-radius: 8px;" />
+            </div>
+          </template>
+
+          <!-- Authenticity skeleton -->
+          <template v-else-if="isAuthenticityType">
+            <div class="skeleton-block" style="height: 200px; border-radius: 8px;" />
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+              <div class="skeleton-block" style="height: 80px; border-radius: 8px;" />
+              <div class="skeleton-block" style="height: 80px; border-radius: 8px;" />
+            </div>
+          </template>
+
+          <!-- Default (labeling, comparison) skeleton -->
+          <template v-else>
+            <div class="skeleton-block" style="height: 180px; border-radius: 8px;" />
+          </template>
+        </div>
+      </Transition>
     </div>
 
     <!-- Remove Evaluator Confirmation -->
@@ -1863,13 +2318,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useLLMEvaluation } from '@/composables/useLLMEvaluation'
 import { useLLMModels } from '@/composables/useLLMModels'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 import { useScenarioManager } from '../../composables/useScenarioManager'
+import { computeAuthorStats } from '@/utils/comparisonAuthorStats'
 import LAvatar from '@/components/common/LAvatar.vue'
 
 const props = defineProps({
@@ -1888,6 +2344,16 @@ const emit = defineEmits(['evaluation-complete', 'refresh'])
 const { t, locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
+
+// User-origin data provided by ScenarioWorkspace (manager-only). Powers the
+// collapsible origin legend and the colored dots on the voter-filter chips.
+// Empty for viewers (no /team access) -> legend + dots simply don't render.
+const scenarioOrigins = inject('scenarioOrigins', ref({}))
+const scenarioOriginsList = inject('scenarioOriginsList', ref([]))
+const originColor = (name) => {
+  const o = name ? (scenarioOrigins.value || {})[name] : null
+  return o?.account === 'referral' ? (o.referral?.color || null) : null
+}
 const { exportResults: doExport } = useScenarioManager()
 
 // LLM Models
@@ -1908,6 +2374,9 @@ const {
   fetchAgreementMetrics
 } = useLLMEvaluation()
 
+// Model registry for consistent LLM display names
+const { formatModelName: registryFormatModelName } = useModelRegistry()
+
 // State
 const selectedModel = ref(null)
 const selectedTemplate = ref('default')
@@ -1917,6 +2386,9 @@ const evaluatorToRemove = ref(null)
 const removingEvaluator = ref(false)
 const selectedMatrixEvaluator = ref('all')
 const evaluatorTypeFilter = ref('all')
+// Labeling co-pilot metrics filter: 'all' | 'with' | 'without' (maps to the
+// backend's `copilot` query param; only rendered for labeling scenarios).
+const copilotMetricsFilter = ref('all')
 const selectedDimension = ref(null)
 
 // Agreement detail dialog state
@@ -1965,6 +2437,31 @@ const evaluatorStatsList = computed(() => {
   return props.liveStats?.userStatsList || []
 })
 
+// ===== Computed: Loading State =====
+const statsLoading = computed(() => {
+  return !props.liveStats?.userStatsList?.length
+})
+
+// Skeleton type helpers (use props.scenario.function_type which is available immediately)
+const scenarioFunctionType = computed(() => props.scenario?.function_type || null)
+// Uses currentTaskType (defined below) — same fallback chain the other
+// task-type gates rely on, incl. the v1 payload's function_type_name.
+const isLabelingScenario = computed(() => currentTaskType.value === 'labeling')
+const isRankingType = computed(() => scenarioFunctionType.value === 'ranking')
+const isRatingType = computed(() =>
+  scenarioFunctionType.value === 'rating' || scenarioFunctionType.value === 'mail_rating'
+)
+const isAuthenticityType = computed(() =>
+  scenarioFunctionType.value === 'authenticity' || scenarioFunctionType.value === 'labeling'
+)
+
+const metricsSkeletonCount = computed(() => {
+  if (isRankingType.value) return 4
+  if (isAuthenticityType.value) return 4
+  if (isRatingType.value) return 3
+  return 2
+})
+
 // ===== Computed: Evaluator Type Flags =====
 
 const hasHumans = computed(() => {
@@ -2001,12 +2498,10 @@ const llmEvaluators = computed(() => {
 
   return configList.map(item => {
     const modelId = typeof item === 'string' ? item : (item.model_id || item.modelId || item.id)
-    const parsed = parseUserProviderModelId(modelId)
-    let displayName = parsed ? parsed.displayName : modelId
     return {
       id: modelId,
       modelId: modelId,
-      name: displayName,
+      name: registryFormatModelName(modelId),
       isLLM: true,
       completed: 0,
       total: props.scenario?.thread_count || 0,
@@ -2086,31 +2581,35 @@ const filteredProgress = computed(() => {
 // ===== Computed: Agreement Metrics =====
 
 const liveAgreementMetrics = computed(() => {
-  // Merge metrics from both sources:
-  // - agreementMetrics: from useLLMEvaluation (full AgreementMetricsService)
-  // - liveStats.agreementMetrics: from useScenarioStats (partial, only alpha)
+  // Merge metrics from two sources:
+  // - agreementMetrics: from useLLMEvaluation, recomputed when the human/llm/all
+  //   filter changes (full AgreementMetricsService output).
+  // - liveStats.agreementMetrics: from useScenarioStats, always covers all
+  //   raters. Only used as a fallback when the filter is "all" — otherwise
+  //   it would override the filtered values with the union and undo the filter.
   const fromService = agreementMetrics.value
   const fromStats = props.liveStats?.agreementMetrics
+  const filterIsAll = evaluatorTypeFilter.value === 'all'
+  const allowStatsFallback = filterIsAll
 
   if (!fromService && !fromStats) return null
 
-  // Prefer full metrics from AgreementMetricsService, fallback to stats
+  const fallback = (svc, stats) => svc ?? (allowStatsFallback ? stats : null) ?? null
+
   return {
     // Core agreement metrics
-    alpha: fromService?.alpha ?? fromStats?.alpha ?? null,
-    kappa: fromService?.kappa ?? fromStats?.kappa ?? null,
-    fleiss: fromService?.fleiss ?? fromStats?.fleiss ?? null,
-    accuracy: fromService?.accuracy ?? fromStats?.accuracy ?? null,
-    interpretation: fromService?.interpretation ?? fromStats?.interpretation ?? null,
+    alpha: fallback(fromService?.alpha, fromStats?.alpha),
+    kappa: fallback(fromService?.kappa, fromStats?.kappa),
+    fleiss: fallback(fromService?.fleiss, fromStats?.fleiss),
+    accuracy: fallback(fromService?.accuracy, fromStats?.accuracy),
+    interpretation: fallback(fromService?.interpretation, fromStats?.interpretation),
     kendall: fromService?.kendall ?? null,
     spearman: fromService?.spearman ?? null,
     // New metrics
-    icc: fromService?.icc ?? null,
-    iccInterpretation: fromService?.iccInterpretation ?? null,
+    // icc: fromService?.icc ?? null,  // ICC disabled - needs more items to be meaningful
+    // iccInterpretation: fromService?.iccInterpretation ?? null,
     kendallW: fromService?.kendallW ?? null,
     kendallWInterpretation: fromService?.kendallWInterpretation ?? null,
-    mae: fromService?.mae ?? null,
-    rmse: fromService?.rmse ?? null,
     macroF1: fromService?.macroF1 ?? null,
     microF1: fromService?.microF1 ?? null,
     // Metadata
@@ -2127,11 +2626,9 @@ const hasMetrics = computed(() => {
     m.kappa !== null ||
     m.fleiss !== null ||
     m.accuracy !== null ||
-    m.icc !== null ||
+    // m.icc !== null ||  // ICC disabled
     m.kendallW !== null ||
     m.kendall !== null ||  // Kendall's Tau
-    m.mae !== null ||
-    m.rmse !== null ||
     m.macroF1 !== null ||
     m.microF1 !== null
   )
@@ -2142,13 +2639,15 @@ const currentTaskType = computed(() => {
   return liveAgreementMetrics.value?.taskType ||
          props.liveStats?.functionType ||
          props.scenario?.function_type ||
+         // /api/scenarios/<id> serializes the type as function_type_name
+         props.scenario?.function_type_name ||
          null
 })
 
 // Ranking: Krippendorff's α, Kendall's W, Kendall's τ, Fleiss' κ
 const isRankingScenario = computed(() => currentTaskType.value === 'ranking')
 
-// Rating: ICC, Krippendorff's α, MAE, RMSE, Cohen's/Fleiss' κ
+// Rating: Krippendorff's α, Cohen's/Fleiss' κ (per-dimension)
 const isRatingScenario = computed(() =>
   currentTaskType.value === 'rating' || currentTaskType.value === 'mail_rating'
 )
@@ -2163,36 +2662,234 @@ const isClassificationScenario = computed(() =>
 // Comparison: Bradley-Terry, Percent Agreement
 const isComparisonScenario = computed(() => currentTaskType.value === 'comparison')
 
+// --- Einzelstimmen-Matrix (who voted what per comparison item) ---
+// Covers classic comparison (4) AND communication_comparison (8) — both persist
+// a single A/B/tie choice per (rater, item). Reuses the same per-vote payload
+// the export download produces (format=json), filtered to the comparison rows,
+// and pivots them into an item × evaluator grid so owners/admins can see each
+// rater's individual choice at a glance (the aggregate metrics above only show
+// agreement, not who chose what).
+const isPairwiseScenario = computed(() =>
+  currentTaskType.value === 'comparison' ||
+  currentTaskType.value === 'communication_comparison'
+)
+const votesLoading = ref(false)
+const voteRows = ref([])
+
+async function loadVoteMatrix() {
+  if (!props.scenario?.id || !isPairwiseScenario.value) return
+  votesLoading.value = true
+  try {
+    const data = await doExport(props.scenario.id, 'json')
+    const results = data?.results || (Array.isArray(data) ? data : [])
+    voteRows.value = results.filter(r => r.type === 'comparison')
+  } catch (e) {
+    voteRows.value = []
+  } finally {
+    votesLoading.value = false
+  }
+}
+
+const voteMatrix = computed(() => {
+  const evaluators = new Set()
+  const itemsMap = new Map()
+  const cells = {}
+  for (const r of voteRows.value) {
+    if (!r.username) continue
+    evaluators.add(r.username)
+    if (!itemsMap.has(r.item_id)) {
+      // option_a_source / option_b_source come from the export (Feature.model_id
+      // → human vs LLM). They are per-item, identical across all evaluators of a
+      // row, so we capture them once. Absent → plain A/B (no chip).
+      itemsMap.set(r.item_id, {
+        subject: r.subject || `#${r.item_id}`,
+        sourceA: r.option_a_source || null,
+        sourceB: r.option_b_source || null,
+      })
+    }
+    cells[`${r.item_id}::${r.username}`] = r.choice
+  }
+  return {
+    evaluators: [...evaluators].sort(),
+    items: [...itemsMap.entries()].map(([id, v]) => ({ id, subject: v.subject, sourceA: v.sourceA, sourceB: v.sourceB })),
+    cells,
+  }
+})
+const hasVoteMatrix = computed(() =>
+  voteMatrix.value.items.length > 0 && voteMatrix.value.evaluators.length > 0
+)
+function voteCell(itemId, username) {
+  return voteMatrix.value.cells[`${itemId}::${username}`] || null
+}
+
+// --- Voter exclusion -------------------------------------------------------
+// Let the owner hide individual voters (e.g. test accounts) from the matrix.
+// The exclusion also flows into the author-level analysis below (win rates /
+// Bradley–Terry / pairwise) so dropped accounts don't skew the ranking. The
+// headline Agreement Metrics block stays over all raters (it has its own
+// human/LLM filter). Stored as a Set; reassigned to trigger reactivity.
+const excludedVoters = ref(new Set())
+function toggleVoter(name) {
+  const next = new Set(excludedVoters.value)
+  next.has(name) ? next.delete(name) : next.add(name)
+  excludedVoters.value = next
+}
+const visibleEvaluators = computed(() =>
+  voteMatrix.value.evaluators.filter(e => !excludedVoters.value.has(e))
+)
+const excludedCount = computed(() =>
+  voteMatrix.value.evaluators.filter(e => excludedVoters.value.has(e)).length
+)
+
+// --- Option authorship (human vs LLM) for the vote matrix -----------------
+// Each comparison option A/B has a source (from Feature.model_id). We show the
+// chosen option's author as a small coloured chip in every vote cell (H = human
+// in blue, an abbreviation per LLM model otherwise) plus a legend. Falls back to
+// plain A/B when the data carries no source info.
+const HUMAN_SOURCE_COLOR = '#2f80ed' // blau — H = Mensch
+const LLM_SOURCE_COLORS = ['#e8a087', '#D1BC8A', '#a78bba', '#7f9fbe', '#c98aa8', '#9ec07a', '#cdb06a']
+
+function sourceKey(src) {
+  if (!src || !src.type) return null
+  if (src.type === 'human') return 'human'
+  if (src.type === 'llm') return `llm:${src.name || 'llm'}`
+  return null
+}
+function llmAbbr(name) {
+  // Erste sinnvolle Komponente des Modellnamens (ohne Hersteller-Präfix), gekappt.
+  const base = String(name || 'KI').split('/').pop().split(/[-_\s]/)[0]
+  return (base || 'KI').slice(0, 8)
+}
+
+// Stable key → { abbr, label, color } map over all sources used in the matrix.
+const sourceMeta = computed(() => {
+  const map = {}
+  let llmIdx = 0
+  // Deterministic colour assignment: collect distinct LLM names in sorted order.
+  const llmNames = new Set()
+  let hasHuman = false
+  for (const it of voteMatrix.value.items) {
+    for (const s of [it.sourceA, it.sourceB]) {
+      const k = sourceKey(s)
+      if (!k) continue
+      if (k === 'human') hasHuman = true
+      else llmNames.add(s.name || 'llm')
+    }
+  }
+  if (hasHuman) {
+    map['human'] = { key: 'human', abbr: 'H', label: t('scenarioManager.results.voteMatrix.human'), color: HUMAN_SOURCE_COLOR }
+  }
+  for (const name of [...llmNames].sort()) {
+    map[`llm:${name}`] = {
+      key: `llm:${name}`,
+      abbr: llmAbbr(name),
+      label: name,
+      color: LLM_SOURCE_COLORS[llmIdx % LLM_SOURCE_COLORS.length],
+    }
+    llmIdx++
+  }
+  return map
+})
+
+const voteLegend = computed(() => {
+  // Human first, then LLM models alphabetically (matches sourceMeta insertion).
+  const entries = Object.values(sourceMeta.value)
+  return entries.sort((a, b) => (a.key === 'human' ? -1 : b.key === 'human' ? 1 : a.label.localeCompare(b.label)))
+})
+
+// O(1) item → { sourceA, sourceB } lookup. The matrix is items × voters, so a
+// per-cell `items.find` would make rendering O(items² × voters); this Map keeps
+// cellSourceMeta a constant-time lookup.
+const itemSourceById = computed(() => {
+  const m = new Map()
+  for (const it of voteMatrix.value.items) m.set(it.id, it)
+  return m
+})
+function cellSourceMeta(itemId, username) {
+  const choice = String(voteCell(itemId, username) || '').toLowerCase()
+  const it = itemSourceById.value.get(itemId)
+  if (!it) return null
+  const src = choice === 'a' ? it.sourceA : choice === 'b' ? it.sourceB : null
+  const k = sourceKey(src)
+  return k ? sourceMeta.value[k] || null : null
+}
+
+// --- Author-level ranking (human vs LLM) ----------------------------------
+// Reduces the per-vote authors into a system ranking (win rate + Wilson 95% CI
+// + Bradley–Terry strength) and head-to-head win rates. Only meaningful when the
+// export carries option sources and ≥2 distinct authors actually met.
+function authorLabel(src) {
+  if (!src || !src.type) return null
+  if (src.type === 'human') return t('scenarioManager.results.voteMatrix.human')
+  return src.name || 'LLM'
+}
+const authorVotes = computed(() =>
+  voteRows.value
+    .filter(r => r.option_a_source && r.option_b_source)
+    // Respect the voter exclusion so dropped accounts don't skew the ranking.
+    .filter(r => !excludedVoters.value.has(r.username))
+    .map(r => ({
+      username: r.username,
+      a: sourceKey(r.option_a_source),
+      b: sourceKey(r.option_b_source),
+      choice: r.choice,
+      labelA: authorLabel(r.option_a_source),
+      labelB: authorLabel(r.option_b_source),
+    }))
+    .filter(v => v.a && v.b)
+)
+const authorStats = computed(() => computeAuthorStats(authorVotes.value))
+const hasAuthorStats = computed(() =>
+  authorStats.value.systems.length >= 2 && authorStats.value.totalComparisons > 0
+)
+function choiceLabel(choice) {
+  const c = String(choice || '').toLowerCase()
+  if (c === 'a') return 'A'
+  if (c === 'b') return 'B'
+  if (c === 'tie' || c === 'equal') return t('scenarioManager.results.voteMatrix.tie')
+  return choice || '–'
+}
+function choiceVariant(choice) {
+  const c = String(choice || '').toLowerCase()
+  if (c === 'a') return 'info'
+  if (c === 'b') return 'accent'
+  if (c === 'tie' || c === 'equal') return 'warning'
+  return 'default'
+}
+
 // If task type is unknown, show all metrics that have values (fallback mode)
 const hasKnownTaskType = computed(() => currentTaskType.value !== null)
 
 // Metric visibility helpers - show if type matches OR if type unknown (fallback)
 const showKappa = computed(() =>
+  // NOT pairwise: Cohen's κ is only computed for exactly 2 raters; the
+  // multi-rater equivalent for comparison is Fleiss' κ (see showFleiss).
   !hasKnownTaskType.value || isClassificationScenario.value || isRatingScenario.value
 )
 const showAlpha = computed(() =>
-  !hasKnownTaskType.value || isRankingScenario.value || isRatingScenario.value || isClassificationScenario.value
+  // Pairwise (comparison + communication_comparison): the backend computes
+  // nominal Krippendorff α over the A/B/tie choices — surface it like the other
+  // scenario types (the agreement metrics block was previously gated off here).
+  !hasKnownTaskType.value || isRankingScenario.value || isRatingScenario.value || isClassificationScenario.value || isPairwiseScenario.value
 )
 const showFleiss = computed(() =>
-  !hasKnownTaskType.value || isRankingScenario.value || isRatingScenario.value
+  // Classification/labeling included: with 3+ raters Fleiss' κ is the
+  // multi-rater counterpart to the pairwise Cohen's-κ matrix below.
+  !hasKnownTaskType.value || isRankingScenario.value || isRatingScenario.value || isPairwiseScenario.value || isClassificationScenario.value
 )
 const showAccuracy = computed(() =>
-  isClassificationScenario.value || isComparisonScenario.value
+  // isPairwiseScenario covers communication_comparison too (isComparisonScenario
+  // only matched the plain 'comparison' type, hiding percent agreement for 492).
+  isClassificationScenario.value || isPairwiseScenario.value
 )
-const showICC = computed(() =>
-  !hasKnownTaskType.value || isRatingScenario.value
-)
+// const showICC = computed(() =>  // ICC disabled - needs more items to be meaningful
+//   !hasKnownTaskType.value || isRatingScenario.value
+// )
 const showKendallW = computed(() =>
   !hasKnownTaskType.value || isRankingScenario.value
 )
 const showKendallTau = computed(() =>
   !hasKnownTaskType.value || isRankingScenario.value
-)
-const showMAE = computed(() =>
-  !hasKnownTaskType.value || isRatingScenario.value
-)
-const showRMSE = computed(() =>
-  !hasKnownTaskType.value || isRatingScenario.value
 )
 const showF1Scores = computed(() =>
   !hasKnownTaskType.value || isClassificationScenario.value
@@ -2349,6 +3046,10 @@ function getBarColor(index) {
  * Uses a red-yellow-green gradient for semantic meaning.
  */
 function getLikertColor(value, index) {
+  // Comparison scenario: fixed colors for A/B/tie choices
+  const comparisonColors = { 'A': '#b0ca97', 'B': '#88c4c8', 'tie': '#D1BC8A' }
+  if (comparisonColors[value]) return comparisonColors[value]
+
   // If value is in Likert scale range (1-5), use semantic colors
   if (value >= 1 && value <= 5 && likertColors[value]) {
     return likertColors[value]
@@ -2684,6 +3385,10 @@ const bestProvenanceCombination = computed(() => {
   return currentProvenanceSegment.value?.best_combination || null
 })
 
+const hasMultipleProvenancePrompts = computed(() => {
+  return (currentProvenanceSegment.value?.by_prompt?.length || 0) >= 2
+})
+
 const hasProvenanceAnalysis = computed(() => {
   if (!isRankingScenario.value) return false
   const segment = currentProvenanceSegment.value
@@ -2802,15 +3507,78 @@ const hasRatingProvenanceAnalysis = computed(() => {
     (segment.by_combination?.length || 0) > 0
 })
 
+const isMailRating = computed(() => currentTaskType.value === 'mail_rating')
+
 const bestRatingProvenanceLLM = computed(() => currentRatingProvenanceSegment.value?.best_llm || null)
 const bestRatingProvenancePrompt = computed(() => currentRatingProvenanceSegment.value?.best_prompt || null)
 const bestRatingProvenanceCombination = computed(() => currentRatingProvenanceSegment.value?.best_combination || null)
+
+const hasMultipleRatingProvenancePrompts = computed(() => {
+  return (currentRatingProvenanceSegment.value?.by_prompt?.length || 0) >= 2
+})
 
 const ratingProvenanceHighThresholdPercent = computed(() => {
   const rawValue = Number(ratingProvenanceAnalysis.value?.metric_definition?.high_score_threshold_percent)
   if (!Number.isFinite(rawValue)) return '80.0'
   return formatProvenanceRate(rawValue)
 })
+
+// ===== Computed: Conversation Partner Provenance (Mail Rating) =====
+
+const conversationProvenance = computed(() => {
+  return props.liveStats?.conversationProvenance || props.liveStats?.conversation_provenance || null
+})
+
+const currentConversationProvenanceSegment = computed(() => {
+  const segments = conversationProvenance.value?.segments
+  if (!segments) return null
+  if (evaluatorTypeFilter.value === 'human') return segments.human || segments.all || null
+  if (evaluatorTypeFilter.value === 'llm') return segments.llm || segments.all || null
+  return segments.all || null
+})
+
+const hasConversationProvenance = computed(() => {
+  if (currentTaskType.value !== 'mail_rating') return false
+  const segment = currentConversationProvenanceSegment.value
+  if (!segment) return false
+  return (segment.by_counselor_source?.length || 0) > 0 ||
+    (segment.by_client_source?.length || 0) > 0 ||
+    (segment.by_combination?.length || 0) > 0
+})
+
+const bestCounselorSource = computed(() => currentConversationProvenanceSegment.value?.best_counselor_source || null)
+const bestClientSource = computed(() => currentConversationProvenanceSegment.value?.best_client_source || null)
+const bestConversationCombination = computed(() => currentConversationProvenanceSegment.value?.best_combination || null)
+
+const conversationProvenanceThresholdPercent = computed(() => {
+  const rawValue = Number(conversationProvenance.value?.metric_definition?.high_score_threshold_percent)
+  if (!Number.isFinite(rawValue)) return '80.0'
+  return formatProvenanceRate(rawValue)
+})
+
+// ===== Computed: Authenticity Provenance =====
+
+const authenticityProvenance = computed(() =>
+  props.liveStats?.authenticityProvenance || props.liveStats?.authenticity_provenance || null
+)
+
+const hasAuthenticityProvenance = computed(() => {
+  if (!isAuthenticityScenario.value) return false
+  return authenticityProvenance.value?.by_source?.length > 0
+})
+
+const authenticityProvenanceSources = computed(() =>
+  authenticityProvenance.value?.by_source || []
+)
+
+const bestFoolingSource = computed(() => {
+  const sources = authenticityProvenanceSources.value.filter(s => s.is_fake)
+  return sources.sort((a, b) => b.fool_rate - a.fool_rate)[0] || null
+})
+
+const humanFalsePositiveRate = computed(() =>
+  authenticityProvenance.value?.summary?.human_false_positive_rate ?? null
+)
 
 // ===== Computed: Ranking Agreement Matrix =====
 
@@ -3186,6 +3954,24 @@ const pairwiseAgreements = computed(() => {
   return pairwise?.agreements || {}
 })
 
+// --- Pairwise Cohen's-κ matrix (labeling) ---
+// Fed from the agreement-metrics endpoint (NOT the stats cache): matrix keys
+// already use the heatmap's symmetric "a-b" format; axis names come from
+// rater_labels (human:<id> -> username, llm:<model> -> short model name).
+const kappaAgreements = computed(() => agreementMetrics.value?.pairwiseKappa || {})
+
+const hasKappaMatrix = computed(() => Object.keys(kappaAgreements.value).length > 0)
+
+const kappaEvaluators = computed(() => {
+  const ids = agreementMetrics.value?.raterIds || []
+  const labels = agreementMetrics.value?.raterLabels || {}
+  return ids.map(id => ({
+    id,
+    name: labels[id] || id,
+    isLLM: String(id).startsWith('llm:')
+  }))
+})
+
 const selectedAgreementDetail = computed(() => {
   if (!selectedAgreement.value) return null
   const pairwise = pairwiseData.value
@@ -3491,6 +4277,16 @@ function formatProvenanceRate(value) {
   return numeric.toFixed(1)
 }
 
+function formatProvenanceLabel(label) {
+  if (!label) return 'Unknown'
+  // Combination labels: "prompt x model" → format each part
+  if (label.includes(' x ')) {
+    const parts = label.split(' x ')
+    return parts.map(p => formatProvenanceLabel(p.trim())).join(' x ')
+  }
+  return registryFormatModelName(label)
+}
+
 function formatProvenanceScore(value) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return '-'
@@ -3531,7 +4327,7 @@ function getCombinationPromptLabel(entry) {
 }
 
 function getCombinationLLMLabel(entry) {
-  return getCombinationParts(entry).llm
+  return formatProvenanceLabel(getCombinationParts(entry).llm)
 }
 
 function getProvenanceBucketMapValue(mapLike, bucketId) {
@@ -3915,12 +4711,33 @@ onUnmounted(() => {
   disconnect()
 })
 
-watch(() => props.scenario?.id, (newId) => {
-  if (newId) {
-    // connectToScenario also fetches agreement metrics
-    connectToScenario(newId)
+watch(() => props.scenario?.id, async (newId) => {
+  if (!newId) return
+  // connectToScenario also fetches agreement metrics, but always with the
+  // default ("all") filter. Re-issue the fetch with the current filter so a
+  // user-selected human/llm view is honoured when switching scenarios.
+  await connectToScenario(newId)
+  if (evaluatorTypeFilter.value !== 'all' || copilotMetricsFilter.value !== 'all') {
+    fetchAgreementMetrics({
+      filter: evaluatorTypeFilter.value,
+      copilot: copilotMetricsFilter.value === 'all' ? null : copilotMetricsFilter.value,
+    })
   }
+  // Load the per-rater single-vote matrix for pairwise scenarios.
+  loadVoteMatrix()
 }, { immediate: true })
+
+// Refetch agreement metrics whenever the human/llm/all filter or the labeling
+// co-pilot filter changes so Krippendorff α and the other inter-rater metrics
+// are recomputed over the chosen subset instead of always reflecting the union.
+watch([evaluatorTypeFilter, copilotMetricsFilter], ([newFilter, newCopilot]) => {
+  if (props.scenario?.id) {
+    fetchAgreementMetrics({
+      filter: newFilter,
+      copilot: newCopilot === 'all' ? null : newCopilot,
+    })
+  }
+})
 
 // Initialize selected dimension when dimensions change
 watch(dimensions, (newDimensions) => {
@@ -3956,12 +4773,14 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 1200px;
+  /* No max-width cap — the tab fills the available width inside its
+     workspace-tab-content parent. The horizontal padding on .tab-content
+     (20px 24px) already provides visual breathing room. */
+  width: 100%;
 }
 
 /* Local screenshot mode on localhost: keep compact layout for screenshots. */
 .evaluation-tab.screenshot-font-boost {
-  max-width: none;
   gap: 14px;
 }
 
@@ -4515,6 +5334,362 @@ watch(
   padding-bottom: 0;
 }
 
+/* ─────────── Comparison breakdown (Individual votes + Author analysis) ───────────
+   Shared compact body so content never touches the card edge, plus glanceable
+   header stat chips. Tighter type/spacing than the old layout so both panels fit
+   "at a glance" without the oversized cells. */
+.section-body {
+  padding: 14px 20px 18px;
+}
+.section-desc {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  margin: 0 0 14px;
+}
+/* Header count chips, e.g. comparisons · voters. */
+.vm-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vm-head-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-radius: 7px 2px 7px 2px;
+}
+
+/* Individual votes matrix */
+.vote-matrix-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+.vote-matrix-scroll {
+  max-height: 380px;
+  overflow: auto;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 10px;
+}
+.vote-matrix-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 0.78rem;
+}
+.vote-matrix-table th,
+.vote-matrix-table td {
+  padding: 5px 10px;
+  text-align: center;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  white-space: nowrap;
+}
+.vote-matrix-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgb(var(--v-theme-surface));
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+/* First column (item) sticks left + the header corner stays on top */
+.vote-matrix-table .vm-item-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: rgb(var(--v-theme-surface));
+  text-align: left;
+  max-width: 300px;
+  /* Divider so the pinned column reads as separate while the rest scrolls. */
+  box-shadow: 1px 0 0 rgba(var(--v-theme-on-surface), 0.08);
+}
+.vote-matrix-table thead .vm-item-col {
+  z-index: 3;
+}
+/* Per-voter columns keep a readable minimum width; the table scrolls
+   horizontally inside .vote-matrix-scroll once the columns no longer fit,
+   so adding more voters never squeezes/overlaps them — it just scrolls,
+   with the Comparison column + header row pinned. The username header keeps
+   its original case (only the static labels are uppercased). */
+.vote-matrix-table .vm-eval-col {
+  min-width: 84px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.vote-matrix-table .vm-cell {
+  min-width: 84px;
+}
+/* Zebra + hover. color-mix keeps the pinned first column opaque so scrolled
+   cells never bleed through it. */
+.vote-matrix-table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 3%, rgb(var(--v-theme-surface)));
+}
+.vote-matrix-table tbody tr:hover td {
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 9%, rgb(var(--v-theme-surface)));
+}
+
+/* Voter filter (hide test accounts from the matrix + author analysis). */
+.vm-voter-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.vm-voter-filter-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-right: 2px;
+}
+.vm-voter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  background: rgba(var(--v-theme-primary), 0.12);
+  border: 1px solid rgba(var(--v-theme-primary), 0.3);
+  border-radius: 7px 2px 7px 2px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.vm-voter-chip:hover {
+  background: rgba(var(--v-theme-primary), 0.2);
+}
+.vm-voter-chip--off {
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-color: rgba(var(--v-theme-on-surface), 0.15);
+  text-decoration: line-through;
+}
+/* Origin dot on a voter chip — color matches the evaluator's referral link
+   (see the collapsible legend above for the color -> source mapping). */
+.vm-voter-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.vm-voter-chip--off .vm-voter-dot {
+  opacity: 0.45;
+}
+.vm-voter-hint {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+.vm-item-idx {
+  display: inline-block;
+  min-width: 1.5em;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  font-variant-numeric: tabular-nums;
+}
+.vm-item-subject {
+  display: inline-block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+.vm-empty-cell {
+  color: rgba(var(--v-theme-on-surface), 0.25);
+}
+
+/* Vote cell with author chip: choice tag + small coloured source abbreviation. */
+.vm-vote {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.vm-src-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 5px 2px 5px 2px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+/* Author legend below the matrix (H = Mensch, Kürzel = LLM-Modelle). */
+.vm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 0.74rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+/* Voter-origin (referral-link color) legend, placed right under the SOURCE legend. */
+.vm-origin-legend {
+  margin-top: 8px;
+}
+.vm-legend-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.68rem;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+}
+.vm-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.vm-legend-text {
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+/* Author-level ranking + pairwise win-rate tables. */
+.author-tables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+}
+.author-table-wrap {
+  flex: 1 1 300px;
+  min-width: 260px;
+}
+.author-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.author-table th,
+.author-table td {
+  padding: 5px 9px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+}
+.author-table th {
+  font-weight: 700;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  border-bottom-color: rgba(var(--v-theme-on-surface), 0.12);
+}
+.author-table .at-left {
+  text-align: left;
+}
+.author-table .at-ref {
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+.author-table .at-ci {
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+}
+.at-selfagree {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 0.76rem;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+.author-table tbody tr:hover td {
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 6%, rgb(var(--v-theme-surface)));
+}
+/* Reference (human) row: a subtle accent rail on the left instead of a heavy
+   full-row fill — lighter, more modern, still unmistakable. */
+.author-table tbody tr.at-human td:first-child {
+  box-shadow: inset 2px 0 0 rgba(var(--v-theme-primary), 0.65);
+}
+.author-table .at-human .at-left {
+  font-weight: 600;
+}
+/* Win-rate cell: number + 95% CI on top, a proportional bar underneath. */
+.at-wr-cell { min-width: 124px; }
+.at-wr {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.at-wr-num { font-weight: 700; font-variant-numeric: tabular-nums; }
+.at-wr-track {
+  margin-top: 4px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  overflow: hidden;
+}
+/* Non-leaders get a muted fill; the rank-1 system gets the accent→primary
+   gradient so the winner reads instantly. */
+.at-wr-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: rgba(var(--v-theme-on-surface), 0.3);
+  transition: width 0.3s ease;
+}
+.at-wr-fill--top {
+  background: linear-gradient(90deg, rgb(var(--v-theme-accent)), rgb(var(--v-theme-primary)));
+}
+.at-bt { font-variant-numeric: tabular-nums; color: rgba(var(--v-theme-on-surface), 0.7); }
+/* Rank pill; the leader gets the primary accent. */
+.at-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px 2px 6px 2px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+.at-rank--top {
+  background: rgb(var(--v-theme-primary));
+  color: #2c3320;
+}
+.at-vs { color: rgba(var(--v-theme-on-surface), 0.4); font-size: 0.74rem; }
+/* Pairwise cell: "a : b" + a two-tone proportional split bar. */
+.at-pair-cell { min-width: 140px; }
+.at-pair-num { font-variant-numeric: tabular-nums; font-weight: 700; }
+.at-pair-bar {
+  margin-top: 4px;
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+}
+.at-pair-a { background: rgb(var(--v-theme-accent)); }
+.at-pair-b { flex: 1 1 auto; background: rgba(var(--v-theme-on-surface), 0.22); }
+
 .metrics-section,
 .confusion-matrix-section,
 .distribution-section,
@@ -4755,6 +5930,27 @@ watch(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.provenance-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 6px 2px 6px 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.badge-fake {
+  background: rgba(232, 160, 135, 0.2);
+  color: #e8a087;
+}
+
+.badge-real {
+  background: rgba(152, 212, 187, 0.2);
+  color: #98d4bb;
 }
 
 .provenance-combination-label {
@@ -5688,8 +6884,27 @@ watch(
     grid-template-columns: 1fr;
   }
 
+  /* Reflow result grids to 2 columns on tablet/landscape phones (1 col handled at 600px) */
+  .summary-grid,
+  .metrics-grid,
+  .provenance-best-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Provenance lists already too dense at 3 cols → single column from here */
   .provenance-lists-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Wrap the human/LLM legend so it doesn't overflow horizontally */
+  .progress-legend {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* Stack header actions earlier (full stacking refined at 768px) */
+  .header-actions {
+    flex-wrap: wrap;
   }
 
   .provenance-figures-grid {
@@ -5699,6 +6914,24 @@ watch(
   .provenance-figure-popup-content,
   .provenance-fullscreen-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Single-column result grids on phones to avoid cramped cards/overflow */
+  .summary-grid,
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Tighter ellipsis for item subjects so the vote matrix fits the viewport */
+  .vm-item-subject {
+    max-width: 120px;
+  }
+
+  /* Shrink the (already inner-scrolling) vote matrix viewport for phones */
+  .vote-matrix-scroll {
+    max-height: 300px;
   }
 }
 
@@ -6587,5 +7820,54 @@ watch(
   .provenance-detail-table {
     min-width: 560px;
   }
+}
+
+/* Smooth fade transition for section loading */
+.eval-fade-enter-active,
+.eval-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.eval-fade-enter-from,
+.eval-fade-leave-to {
+  opacity: 0;
+}
+
+/* Skeleton pulse block */
+.skeleton-block {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-on-surface), 0.06) 25%,
+    rgba(var(--v-theme-on-surface), 0.12) 50%,
+    rgba(var(--v-theme-on-surface), 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton layout helpers */
+.skeleton-provenance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.summary-card--skeleton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metric-item--skeleton {
+  padding: 8px;
+}
+
+.type-skeleton-section {
+  padding: 0 20px 20px;
 }
 </style>

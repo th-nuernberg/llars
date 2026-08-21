@@ -78,6 +78,37 @@ class ChatService:
         # Replace URL placeholders to prevent LLM from copying them
         return self._replace_url_placeholders(context)
 
+    def _build_general_mode_instructions(self) -> str:
+        """Instructions for the no-relevant-sources branch (general knowledge
+        + honesty about LLARS-specific gaps)."""
+        return self.prompt_builder.build_general_mode_instructions()
+
+    def _compose_system_prompt(self, sources) -> str:
+        """Assemble the per-turn system prompt for the chosen RAG strategy.
+
+        Calibration (2026-06-13) showed the bi-encoder relevance score cannot
+        separate on-topic from off-topic queries on the LLARS corpus (a generic
+        "weather in Berlin" out-scores a real LLARS question), so we do NOT gate
+        citations on a relevance threshold. Instead, for EVERY RAG-bot turn we
+        append concise guidance (DEFAULT_RAG_GENERAL_MODE_INSTRUCTIONS) telling
+        the model how to treat the (possibly irrelevant) attached context: cite
+        only genuinely relevant sources, answer general-knowledge questions from
+        its own knowledge without citations, and be honest about LLARS specifics
+        it has no source for instead of inventing. The per-bot citation
+        formatting instructions are additionally appended when sources are
+        present and the bot requires citations. Non-RAG bots (no collections)
+        keep the plain base prompt. Appending the guidance in CODE (not the
+        per-bot DB text) makes the behavior global without clobbering admin
+        overrides of the citation text.
+        """
+        system_prompt = self._get_system_prompt_with_urls()
+        if not (self.chatbot.rag_enabled and self.chatbot.collections):
+            return system_prompt
+        if sources and self.prompt_builder.get_require_citations():
+            system_prompt += self._build_citation_instructions()
+        system_prompt += self._build_general_mode_instructions()
+        return system_prompt
+
     def _get_prompt_settings(self):
         """Get prompt settings from chatbot."""
         return self.prompt_builder._get_prompt_settings()
@@ -190,8 +221,40 @@ class ChatService:
             rag_context, sources = self._get_multi_collection_context(message)
             retrieval_time_ms = int((time.time() - retrieval_start) * 1000)
 
-        # If RAG is enabled but no context, avoid hallucinations
+        # If RAG is enabled but no context, avoid hallucinations.
+        # Log a single structured line that captures the full retrieval state so
+        # admins can tell at a glance whether the fallback fired because the
+        # collection is empty, the embeddings are missing/incompatible, or the
+        # query simply doesn't match. Without this, "Das kann ich dir leider
+        # nicht beantworten" is indistinguishable from a working chatbot that
+        # genuinely had no relevant context.
         if self._requires_sources() and not sources and not files:
+            collection_ids = [
+                cc.collection.id for cc in (self.chatbot.collections or [])
+                if getattr(cc, 'collection', None)
+            ]
+            # `_prompt_settings` is only set on AgentChatService, not on the
+            # base ChatService used by the dominant non-agent code path. Read
+            # the citation flag through the prompt builder helper so the log
+            # reflects the actual configuration in both cases.
+            try:
+                require_citations = self.prompt_builder.get_require_citations()
+            except Exception:
+                require_citations = None
+            logger.warning(
+                "[ChatService] RAG fallback fired for chatbot=%s "
+                "collections=%s rag_enabled=%s require_citations=%s "
+                "min_relevance=%s retrieval_k=%s retrieval_time_ms=%s "
+                "query_len=%s",
+                self.chatbot.id,
+                collection_ids,
+                self.chatbot.rag_enabled,
+                require_citations,
+                self.chatbot.rag_min_relevance,
+                self.chatbot.rag_retrieval_k,
+                retrieval_time_ms,
+                len(message or ''),
+            )
             response_text = self.get_unknown_answer()
             response_time_ms = int((time.time() - start_time) * 1000)
 
@@ -308,10 +371,7 @@ class ChatService:
             }
 
         # Build messages (no history in test mode)
-        system_prompt = self._get_system_prompt_with_urls()
-        require_citations = self.prompt_builder.get_require_citations()
-        if sources and require_citations:
-            system_prompt += self._build_citation_instructions()
+        system_prompt = self._compose_system_prompt(sources)
 
         messages = [{"role": "system", "content": system_prompt}]
 
@@ -366,10 +426,7 @@ class ChatService:
             return
 
         # Build messages (no history in test mode)
-        system_prompt = self._get_system_prompt_with_urls()
-        require_citations = self.prompt_builder.get_require_citations()
-        if sources and require_citations:
-            system_prompt += self._build_citation_instructions()
+        system_prompt = self._compose_system_prompt(sources)
 
         messages = [{"role": "system", "content": system_prompt}]
 
@@ -471,11 +528,8 @@ class ChatService:
         """
         messages = []
 
-        # System prompt with PROJECT_URL substitution
-        system_prompt = self._get_system_prompt_with_urls()
-        require_citations = self.prompt_builder.get_require_citations()
-        if sources and require_citations:
-            system_prompt += self._build_citation_instructions()
+        # System prompt (+ RAG branch: citations when grounded, else general mode)
+        system_prompt = self._compose_system_prompt(sources)
 
         messages.append({"role": "system", "content": system_prompt})
 

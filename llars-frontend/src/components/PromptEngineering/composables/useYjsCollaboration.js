@@ -77,7 +77,7 @@ function calculateCharDiff(baseline, current) {
  * Establishes a Socket.IO connection to the YJS server and manages
  * bidirectional synchronization of Yjs documents.
  *
- * @param {import('vue').Ref<string>} roomId - Reactive room ID (e.g., 'latex_42')
+ * @param {import('vue').Ref<string>} roomId - Reactive room ID (e.g., 'prompt_42')
  * @param {string} username - Current user's username for presence display
  * @param {Function} onProcessYDoc - Callback invoked after Yjs updates (to refresh editor)
  * @param {Function} onUpdateCursor - Callback for cursor position updates `(userId, cursor) => void`

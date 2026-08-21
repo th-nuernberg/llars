@@ -9,7 +9,7 @@
       <div class="l-message__header">
         <LTag :variant="tagVariant" size="small">
           <LIcon v-if="showIcon" size="14" class="mr-1">{{ senderIcon }}</LIcon>
-          {{ sender }}
+          {{ displaySender }}
         </LTag>
         <span v-if="timestamp" class="l-message__timestamp">{{ formattedTimestamp }}</span>
         <v-spacer />
@@ -28,6 +28,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   sender: {
@@ -74,6 +77,25 @@ const isClient = computed(() => {
   // Auto-detect based on sender name
   const normalizedSender = String(props.sender || '').toLowerCase().trim()
   return clientPatterns.some(pattern => normalizedSender.includes(pattern))
+})
+
+// Display label for the sender tag. Canonical counselling ROLE strings from
+// seeded/imported data are German ("Klient", "Berater", gendered variants like
+// "Berater*in" — sometimes with an escaped backslash, "Berater\*in") and must
+// render localized, otherwise the English UI leaks German role tags (seen in
+// the IJCAI demo). Anything that doesn't match a canonical role is a real
+// user/display name and passes through untouched.
+const displaySender = computed(() => {
+  const raw = String(props.sender || '').trim()
+  // Strip backslashes + gender suffixes (":in" / "*in") before matching.
+  const norm = raw.toLowerCase().replace(/\\/g, '').replace(/[:*]in$/, '')
+  if (['berater', 'beraterin', 'counselor', 'counsellor', 'advisor'].includes(norm)) {
+    return t('evaluation.rating.counselor')
+  }
+  if (['klient', 'klientin', 'client', 'ratsuchende person', 'ratsuchender', 'ratsuchende'].includes(norm)) {
+    return t('evaluation.rating.client')
+  }
+  return raw
 })
 
 // CSS classes

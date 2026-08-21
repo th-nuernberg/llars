@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -8,11 +10,17 @@ from typing import Any, Dict, List, Optional
 from flask import Response, jsonify, request, stream_with_context
 from sqlalchemy import or_
 
+from auth.decorators import public_endpoint, system_api_key_required
 from db.database import db
 from db.models.system_event import SystemEvent
 from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
 from services.chatbot_activity_service import ChatbotActivityService
+from services.system_event_service import SystemEventService
+
+# Keep both import paths pointing to the same module instance for test patching.
+sys.modules.setdefault("routes.system_monitor.system_monitor_routes", sys.modules[__name__])
+sys.modules.setdefault("app.routes.system_monitor.system_monitor_routes", sys.modules[__name__])
 
 
 def _serialize_event(event: SystemEvent) -> Dict[str, Any]:
@@ -29,6 +37,21 @@ def _serialize_event(event: SystemEvent) -> Dict[str, Any]:
         "created_at": event.created_at.isoformat() + "Z",
         "details": event.details or None,
     }
+
+
+@data_bp.get("/version")
+@public_endpoint
+def get_version():
+    """Public endpoint returning the computed app version.
+
+    Version is set via env vars at Docker build time (see vite.config.mjs, deploy_bluegreen.sh).
+    No auth required — used by CI smoke tests and monitoring.
+    """
+    return jsonify({
+        "version": os.environ.get("APP_VERSION", "0.0.0"),
+        "commit": os.environ.get("APP_COMMIT_HASH", "unknown"),
+        "branch": os.environ.get("APP_BRANCH", "unknown"),
+    }), 200
 
 
 @data_bp.get("/admin/system/events")
@@ -119,6 +142,38 @@ def stream_system_events():
         "X-Accel-Buffering": "no",
     }
     return Response(generate(), headers=headers)
+
+
+@data_bp.post("/admin/system/events/ci-cd")
+@system_api_key_required
+def ingest_ci_cd_event():
+    payload = request.get_json(silent=True) or {}
+
+    event_type = str(payload.get("event_type") or "ci_cd.pipeline").strip()
+    message = str(payload.get("message") or "").strip()
+    severity = str(payload.get("severity") or "ci_cd").strip().lower()
+    username = str(payload.get("username") or "gitlab-ci").strip() or "gitlab-ci"
+    entity_type = str(payload.get("entity_type") or "pipeline").strip() or None
+    entity_id = payload.get("entity_id")
+    details = payload.get("details")
+
+    if not message:
+        return jsonify({"success": False, "message": "message is required"}), 400
+
+    if not isinstance(details, dict):
+        details = None
+
+    SystemEventService.log_event(
+        event_type=event_type,
+        message=message,
+        severity=severity,
+        username=username,
+        entity_type=entity_type,
+        entity_id=str(entity_id) if entity_id is not None else None,
+        details=details,
+    )
+
+    return jsonify({"success": True}), 201
 
 
 # ============================================================================

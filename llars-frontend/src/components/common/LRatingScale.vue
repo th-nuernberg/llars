@@ -102,6 +102,10 @@ const props = defineProps({
     default: 'gradient',
     validator: (v) => ['gradient', 'neutral', 'primary'].includes(v)
   },
+  reverseGradient: {
+    type: Boolean,
+    default: false
+  },
   disabled: {
     type: Boolean,
     default: false
@@ -140,12 +144,14 @@ function getButtonClasses(value) {
   const isSelected = props.modelValue === value
   const range = props.max - props.min
   const position = (value - props.min) / range // 0 to 1
+  // When reverseGradient is true, swap low/high colors (low=red, high=green)
+  const effectivePosition = props.reverseGradient ? 1 - position : position
 
   return {
     'is-selected': isSelected,
-    'is-low': position <= 0.3,
-    'is-mid': position > 0.3 && position < 0.7,
-    'is-high': position >= 0.7,
+    'is-low': effectivePosition <= 0.3,
+    'is-mid': effectivePosition > 0.3 && effectivePosition < 0.7,
+    'is-high': effectivePosition >= 0.7,
     'is-center': Math.abs(position - 0.5) < 0.1
   }
 }
@@ -364,7 +370,7 @@ function selectValue(value) {
 .scale-individual-label {
   min-width: 38px;
   text-align: center;
-  font-size: 0.65rem;
+  font-size: 0.72rem; /* raised from 0.65rem for readability on small screens */
   color: rgba(var(--v-theme-on-surface), 0.5);
   padding: 0 3px;
   transition: color 0.2s ease;
@@ -381,15 +387,17 @@ function selectValue(value) {
   pointer-events: none;
 }
 
-/* Responsive adjustments */
-@media (max-width: 480px) {
+/* Responsive adjustments
+   Breakpoint raised 480px -> 600px so phones keep >=36px tap targets
+   (sizes bumped accordingly; was 34px at the old breakpoint). */
+@media (max-width: 600px) {
   .scale-buttons {
     gap: 3px;
   }
 
   .scale-button {
-    min-width: 34px;
-    height: 34px;
+    min-width: 36px;
+    height: 36px;
     padding: 5px 7px;
   }
 
@@ -398,8 +406,8 @@ function selectValue(value) {
   }
 
   .scale-button.is-center {
-    min-width: 36px;
-    height: 36px;
+    min-width: 38px;
+    height: 38px;
   }
 }
 </style>

@@ -100,6 +100,19 @@ Das Interface ist in drei Hauptbereiche unterteilt:
 | **Fortschrittsbalken** | Zeigt aktuellen Stand |
 | **Item X von Y** | Aktuelle Position |
 
+### Aufgaben-Pop-up & Bestätigung
+
+- **Aufgabe ("Aufgabe"):** Beim **ersten** Betreten eines Szenarios öffnet sich
+  die Aufgabenbeschreibung automatisch als Pop-up — auf **allen** Bildschirm-
+  größen (Desktop wie Mobil). Danach bleibt sie geschlossen; die schmale
+  „Aufgabe"-Leiste öffnet sie jederzeit erneut. (Gated über ein localStorage-
+  Flag, damit sie nicht bei jedem Reload erscheint.)
+- **Erste Bewertung:** Nach der **ersten** vollständig gespeicherten Bewertung
+  in einem Szenario erscheint **einmalig** ein universelles „Vielen Dank"-Pop-up,
+  das zum „Weiter"-Schritt hinführt. Es feuert genau einmal **pro Szenario** und
+  für **alle** Evaluationstypen (Rating, Ranking, Labeling, Authenticity,
+  Comparison …).
+
 ---
 
 ## Evaluationstypen

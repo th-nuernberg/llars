@@ -67,6 +67,9 @@ export function useGeneration(options = {}) {
   /** @type {import('vue').Ref<Array>} List of jobs */
   const jobs = ref([])
 
+  /** @type {import('vue').Ref<Array>} Jobs shared with current user (read-only) */
+  const sharedJobs = ref([])
+
   /** @type {import('vue').Ref<Object|null>} Currently selected job */
   const currentJob = ref(null)
 
@@ -93,6 +96,7 @@ export function useGeneration(options = {}) {
   /** @type {import('vue').Ref<Object|null>} Cost estimate */
   const costEstimate = ref(null)
   let socketConnectHandler = null
+  let socketHandlers = {} // Named handler references for targeted socket.off() cleanup
 
   // Snackbar notifications
   const { showSuccess, showError } = useSnackbar()
@@ -147,8 +151,9 @@ export function useGeneration(options = {}) {
     try {
       const response = await generationApi.getJobs(params)
       jobs.value = response.data.jobs || []
+      sharedJobs.value = response.data.shared_jobs || []
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to load jobs'
+      error.value = err.response?.data?.error || i18n.global.t('generation.messages.loadJobsFailed')
       console.error('[useGeneration] loadJobs error:', err)
     } finally {
       isLoading.value = false
@@ -170,7 +175,7 @@ export function useGeneration(options = {}) {
       currentJob.value = response.data.job
       return currentJob.value
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to load job'
+      error.value = err.response?.data?.error || i18n.global.t('generation.messages.loadJobFailed')
       console.error('[useGeneration] loadJob error:', err)
       return null
     } finally {
@@ -196,10 +201,10 @@ export function useGeneration(options = {}) {
       jobs.value.unshift(job)
       currentJob.value = job
 
-      showSuccess(`Job "${job.name}" erstellt`)
+      showSuccess(i18n.global.t('generation.messages.jobCreated', { name: job.name }))
       return job
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to create job'
+      error.value = err.response?.data?.error || i18n.global.t('generation.messages.createJobFailed')
       showError(error.value)
       console.error('[useGeneration] createJob error:', err)
       return null
@@ -226,10 +231,10 @@ export function useGeneration(options = {}) {
         currentJob.value = null
       }
 
-      showSuccess(i18n.global.t('auto.cd71853b87'))
+      showSuccess(i18n.global.t('generation.messages.jobDeleted'))
       return true
     } catch (err) {
-      showError(err.response?.data?.error || 'Failed to delete job')
+      showError(err.response?.data?.error || i18n.global.t('generation.messages.deleteJobFailed'))
       return false
     }
   }
@@ -248,10 +253,10 @@ export function useGeneration(options = {}) {
     try {
       const response = await generationApi.startJob(jobId)
       _updateJobInList(response.data.job)
-      showSuccess('Job gestartet')
+      showSuccess(i18n.global.t('generation.messages.jobStarted'))
       return true
     } catch (err) {
-      showError(err.response?.data?.error || 'Failed to start job')
+      showError(err.response?.data?.error || i18n.global.t('generation.messages.startJobFailed'))
       return false
     }
   }
@@ -266,10 +271,10 @@ export function useGeneration(options = {}) {
     try {
       const response = await generationApi.pauseJob(jobId)
       _updateJobInList(response.data.job)
-      showSuccess('Job pausiert')
+      showSuccess(i18n.global.t('generation.messages.jobPaused'))
       return true
     } catch (err) {
-      showError(err.response?.data?.error || 'Failed to pause job')
+      showError(err.response?.data?.error || i18n.global.t('generation.messages.pauseJobFailed'))
       return false
     }
   }
@@ -284,10 +289,10 @@ export function useGeneration(options = {}) {
     try {
       const response = await generationApi.cancelJob(jobId)
       _updateJobInList(response.data.job)
-      showSuccess('Job abgebrochen')
+      showSuccess(i18n.global.t('generation.messages.jobCancelled'))
       return true
     } catch (err) {
-      showError(err.response?.data?.error || 'Failed to cancel job')
+      showError(err.response?.data?.error || i18n.global.t('generation.messages.cancelJobFailed'))
       return false
     }
   }
@@ -340,7 +345,7 @@ export function useGeneration(options = {}) {
       return response.data.output
     } catch (err) {
       console.error('[useGeneration] loadOutput error:', err)
-      showError(err.response?.data?.error || 'Failed to load output details')
+      showError(err.response?.data?.error || i18n.global.t('generation.messages.loadOutputFailed'))
       return null
     }
   }
@@ -369,9 +374,9 @@ export function useGeneration(options = {}) {
       link.remove()
       window.URL.revokeObjectURL(url)
 
-      showSuccess('CSV heruntergeladen')
+      showSuccess(i18n.global.t('generation.messages.csvDownloaded'))
     } catch (err) {
-      showError('CSV-Export fehlgeschlagen')
+      showError(i18n.global.t('generation.messages.csvExportFailed'))
     }
   }
 
@@ -397,9 +402,9 @@ export function useGeneration(options = {}) {
       link.remove()
       window.URL.revokeObjectURL(url)
 
-      showSuccess('JSON heruntergeladen')
+      showSuccess(i18n.global.t('generation.messages.jsonDownloaded'))
     } catch (err) {
-      showError('JSON-Export fehlgeschlagen')
+      showError(i18n.global.t('generation.messages.jsonExportFailed'))
     }
   }
 
@@ -417,10 +422,10 @@ export function useGeneration(options = {}) {
   async function createScenario(jobId, data) {
     try {
       const response = await generationApi.createScenario(jobId, data)
-      showSuccess(`Szenario "${data.scenario_name}" erstellt`)
+      showSuccess(i18n.global.t('generation.messages.scenarioCreated', { name: data.scenario_name }))
       return response.data
     } catch (err) {
-      showError(err.response?.data?.error || 'Failed to create scenario')
+      showError(err.response?.data?.error || i18n.global.t('generation.messages.createScenarioFailed'))
       return null
     }
   }
@@ -447,6 +452,46 @@ export function useGeneration(options = {}) {
   }
 
   // ---------------------------------------------------------------------------
+  // ACTIONS - SHARING
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Share a job with another user (read-only).
+   *
+   * @param {number} jobId - Job ID
+   * @param {string} username - Target username
+   * @returns {Promise<boolean>} Success status
+   */
+  async function shareJob(jobId, username) {
+    try {
+      await generationApi.shareJob(jobId, username)
+      showSuccess(i18n.global.t('generation.share.shared'))
+      return true
+    } catch (err) {
+      showError(err.response?.data?.error || i18n.global.t('generation.messages.shareJobFailed'))
+      return false
+    }
+  }
+
+  /**
+   * Remove a share from a job.
+   *
+   * @param {number} jobId - Job ID
+   * @param {string} username - Target username
+   * @returns {Promise<boolean>} Success status
+   */
+  async function unshareJob(jobId, username) {
+    try {
+      await generationApi.unshareJob(jobId, username)
+      showSuccess(i18n.global.t('generation.share.unshared'))
+      return true
+    } catch (err) {
+      showError(err.response?.data?.error || i18n.global.t('generation.messages.unshareJobFailed'))
+      return false
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // SOCKET.IO INTEGRATION
   // ---------------------------------------------------------------------------
 
@@ -468,15 +513,15 @@ export function useGeneration(options = {}) {
       socket.on('connect', socketConnectHandler)
     }
 
-    // Job started
-    socket.on('generation:job:started', (data) => {
+    // Store handler references for proper cleanup (prevents removing other components' listeners)
+    socketHandlers.onJobStarted = (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.QUEUED
       }
-    })
+    }
+    socket.on('generation:job:started', socketHandlers.onJobStarted)
 
-    // Job progress
-    socket.on('generation:job:progress', (data) => {
+    socketHandlers.onJobProgress = (data) => {
       if (data.job_id === currentJob.value?.id) {
         if (!currentJob.value.cost) currentJob.value.cost = {}
         currentJob.value.cost.total_cost_usd = data.cost_usd
@@ -488,53 +533,52 @@ export function useGeneration(options = {}) {
         }
       }
       _updateJobProgressInList(data.job_id, data)
-    })
+    }
+    socket.on('generation:job:progress', socketHandlers.onJobProgress)
 
-    // Job completed
-    socket.on('generation:job:completed', (data) => {
+    socketHandlers.onJobCompleted = (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.COMPLETED
         if (currentJob.value.progress) {
           currentJob.value.progress.completed = data.completed
           currentJob.value.progress.failed = data.failed
         }
-        showSuccess(`Job abgeschlossen: ${data.completed} Outputs`)
+        showSuccess(i18n.global.t('generation.messages.jobCompleted', { count: data.completed }))
       }
       _updateJobStatusInList(data.job_id, JOB_STATUS.COMPLETED)
-    })
+    }
+    socket.on('generation:job:completed', socketHandlers.onJobCompleted)
 
-    // Job failed
-    socket.on('generation:job:failed', (data) => {
+    socketHandlers.onJobFailed = (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.FAILED
         currentJob.value.error_message = data.error
-        showError(`Job fehlgeschlagen: ${data.error}`)
+        showError(i18n.global.t('generation.messages.jobFailed', { error: data.error }))
       }
       _updateJobStatusInList(data.job_id, JOB_STATUS.FAILED)
-    })
+    }
+    socket.on('generation:job:failed', socketHandlers.onJobFailed)
 
-    // Budget exceeded
-    socket.on('generation:job:budget_exceeded', (data) => {
+    socketHandlers.onBudgetExceeded = (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.PAUSED
-        showError(`Budget-Limit erreicht: $${data.cost.toFixed(2)}`)
+        showError(i18n.global.t('generation.messages.budgetExceeded', { cost: data.cost.toFixed(2) }))
       }
-    })
+    }
+    socket.on('generation:job:budget_exceeded', socketHandlers.onBudgetExceeded)
 
-    // Item completed
-    socket.on('generation:item:completed', (data) => {
+    socketHandlers.onItemCompleted = (data) => {
       if (data.job_id === currentJob.value?.id) {
-        // Update output in list if visible
         const output = outputs.value.find(o => o.id === data.output_id)
         if (output) {
           output.status = OUTPUT_STATUS.COMPLETED
           output.content_preview = data.content_preview
         }
       }
-    })
+    }
+    socket.on('generation:item:completed', socketHandlers.onItemCompleted)
 
-    // Item failed
-    socket.on('generation:item:failed', (data) => {
+    socketHandlers.onItemFailed = (data) => {
       if (data.job_id === currentJob.value?.id) {
         const output = outputs.value.find(o => o.id === data.output_id)
         if (output) {
@@ -542,7 +586,14 @@ export function useGeneration(options = {}) {
           output.error_message = data.error
         }
       }
-    })
+    }
+    socket.on('generation:item:failed', socketHandlers.onItemFailed)
+
+    // Share updated — refresh job list so shared/unshared jobs appear/disappear
+    socketHandlers.onShareUpdated = () => {
+      loadJobs()
+    }
+    socket.on('generation:share_updated', socketHandlers.onShareUpdated)
   }
 
   /**
@@ -558,13 +609,16 @@ export function useGeneration(options = {}) {
       socketConnectHandler = null
     }
 
-    socket.off('generation:job:started')
-    socket.off('generation:job:progress')
-    socket.off('generation:job:completed')
-    socket.off('generation:job:failed')
-    socket.off('generation:job:budget_exceeded')
-    socket.off('generation:item:completed')
-    socket.off('generation:item:failed')
+    // Remove only our specific handlers (not other components' listeners for the same events)
+    if (socketHandlers.onJobStarted) socket.off('generation:job:started', socketHandlers.onJobStarted)
+    if (socketHandlers.onJobProgress) socket.off('generation:job:progress', socketHandlers.onJobProgress)
+    if (socketHandlers.onJobCompleted) socket.off('generation:job:completed', socketHandlers.onJobCompleted)
+    if (socketHandlers.onJobFailed) socket.off('generation:job:failed', socketHandlers.onJobFailed)
+    if (socketHandlers.onBudgetExceeded) socket.off('generation:job:budget_exceeded', socketHandlers.onBudgetExceeded)
+    if (socketHandlers.onItemCompleted) socket.off('generation:item:completed', socketHandlers.onItemCompleted)
+    if (socketHandlers.onItemFailed) socket.off('generation:item:failed', socketHandlers.onItemFailed)
+    if (socketHandlers.onShareUpdated) socket.off('generation:share_updated', socketHandlers.onShareUpdated)
+    socketHandlers = {}
   }
 
   // ---------------------------------------------------------------------------
@@ -632,6 +686,7 @@ export function useGeneration(options = {}) {
   return {
     // State
     jobs,
+    sharedJobs,
     currentJob,
     outputs,
     outputsPagination,
@@ -667,6 +722,10 @@ export function useGeneration(options = {}) {
 
     // Actions - Scenario
     createScenario,
+
+    // Actions - Sharing
+    shareJob,
+    unshareJob,
 
     // Actions - Estimation
     estimateCost,

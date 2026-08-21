@@ -25,6 +25,17 @@ def temp_image_path():
         yield tmpdir
 
 
+def _create_isolated_crawler_service():
+    """Create a CrawlerService with an isolated in-memory Redis backend."""
+    from services.crawler.modules.crawler_service import CrawlerService
+    from services.crawler.modules.crawler_state_store import CrawlerStateStore
+    from services.runtime_config import _InMemoryRedis
+
+    service = CrawlerService()
+    service.state_store = CrawlerStateStore(redis_client=_InMemoryRedis())
+    return service
+
+
 # =============================================================================
 # CrawlerService Tests
 # =============================================================================
@@ -202,9 +213,7 @@ class TestCrawlerServiceJobManagement:
 
     def test_CRAWL_042_get_job_status_active(self):
         """CRAWL-042: Status für aktiven Job abrufen."""
-        from services.crawler.modules.crawler_service import CrawlerService
-
-        service = CrawlerService()
+        service = _create_isolated_crawler_service()
         service.active_crawls['job-123'] = {
             'status': 'running',
             'pages_crawled': 5
@@ -217,9 +226,7 @@ class TestCrawlerServiceJobManagement:
 
     def test_CRAWL_043_get_job_status_not_found(self):
         """CRAWL-043: Status für unbekannten Job."""
-        from services.crawler.modules.crawler_service import CrawlerService
-
-        service = CrawlerService()
+        service = _create_isolated_crawler_service()
 
         result = service.get_job_status('nonexistent')
 
@@ -227,9 +234,7 @@ class TestCrawlerServiceJobManagement:
 
     def test_CRAWL_044_get_all_jobs(self):
         """CRAWL-044: Alle Jobs abrufen."""
-        from services.crawler.modules.crawler_service import CrawlerService
-
-        service = CrawlerService()
+        service = _create_isolated_crawler_service()
         service.active_crawls['job-1'] = {'status': 'completed', 'started_at': '2024-01-02'}
         service.active_crawls['job-2'] = {'status': 'running', 'started_at': '2024-01-01'}
 
@@ -241,9 +246,7 @@ class TestCrawlerServiceJobManagement:
 
     def test_CRAWL_045_cancel_job(self):
         """CRAWL-045: Job abbrechen."""
-        from services.crawler.modules.crawler_service import CrawlerService
-
-        service = CrawlerService()
+        service = _create_isolated_crawler_service()
         service.active_crawls['job-123'] = {'status': 'running'}
 
         result = service.cancel_job('job-123')
@@ -253,13 +256,99 @@ class TestCrawlerServiceJobManagement:
 
     def test_CRAWL_046_cancel_job_not_found(self):
         """CRAWL-046: Nicht existierenden Job abbrechen."""
-        from services.crawler.modules.crawler_service import CrawlerService
-
-        service = CrawlerService()
+        service = _create_isolated_crawler_service()
 
         result = service.cancel_job('nonexistent')
 
         assert result is False
+
+    def test_CRAWL_047_get_job_status_from_shared_state(self):
+        """CRAWL-047: Status ist workerübergreifend aus Shared State lesbar."""
+        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_state_store import CrawlerStateStore
+        from services.runtime_config import _InMemoryRedis
+
+        shared_redis = _InMemoryRedis()
+        service_a = CrawlerService()
+        service_b = CrawlerService()
+        service_a.state_store = CrawlerStateStore(redis_client=shared_redis)
+        service_b.state_store = CrawlerStateStore(redis_client=shared_redis)
+
+        service_a.active_crawls['job-shared'] = {
+            'status': 'running',
+            'stage': 'crawling',
+            'pages_crawled': 5,
+            'queued_at': '2026-01-01T00:00:00'
+        }
+        service_a.state_store.persist_job('job-shared', service_a.active_crawls['job-shared'])
+
+        result = service_b.get_job_status('job-shared')
+
+        assert result['status'] == 'running'
+        assert result['stage'] == 'crawling'
+        assert result['pages_crawled'] == 5
+
+    def test_CRAWL_048_emit_progress_updates_shared_state(self):
+        """CRAWL-048: Fortschrittsupdates landen im Shared State."""
+        from services.crawler.modules.crawler_events import emit_progress
+        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_state_store import CrawlerStateStore
+        from services.runtime_config import _InMemoryRedis
+
+        shared_redis = _InMemoryRedis()
+        service_a = CrawlerService()
+        service_b = CrawlerService()
+        service_a.state_store = CrawlerStateStore(redis_client=shared_redis)
+        service_b.state_store = CrawlerStateStore(redis_client=shared_redis)
+
+        service_a.active_crawls['job-progress'] = {
+            'status': 'queued',
+            'stage': 'queued',
+            'pages_crawled': 0,
+            'documents_created': 0,
+            'documents_linked': 0,
+            'queued_at': '2026-01-01T00:00:00',
+            'chatbot_id': None
+        }
+        service_a.state_store.persist_job('job-progress', service_a.active_crawls['job-progress'])
+
+        emit_progress(None, 'job-progress', {
+            'status': 'planning',
+            'stage': 'planning',
+            'pages_crawled': 0,
+            'urls_total': 4,
+            'urls_completed': 0,
+            'current_url': 'https://example.com/impressum'
+        }, service_a.active_crawls, state_store=service_a.state_store)
+
+        result = service_b.get_job_status('job-progress')
+
+        assert result['status'] == 'planning'
+        assert result['stage'] == 'planning'
+        assert result['urls_total'] == 4
+        assert result['current_url'] == 'https://example.com/impressum'
+
+    def test_CRAWL_049_list_jobs_includes_shared_state(self):
+        """CRAWL-049: Jobliste enthält Redis-persistierte Jobs anderer Worker."""
+        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_state_store import CrawlerStateStore
+        from services.runtime_config import _InMemoryRedis
+
+        shared_redis = _InMemoryRedis()
+        service_a = CrawlerService()
+        service_b = CrawlerService()
+        service_a.state_store = CrawlerStateStore(redis_client=shared_redis)
+        service_b.state_store = CrawlerStateStore(redis_client=shared_redis)
+
+        service_a.state_store.persist_job('job-list-1', {
+            'status': 'running',
+            'stage': 'crawling',
+            'queued_at': '2026-01-01T00:00:00'
+        })
+
+        jobs = service_b.list_jobs()
+
+        assert any(job['job_id'] == 'job-list-1' for job in jobs)
 
 
 # =============================================================================

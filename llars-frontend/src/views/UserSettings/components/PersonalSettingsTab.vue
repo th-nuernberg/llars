@@ -1,5 +1,147 @@
 <template>
   <div class="personal-settings" role="region" aria-label="Persönliche Einstellungen">
+    <!-- Redeem Invitation Code Section -->
+    <!-- Always visible to ANY logged-in user (not gated behind canCreateReferrals):
+         an existing participant pastes a study code/slug to join + be attributed. -->
+    <section class="settings-panel" role="group" aria-labelledby="redeem-title">
+      <header class="panel-header">
+        <LIcon size="18" class="panel-icon">mdi-ticket-confirmation</LIcon>
+        <h2 id="redeem-title" class="panel-title">{{ $t('userSettings.personal.redeem.title') }}</h2>
+      </header>
+
+      <div class="panel-content">
+        <p class="section-description" id="redeem-description">
+          {{ $t('userSettings.personal.redeem.description') }}
+        </p>
+
+        <form class="redeem-row" @submit.prevent="handleRedeem">
+          <input
+            v-model="redeemCode"
+            type="text"
+            class="redeem-input"
+            :placeholder="$t('auth.inviteCode')"
+            :aria-label="$t('auth.inviteCode')"
+            :disabled="redeemLoading"
+            autocomplete="off"
+          />
+          <LBtn
+            type="submit"
+            variant="primary"
+            :loading="redeemLoading"
+            :disabled="!redeemCode.trim() || redeemLoading"
+          >
+            {{ $t('userSettings.personal.redeem.submit') }}
+          </LBtn>
+        </form>
+
+        <!-- Inline error (mirrors backend message) -->
+        <div v-if="redeemError" class="redeem-error" role="alert">
+          <LIcon size="16">mdi-alert-circle</LIcon>
+          <span>{{ redeemError }}</span>
+        </div>
+
+        <!-- Inline success + jump-to-study action -->
+        <div v-if="redeemSuccess" class="redeem-success" role="status">
+          <LIcon size="16">mdi-check-circle</LIcon>
+          <span>{{ redeemSuccessMessage }}</span>
+          <LBtn
+            v-if="redeemScenarioId"
+            variant="accent"
+            size="small"
+            @click="goToStudy"
+          >
+            {{ $t('userSettings.personal.redeem.goToStudy') }}
+          </LBtn>
+        </div>
+      </div>
+    </section>
+
+    <!-- Profile / Demographics Section -->
+    <!-- Lets every user review the email we have on file (read-only — it lives
+         in Authentik, not editable here) and view/change the demographic data
+         they gave in the first-login survey. Saves via POST /api/user/demographics
+         (the same endpoint the survey uses; idempotent, keeps completed_at). -->
+    <section class="settings-panel" role="group" aria-labelledby="profile-title">
+      <header class="panel-header">
+        <LIcon size="18" class="panel-icon">mdi-account-details</LIcon>
+        <h2 id="profile-title" class="panel-title">{{ $t('userSettings.personal.profile.title') }}</h2>
+      </header>
+
+      <div class="panel-content">
+        <p class="section-description">{{ $t('userSettings.personal.profile.description') }}</p>
+
+        <!-- Stored email (read-only) -->
+        <div class="profile-email-row">
+          <LIcon size="16">mdi-email-outline</LIcon>
+          <span class="profile-email-label">{{ $t('userSettings.personal.profile.emailLabel') }}</span>
+          <code v-if="profileEmail" class="profile-email-value">{{ profileEmail }}</code>
+          <span v-else class="profile-email-empty">{{ $t('userSettings.personal.profile.emailNone') }}</span>
+        </div>
+
+        <!-- Email-contact consent: grant/revoke storing the email for future
+             studies ("jederzeit widerrufbar"). Only shown when the user has a
+             referral registration that can carry the flag. -->
+        <div v-if="emailConsent !== null" class="email-consent-row">
+          <LCheckbox
+            :model-value="emailConsent"
+            :disabled="emailConsentSaving"
+            :label="$t('userSettings.personal.profile.emailConsentLabel')"
+            data-testid="email-consent-toggle"
+            @update:model-value="setEmailConsent"
+          />
+        </div>
+
+        <!-- Demographics (editable) -->
+        <div
+          v-for="grp in demoGroups"
+          :key="grp.key"
+          class="demo-group"
+          role="radiogroup"
+          :aria-label="$t(`onboarding.demographics.${grp.key}.label`)"
+        >
+          <span class="demo-group-label">{{ $t(`onboarding.demographics.${grp.key}.label`) }}</span>
+          <div class="demo-options">
+            <button
+              v-for="opt in grp.options"
+              :key="opt"
+              type="button"
+              role="radio"
+              class="demo-chip"
+              :class="{ selected: demo[grp.field] === opt }"
+              :aria-checked="demo[grp.field] === opt"
+              @click="demo[grp.field] = opt"
+            >
+              {{ demoLabel(grp.key, opt) }}
+            </button>
+          </div>
+        </div>
+
+        <div class="demo-group">
+          <label class="demo-group-label" for="demo-profession">
+            {{ $t('onboarding.demographics.profession.label') }}
+          </label>
+          <input
+            id="demo-profession"
+            v-model="demo.profession"
+            type="text"
+            class="redeem-input"
+            maxlength="255"
+            :placeholder="$t('onboarding.demographics.profession.placeholder')"
+          />
+        </div>
+
+        <div class="demo-actions">
+          <LBtn variant="primary" :loading="demoSaving" :disabled="demoSaving" @click="saveDemographics">
+            {{ $t('userSettings.personal.profile.save') }}
+          </LBtn>
+          <span v-if="demoSaved" class="demo-saved" role="status">
+            <LIcon size="16">mdi-check-circle</LIcon>
+            {{ $t('userSettings.personal.profile.saved') }}
+          </span>
+        </div>
+      </div>
+    </section>
+
     <!-- Avatar Section -->
     <section class="settings-panel" role="group" aria-labelledby="avatar-title">
       <header class="panel-header">
@@ -110,22 +252,6 @@
           </div>
         </div>
 
-        <!-- AI Reserved Color Info -->
-        <div class="ai-reserved-info">
-          <div class="ai-color-sample" :style="{ background: `linear-gradient(135deg, #9B59B6 0%, #8E44AD 50%, #7D3C98 100%)` }">
-            <LIcon size="14" color="white">mdi-robot</LIcon>
-          </div>
-          <span class="ai-reserved-text">
-            {{ $t('userSettings.personal.collabColor.aiReservedHint', { name: aiAssistantSettings.username || 'LLARS KI' }) }}
-          </span>
-        </div>
-
-        <!-- Error message for reserved color -->
-        <div v-if="colorError" class="color-error" role="alert">
-          <LIcon size="16">mdi-alert-circle</LIcon>
-          <span>{{ colorError }}</span>
-        </div>
-
         <div v-if="collabColor" class="color-preview-bar" aria-live="polite">
           <span class="preview-label">{{ $t('userSettings.personal.collabColor.preview') }}</span>
           <div class="preview-sample" :style="{ backgroundColor: collabColor }">
@@ -206,17 +332,144 @@
 <script setup>
 import { ref, computed, onMounted, watch, defineEmits } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
 import LIcon from '@/components/common/LIcon.vue'
 import LAvatar from '@/components/common/LAvatar.vue'
+import LBtn from '@/components/common/LBtn.vue'
 import axios from 'axios'
 import { useAuth } from '@/composables/useAuth'
 import { useAppTheme } from '@/composables/useAppTheme'
-import { COLLAB_COLOR_PRESETS, AI_RESERVED_COLOR, isColorInAiReservedRange } from '@/constants/colors'
+import { useReferralRedeem } from '@/composables/useReferralRedeem'
+import { useSnackbar } from '@/composables/useSnackbar'
+import { COLLAB_COLOR_PRESETS } from '@/constants/colors'
 
 const emit = defineEmits(['save-status'])
 
 const { t, locale } = useI18n()
+const router = useRouter()
+const { showSuccess, showError } = useSnackbar()
+
+// --- Redeem invitation code (join a study as an existing user) ---
+const { loading: redeemLoading, redeem } = useReferralRedeem()
+const redeemCode = ref('')
+const redeemError = ref('')
+const redeemSuccess = ref(false)
+const redeemSuccessMessage = ref('')
+const redeemScenarioId = ref(null)
+
+async function handleRedeem() {
+  redeemError.value = ''
+  redeemSuccess.value = false
+  const code = redeemCode.value.trim()
+  if (!code) return
+
+  const { success, data, error } = await redeem(code)
+  if (success) {
+    redeemScenarioId.value = data.target_scenario_id || null
+    // already_enrolled → "you were already in this study"; otherwise → joined.
+    redeemSuccessMessage.value = data.already_enrolled
+      ? t('userSettings.personal.redeem.alreadyEnrolled')
+      : t('userSettings.personal.redeem.success')
+    redeemSuccess.value = true
+    showSuccess(redeemSuccessMessage.value)
+    redeemCode.value = ''
+  } else {
+    // Backend messages are localized German; fall back to a generic i18n string
+    // for the empty/transport sentinels emitted by the composable.
+    redeemError.value = (error === 'empty' || error === 'request_failed')
+      ? t('userSettings.personal.redeem.error')
+      : error
+    showError(redeemError.value)
+  }
+}
+
+function goToStudy() {
+  if (redeemScenarioId.value) {
+    router.push(`/scenarios/${redeemScenarioId.value}/evaluate`)
+  }
+}
+
+// --- Profile: stored email (read-only) + demographics (view/edit) ---
+// Reuses the survey's controlled vocabularies + i18n labels
+// (onboarding.demographics.*). "no_answer" shares a single label outside the
+// per-group block, hence the special case in demoLabel().
+const profileEmail = ref(null)
+const emailConsent = ref(null)          // null = not applicable (no referral reg)
+const emailConsentSaving = ref(false)
+const demoReferralLinkId = ref(null)
+const demoSaving = ref(false)
+const demoSaved = ref(false)
+const demo = ref({ gender: null, age_range: null, education: null, profession: '' })
+
+const demoGroups = [
+  { key: 'gender', field: 'gender', options: ['female', 'male', 'non_binary', 'no_answer'] },
+  { key: 'age', field: 'age_range', options: ['under_29', '30_49', '50_64', '65_plus', 'no_answer'] },
+  { key: 'education', field: 'education', options: ['phd', 'master', 'bachelor', 'vocational', 'abitur', 'realschule', 'no_formal', 'no_answer'] },
+]
+
+function demoLabel(group, key) {
+  return key === 'no_answer'
+    ? t('onboarding.demographics.no_answer')
+    : t(`onboarding.demographics.${group}.${key}`)
+}
+
+async function loadDemographics() {
+  try {
+    const { data } = await axios.get('/api/user/demographics')
+    profileEmail.value = data.email || null
+    emailConsent.value = data.email_contact_consent  // true | false | null
+    demoReferralLinkId.value = data.referral_link_id || null
+    if (data.demographics) {
+      demo.value = {
+        gender: data.demographics.gender || null,
+        age_range: data.demographics.age_range || null,
+        education: data.demographics.education || null,
+        profession: data.demographics.profession || '',
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load demographics:', error)
+  }
+}
+
+// Grant/revoke the "store my email for future studies" consent ("jederzeit
+// widerrufbar"). Persists to the referral registration's metadata via the
+// dedicated endpoint.
+async function setEmailConsent(value) {
+  emailConsentSaving.value = true
+  try {
+    const { data } = await axios.post('/api/user/demographics/email-consent', { consent: value })
+    emailConsent.value = data.email_contact_consent
+    showSuccess(t('userSettings.personal.profile.emailConsentSaved'))
+  } catch (error) {
+    emailConsent.value = !value  // revert optimistic toggle
+    showError(t('userSettings.personal.profile.saveError'))
+  } finally {
+    emailConsentSaving.value = false
+  }
+}
+
+async function saveDemographics() {
+  demoSaving.value = true
+  demoSaved.value = false
+  try {
+    const payload = {
+      gender: demo.value.gender,
+      age_range: demo.value.age_range,
+      education: demo.value.education,
+      profession: (demo.value.profession || '').trim() || null,
+    }
+    if (demoReferralLinkId.value) payload.referral_link_id = demoReferralLinkId.value
+    await axios.post('/api/user/demographics', payload)
+    demoSaved.value = true
+    showSuccess(t('userSettings.personal.profile.saved'))
+  } catch (error) {
+    showError(t('userSettings.personal.profile.saveError'))
+  } finally {
+    demoSaving.value = false
+  }
+}
 
 // Auth composable for avatar management
 const {
@@ -241,29 +494,9 @@ const fileInput = ref(null)
 const customColor = ref('#b0ca97')
 const selectedLanguage = ref('de')
 const collabColor = ref(null)
-const colorError = ref('')
-
-// AI Assistant settings (reserved color range)
-const aiAssistantSettings = ref({
-  enabled: false,
-  color: AI_RESERVED_COLOR,
-  username: 'LLARS KI'
-})
 
 // Use global LLARS color presets
 const predefinedColors = COLLAB_COLOR_PRESETS
-
-// Fetch AI assistant settings to know reserved color
-async function fetchAiAssistantSettings() {
-  try {
-    const response = await axios.get('/api/system/ai-assistant')
-    if (response.data.success) {
-      aiAssistantSettings.value = response.data.ai_assistant
-    }
-  } catch {
-    // Use defaults if API fails
-  }
-}
 
 const languages = [
   { value: 'de', label: 'Deutsch', flag: '🇩🇪' },
@@ -280,7 +513,7 @@ const debouncedSaveSettings = useDebounceFn(async () => {
     emit('save-status', 'saving')
 
     // Update collab color via useAuth (handles backend + global state + broadcasts event)
-    // This must happen FIRST so the watch in LatexEditorPane triggers properly
+    // This must happen FIRST so the watch in the collab editor panes triggers properly
     if (collabColor.value !== globalCollabColor.value) {
       await updateCollabColor(collabColor.value)
     }
@@ -304,7 +537,7 @@ const debouncedSaveSettings = useDebounceFn(async () => {
 onMounted(async () => {
   await Promise.all([
     loadSettings(),
-    fetchAiAssistantSettings()
+    loadDemographics()
   ])
 })
 
@@ -330,16 +563,8 @@ async function loadSettings() {
   }
 }
 
-// Color selection with auto-save and AI range validation
+// Color selection with auto-save
 function selectColor(color) {
-  colorError.value = ''
-
-  // Check if color is in AI reserved range (purple/violet spectrum)
-  if (isColorInAiReservedRange(color)) {
-    colorError.value = t('userSettings.personal.collabColor.aiReservedError')
-    return
-  }
-
   collabColor.value = color
   debouncedSaveSettings()
 }
@@ -465,7 +690,7 @@ async function regenerateAvatar() {
 }
 
 /* ============================================
-   Panel Design (like LatexCollab)
+   Panel Design (like the collab workspaces)
    ============================================ */
 
 .settings-panel {
@@ -505,6 +730,175 @@ async function regenerateAvatar() {
   color: rgba(var(--v-theme-on-surface), 0.7);
   margin: 0 0 16px 0;
   line-height: 1.5;
+}
+
+/* ============================================
+   Redeem Invitation Code
+   ============================================ */
+
+.redeem-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.redeem-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.15);
+  border-radius: var(--llars-radius-sm);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 14px;
+  transition: border-color 0.15s ease;
+}
+
+.redeem-input:focus {
+  outline: none;
+  border-color: var(--llars-primary);
+}
+
+.redeem-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(232, 160, 135, 0.1);
+  border: 1px solid rgba(232, 160, 135, 0.3);
+  border-radius: var(--llars-radius-sm);
+  color: #e8a087;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.redeem-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(152, 212, 187, 0.12);
+  border: 1px solid rgba(152, 212, 187, 0.35);
+  border-radius: var(--llars-radius-sm);
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.redeem-success .l-icon,
+.redeem-success > span:first-of-type {
+  color: #5bb89a;
+}
+
+/* ============================================
+   Profile / Demographics Section
+   ============================================ */
+
+.profile-email-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: var(--llars-radius-sm);
+}
+
+.email-consent-row {
+  margin: -8px 0 18px;
+}
+.email-consent-row :deep(.l-checkbox__label),
+.email-consent-row :deep(label) {
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+.profile-email-label {
+  font-size: 13px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.profile-email-value {
+  font-size: 13px;
+  padding: 2px 8px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 4px;
+  color: rgb(var(--v-theme-on-surface));
+  word-break: break-all;
+}
+
+.profile-email-empty {
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.demo-group {
+  margin-bottom: 18px;
+}
+
+.demo-group-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  margin-bottom: 8px;
+}
+
+.demo-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.demo-chip {
+  padding: 8px 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: var(--llars-radius-sm);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.demo-chip:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-color: rgba(var(--v-theme-on-surface), 0.2);
+}
+
+.demo-chip:focus {
+  outline: 2px solid var(--llars-primary);
+  outline-offset: 2px;
+}
+
+.demo-chip.selected {
+  border-color: var(--llars-primary);
+  background: rgba(176, 202, 151, 0.12);
+  color: var(--llars-primary);
+  font-weight: 600;
+}
+
+.demo-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.demo-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5bb89a;
 }
 
 /* ============================================
@@ -706,48 +1100,6 @@ async function regenerateAvatar() {
   background: rgba(var(--v-theme-on-surface), 0.06);
   border-radius: 4px;
   color: rgba(var(--v-theme-on-surface), 0.7);
-}
-
-/* AI Reserved Color Info */
-.ai-reserved-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 16px;
-  padding: 10px 14px;
-  background: rgba(155, 89, 182, 0.08);
-  border: 1px solid rgba(155, 89, 182, 0.2);
-  border-radius: var(--llars-radius-sm);
-}
-
-.ai-color-sample {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.ai-reserved-text {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-}
-
-/* Color Error */
-.color-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 10px 14px;
-  background: rgba(232, 160, 135, 0.1);
-  border: 1px solid rgba(232, 160, 135, 0.3);
-  border-radius: var(--llars-radius-sm);
-  color: #e8a087;
-  font-size: 13px;
-  font-weight: 500;
 }
 
 /* ============================================

@@ -26,7 +26,7 @@ Dieses Dokument beschreibt Tests für Edge Cases, Error States und ungewöhnlich
 | ES-06 | Keine Sources | Source-Panel | "Keine Quellen gefunden" | E2E |
 | ES-07 | Keine Threads | Ranker/Rater | "Keine Threads" | E2E |
 | ES-08 | Keine User | User-Suche | "Keine User gefunden" | E2E |
-| ES-09 | Leeres Workspace | Markdown/LaTeX | "Kein Dokument ausgewählt" | E2E |
+| ES-09 | Leeres Workspace | Markdown | "Kein Dokument ausgewählt" | E2E |
 | ES-10 | Keine Hints | KAIMO Hints | "Keine Hints in dieser Kategorie" | E2E |
 
 ### Daten-Visualisierung
@@ -363,7 +363,6 @@ test('NET-05: websocket reconnects', async ({ page }) => {
 | ID | Test | Element | Erwartung | Art |
 |----|------|---------|-----------|-----|
 | LOAD-05 | Embedding | RAG | Progress-Bar 0-100% | E2E |
-| LOAD-06 | PDF Compile | LaTeX | Spinner + Text | E2E |
 | LOAD-07 | LLM Response | Chat | Typing Indicator | E2E |
 | LOAD-08 | File Upload | Upload | Per-File Progress | E2E |
 

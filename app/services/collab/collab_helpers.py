@@ -1,10 +1,11 @@
 # collab_helpers.py
 """
-Generic helper functions for collaborative document workspaces (LaTeX/Markdown).
+Generic helper functions for collaborative document workspaces.
 Provides access control, dict conversion, and ordering utilities.
 
-This module provides parametrized functions that work with both LaTeX and Markdown
-collab systems by accepting model classes as parameters.
+The functions are parametrized over the workspace/document/member model classes
+so a second collab system can reuse them; Markdown Collab is currently the only
+consumer.
 """
 
 from __future__ import annotations
@@ -71,25 +72,17 @@ def ensure_safe_title(title: str) -> None:
 # Dict Conversion Helpers
 # ============================================================================
 
-def document_to_dict(
-    doc: TDocument,
-    include_asset: bool = False,
-    include_zotero: bool = False
-) -> dict:
+def document_to_dict(doc: TDocument) -> dict:
     """
     Convert a document model to API response dict.
 
-    Works with both LatexDocument and MarkdownDocument.
-
     Args:
-        doc: Document model instance
-        include_asset: Include asset_id field (LaTeX only)
-        include_zotero: Include is_zotero_managed field (LaTeX only)
+        doc: Document model instance (e.g. MarkdownDocument)
 
     Returns:
         Dict representation for API response
     """
-    result = {
+    return {
         "id": doc.id,
         "workspace_id": doc.workspace_id,
         "parent_id": doc.parent_id,
@@ -102,33 +95,18 @@ def document_to_dict(
         "created_at": doc.created_at.isoformat() if doc.created_at else None,
     }
 
-    # LaTeX-specific fields
-    if include_asset and hasattr(doc, "asset_id"):
-        result["asset_id"] = doc.asset_id
 
-    if include_zotero and hasattr(doc, "zotero_library_link"):
-        result["is_zotero_managed"] = doc.zotero_library_link is not None
-
-    return result
-
-
-def workspace_to_dict(
-    ws: TWorkspace,
-    include_compile: bool = False
-) -> dict:
+def workspace_to_dict(ws: TWorkspace) -> dict:
     """
     Convert a workspace model to API response dict.
 
-    Works with both LatexWorkspace and MarkdownWorkspace.
-
     Args:
-        ws: Workspace model instance
-        include_compile: Include compile-related fields (LaTeX only)
+        ws: Workspace model instance (e.g. MarkdownWorkspace)
 
     Returns:
         Dict representation for API response
     """
-    result = {
+    return {
         "id": ws.id,
         "name": ws.name,
         "owner_username": ws.owner_username,
@@ -136,15 +114,6 @@ def workspace_to_dict(
         "updated_at": ws.updated_at.isoformat() if ws.updated_at else None,
         "created_at": ws.created_at.isoformat() if ws.created_at else None,
     }
-
-    # LaTeX-specific fields
-    if include_compile:
-        if hasattr(ws, "main_document_id"):
-            result["main_document_id"] = ws.main_document_id
-        if hasattr(ws, "latest_compile_job_id"):
-            result["latest_compile_job_id"] = ws.latest_compile_job_id
-
-    return result
 
 
 # ============================================================================
@@ -160,7 +129,7 @@ def get_next_order_index(
     Get the next order_index for a new document in a folder.
 
     Args:
-        document_model: The document model class (LatexDocument or MarkdownDocument)
+        document_model: The document model class (e.g. MarkdownDocument)
         workspace_id: Workspace ID
         parent_id: Parent folder ID (None for root)
 
@@ -242,7 +211,7 @@ def build_doc_path(
         doc: Document to build path for
 
     Returns:
-        Full path string (e.g., "folder/subfolder/document.tex")
+        Full path string (e.g., "folder/subfolder/document.md")
     """
     parts = [doc.title]
     current = doc

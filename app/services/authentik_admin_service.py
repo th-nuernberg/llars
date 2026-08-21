@@ -217,7 +217,9 @@ class AuthentikAdminService:
         email: str,
         password: str,
         name: str = "",
-        is_active: bool = True
+        is_active: bool = True,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
     ) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
         """
         Create a new user in Authentik.
@@ -228,6 +230,8 @@ class AuthentikAdminService:
             password: Initial password
             name: Display name (optional, defaults to username)
             is_active: Whether the user should be active
+            first_name: First name (stored in Authentik attributes)
+            last_name: Last name (stored in Authentik attributes)
 
         Returns:
             Tuple of (success, error_message, user_data)
@@ -254,6 +258,13 @@ class AuthentikAdminService:
                     if user.get("username") == username:
                         return False, f"User '{username}' already exists in Authentik", None
 
+            # Build attributes with name fields
+            attributes = {}
+            if first_name:
+                attributes["first_name"] = first_name
+            if last_name:
+                attributes["last_name"] = last_name
+
             # Create user
             user_data = {
                 "username": username,
@@ -263,6 +274,8 @@ class AuthentikAdminService:
                 "path": "users",
                 "type": "internal",
             }
+            if attributes:
+                user_data["attributes"] = attributes
 
             create_response = cls._make_request(
                 "POST",
@@ -282,16 +295,12 @@ class AuthentikAdminService:
 
             logger.info(f"Created Authentik user '{username}' with PK: {user_pk}")
 
-            # Set password
-            password_response = cls._make_request(
-                "POST",
-                f"{api_url}/core/users/{user_pk}/set_password/",
-                json={"password": password},
-                timeout=10
-            )
-
-            if password_response.status_code not in [200, 204]:
-                logger.warning(f"Failed to set password for user '{username}': {password_response.status_code}")
+            # Set the password using the PK we just got back — no redundant
+            # lookup. The username-based ``set_password`` (self-service reset)
+            # resolves the PK first and then delegates to the same helper.
+            pw_ok, pw_err = cls._set_password_by_pk(user_pk, password, username)
+            if not pw_ok:
+                logger.warning(f"Failed to set password for user '{username}': {pw_err}")
                 # User was created, but password setting failed
                 return True, "User created but password could not be set", created_user
 
@@ -304,6 +313,190 @@ class AuthentikAdminService:
         except Exception as e:
             logger.error(f"Unexpected error creating Authentik user: {e}")
             return False, f"Unexpected error: {str(e)}", None
+
+    @classmethod
+    def find_user(cls, username: str) -> Optional[Dict[str, Any]]:
+        """
+        Look up an Authentik user by exact username.
+
+        Returns the full user record (so callers can read ``email``, ``pk``,
+        ``is_active``) or ``None`` if not found / on any error.
+        """
+        token = cls._get_admin_token()
+        if not token:
+            return None
+
+        config = cls._get_config()
+        api_url = f"{config['base_url']}/api/v3"
+
+        try:
+            search_response = cls._make_request(
+                "GET",
+                f"{api_url}/core/users/",
+                params={"username": username},
+                timeout=10
+            )
+            if search_response.status_code != 200:
+                return None
+            for user in search_response.json().get("results", []):
+                if user.get("username") == username:
+                    return user
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Authentik API error in find_user: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in find_user: {e}")
+            return None
+
+    @classmethod
+    def find_user_by_email(cls, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Look up an Authentik user by exact email address.
+
+        Returns the full user record or ``None`` if not found / on any error.
+        """
+        token = cls._get_admin_token()
+        if not token or not email:
+            return None
+
+        config = cls._get_config()
+        api_url = f"{config['base_url']}/api/v3"
+
+        try:
+            search_response = cls._make_request(
+                "GET",
+                f"{api_url}/core/users/",
+                params={"email": email},
+                timeout=10
+            )
+            if search_response.status_code != 200:
+                return None
+            target = email.strip().lower()
+            for user in search_response.json().get("results", []):
+                if (user.get("email") or "").strip().lower() == target:
+                    return user
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Authentik API error in find_user_by_email: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in find_user_by_email: {e}")
+            return None
+
+    @classmethod
+    def set_password(cls, username: str, new_password: str) -> Tuple[bool, Optional[str]]:
+        """
+        Write a new password for ``username`` through to Authentik.
+
+        This is the single write-through point for both user creation and the
+        self-service password-reset flow. LLARS never stores a usable local
+        ``password_hash`` for Authentik-backed users.
+
+        Returns:
+            Tuple of (success, error_message)
+        """
+        token = cls._get_admin_token()
+        if not token:
+            return False, "Could not authenticate with Authentik"
+
+        user = cls.find_user(username)
+        if not user:
+            return False, f"User '{username}' not found in Authentik"
+        return cls._set_password_by_pk(user.get("pk"), new_password, username)
+
+    @classmethod
+    def _set_password_by_pk(cls, user_pk, new_password: str,
+                            username: str = "") -> Tuple[bool, Optional[str]]:
+        """
+        Write a new password through to Authentik for an already-resolved PK.
+
+        Split out so ``create_user`` (which already holds the freshly-created
+        PK) can set the password without a redundant ``find_user`` lookup,
+        while the username-based ``set_password`` resolves the PK first and
+        then delegates here. This single POST to
+        ``/core/users/{pk}/set_password/`` is the one write-through point.
+
+        Returns:
+            Tuple of (success, error_message)
+        """
+        config = cls._get_config()
+        api_url = f"{config['base_url']}/api/v3"
+        label = username or f"pk={user_pk}"
+
+        try:
+            password_response = cls._make_request(
+                "POST",
+                f"{api_url}/core/users/{user_pk}/set_password/",
+                json={"password": new_password},
+                timeout=10
+            )
+            if password_response.status_code in [200, 204]:
+                logger.info(f"Password set for Authentik user '{label}'")
+                return True, None
+
+            error_detail = ""
+            try:
+                error_detail = password_response.json().get("detail", password_response.text)
+            except Exception:
+                error_detail = password_response.text
+            return False, f"Failed to set password: {error_detail}"
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Authentik API error in set_password: {e}")
+            return False, f"Connection error: {str(e)}"
+        except Exception as e:
+            logger.error(f"Unexpected error in set_password: {e}")
+            return False, f"Unexpected error: {str(e)}"
+
+    @classmethod
+    def generate_recovery_link(cls, username: str) -> Tuple[bool, Optional[str]]:
+        """
+        Generate an Authentik-side recovery link for ``username``.
+
+        Uses Authentik's own ``/core/users/{pk}/recovery/`` endpoint, which
+        returns ``{"link": "..."}``. This is the admin "copy reset link"
+        path and is independent of the LLARS self-service token space.
+
+        Returns:
+            Tuple of (success, link_or_error_message)
+        """
+        token = cls._get_admin_token()
+        if not token:
+            return False, "Could not authenticate with Authentik"
+
+        user = cls.find_user(username)
+        if not user:
+            return False, f"User '{username}' not found in Authentik"
+        user_pk = user.get("pk")
+
+        config = cls._get_config()
+        api_url = f"{config['base_url']}/api/v3"
+
+        try:
+            recovery_response = cls._make_request(
+                "POST",
+                f"{api_url}/core/users/{user_pk}/recovery/",
+                timeout=10
+            )
+            if recovery_response.status_code in [200, 201]:
+                link = recovery_response.json().get("link")
+                if not link:
+                    return False, "Authentik returned no recovery link"
+                logger.info(f"Generated recovery link for user '{username}'")
+                return True, link
+
+            error_detail = ""
+            try:
+                error_detail = recovery_response.json().get("detail", recovery_response.text)
+            except Exception:
+                error_detail = recovery_response.text
+            return False, f"Failed to generate recovery link: {error_detail}"
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Authentik API error in generate_recovery_link: {e}")
+            return False, f"Connection error: {str(e)}"
+        except Exception as e:
+            logger.error(f"Unexpected error in generate_recovery_link: {e}")
+            return False, f"Unexpected error: {str(e)}"
 
     @classmethod
     def update_user_status(cls, username: str, is_active: bool) -> Tuple[bool, Optional[str]]:
@@ -365,6 +558,95 @@ class AuthentikAdminService:
             return False, f"Connection error: {str(e)}"
         except Exception as e:
             logger.error(f"Unexpected error updating Authentik user: {e}")
+            return False, f"Unexpected error: {str(e)}"
+
+    @classmethod
+    def send_recovery_email(cls, username: str) -> Tuple[bool, Optional[str]]:
+        """
+        Send a password recovery email to a user via Authentik.
+
+        Args:
+            username: The username to send recovery email to
+
+        Returns:
+            Tuple of (success, error_message)
+        """
+        token = cls._get_admin_token()
+        if not token:
+            return False, "Could not authenticate with Authentik"
+
+        config = cls._get_config()
+        api_url = f"{config['base_url']}/api/v3"
+
+        try:
+            # Find user by username
+            search_response = cls._make_request(
+                "GET",
+                f"{api_url}/core/users/",
+                params={"username": username},
+                timeout=10
+            )
+
+            if search_response.status_code != 200:
+                return False, "Could not search for user in Authentik"
+
+            results = search_response.json().get("results", [])
+            user_pk = None
+            for user in results:
+                if user.get("username") == username:
+                    user_pk = user.get("pk")
+                    break
+
+            if not user_pk:
+                return False, f"User '{username}' not found in Authentik"
+
+            # Find email stage for recovery
+            stages_response = cls._make_request(
+                "GET",
+                f"{api_url}/stages/email/",
+                params={"ordering": "name"},
+                timeout=10
+            )
+
+            email_stage_pk = None
+            if stages_response.status_code == 200:
+                stages = stages_response.json().get("results", [])
+                for stage in stages:
+                    # Prefer a stage with "recovery" in the name
+                    if "recovery" in stage.get("name", "").lower():
+                        email_stage_pk = stage.get("pk")
+                        break
+                # Fallback to first email stage
+                if not email_stage_pk and stages:
+                    email_stage_pk = stages[0].get("pk")
+
+            if not email_stage_pk:
+                return False, "No email stage configured in Authentik. Configure an email stage first."
+
+            # Send recovery email
+            recovery_response = cls._make_request(
+                "POST",
+                f"{api_url}/core/users/{user_pk}/recovery_email/",
+                json={"email_stage": email_stage_pk},
+                timeout=10
+            )
+
+            if recovery_response.status_code in [200, 204]:
+                logger.info(f"Recovery email sent for user '{username}'")
+                return True, None
+            else:
+                error_detail = ""
+                try:
+                    error_detail = recovery_response.json().get("detail", recovery_response.text)
+                except Exception:
+                    error_detail = recovery_response.text
+                return False, f"Failed to send recovery email: {error_detail}"
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Authentik API error: {e}")
+            return False, f"Connection error: {str(e)}"
+        except Exception as e:
+            logger.error(f"Unexpected error sending recovery email: {e}")
             return False, f"Unexpected error: {str(e)}"
 
     @classmethod

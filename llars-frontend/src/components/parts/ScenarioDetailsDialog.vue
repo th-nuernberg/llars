@@ -301,7 +301,7 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
-            <v-expansion-panel v-if="this.editedScenario.function_type_id === 4">
+            <v-expansion-panel v-if="[4, 8].includes(this.editedScenario.function_type_id)">
               <v-expansion-panel-title>
                 Modell-Konfiguration
               </v-expansion-panel-title>
@@ -619,11 +619,11 @@ export default {
           new_end: this.editedScenario.end_date !== this.originalScenario.end_date
             ? this.formatDateForBackend(this.editedScenario.end_date)
             : undefined,
-          llm1_model: this.editedScenario.function_type_id === 4 &&
+          llm1_model: [4, 8].includes(this.editedScenario.function_type_id) &&
                      this.editedScenario.llm1_model !== this.originalScenario.llm1_model
             ? this.editedScenario.llm1_model
             : undefined,
-          llm2_model: this.editedScenario.function_type_id === 4 &&
+          llm2_model: [4, 8].includes(this.editedScenario.function_type_id) &&
                      this.editedScenario.llm2_model !== this.originalScenario.llm2_model
             ? this.editedScenario.llm2_model
             : undefined

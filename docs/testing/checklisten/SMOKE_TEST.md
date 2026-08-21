@@ -54,7 +54,6 @@ Diese Checkliste dient zur schnellen Überprüfung der Kernfunktionalitäten nac
 - [ ] Chat-Kachel → `/chat`
 - [ ] Admin-Kachel → `/admin`
 - [ ] Markdown Collab → `/MarkdownCollab`
-- [ ] LaTeX Collab → `/LatexCollab`
 
 ---
 
@@ -105,14 +104,6 @@ Diese Checkliste dient zur schnellen Überprüfung der Kernfunktionalitäten nac
 - [ ] Workspace erstellen oder öffnen
 - [ ] Text eingeben
 - [ ] Preview aktualisiert sich
-
-### LaTeX Collab
-
-- [ ] `/LatexCollab` öffnen
-- [ ] Workspace erstellen oder öffnen
-- [ ] LaTeX eingeben: `\section{Test}`
-- [ ] "Kompilieren" klicken
-- [ ] PDF wird generiert (kann 30-60s dauern)
 
 ### Collab-Farbe
 

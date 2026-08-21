@@ -574,7 +574,98 @@ Flask-Limiter schützt die API automatisch:
 
 ---
 
-## 14. Troubleshooting Production
+## 14. Blue-Green Deployment
+
+Seit März 2026 nutzt LLARS Blue-Green Deployment für near-zero-downtime Updates.
+
+### Konzept
+
+```
+                    ┌─────────┐
+                    │  NGINX  │
+                    └────┬────┘
+                         │
+            ┌────────────┼────────────┐
+            ▼                         ▼
+    ┌───────────────┐        ┌───────────────┐
+    │   BLUE (alt)  │        │  GREEN (neu)  │
+    │  Flask+Vue+YJS│        │  Flask+Vue+YJS│
+    └───────────────┘        └───────────────┘
+```
+
+- **Aktive Farbe** bedient Production-Traffic
+- **Inaktive Farbe** wird für das nächste Deployment gebaut
+- **Umschaltung** erfolgt durch Nginx-Config-Update (~2 Sekunden Downtime)
+
+### Befehle
+
+```bash
+# Status anzeigen
+bash scripts/ci/manual_bluegreen_deploy.sh status
+
+# Inaktive Farbe bauen + auf Staging bereitstellen
+bash scripts/ci/manual_bluegreen_deploy.sh prepare
+
+# Smoke-Tests gegen Staging ausführen
+bash scripts/ci/manual_bluegreen_deploy.sh test
+
+# Auf Production umschalten
+bash scripts/ci/manual_bluegreen_deploy.sh switch
+```
+
+### Automatisches Deployment (CI/CD)
+
+Development-Branch (`dev`) deployed automatisch bei jedem Push auf den Dev-Server (llars-dev, 141.75.150.86). Production-Branch (`main`) deployed nachts Mo-Fr 02:00 CET via GitLab Pipeline Schedule.
+
+Production Nightly-Flow:
+
+```
+deploy:staging → test:e2e:nightly:tiles → smoke:staging → deploy:production → smoke:production
+```
+
+Bei fehlgeschlagenen Smoke-Tests: automatischer Rollback.
+
+### Pipeline-Steuerung
+
+| Trigger | Staging | Production | Beschreibung |
+|---------|:-------:|:----------:|-------------|
+| Normaler Push | ✗ | ✗ | Nur Lint + Tests |
+| `[dryrun]` in Commit-Message | ✓ | **✗** | Voller Staging-Flow, kein Prod-Deploy |
+| `DRY_RUN=true` (CI Variable) | ✓ | **✗** | Gleich wie `[dryrun]` |
+| `FORCE_DEPLOY=true` (CI Variable) | ✓ | ✓ | Sofort volle Pipeline |
+| Nightly Schedule | ✓ | ✓ | Mo-Fr 02:00 CET |
+
+**Dry-Run** prüft ob der Nightly-Lauf durchlaufen wird, ohne Production zu berühren:
+
+```bash
+git commit -m "chore: pre-release check [dryrun]"
+git push origin main
+```
+
+### Rollback
+
+```bash
+# Sofort-Rollback (~2s, Nginx zurückschalten)
+bash scripts/ci/rollback_bluegreen.sh
+
+# Fallback-Rollback (DB-Restore + Rebuild, 5-10 Min)
+bash scripts/ci/rollback_production.sh
+```
+
+### Wichtige Dateien
+
+| Datei | Beschreibung |
+|-------|-------------|
+| `docker-compose.prod-bluegreen.yml` | Compose-Override für Blue/Green |
+| `docker/nginx/active_upstream.conf` | Aktive Farbe (Production) |
+| `docker/nginx/active_upstream_staging.conf` | Staging-Upstream |
+| `.deploy/active_color` | Aktuell aktive Farbe |
+| `scripts/ci/deploy_bluegreen.sh` | Deploy-Script |
+| `scripts/ci/rollback_bluegreen.sh` | Rollback-Script |
+
+---
+
+## 15. Troubleshooting Production
 
 ### Eventlet DNS-Probleme
 

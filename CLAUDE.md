@@ -12,6 +12,27 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 
 ---
 
+## Code-Dokumentation (PFLICHT)
+
+**Code MUSS sauber und sinnvoll dokumentiert werden.** Bei jeder Änderung Kommentare im Code nachziehen!
+
+### Regeln
+
+1. **Klassen und Module** brauchen Docstrings die den Zweck, die Architekturentscheidungen und Sicherheitsmechanismen erklären
+2. **Nicht-triviale Funktionen** brauchen Docstrings die erklären WAS und WARUM (nicht WIE - das steht im Code)
+3. **Komplexe Logik** (Cooldowns, Locks, Circuit Breaker, Fehlerbehandlung) MUSS inline-kommentiert werden
+4. **Entscheidungen gegen offensichtliche Alternativen** kommentieren (z.B. "In-memory statt Redis weil single-worker")
+5. **Verweise auf andere Dateien** wenn die Logik verteilt ist (z.B. "See LLMAITaskRunner docstring for anti-DDoS strategy")
+6. **Bei Änderungen:** Bestehende Kommentare prüfen und aktualisieren. Veraltete Kommentare sind schlimmer als keine
+
+### Was NICHT kommentiert werden muss
+
+- Offensichtlicher Code (`user = get_user()` braucht keinen Kommentar)
+- Getter/Setter, simple CRUD-Routen
+- Standard-Framework-Patterns (Decorators, Blueprint-Registration)
+
+---
+
 ## Quick Start
 
 ```bash
@@ -224,19 +245,77 @@ Runner: Shell-Executor direkt auf Server
 | Stage | Jobs |
 |-------|------|
 | lint | `lint:backend`, `lint:frontend` |
-| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:e2e` |
+| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:nightly:contracts`, `metrics:collect` |
 | security | `security:routes`, `security:scan` |
-| build | `build:docker` (nur main) |
-| deploy | `deploy:staging`, `deploy:production` |
-| smoke | `smoke:production` |
+| build | `build:docker` |
+| deploy-staging | `deploy:staging` |
+| test-staging | `test:e2e:nightly:tiles`, `smoke:staging` |
+| deploy | `deploy:production` |
+| smoke | `smoke:production`, `maintenance:docker-cleanup`, `metrics:update-docs` |
 | rollback | `rollback:production` (manual) |
 
 ```
-Push to develop → deploy:staging (automatisch)
-Push to main    → deploy:production → smoke:production (Auto-Rollback bei Smoke-Fail)
+Schedule (SCHEDULED_DEPLOY=true) oder FORCE_DEPLOY=true auf main:
+  deploy:staging → test:e2e:nightly:tiles → smoke:staging → deploy:production → smoke:production → maintenance:docker-cleanup
+
+Wichtige Guards:
+- `deploy:production` laeuft nur nach erfolgreichen Staging-Tests.
+- Blue-Green `switch` schaltet nur bei vorhandenem Pending-Candidate und no-op bei identischem Commit.
+- Bei `smoke:production` Fehler: automatischer Rollback (`rollback_bluegreen.sh`).
+- Nightly-Cleanup entfernt ungenutzte Docker-Images/Build-Cache älter als 7 Tage, um VM-Speicher stabil zu halten.
 ```
 
 **Test-Requirements:** `app/requirements-test.txt` (ohne torch, transformers, flair - ~3GB gespart)
+
+### Production API-Key (für Smoke-Tests)
+
+Der **System-Admin-API-Key der Production-Maschine** liegt in `.env` unter
+`PRODUCTION_ADMIN_API_KEY`. Damit sind Smoke-Tests gegen
+`https://llars.e-beratungsinstitut.de` ohne SSH/VPN möglich:
+
+```bash
+PROD_KEY=$(grep '^PRODUCTION_ADMIN_API_KEY=' .env | cut -d= -f2-)
+PROD=https://llars.e-beratungsinstitut.de
+
+# v1 API listen
+curl -s "$PROD/api/v1/scenarios"  -H "X-API-Key: $PROD_KEY" | jq .
+curl -s "$PROD/api/v1/chatbots"   -H "X-API-Key: $PROD_KEY" | jq .
+
+# Frischer Quickbuild (Crawler-Check)
+curl -s -X POST "$PROD/api/v1/chatbot-wizard/quickbuild" \
+  -H "X-API-Key: $PROD_KEY" -H "Content-Type: application/json" \
+  -d '{"crawl":{"crawl_url":"https://example.com"},"model_name":"Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506"}'
+```
+
+`SYSTEM_ADMIN_API_KEY` in derselben `.env` ist der **lokale Dev-Key**
+(`llars-admin-key-change-in-production-12345`) — die zwei Variablen
+**nicht verwechseln**. Wenn der Prod-Key gedreht wird, manuell aus
+`/var/llars/.env` auf der prod-Maschine fetchen und in `.env` ersetzen:
+
+```bash
+ssh llars "grep '^SYSTEM_ADMIN_API_KEY=' /var/llars/.env | cut -d= -f2-"
+```
+
+### Dev API-Key (für Smoke-Tests gegen kia-dev)
+
+Der **System-Admin-API-Key der Dev-Maschine** liegt in `.env` unter
+`DEV_ADMIN_API_KEY`. Damit sind Smoke-Tests gegen
+`http://kia-dev.informatik.fh-nuernberg.de` möglich (VPN nötig — interner
+FH-Nürnberg-Netzbereich):
+
+```bash
+DEV_KEY=$(grep '^DEV_ADMIN_API_KEY=' .env | cut -d= -f2-)
+DEV=http://kia-dev.informatik.fh-nuernberg.de
+
+curl -s "$DEV/api/v1/scenarios" -H "X-API-Key: $DEV_KEY" | jq .
+```
+
+Wenn der Dev-Key gedreht wird, manuell aus `/var/llars/.env` auf der
+dev-Maschine (`llars-dev`) fetchen und in `.env` ersetzen:
+
+```bash
+ssh llars-dev "grep '^SYSTEM_ADMIN_API_KEY=' /var/llars/.env | cut -d= -f2-"
+```
 
 ### GitLab API Zugriff
 
@@ -286,12 +365,30 @@ DURATION_SECONDS=21600 INTERVAL_SECONDS=600 BRANCH=main ./scripts/ci/monitor_pip
 - `GITLAB_PROJECT_ID` - Projekt-ID (7123)
 - `GITLAB_PROJECT_PATH` - Projekt-Pfad
 
+### Manuelles Blue-Green Deployment (Shell)
+
+```bash
+# Status anzeigen
+bash scripts/ci/manual_bluegreen_deploy.sh status
+
+# Inaktive Farbe bauen + auf Staging (55080) bereitstellen
+bash scripts/ci/manual_bluegreen_deploy.sh prepare
+
+# Smoke gegen Staging ausfuehren (optional: RUN_E2E=1 fuer Playwright Vollsuite)
+bash scripts/ci/manual_bluegreen_deploy.sh test
+RUN_E2E=1 bash scripts/ci/manual_bluegreen_deploy.sh test
+
+# Nach erfolgreichen Tests auf Production umschalten
+bash scripts/ci/manual_bluegreen_deploy.sh switch
+```
+
 ### CI/CD Troubleshooting
 
 | Problem | Loesung |
 |---------|---------|
 | Pipeline 0 Jobs | Auto-cancel aktiv? YAML validieren |
 | E2E Tests scheitern | App auf Server laufen? PLAYWRIGHT_BASE_URL korrekt? |
+| Staging Smoke scheitert sofort | `docker compose --profile testing build smoke-test-service` neu bauen |
 | Job haengt bei pending | Shell-Runner online? Tags korrekt? |
 | Lint fehlschlaegt | flake8 lokal ausfuehren, .flake8 Config pruefen |
 
@@ -300,6 +397,19 @@ DURATION_SECONDS=21600 INTERVAL_SECONDS=600 BRANCH=main ./scripts/ci/monitor_pip
 ## Tests - PFLICHT!
 
 Jede neue Komponente/Service MUSS Tests haben.
+
+### Home Tile Change Policy (verbindlich)
+
+Wenn eine Home-Kachel hinzugefügt, entfernt oder geändert wird, sind diese Schritte Pflicht:
+
+1. `llars-frontend/src/config/home_tiles.contract.json` aktualisieren.
+2. Gleichnamigen Testtitel in `llars-frontend/e2e/nightly/tile-regression.spec.js` ergänzen/anpassen.
+3. Cross-Feature-Flows in `llars-frontend/e2e/nightly/nightly_workflows.contract.json` und `llars-frontend/e2e/nightly/workflows.spec.js` pflegen.
+4. Activity-IDs in `llars-frontend/e2e/nightly/nightly_activities.contract.json` pflegen (inkl. Cross-Role-Flows).
+5. Matrix-Doku in `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md` und Aktivitäts-Guide in `docs/docs/guides/nightly-test-activities.md` aktualisieren.
+6. Coverage-Gate lokal ausführen: `python3 scripts/testing/validate_nightly_coverage.py`.
+
+Ohne diese Schritte darf nicht gemerged oder deployed werden.
 
 ```bash
 # Backend
@@ -395,6 +505,12 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 2. **Reproduziere lokal** - `npm run e2e:chromium -- --workers=1`
 3. **Fix Code ODER Test** - Je nachdem was falsch ist
 4. **Verifiziere Pipeline** - Commit, Push, Monitor
+
+### CI/CD Event Logging
+
+- Nightly CI/CD-Ereignisse werden mit Severity `ci_cd` im System Monitor erfasst.
+- Event-Endpoint: `POST /api/admin/system/events/ci-cd` (System API Key via `X-API-Key`).
+- Logging-Skript: `scripts/ci/log_ci_event.sh`.
 
 ---
 
@@ -509,6 +625,8 @@ Scenario
 | 4 | comparison | Items paarweise vergleichen (A vs B) |
 | 5 | authenticity | Fake/Echt Bewertung (LLARS-spezifisch) |
 | 7 | labeling | Kategorien zuweisen (binär, multi-class) |
+| 8 | communication_comparison | Beratungs-A/B — welche Antwort würde ich abschicken? |
+| 9 | conversation_labeling | Spans **innerhalb** eines Gesprächs labeln — Item = Gespräch, Analyse-Einheit = Span |
 
 ### Evaluation Data Schemas (Ground Truth)
 
@@ -618,6 +736,85 @@ config.get('eval_config', {}).get('config', {}).get('dimensions', [])
 - `EVALUATOR` - Bewerter, erhält alle Items
 - `RATER` - Bewerter mit optionaler Item-Distribution
 
+### Bearbeitungszeit pro Fall (Per-Case Timing)
+
+Wie lange ein Bewerter pro Fall gebraucht hat, steht in **jedem** Export (v1-API + GUI, alle Typen) in zwei Spalten:
+
+| Spalte | Bedeutung |
+|--------|-----------|
+| `time_on_item_ms` | **Echt gemessen**: Zeit vom Anzeigen des Items bis zum ersten Speichern (Client `Date.now()`). |
+| `time_since_prev_ms` | **Abgeleiteter Fallback**: Abstand der `created_at`-Zeitstempel aufeinanderfolgender Fälle desselben Bewerters. Für Alt-Studien ohne echte Erfassung. Erster Fall pro Bewerter + Ranking (kein Zeitstempel) = leer; rohe Werte inkl. Pausen. |
+
+Die Rohzeiten stehen in **CSV + JSON** (eine Spalte pro Zeile). Der **JSON-Envelope** (v1-API + GUI) enthält zusätzlich `timing_metrics` mit **aggregierten Kennzahlen pro Bewerter** (`n`, `mean_ms`, `median_ms`, `min_ms`, `max_ms`, `std_ms` (Stichproben-SD, None bei n<2), `total_ms`, `captured_n`/`derived_n`) + `overall`. `ItemTimingService.summarize_cases` **dedupliziert pro Fall** `(voter, item)` — sonst würden Ratings mit mehreren Dimensions-Zeilen den Mittelwert verzerren. Für CSV-Konsumenten lassen sich beliebige Statistiken auch direkt aus der Spalte rechnen.
+
+**Speicherung:** zentrale Tabelle `evaluation_item_timings` (eine Zeile pro `(user, item, scenario)`, first-write-only) — generisch für alle 6 Typen, weil Rating/Ranking mehrere Vote-Zeilen pro Fall haben. Labeling führt zusätzlich `labeling_copilot_logs.time_on_item_ms` (Co-Pilot-Studie).
+
+**Erfassung:** `itemShownAt`-Timer in den Bewertungs-Interfaces/Composables → `time_on_item_ms` im Submit → Persistenz über `ItemTimingService.record_item_timing` (bzw. `record_for_thread` für die thread-scoped Ranking-/Authenticity-Routen).
+
+**Wichtige Dateien:**
+```
+app/db/models/evaluation_item_timing.py          # Tabelle
+app/services/evaluation/item_timing_service.py   # Schreib-/Lesepfad
+app/services/evaluation/results_export_service.py# v1-Export (_stamp_timing)
+app/routes/scenarios/scenario_manager_api.py     # GUI-Export (Post-Stamp)
+```
+Submit-Endpunkte: `/evaluate` (comparison+labeling), `/rating/.../rate` (rating+mail_rating), `/save_ranking` (Query-Param), `/authenticity/.../vote`.
+
+---
+
+## LLM Evaluator Auto-Start & Anti-DDoS
+
+**KRITISCH:** LLM Evaluatoren hatten mehrfach 100% CPU / Server-Crashes verursacht (b70e670d, e16d4a30). Die aktuelle Implementierung hat 6 Schutzschichten.
+
+### Trigger-Punkte (wann startet Auto-Start?)
+
+| Trigger | Datei | Schutz |
+|---------|-------|--------|
+| Server-Start | `app/main.py` (`_run_pending_evaluations`) | Permanent-Failure-Skip + 30min Error-Cooldown + nur pending Items |
+| Szenario öffnen (GET) | `scenario_manager_api.py` | 5min Cooldown pro Szenario + Lock-Check |
+| Szenario erstellen (POST) | `scenario_manager_api.py` | Einmalig, kein Cooldown nötig |
+| Threads hinzufügen (POST) | `scenario_manager_api.py` | Nur für neue Thread-IDs |
+| **Manueller Start/Retry** | `llm_evaluation_routes.py` POST `/<id>/start` | **Löscht Error-Records**, dann fresh start |
+
+### 6 Schutzschichten
+
+| # | Schicht | Schutz gegen | Wo |
+|---|---------|-------------|-----|
+| 1 | Lock per (scenario, model) | Race Conditions, doppelte Runner | `LLMAITaskRunner._active_locks` |
+| 2 | Permanent Failure Detection | Endlos-Retry bei Auth-Fehlern (401/403) | `_is_permanent_failure()` in allen 7 Runner-Loops |
+| 3 | Cooldown 5min/Szenario | Trigger bei jedem Page Load | `_llm_auto_start_cooldowns` in scenario_manager_api |
+| 4 | Error Cooldown 30min | Restart-Loops bei transienten Fehlern | `main.py` Startup |
+| 5 | Circuit Breaker (3 consecutive) | Kaskadenfehler in einem Run | `_check_circuit_breaker()` |
+| 6 | Total Failure Cap (30) | Runaway-Loops mit intermittierenden Erfolgen | `MAX_TOTAL_FAILURES` |
+
+### Manueller Retry-Flow (Assessors Tab)
+
+1. User fixt API-Key unter Settings → LLM Provider
+2. User klickt "Retry" im Assessors-Tab (`/scenarios/<id>?tab=assessors`)
+3. Backend **löscht alle Error-Records** für dieses Model (POST `/<id>/start`)
+4. Runner startet fresh, behandelt alle Items als "pending"
+5. Lock verhindert doppelten Start
+
+### Status-Anzeige (Frontend)
+
+| Backend-Status | UI | Button |
+|---------------|-----|--------|
+| `running` (Lock gehalten oder completed > 0) | "Running" Tag | Kein Button |
+| `pending` (0 completed, 0 errors, kein Lock) | - | **Start** Button |
+| `failed` (alle Items versucht, Fehler) | "Failed" Tag | **Retry** Button |
+| `stopped` (teilweise Fehler, nicht alle versucht) | "Stopped" Tag | **Retry** Button |
+| `completed` (alle Items erfolgreich) | "Completed" Tag | Kein Button |
+
+### Wichtige Dateien
+
+```
+app/services/llm/llm_ai_task_runner.py     # Haupt-Runner (Docstring enthält alle Details)
+app/main.py                                 # Startup-Trigger (_run_pending_evaluations)
+app/routes/scenarios/scenario_manager_api.py # Scenario-GET-Trigger (5min Cooldown)
+app/routes/llm/llm_evaluation_routes.py     # Manual Start + Status-Endpoint
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue  # UI
+```
+
 ---
 
 ## Frontend Layout
@@ -715,7 +912,62 @@ border-radius: 6px 2px 6px 2px;    /* Tags */
 
 ---
 
-## Git Commits
+## Git Commits & Deployment
+
+### Semantic Versioning (Tag-basiert)
+
+Versionen werden aus Git-Tags mit `git describe` berechnet (`llars-frontend/vite.config.mjs`).
+
+**Formel:** `git describe --tags --match "v*" --first-parent` → `v1.5.0-N-gabcdef`
+- **N=0:** Version = Tag exakt (z.B. `1.5.0`) — am getaggten Merge-Punkt
+- **N>0:** Version = `major.minor.(patch + N)` — inkrementiert Patch pro Commit seit Tag
+
+**Beide Branches zeigen die GLEICHE Version an Merge-Punkten** (wo der Tag liegt).
+
+| Szenario | Version |
+|----------|---------|
+| Tag `v1.5.0` auf main (nach Merge) | main=`1.5.0`, dev=`1.5.0` |
+| dev bekommt 3 weitere Commits | dev=`1.5.3` |
+| Merge dev→main, Tag `v1.6.0` | main=`1.6.0`, dev=`1.6.0` |
+| dev bekommt 2 weitere Commits | dev=`1.6.2` |
+
+**Nach jedem Merge dev→main:** Tag setzen!
+```bash
+git checkout main
+git merge dev
+git tag v1.{next_minor}.0
+git push && git push --tags
+```
+
+**Neuen Major-Tag setzen:**
+```bash
+git tag v2.0.0
+git push --tags
+```
+
+**Gleiche Formel in:** `vite.config.mjs`, `deploy_bluegreen.sh`, `.gitlab-ci.yml` (build jobs)
+
+**WICHTIG:** Bei `git push` immer auch `git push --tags` wenn neue Tags erstellt wurden.
+
+### Wann einen neuen Tag vorschlagen (Regel für Claude)
+
+Claude MUSS proaktiv einen neuen Minor-Tag (`v1.{Y+1}.0`) vorschlagen wenn:
+
+1. **Merge dev→main** steht an oder wurde durchgeführt — Tag ist Pflicht nach jedem Merge
+2. **Signifikante Features** auf dev gelandet sind (neues Feature, neue Tile, neuer Service)
+3. **Breaking Changes** vorliegen (DB-Schema-Änderungen, API-Änderungen, Dependency-Upgrades)
+4. **Sicherheitsfixes** (CVE-Patches, Auth-Fixes) — sofort taggen nach Merge
+5. **Mehr als 20 Commits** seit dem letzten Tag auf dev akkumuliert sind
+
+Claude schlägt einen **Major-Tag** (`v{X+1}.0.0`) vor bei:
+- Grundlegender Architekturänderung (z.B. neuer Auth-Provider, DB-Migration)
+- Inkompatiblen API-Änderungen
+
+**Workflow:** Claude erinnert beim Merge-Vorschlag an den Tag und schlägt die nächste Versionsnummer vor.
+
+**CHANGELOG:** Bei jedem neuen Tag den `[Unreleased]`-Abschnitt in `CHANGELOG.md` in einen versionierten Abschnitt umwandeln.
+
+### Commit Message Format
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -729,6 +981,60 @@ EOF
 
 **Types:** feat | fix | docs | refactor | chore
 **Scopes:** frontend | backend | auth | judge | rag | crawler | db
+
+### Commit & Push Workflow
+
+```bash
+# 1. Änderungen stagen (NIEMALS git add -A oder git add .)
+git add <spezifische-dateien>
+
+# 2. Commit mit HEREDOC-Format
+git commit -m "$(cat <<'EOF'
+feat(frontend): beschreibung
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+
+# 3. Push (+ Tags falls nötig)
+git push
+git push --tags  # nur wenn neue Tags erstellt wurden
+```
+
+**WICHTIG:** Working Directory ist `llars-frontend/`, Git-Root ist `llars/`. Dateipfade in `git add` relativ zum CWD angeben (z.B. `src/App.vue`, NICHT `llars-frontend/src/App.vue`).
+
+### Deployment-Steuerung
+
+| Trigger | Lint | Tests | E2E | Staging | Smoke | Production | Dauer | Wann? |
+|---|---|---|---|---|---|---|---|---|
+| Normaler Push | ja | ja | nein | nein | nein | nein | ~5 min | Bei jedem Push |
+| `[dryrun]` in Commit-Message | ja | ja | ja | ja | ja | **nein** | ~15 min | Voller Staging-Flow, kein Prod-Deploy |
+| `FORCE_DEPLOY=true` (Variable) | ja | ja | ja | ja | ja | ja | ~20 min | Sofort - volle Pipeline inkl. Production |
+| Schedule (nightly) | ja | ja | ja | ja | ja | ja | ~20 min | Mo-Fr 02:00 CET |
+
+**Normaler Push (empfohlen):**
+```bash
+git commit -m "feat(frontend): neues Feature"
+git push
+# → Lint + Tests laufen, kein Deploy. Nachts um 02:00 deployed der Schedule.
+```
+
+**Dry-Run (testen ob Nightly durchlaeuft, KEIN Prod-Deploy):**
+```bash
+git commit -m "chore: pre-release check [dryrun]"
+git push
+# → Lint + Tests + Build + Staging + E2E + Smoke, aber KEIN Production-Deploy
+# Alternativ: GitLab UI → Run Pipeline → Variable DRY_RUN=true
+```
+
+**Sofort deployen (dringend):**
+```bash
+# Via GitLab UI: Pipeline manuell triggern mit Variable FORCE_DEPLOY=true
+# → Volle Pipeline JETZT, deployed nach ~20 min wenn alles gruen
+```
+
+**Schedule:** Mo-Fr 02:00 CET via GitLab Pipeline Schedule (`SCHEDULED_DEPLOY=true`)
 
 ---
 
@@ -795,16 +1101,14 @@ llars-frontend/src/
 
 ## Refactoring Status
 
-### Abgeschlossen (16 Major)
+### Abgeschlossen (14 Major)
 
 | Task | Zeilen |
 |------|--------|
 | ChatWithBots.vue | 3299→774 |
-| LatexCollabWorkspace.vue | 3085→1259 |
 | JudgeSession.vue | 2174→579 |
 | ChatbotEditor.vue | 1967→507 |
 | chat_service.py | 1657→590 |
-| latex_collab_routes.py | 1514→56 |
 | crawler_service.py | 1415→666 |
 | chatbot_routes.py | 1273→35 |
 | anonymize_service.py | 1275→445 |

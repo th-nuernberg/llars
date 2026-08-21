@@ -145,6 +145,55 @@ class SchemaExportService:
                 "Dringlichkeits-Einstufung"
             ]
         },
+        # Specialisation of COMPARISON for counselling-style A/B picks where
+        # the rater "sends" the chosen response. Same data shape + detection
+        # hints as comparison; the type-discriminator only switches the
+        # rendered interface in the frontend.
+        EvaluationType.COMMUNICATION_COMPARISON: {
+            "function_type_id": 8,
+            "description_de": (
+                "Kommunikative A/B-Auswahl: welche Antwort würde der*die "
+                "Bewertende selbst abschicken?"
+            ),
+            "description_en": (
+                "Counselling-style A/B pick: which response would the rater "
+                "themselves send?"
+            ),
+            "detection_hints": [
+                "Beratungs-Verläufe als Kontext (Klient*in / Berater*in)",
+                "Zwei Antwortoptionen, eine davon vom Menschen / KI / SFT",
+                "Frage zielt auf 'würden Sie senden?' statt 'ist besser?'"
+            ],
+            "example_use_cases": [
+                "Mensch vs KI in der Online-Beratung",
+                "Trainiertes Modell vs Standard-LLM",
+                "Beratungs-Style-Vergleich (zwei Beraterstimmen)"
+            ]
+        },
+        # Specialisation of LABELING for sequential in-context coding. The item
+        # is a whole conversation; the decision is a single span inside it, so
+        # the detection hints look for span offsets rather than flat items.
+        EvaluationType.CONVERSATION_LABELING: {
+            "function_type_id": 9,
+            "description_de": (
+                "Spans innerhalb eines Gesprächsverlaufs der Reihe nach labeln "
+                "— ein Gespräch je Item, eine Entscheidung je Span"
+            ),
+            "description_en": (
+                "Label spans inside a conversation in reading order — one "
+                "conversation per item, one decision per span"
+            ),
+            "detection_hints": [
+                "messages mit spans und Zeichen-Offsets (start/end)",
+                "labelable-Markierung je Nachricht (nur eine Rolle wird kodiert)",
+                "stabile span_id je Span, Reihenfolge ist bedeutungstragend"
+            ],
+            "example_use_cases": [
+                "Verbal Response Modes (VRM) in Beratungsgesprächen",
+                "Dialogakt-Annotation mit Gesprächskontext",
+                "Intent-Kodierung je Äußerung statt je Nachricht"
+            ]
+        },
     }
 
     # =========================================================================
@@ -673,6 +722,25 @@ class SchemaExportService:
                     {"id": "cat_2", "name": {"de": "Kategorie 2", "en": "Category 2"}}
                 ],
                 "allowUnsure": True
+            }
+
+        if eval_type == "conversation_labeling":
+            # Same label shape as classic labeling plus the visibility fields.
+            # Deliberately NOT listed in INPUT_DATA_EXAMPLES: the wizard infers
+            # a type from an uploaded table, and this one cannot be inferred —
+            # it needs a segmentation that only the import can supply. Letting
+            # the AI recommend it from a plain conversation CSV would hand the
+            # user a scenario with no spans and nothing to decide.
+            return {
+                "type": "multiclass",
+                "categories": [
+                    {"id": "cat_1", "name": {"de": "Kategorie 1", "en": "Category 1"}},
+                    {"id": "cat_2", "name": {"de": "Kategorie 2", "en": "Category 2"}}
+                ],
+                "allowUnsure": True,
+                "context_window": 3,
+                "future_spans": "dimmed",
+                "no_future_messages": True,
             }
 
         if eval_type == "comparison":

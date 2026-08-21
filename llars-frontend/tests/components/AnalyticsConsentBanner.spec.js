@@ -18,7 +18,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
 import AnalyticsConsentBanner from '@/components/common/AnalyticsConsentBanner.vue'
+
+const vuetify = createVuetify({ components, directives })
 
 // Mock router
 const mockRouter = {
@@ -43,19 +48,7 @@ vi.mock('@/plugins/llars-metrics', () => ({
 function mountAnalyticsConsentBanner(options = {}) {
   return mount(AnalyticsConsentBanner, {
     global: {
-      stubs: {
-        'v-slide-y-reverse-transition': {
-          template: '<div class="transition-stub"><slot /></div>'
-        },
-        'v-card': {
-          template: '<div class="v-card" :class="{ [`elevation-${elevation}`]: elevation }"><slot /></div>',
-          props: ['elevation']
-        },
-        'v-btn': {
-          template: '<button class="v-btn" :class="[variant, `size-${size}`, color ? `bg-${color}` : \'\']" @click="$emit(\'click\')"><slot /></button>',
-          props: ['variant', 'size', 'color']
-        }
-      }
+      plugins: [vuetify]
     },
     ...options
   })
@@ -213,7 +206,7 @@ describe('AnalyticsConsentBanner', () => {
 
       const wrapper = mountAnalyticsConsentBanner()
 
-      expect(wrapper.find('.title').text()).toBe('Analytics & Datenschutz')
+      expect(wrapper.find('.title').text()).toBe('Datenschutz-Einstellungen')
     })
 
     it('COMP_ACB_017: displays body text', () => {
@@ -223,7 +216,7 @@ describe('AnalyticsConsentBanner', () => {
 
       const bodyText = wrapper.find('.body').text()
       expect(bodyText).toContain('Matomo')
-      expect(bodyText).toContain('Datenschutzerklärung')
+      expect(bodyText).toContain('Cookies')
     })
 
     it('COMP_ACB_018: body text mentions consent options', () => {
@@ -232,8 +225,8 @@ describe('AnalyticsConsentBanner', () => {
       const wrapper = mountAnalyticsConsentBanner()
 
       const bodyText = wrapper.find('.body').text()
-      expect(bodyText).toContain('zustimmen')
-      expect(bodyText).toContain('ablehnen')
+      expect(bodyText).toContain('notwendige')
+      expect(bodyText).toContain('Zustimmung')
     })
   })
 
@@ -255,7 +248,7 @@ describe('AnalyticsConsentBanner', () => {
       const wrapper = mountAnalyticsConsentBanner()
 
       const buttons = wrapper.findAll('.actions .v-btn')
-      expect(buttons[0].classes()).toContain('text')
+      expect(buttons[0].classes()).toContain('v-btn--variant-text')
     })
 
     it('COMP_ACB_021: privacy button has correct label', () => {
@@ -273,7 +266,7 @@ describe('AnalyticsConsentBanner', () => {
       const wrapper = mountAnalyticsConsentBanner()
 
       const buttons = wrapper.findAll('.actions .v-btn')
-      expect(buttons[1].classes()).toContain('outlined')
+      expect(buttons[1].classes()).toContain('v-btn--variant-outlined')
     })
 
     it('COMP_ACB_023: decline button has correct label', () => {
@@ -282,7 +275,7 @@ describe('AnalyticsConsentBanner', () => {
       const wrapper = mountAnalyticsConsentBanner()
 
       const buttons = wrapper.findAll('.actions .v-btn')
-      expect(buttons[1].text()).toBe('Ablehnen')
+      expect(buttons[1].text()).toBe('Nur notwendige')
     })
 
     it('COMP_ACB_024: accept button has primary color', () => {
@@ -300,7 +293,7 @@ describe('AnalyticsConsentBanner', () => {
       const wrapper = mountAnalyticsConsentBanner()
 
       const buttons = wrapper.findAll('.actions .v-btn')
-      expect(buttons[2].text()).toBe('Zustimmen')
+      expect(buttons[2].text()).toBe('Alle akzeptieren')
     })
 
     it('COMP_ACB_026: all buttons have small size', () => {
@@ -310,7 +303,7 @@ describe('AnalyticsConsentBanner', () => {
 
       const buttons = wrapper.findAll('.actions .v-btn')
       buttons.forEach(btn => {
-        expect(btn.classes()).toContain('size-small')
+        expect(btn.classes()).toContain('v-btn--size-small')
       })
     })
   })
@@ -337,7 +330,7 @@ describe('AnalyticsConsentBanner', () => {
       const buttons = wrapper.findAll('.actions .v-btn')
       const acceptButton = buttons[2]
 
-      expect(acceptButton.text()).toBe('Zustimmen')
+      expect(acceptButton.text()).toBe('Alle akzeptieren')
       await acceptButton.trigger('click')
 
       expect(mockSetAnalyticsConsentState).toHaveBeenLastCalledWith('granted')
@@ -366,7 +359,7 @@ describe('AnalyticsConsentBanner', () => {
       const buttons = wrapper.findAll('.actions .v-btn')
       const declineButton = buttons[1]
 
-      expect(declineButton.text()).toBe('Ablehnen')
+      expect(declineButton.text()).toBe('Nur notwendige')
       await declineButton.trigger('click')
 
       expect(mockSetAnalyticsConsentState).toHaveBeenLastCalledWith('denied')
@@ -376,7 +369,7 @@ describe('AnalyticsConsentBanner', () => {
   // ==================== Privacy Link Tests ====================
 
   describe('Privacy Link Navigation', () => {
-    it('COMP_ACB_031: clicking privacy button navigates to /datenschutz', async () => {
+    it('COMP_ACB_031: clicking privacy button navigates to /Datenschutz', async () => {
       mockAnalyticsConfig.value = { matomo_enabled: true, require_consent: true }
 
       const wrapper = mountAnalyticsConsentBanner()
@@ -384,7 +377,7 @@ describe('AnalyticsConsentBanner', () => {
       const buttons = wrapper.findAll('.actions .v-btn')
       await buttons[0].trigger('click')
 
-      expect(mockRouter.push).toHaveBeenCalledWith('/datenschutz')
+      expect(mockRouter.push).toHaveBeenCalledWith('/Datenschutz')
     })
 
     it('COMP_ACB_032: privacy button does not call setAnalyticsConsentState', async () => {

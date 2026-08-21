@@ -116,32 +116,6 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Teilen von Markdown Collab Dateien und Ordnern'
         },
-        # Feature: LaTeX Collab
-        {
-            'permission_key': 'feature:latex_collab:view',
-            'display_name': 'LaTeX Collab ansehen',
-            'category': 'feature',
-            'description': 'Erlaubt das Ansehen von LaTeX Collab Workspaces und Dokumenten'
-        },
-        {
-            'permission_key': 'feature:latex_collab:edit',
-            'display_name': 'LaTeX Collab bearbeiten',
-            'category': 'feature',
-            'description': 'Erlaubt das Erstellen und Bearbeiten von LaTeX Collab Dokumenten'
-        },
-        {
-            'permission_key': 'feature:latex_collab:share',
-            'display_name': 'LaTeX Collab teilen',
-            'category': 'feature',
-            'description': 'Erlaubt das Teilen von LaTeX Collab Dateien und Ordnern'
-        },
-        # Feature: LaTeX Collab AI
-        {
-            'permission_key': 'feature:latex_collab:ai',
-            'display_name': 'LaTeX Collab KI-Assistent',
-            'category': 'feature',
-            'description': 'Erlaubt die Nutzung des KI-Schreibassistenten (Ghost Text, @-Commands, Chat, Zitationssuche)'
-        },
         # Admin: Permissions Management
         {
             'permission_key': 'admin:permissions:manage',
@@ -172,6 +146,45 @@ def initialize_permissions(db):
             'display_name': 'Referral-System verwalten',
             'category': 'admin',
             'description': 'Erlaubt das Verwalten von Referral-Kampagnen und Einladungslinks'
+        },
+        {
+            'permission_key': 'feature:admin:mail',
+            'display_name': 'Mail-Center verwalten',
+            'category': 'admin',
+            'description': (
+                'Erlaubt den Zugriff auf das Admin Mail-Center: Einladungen '
+                'und Announcements versenden sowie den zentralen Mail-Verlauf '
+                'einsehen.'
+            )
+        },
+        {
+            'permission_key': 'feature:referral:create_links',
+            'display_name': 'Einladungslinks erstellen',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Verwalten eigener Einladungslinks'
+        },
+        # API Key Management — gating who can mint personal API keys for
+        # programmatic access (the v1 Scenario API). Listing one's own keys
+        # stays open to any authenticated user; only this permission is
+        # checked for create / update / delete.
+        {
+            'permission_key': 'feature:api_keys:create',
+            'display_name': 'Eigene API-Keys erstellen',
+            'category': 'feature',
+            'description': (
+                'Erlaubt das Erstellen, Aktualisieren und Widerrufen '
+                'eigener API-Keys für programmatischen Zugriff '
+                '(z. B. Scenario-API).'
+            )
+        },
+        {
+            'permission_key': 'feature:api_keys:admin_scope',
+            'display_name': 'API-Keys mit admin:* erstellen',
+            'category': 'feature',
+            'description': (
+                'Zusatz-Berechtigung: Erlaubt es, API-Keys mit dem '
+                '`admin:*`-Scope auszustellen (vollständige API-Vollmacht).'
+            )
         },
         {
             'permission_key': 'admin:field_prompts:manage',
@@ -274,6 +287,19 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt den Zugriff auf das Offline-Anonymisierungstool'
         },
+        # Feature: Anonymization Pipeline
+        {
+            'permission_key': 'feature:anonymization-pipeline:view',
+            'display_name': 'Anonymisierungs-Pipeline ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von anonymisierten Konversationen'
+        },
+        {
+            'permission_key': 'feature:anonymization-pipeline:edit',
+            'display_name': 'Anonymisierungs-Pipeline bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Bearbeiten von Nachrichten und das Aktualisieren des Status'
+        },
         # Feature: LLM-as-Judge
         {
             'permission_key': 'feature:judge:view',
@@ -299,6 +325,13 @@ def initialize_permissions(db):
             'display_name': 'OnCoCo Analyse bearbeiten',
             'category': 'feature',
             'description': 'Erlaubt das Durchführen von OnCoCo Analysen'
+        },
+        # Feature: DB Price Agent
+        {
+            'permission_key': 'feature:db_agent:view',
+            'display_name': 'DB Preisagent ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt den Zugriff auf den Deutsche Bahn Preisagenten'
         },
         # Feature: KAIMO
         {
@@ -356,6 +389,60 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Erstellen von Evaluation-Szenarien aus generierten Outputs'
         },
+
+        # Feature: Conference Manager
+        {
+            'permission_key': 'feature:conference_manager:view',
+            'display_name': 'Conference Manager ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Konferenzen und Papers'
+        },
+        {
+            'permission_key': 'feature:conference_manager:edit',
+            'display_name': 'Conference Manager bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von Konferenzen und Papers'
+        },
+
+        # Feature: Communication (Messaging, AI)
+        {
+            'permission_key': 'feature:communication:access',
+            'display_name': 'Communication Zugriff',
+            'category': 'feature',
+            'description': 'Feature sichtbar, Conversations einsehen'
+        },
+        {
+            'permission_key': 'feature:communication:chat',
+            'display_name': 'Text Chat',
+            'category': 'feature',
+            'description': 'Nachrichten senden und empfangen'
+        },
+        {
+            'permission_key': 'feature:communication:ai',
+            'display_name': 'KI-Summary',
+            'category': 'feature',
+            'description': 'KI-Zusammenfassungen in Conversations'
+        },
+
+        # Feature: Pipeline (Automated LLM Evaluation Loop)
+        {
+            'permission_key': 'feature:pipeline:view',
+            'display_name': 'Pipeline ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Pipeline-Runs'
+        },
+        {
+            'permission_key': 'feature:pipeline:create',
+            'display_name': 'Pipeline erstellen',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Starten neuer Pipeline-Runs'
+        },
+        {
+            'permission_key': 'feature:pipeline:manage',
+            'display_name': 'Pipeline verwalten',
+            'category': 'feature',
+            'description': 'Erlaubt das Verwalten von Pipeline-Runs (Review, Löschen)'
+        },
     ]
 
     # Create permissions (idempotent)
@@ -381,7 +468,11 @@ def initialize_permissions(db):
             'role_name': 'admin',
             'display_name': 'Administrator',
             'description': 'Voller Zugriff auf alle Funktionen und Einstellungen',
-            'permissions': [p['permission_key'] for p in permissions_data]  # All permissions
+            # All permissions EXCEPT communication (managed per-user via Admin Panel)
+            'permissions': [
+                p['permission_key'] for p in permissions_data
+                if not p['permission_key'].startswith('feature:communication:')
+            ]
         },
         {
             'role_name': 'researcher',
@@ -416,19 +507,27 @@ def initialize_permissions(db):
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
                 'feature:markdown_collab:share',
-                # LaTeX Collab
-                'feature:latex_collab:view',
-                'feature:latex_collab:edit',
-                'feature:latex_collab:share',
-                'feature:latex_collab:ai',
+                # RAG (read-only)
+                'feature:rag:view',
                 # Anonymisierung
                 'feature:anonymize:view',
+                # Anonymisierungs-Pipeline
+                'feature:anonymization-pipeline:view',
+                'feature:anonymization-pipeline:edit',
                 # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Referral Links
+                'feature:referral:create_links',
                 # Data Import (für Evaluation-Daten)
                 'data:import',
                 'data:manage_scenarios',
+                # API Keys (own personal keys for programmatic Scenario API
+                # access — without admin:* scope, see feature:api_keys:admin_scope)
+                'feature:api_keys:create',
+                # Conference Manager
+                'feature:conference_manager:view',
+                'feature:conference_manager:edit',
             ]
         },
         {
@@ -453,24 +552,33 @@ def initialize_permissions(db):
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
                 'feature:markdown_collab:share',
-                # LaTeX Collab
-                'feature:latex_collab:view',
-                'feature:latex_collab:edit',
-                'feature:latex_collab:share',
-                'feature:latex_collab:ai',
                 # RAG Dokumente
                 'feature:rag:view',
                 'feature:rag:edit',
                 'feature:rag:delete',
                 'feature:rag:share',
+                # Referral Links
+                'feature:referral:create_links',
+                # DB Price Agent — admin-only by product decision; the
+                # `feature:db_agent:view` permission is granted via the
+                # admin role (which inherits all non-communication
+                # permissions) and explicitly NOT given to researchers.
             ]
         },
         {
             'role_name': 'evaluator',
             'display_name': 'Evaluator',
             'description': 'Nimmt an Evaluationen teil und kann in zugewiesenen Szenarien bewerten',
+            # Per Produkt-Entscheidung sieht ein Evaluator NUR die Kacheln
+            # "Evaluation" und "Settings" auf der Home-Seite — alle übrigen
+            # Features (Prompt-Engineering, Batch-Generation, RAG, Chatbots,
+            # Markdown-Collab, Anonymisierung, KAIMO, Conference
+            # Manager, Referral-Links) sind für diese Rolle ausgeblendet.
+            # Settings hat `permission: null` (Tile zeigt für alle), die
+            # Evaluation-Tile gated auf einer der fünf Evaluierungs-View-
+            # Permissions; daher reicht es, hier exakt die View+Edit-Paare
+            # für die fünf Evaluierungstypen zu vergeben.
             'permissions': [
-                # Evaluierungsfeatures - kann an Szenarien teilnehmen
                 'feature:mail_rating:view',
                 'feature:mail_rating:edit',
                 'feature:ranking:view',
@@ -481,17 +589,6 @@ def initialize_permissions(db):
                 'feature:comparison:edit',
                 'feature:authenticity:view',
                 'feature:authenticity:edit',
-                # Allgemeine Features
-                'feature:prompt_engineering:view',
-                'feature:generation:view',  # Kann Jobs ansehen aber nicht erstellen
-                'feature:rag:view',
-                'feature:chatbots:view',
-                'feature:llm:view',
-                'feature:markdown_collab:view',
-                'feature:latex_collab:view',
-                'feature:anonymize:view',
-                'feature:kaimo:view',
-                'feature:kaimo:edit',
             ]
         },
         {
@@ -526,6 +623,27 @@ def initialize_permissions(db):
                 'feature:mail_rating:view',
                 'feature:mail_rating:edit',
             ]
+        },
+        {
+            'role_name': 'demo_expired',
+            'display_name': 'Demo abgelaufen',
+            'description': (
+                'Endzustand fuer abgelaufene Konferenz-/Demo-Accounts: Login bleibt '
+                'moeglich, nutzbar ist nichts mehr. Die Rolle hat bewusst NULL '
+                'Permissions — im Deny-by-Default-Modell bedeutet das: kein Feature, '
+                'keine KI, keine Generierung, keine Evaluation. '
+                'Zugewiesen von app/scripts/demo_cleanup.py (expire_ijcai_accounts). '
+                'Sie existiert ausschliesslich, damit ein abgelaufener Account nie '
+                'ROLLENLOS ist: auth.decorators._ensure_default_evaluator_role weist '
+                'jedem User ohne user_roles-Zeile beim naechsten Login automatisch '
+                'wieder "evaluator" zu — eine leere Rolle blockt das dauerhaft. '
+                'NICHT in ALLOWED_REFERRAL_ROLES aufnehmen (kein Referral-Link darf '
+                'diese Rolle vergeben).'
+            ),
+            # Absichtlich leer. Die Sync-Logik unten entfernt bei jedem Seed-Lauf
+            # alle Permissions, die nicht in dieser Liste stehen — die Rolle bleibt
+            # damit auch dann leer, wenn ihr jemand manuell etwas zuweist.
+            'permissions': []
         },
     ]
 
@@ -652,8 +770,8 @@ def initialize_permissions(db):
 
 def assign_default_admin_role(db):
     """
-    Automatically assign admin role to the default 'admin' user.
-    This ensures the admin user always has admin permissions after database reset.
+    Automatically assign admin role to all default admin users.
+    This ensures admin users always have admin permissions after database reset.
 
     Args:
         db: SQLAlchemy database instance
@@ -667,25 +785,26 @@ def assign_default_admin_role(db):
         print("Warning: Admin role not found. Skipping default admin assignment.")
         return
 
-    # Check if admin user already has admin role
-    existing = UserRole.query.filter_by(
-        username='admin',
-        role_id=admin_role.id
-    ).first()
+    admin_usernames = ['admin', 'admin_2']
 
-    if not existing:
-        # Assign admin role to admin user
-        user_role = UserRole(
-            username='admin',
-            role_id=admin_role.id,
-            assigned_by='system',
-            assigned_at=datetime.utcnow()
-        )
-        db.session.add(user_role)
-        db.session.commit()
-        print("✅ Assigned admin role to user 'admin' automatically.")
-    else:
-        print("✅ User 'admin' already has admin role.")
+    for username in admin_usernames:
+        existing = UserRole.query.filter_by(
+            username=username,
+            role_id=admin_role.id
+        ).first()
+
+        if not existing:
+            user_role = UserRole(
+                username=username,
+                role_id=admin_role.id,
+                assigned_by='system',
+                assigned_at=datetime.utcnow()
+            )
+            db.session.add(user_role)
+            db.session.commit()
+            print(f"Assigned admin role to user '{username}' automatically.")
+        else:
+            print(f"User '{username}' already has admin role.")
 
 
 def assign_default_demo_roles(db):

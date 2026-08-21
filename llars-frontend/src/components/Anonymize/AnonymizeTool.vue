@@ -478,7 +478,8 @@ const llmModel = ref('')
 const engineOptions = computed(() => ([
   { title: t('anonymization.engineOptions.offline'), value: 'offline' },
   { title: t('anonymization.engineOptions.llm'), value: 'llm' },
-  { title: t('anonymization.engineOptions.hybrid'), value: 'hybrid' }
+  { title: t('anonymization.engineOptions.hybrid'), value: 'hybrid' },
+  { title: t('anonymization.engineOptions.privacyFilter'), value: 'privacy-filter' }
 ]))
 
 const nameOrigin = ref('Swiss_DE')
@@ -544,10 +545,12 @@ function triggerLivePseudonymizeNow() {
 
 const offlineReady = computed(() => anonymizeStatus.value?.ready === true)
 const llmReady = computed(() => anonymizeStatus.value?.llm?.ready === true)
+const privacyFilterReady = computed(() => anonymizeStatus.value?.privacy_filter?.ready === true)
 const engineReady = computed(() => {
   if (!anonymizeStatus.value) return true
   if (engine.value === 'llm') return llmReady.value
   if (engine.value === 'hybrid') return offlineReady.value && llmReady.value
+  if (engine.value === 'privacy-filter') return privacyFilterReady.value
   return offlineReady.value
 })
 

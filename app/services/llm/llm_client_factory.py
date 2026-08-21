@@ -40,7 +40,9 @@ GLOBAL_PREFIX = "Global/"
 # Manufacturer → provider type mapping for Global/ prefix routing
 MANUFACTURER_TO_PROVIDER = {
     "openai": "openai",
+    "ionos": "ionos",
     "mistral": "litellm",
+    "deepseek": "deepseek",
     "anthropic": "anthropic",
     "gemini": "gemini",
 }
@@ -51,7 +53,19 @@ MANUFACTURER_API_PREFIX = {
 }
 
 # Known provider prefixes for model ID routing (e.g. "OpenAI/gpt-5-nano")
-KNOWN_PROVIDER_PREFIXES = {"openai", "litellm", "anthropic", "gemini", "ollama", "custom"}
+KNOWN_PROVIDER_PREFIXES = {
+    "openai",
+    "ionos",
+    "openai_compatible",
+    "litellm",
+    "anthropic",
+    "gemini",
+    "mistral",
+    "deepseek",
+    "ollama",
+    "vllm",
+    "custom",
+}
 
 
 class LLMClientFactory:
@@ -166,22 +180,51 @@ class LLMClientFactory:
         # 1. User-provider prefix
         provider_id, owner_username, actual_model_id = LLMClientFactory._parse_user_provider_model_id(model_id)
         if provider_id and actual_model_id:
+            # Security: Reject old 2-part format without owner_username to prevent
+            # unauthorized access to other users' API keys via guessable provider_id
+            if not owner_username:
+                logger.warning(
+                    "[LLMClientFactory] Rejected legacy 2-part user-provider model_id "
+                    "(no owner_username): %s — use format user-provider:<id>:<username>:<model>",
+                    model_id
+                )
+                return None, model_id
             cache_key = f"user-provider:{provider_id}"
             client = LLMClientFactory._client_cache.get(cache_key)
             if client is None:
                 provider, api_key = UserLLMProviderService.get_provider_with_key(provider_id)
-                # If username-hint is present (new format), enforce owner match.
-                if provider and owner_username:
+                # Enforce owner match (mandatory)
+                if provider:
                     owner = getattr(getattr(provider, "user", None), "username", None)
-                    if owner and owner != owner_username:
+                    if not owner or owner != owner_username:
                         logger.warning(
                             "[LLMClientFactory] user-provider owner mismatch: provider_id=%s owner=%s hint=%s",
                             provider_id, owner, owner_username
                         )
                         provider = None
                         api_key = None
-                if provider and provider.provider_type in {"openai", "litellm", "ollama", "custom"}:
+                if provider and provider.provider_type in {
+                    "openai",
+                    "ionos",
+                    "openai_compatible",
+                    "litellm",
+                    "ollama",
+                    "vllm",
+                    "custom",
+                }:
                     base_url = (provider.base_url or "").strip() or None
+                    # SSRF-Schutz (Defense-in-depth): base_url wird zwar bereits
+                    # bei create/update validiert, aber hier nochmals geprüft —
+                    # fängt vor der Härtung gespeicherte URLs und DNS-Rebinding ab,
+                    # bevor ein Client gegen ein internes Ziel gebaut wird.
+                    if base_url:
+                        from auth.url_validator import is_url_safe
+                        if not is_url_safe(base_url, allow_private=False):
+                            logger.warning(
+                                "[LLMClientFactory] Blocked user-provider base_url (SSRF): "
+                                "provider_id=%s", provider_id
+                            )
+                            return None, model_id
                     client = OpenAI(api_key=api_key or "EMPTY", base_url=base_url, timeout=LLM_TIMEOUT)
                     LLMClientFactory._client_cache[cache_key] = client
             if client:

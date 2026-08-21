@@ -171,7 +171,7 @@ export function useScenarioManager() {
   /**
    * Invite users to a scenario
    */
-  async function inviteUsers(scenarioId, userIds, role = 'EVALUATOR') {
+  async function inviteUsers(scenarioId, userIds, role = 'ASSESSOR') {
     try {
       const response = await axios.post(`/api/scenarios/${scenarioId}/invite`, {
         user_ids: userIds,
@@ -201,10 +201,11 @@ export function useScenarioManager() {
   }
 
   /**
-   * Update a user's role in a scenario
+   * Update a user's role in a scenario.
+   * Backend maps the role string to the 2-axis model (manager_role + evaluation_role).
    * @param {number} scenarioId - Scenario ID
    * @param {number} userId - User ID
-   * @param {string} role - New role ('EVALUATOR' or 'VIEWER')
+   * @param {string} role - New role ('ASSESSOR', 'MANAGER', 'VIEWER')
    */
   async function updateUserRole(scenarioId, userId, role) {
     try {
@@ -216,6 +217,26 @@ export function useScenarioManager() {
       return response.data
     } catch (err) {
       console.error('Error updating user role:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Update a user's capability flags in a scenario.
+   * Sends both legacy flags (is_viewer, is_assessor) and new 2-axis fields
+   * (manager_role, evaluation_role) so the backend stays in sync.
+   * @param {number} scenarioId - Scenario ID
+   * @param {number} userId - User ID
+   * @param {Object} flags - { is_viewer: bool, is_assessor: bool, manager_role?: string, evaluation_role?: string }
+   */
+  async function updateUserFlags(scenarioId, userId, flags) {
+    try {
+      const response = await axios.put(`/api/scenarios/${scenarioId}/users/${userId}/flags`, flags, {
+        headers: getHeaders()
+      })
+      return response.data
+    } catch (err) {
+      console.error('Error updating user flags:', err)
       throw err
     }
   }
@@ -523,6 +544,7 @@ export function useScenarioManager() {
     inviteUsers,
     removeUser,
     updateUserRole,
+    updateUserFlags,
     startLLMEvaluation,
     stopLLMEvaluation,
     exportResults,

@@ -1,0 +1,485 @@
+{
+  "type": "mail_rating",
+  "items": [
+    {
+      "label_de": "Beratungsfall 1",
+      "label_en": "Counselling case 1",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Hallo, ich fühle mich seit Wochen total überfordert mit dem Studium. Jeden Morgen wache ich auf und habe schon Angst vor dem Tag. Ich weiß gar nicht mehr, wo ich anfangen soll.",
+          "en": "Hello, I've felt completely overwhelmed with my studies for weeks. Every morning I wake up already afraid of the day. I don't even know where to start anymore."
+        },
+        {
+          "role": "Berater",
+          "de": "Liebe*r Ratsuchende*r, danke, dass Sie sich gemeldet haben. Es klingt, als würde gerade sehr viel auf einmal auf Ihnen lasten, und diese Morgenangst zeigt, wie sehr Sie das belastet. Lassen Sie uns gemeinsam schauen: Was wäre für Sie der eine kleine Schritt, der morgen schon etwas leichter machen würde?",
+          "en": "Dear help-seeker, thank you for reaching out. It sounds as if a great deal is landing on you all at once right now, and that dread in the morning shows how much it is weighing on you. Let's look at this together: what would be the one small step that could already make tomorrow a little easier for you?"
+        },
+        {
+          "role": "Klient",
+          "de": "Vielleicht einfach mal eine To-do-Liste machen, statt alles im Kopf zu haben.",
+          "en": "Maybe just making a to-do list instead of keeping everything in my head."
+        },
+        {
+          "role": "Berater",
+          "de": "Das ist eine sehr gute Idee. Oft entlastet es enorm, die Gedanken aus dem Kopf aufs Papier zu bringen. Beginnen Sie ruhig klein, mit nur drei Punkten für morgen. Möchten Sie mir nächste Woche schreiben, wie es Ihnen damit ergangen ist?",
+          "en": "That's a very good idea. It often brings enormous relief to get thoughts out of your head and onto paper. Feel free to start small, with just three items for tomorrow. Would you like to write to me next week about how it went?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 2",
+      "label_en": "Counselling case 2",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Mein bester Freund hat sich nach einem Streit komplett zurückgezogen und meldet sich seit zwei Wochen nicht. Ich grüble die ganze Zeit, was ich falsch gemacht habe.",
+          "en": "My best friend completely withdrew after an argument and hasn't been in touch for two weeks. I keep brooding about what I did wrong."
+        },
+        {
+          "role": "Berater",
+          "de": "Ja, kann verstehen. Schreiben Sie ihm halt nochmal.",
+          "en": "Yeah, I get it. Just write to him again."
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 3",
+      "label_en": "Counselling case 3",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Seit dem Tod meiner Oma vor drei Monaten fühlt sich alles leer an. Ich funktioniere im Alltag, aber abends überrollt mich die Traurigkeit.",
+          "en": "Since my grandmother died three months ago, everything feels empty. I function during the day, but in the evenings the sadness overwhelms me."
+        },
+        {
+          "role": "Berater",
+          "de": "Es tut mir sehr leid, dass Sie Ihre Großmutter verloren haben. Trauer hat ihre eigene Zeit, und dass sie gerade abends so stark wird, ist nichts Ungewöhnliches – dann werden wir ruhiger und der Verlust bekommt Raum. Gibt es abends etwas, das Ihnen ein wenig Halt gibt, oder fühlen Sie sich damit eher allein?",
+          "en": "I'm very sorry that you lost your grandmother. Grief has its own timing, and that it becomes so strong in the evenings is nothing unusual – that's when we grow quieter and the loss takes up more room. Is there anything in the evenings that gives you a little steadiness, or are you rather alone with it?"
+        },
+        {
+          "role": "Klient",
+          "de": "Eher allein. Meine Familie redet nicht über sie, als wäre das Thema tabu.",
+          "en": "Rather alone. My family doesn't talk about her, as if the subject were taboo."
+        },
+        {
+          "role": "Berater",
+          "de": "Das klingt einsam – Sie tragen Ihre Trauer, ohne sie teilen zu können. Manchmal hilft es, der Erinnerung bewusst einen Ort zu geben: ein Foto, ein paar Zeilen an Ihre Oma, oder ein vertrauter Mensch außerhalb der Familie. Was davon könnten Sie sich vorstellen?",
+          "en": "That sounds lonely – you carry your grief without being able to share it. Sometimes it helps to deliberately give the memory a place: a photo, a few lines written to your grandmother, or a trusted person outside the family. Which of those could you imagine?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 4",
+      "label_en": "Counselling case 4",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich bin neu in der Stadt für meinen Job und kenne hier niemanden. Nach der Arbeit sitze ich nur allein in der Wohnung und fühle mich richtig einsam.",
+          "en": "I'm new in the city for my job and don't know anyone here. After work I just sit alone in my flat and feel really lonely."
+        },
+        {
+          "role": "Berater",
+          "de": "Einen Neuanfang in einer fremden Stadt zu wagen, ist mutig – und gleichzeitig kann die Stille nach Feierabend sehr schwer wiegen. Es ist völlig verständlich, dass Sie sich einsam fühlen. Gab es früher Wege, über die Sie leichter Menschen kennengelernt haben?",
+          "en": "Daring to make a fresh start in an unfamiliar city is brave – and at the same time the silence after work can weigh very heavily. It's completely understandable that you feel lonely. Were there ways in the past that made it easier for you to meet people?"
+        },
+        {
+          "role": "Klient",
+          "de": "Früher über Sport, ich habe lange Volleyball gespielt.",
+          "en": "In the past through sport, I played volleyball for a long time."
+        },
+        {
+          "role": "Berater",
+          "de": "Das ist ein wunderbarer Anknüpfungspunkt. Über einen Verein oder eine Hobbygruppe entstehen Kontakte oft ganz nebenbei, ohne dass man sich extra um Smalltalk bemühen muss. Vielleicht schauen Sie diese Woche einmal, ob es hier eine Volleyballgruppe gibt – kein Druck, nur ein erster Blick.",
+          "en": "That's a wonderful starting point. Through a club or hobby group, contacts often arise quite naturally, without having to force small talk. Maybe this week have a look at whether there's a volleyball group here – no pressure, just a first look."
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 5",
+      "label_en": "Counselling case 5",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Meine Eltern streiten ständig und ich habe das Gefühl, dazwischen zerrieben zu werden. Manchmal will ich einfach nur weg.",
+          "en": "My parents argue constantly and I feel like I'm being torn apart in the middle. Sometimes I just want to get away."
+        },
+        {
+          "role": "Berater",
+          "de": "Das musst du aushalten, Familie ist nun mal kompliziert. Mit der Zeit wird das schon.",
+          "en": "You'll have to put up with it, family is just complicated. It'll be fine with time."
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 6",
+      "label_en": "Counselling case 6",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe seit Monaten Schlafprobleme. Ich liege stundenlang wach und mein Kopf hört einfach nicht auf zu kreisen. Am nächsten Tag bin ich völlig erschöpft.",
+          "en": "I've had sleep problems for months. I lie awake for hours and my mind just won't stop racing. The next day I'm completely exhausted."
+        },
+        {
+          "role": "Berater",
+          "de": "Das klingt sehr zermürbend – kaum etwas raubt so viel Kraft wie nächtelanges Wachliegen mit kreisenden Gedanken. Bevor wir weiterschauen: Wissen Sie schon, worum die Gedanken nachts vor allem kreisen, oder ist es ein diffuses Grübeln?",
+          "en": "That sounds very wearing – almost nothing drains as much energy as lying awake night after night with racing thoughts. Before we look further: do you have a sense of what the thoughts mainly circle around at night, or is it a diffuse kind of worrying?"
+        },
+        {
+          "role": "Klient",
+          "de": "Eher diffus. Mal die Arbeit, mal Geld, mal einfach gar nichts Konkretes.",
+          "en": "Rather diffuse. Sometimes work, sometimes money, sometimes nothing concrete at all."
+        },
+        {
+          "role": "Berater",
+          "de": "Danke fürs Beschreiben. Bei diffusem Grübeln kann ein einfaches abendliches Ritual helfen – etwa die Sorgen vor dem Schlafen kurz aufzuschreiben, damit der Kopf sie loslassen darf. Sollten die Schlafprobleme aber anhalten, wäre auch ein Gespräch mit Ihrer Hausärztin sinnvoll, um Körperliches auszuschließen. Wie klingt das für Sie?",
+          "en": "Thank you for describing it. With that diffuse kind of worrying, a simple evening ritual can help – for instance briefly writing down your worries before sleep so your mind is allowed to let go of them. But should the sleep problems persist, a talk with your GP would also make sense to rule out physical causes. How does that sound to you?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 7",
+      "label_en": "Counselling case 7",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich soll bald eine Präsentation vor dem ganzen Team halten und bekomme jetzt schon Panik. Mir wird schlecht, wenn ich nur daran denke.",
+          "en": "I'm supposed to give a presentation in front of the whole team soon and I'm already panicking. I feel sick just thinking about it."
+        },
+        {
+          "role": "Berater",
+          "de": "Lampenfieber kennt fast jeder, aber bei Ihnen scheint die Anspannung schon im Vorfeld sehr körperlich zu werden – das nehme ich ernst. Solche Reaktionen sind Ihr Nervensystem im Alarmmodus, nicht ein Zeichen von Schwäche. Was genau befürchten Sie, das in der Präsentation passieren könnte?",
+          "en": "Stage fright is familiar to almost everyone, but for you the tension already seems to become very physical beforehand – I take that seriously. Such reactions are your nervous system in alarm mode, not a sign of weakness. What exactly do you fear might happen during the presentation?"
+        },
+        {
+          "role": "Klient",
+          "de": "Dass ich einen Blackout habe und alle merken, wie nervös ich bin.",
+          "en": "That I'll have a blackout and everyone notices how nervous I am."
+        },
+        {
+          "role": "Berater",
+          "de": "Dieser Gedanke ist sehr verbreitet – und meist deutlich überzeichnet, denn das Publikum nimmt unsere Nervosität viel weniger wahr, als wir glauben. Es kann helfen, den Einstieg Wort für Wort vorzubereiten und sich eine Notizkarte als Sicherheitsnetz zu erlauben. Möchten wir gemeinsam einen kleinen Plan für die Vorbereitung machen?",
+          "en": "This thought is very common – and usually greatly exaggerated, because the audience notices our nervousness far less than we believe. It can help to prepare the opening word for word and to allow yourself a note card as a safety net. Shall we make a small preparation plan together?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 8",
+      "label_en": "Counselling case 8",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Seit der Trennung von meiner Partnerin vor einem halben Jahr komme ich nicht weiter. Ich vergleiche jede neue Begegnung mit ihr und ziehe mich am Ende immer zurück.",
+          "en": "Since breaking up with my partner half a year ago I can't move forward. I compare every new encounter with her and end up withdrawing every time."
+        },
+        {
+          "role": "Berater",
+          "de": "Eine Trennung hinterlässt oft tiefere Spuren, als wir uns eingestehen, und dass alte Vergleiche noch nachklingen, ist ein Zeichen, dass diese Beziehung Ihnen viel bedeutet hat. Sich zurückzuziehen kann ein Schutz sein – aber er hält Sie auch fest. Was bräuchten Sie, um sich Neuem wieder ein Stück weit öffnen zu können?",
+          "en": "A breakup often leaves deeper traces than we admit to ourselves, and that old comparisons still echo is a sign that this relationship meant a lot to you. Withdrawing can be a protection – but it also holds you in place. What would you need to be able to open up a little to something new again?"
+        },
+        {
+          "role": "Klient",
+          "de": "Wahrscheinlich erstmal wieder Vertrauen zu mir selbst.",
+          "en": "Probably to first regain trust in myself."
+        },
+        {
+          "role": "Berater",
+          "de": "Das ist eine sehr kluge Erkenntnis. Selbstvertrauen wächst weniger durch große Schritte als durch viele kleine, in denen Sie sich selbst verlässlich begegnen. Vielleicht beginnen wir damit, im Alltag wieder zu spüren, was Ihnen guttut – ganz unabhängig von einer neuen Beziehung.",
+          "en": "That's a very wise insight. Self-confidence grows less through big steps than through many small ones in which you show up reliably for yourself. Perhaps we start by sensing again in everyday life what's good for you – quite independently of a new relationship."
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 9",
+      "label_en": "Counselling case 9",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe in den letzten Monaten extrem zugenommen und schäme mich, überhaupt vor die Tür zu gehen. Ich fühle mich in meinem eigenen Körper nicht mehr wohl.",
+          "en": "I've gained a lot of weight over the last months and I'm ashamed to even leave the house. I no longer feel comfortable in my own body."
+        },
+        {
+          "role": "Berater",
+          "de": "Naja, dann machen Sie halt mehr Sport und essen weniger, das ist doch eigentlich ganz logisch.",
+          "en": "Well, then just exercise more and eat less, it's actually quite logical."
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 10",
+      "label_en": "Counselling case 10",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Mein Chef kritisiert mich ständig vor anderen und ich traue mich nicht, etwas zu sagen. Jeden Sonntagabend habe ich Bauchschmerzen vor der neuen Woche.",
+          "en": "My boss constantly criticises me in front of others and I don't dare say anything. Every Sunday evening I get stomach aches before the new week."
+        },
+        {
+          "role": "Berater",
+          "de": "Diese Sonntagabend-Bauchschmerzen sprechen eine deutliche Sprache – Ihr Körper signalisiert, wie sehr die Situation Sie belastet. Sich vor anderen kritisiert zu fühlen und gleichzeitig zu schweigen, kostet enorm viel Kraft. Was hält Sie bisher davon ab, etwas zu sagen?",
+          "en": "Those Sunday-evening stomach aches are saying something very clearly – your body is signalling how much the situation is weighing on you. Feeling criticised in front of others while staying silent costs an enormous amount of energy. What has held you back so far from saying something?"
+        },
+        {
+          "role": "Klient",
+          "de": "Angst, dass es noch schlimmer wird oder ich am Ende meinen Job verliere.",
+          "en": "Fear that it'll get even worse or that I'll lose my job in the end."
+        },
+        {
+          "role": "Berater",
+          "de": "Diese Angst ist nachvollziehbar, und sie verdient es, ernst genommen zu werden. Es muss nicht der große Konflikt sein – manchmal reicht ein ruhiges Vier-Augen-Gespräch, in dem Sie eine konkrete Situation und Ihren Wunsch danach schildern. Möchten wir gemeinsam überlegen, wie so ein Satz für Sie klingen könnte?",
+          "en": "This fear is understandable, and it deserves to be taken seriously. It doesn't have to be the big confrontation – sometimes a calm one-on-one conversation in which you describe a specific situation and your wish for it is enough. Shall we think together about how such a sentence could sound for you?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 11",
+      "label_en": "Counselling case 11",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich weiß einfach nicht, was ich nach der Schule machen soll. Alle anderen scheinen einen Plan zu haben und ich stehe völlig orientierungslos da.",
+          "en": "I just don't know what to do after school. Everyone else seems to have a plan and I'm standing here completely lost."
+        },
+        {
+          "role": "Berater",
+          "de": "Mach dir keinen Stress, das ergibt sich schon irgendwie von selbst.",
+          "en": "Don't stress yourself, it'll sort itself out somehow."
+        },
+        {
+          "role": "Klient",
+          "de": "Aber genau das hilft mir nicht, ich habe richtig Druck von zu Hause.",
+          "en": "But that's exactly what doesn't help me, I'm under real pressure from home."
+        },
+        {
+          "role": "Berater",
+          "de": "Okay, dann red halt mit deinen Eltern darüber.",
+          "en": "Okay, then just talk to your parents about it."
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 12",
+      "label_en": "Counselling case 12",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe das Gefühl, in meiner Beziehung nur noch zu funktionieren. Wir reden kaum noch und ich weiß nicht, ob ich noch glücklich bin.",
+          "en": "I feel like I'm just functioning in my relationship. We hardly talk anymore and I don't know if I'm still happy."
+        },
+        {
+          "role": "Berater",
+          "de": "Wenn aus Miteinander ein bloßes Nebeneinander wird, kann das sehr einsam machen – gerade in einer Beziehung, von der man sich Nähe wünscht. Dass Sie innehalten und sich fragen, ob Sie noch glücklich sind, ist ein wichtiges Signal. Erinnern Sie sich, wann der Austausch zwischen Ihnen beiden zuletzt lebendiger war?",
+          "en": "When togetherness turns into mere coexistence, that can be very lonely – especially in a relationship where you long for closeness. The fact that you pause and ask yourself whether you're still happy is an important signal. Do you remember when the exchange between the two of you was last more alive?"
+        },
+        {
+          "role": "Klient",
+          "de": "Vor dem letzten stressigen Jahr, da haben wir noch viel zusammen unternommen.",
+          "en": "Before the last stressful year, back then we still did a lot together."
+        },
+        {
+          "role": "Berater",
+          "de": "Das ist eine wertvolle Spur: Es klingt, als hätte der Stress die gemeinsame Zeit verdrängt – und nicht unbedingt das Gefühl füreinander. Vielleicht wäre ein erster Schritt, bewusst eine kleine gemeinsame Insel im Alltag zu schaffen und offen anzusprechen, was Ihnen fehlt. Wie fühlt sich dieser Gedanke an?",
+          "en": "That's a valuable clue: it sounds as if the stress crowded out your shared time – and not necessarily your feelings for each other. Perhaps a first step would be to deliberately create a small shared island in everyday life and to openly name what you're missing. How does that thought feel?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 13",
+      "label_en": "Counselling case 13",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich vergleiche mich ständig mit anderen auf Social Media und fühle mich danach immer schlechter. Trotzdem kann ich das Handy nicht weglegen.",
+          "en": "I constantly compare myself to others on social media and always feel worse afterwards. Still, I can't put the phone down."
+        },
+        {
+          "role": "Berater",
+          "de": "Sie beschreiben etwas, das viele Menschen kennen und das trotzdem sehr an einem zehren kann: Man weiß, dass es schadet, und kommt doch nicht los. Das ist kein Mangel an Willenskraft – diese Apps sind genau darauf ausgelegt, uns zu halten. Was glauben Sie, wonach Sie in diesen Momenten eigentlich suchen?",
+          "en": "You're describing something many people know and that can nevertheless wear at you a lot: you know it harms you, yet you can't break free. That's not a lack of willpower – these apps are designed precisely to keep us hooked. What do you think you're actually searching for in those moments?"
+        },
+        {
+          "role": "Klient",
+          "de": "Vielleicht Ablenkung, wenn ich mich langweile oder unruhig bin.",
+          "en": "Maybe distraction, when I'm bored or restless."
+        },
+        {
+          "role": "Berater",
+          "de": "Das ist eine sehr ehrliche Beobachtung. Wenn das Handy die Unruhe füllen soll, kann es helfen, für genau diese Momente eine kleine Alternative bereitzuhalten – etwas, das ebenfalls schnell verfügbar ist, Sie aber danach nicht leerer zurücklässt. Was könnte für Sie so ein kleiner Gegenpol sein?",
+          "en": "That's a very honest observation. If the phone is meant to fill the restlessness, it can help to have a small alternative ready for exactly those moments – something also quickly available but that doesn't leave you emptier afterwards. What could be such a small counterbalance for you?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 14",
+      "label_en": "Counselling case 14",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich pflege seit über einem Jahr meinen kranken Vater und merke, dass ich selbst völlig am Limit bin. Aber ich kann ihn doch nicht im Stich lassen.",
+          "en": "I've been caring for my sick father for over a year and I notice that I'm completely at my limit myself. But I can't just abandon him."
+        },
+        {
+          "role": "Berater",
+          "de": "Was Sie für Ihren Vater leisten, ist enorm – und gerade weil Sie ihn nicht im Stich lassen wollen, ist es wichtig, dass auch jemand auf Sie schaut. Erschöpfung ist kein Versagen, sondern ein Warnsignal. Haben Sie im Moment überhaupt Momente, die nur Ihnen gehören?",
+          "en": "What you're doing for your father is enormous – and precisely because you don't want to abandon him, it's important that someone looks out for you too. Exhaustion is not a failure but a warning signal. Do you have any moments at all right now that belong only to you?"
+        },
+        {
+          "role": "Klient",
+          "de": "Ehrlich gesagt kaum. Ich habe ständig ein schlechtes Gewissen, wenn ich an mich denke.",
+          "en": "Honestly, hardly any. I constantly have a guilty conscience when I think of myself."
+        },
+        {
+          "role": "Berater",
+          "de": "Dieses schlechte Gewissen begleitet viele pflegende Angehörige – dabei ist Selbstfürsorge keine Untreue, sondern die Voraussetzung dafür, dass Sie überhaupt weiter da sein können. Es gibt Entlastungsangebote wie Tagespflege oder Pflegeberatung, die Ihnen kleine Freiräume schaffen können. Möchten Sie, dass wir uns gemeinsam ansehen, welche Unterstützung in Ihrer Nähe in Frage käme?",
+          "en": "This guilty conscience accompanies many caregiving relatives – yet self-care is not disloyalty but the prerequisite for you to be able to remain present at all. There are relief services such as day care or care counselling that can create small spaces for you. Would you like us to look together at what support might be available near you?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 15",
+      "label_en": "Counselling case 15",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe vor einigen Wochen meinen Job verloren und seitdem das Gefühl, nichts mehr wert zu sein. Morgens schaffe ich es kaum aus dem Bett.",
+          "en": "I lost my job a few weeks ago and since then I feel like I'm worth nothing anymore. In the mornings I can barely get out of bed."
+        },
+        {
+          "role": "Berater",
+          "de": "Bewerben Sie sich einfach schnell wieder, dann ist das Thema erledigt.",
+          "en": "Just apply again quickly, then the matter is settled."
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 16",
+      "label_en": "Counselling case 16",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe ständig Angst, dass etwas Schlimmes passiert – meinen Liebsten, mir, einfach allem. Diese Sorgen begleiten mich den ganzen Tag.",
+          "en": "I'm constantly afraid that something bad will happen – to my loved ones, to me, to everything. These worries accompany me all day long."
+        },
+        {
+          "role": "Berater",
+          "de": "Es klingt sehr anstrengend, einen so wachsamen inneren Begleiter zu haben, der ständig nach Gefahren späht. Diese dauernden Sorgen kosten viel Kraft, auch wenn von außen vielleicht niemand sieht, wie viel in Ihnen los ist. Seit wann begleitet Sie diese Anspannung schon so stark?",
+          "en": "It sounds very exhausting to have such a vigilant inner companion constantly scanning for dangers. These constant worries cost a lot of energy, even if from the outside no one perhaps sees how much is going on inside you. How long has the tension been this strong?"
+        },
+        {
+          "role": "Klient",
+          "de": "So richtig stark seit etwa einem halben Jahr, früher war ich entspannter.",
+          "en": "Really strongly for about half a year now, I used to be more relaxed."
+        },
+        {
+          "role": "Berater",
+          "de": "Danke, dass Sie das so offen teilen. Wenn sich eine Anspannung über Monate so verfestigt, lohnt es sich, sie ernst zu nehmen – sowohl im Gespräch als auch, gegebenenfalls, mit ärztlicher oder psychotherapeutischer Begleitung. Bis dahin können kleine Anker im Alltag helfen, etwa bewusste Atempausen, wenn die Sorgen hochkommen. Sollen wir uns eine solche Übung gemeinsam ansehen?",
+          "en": "Thank you for sharing this so openly. When tension solidifies over months like this, it's worth taking it seriously – both in conversation and, if appropriate, with medical or psychotherapeutic support. Until then, small anchors in everyday life can help, such as deliberate breathing pauses when the worries rise. Shall we look at such an exercise together?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 17",
+      "label_en": "Counselling case 17",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe das Gefühl, in meiner Familie nie wirklich gesehen zu werden. Egal was ich leiste, es scheint nie genug zu sein.",
+          "en": "I feel like I'm never really seen in my family. No matter what I achieve, it never seems to be enough."
+        },
+        {
+          "role": "Berater",
+          "de": "Das ist ein sehr schmerzhaftes Gefühl – sich anzustrengen und trotzdem das Gefühl zu haben, unsichtbar zu bleiben. Viele Menschen tragen so eine Erfahrung schon lange mit sich. Erinnern Sie sich an eine Situation, in der dieses 'nie genug' für Sie besonders deutlich wurde?",
+          "en": "That's a very painful feeling – to make an effort and still feel that you remain invisible. Many people carry such an experience with them for a long time. Do you remember a situation in which this 'never enough' became particularly clear to you?"
+        },
+        {
+          "role": "Klient",
+          "de": "Ja, als ich eine gute Note nach Hause brachte und nur gefragt wurde, warum es keine Eins war.",
+          "en": "Yes, when I brought home a good grade and was only asked why it wasn't a top grade."
+        },
+        {
+          "role": "Berater",
+          "de": "Das bleibt verständlicherweise hängen – statt Anerkennung kam sofort der nächste Anspruch. Solche wiederholten Erfahrungen können dazu führen, dass wir den strengen Blick irgendwann selbst übernehmen. Es kann heilsam sein, zu üben, sich selbst die Anerkennung zu geben, die damals gefehlt hat. Möchten Sie das einmal gemeinsam ausprobieren?",
+          "en": "That understandably sticks with you – instead of recognition, the next demand came immediately. Such repeated experiences can lead us to eventually adopt that strict gaze ourselves. It can be healing to practise giving yourself the recognition that was missing back then. Would you like to try that together?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 18",
+      "label_en": "Counselling case 18",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich bin frischgebackene Mutter und total überfordert. Ich liebe mein Baby, aber manchmal weine ich einfach nur und schäme mich dafür.",
+          "en": "I'm a new mother and totally overwhelmed. I love my baby, but sometimes I just cry and feel ashamed of it."
+        },
+        {
+          "role": "Berater",
+          "de": "Liebe und Überforderung schließen sich überhaupt nicht aus – beides darf gleichzeitig da sein, gerade in dieser intensiven ersten Zeit. Dass Sie weinen, ist kein Zeichen, dass Sie etwas falsch machen, sondern dass Sie sehr viel stemmen. Bitte schämen Sie sich dafür nicht. Haben Sie im Moment jemanden, der Sie konkret entlasten kann?",
+          "en": "Love and feeling overwhelmed don't exclude each other at all – both may be present at the same time, especially in this intense early period. That you cry is not a sign that you're doing something wrong, but that you're carrying a great deal. Please don't be ashamed of it. Is there anyone right now who can genuinely take some of the load off you?"
+        },
+        {
+          "role": "Klient",
+          "de": "Mein Partner hilft, aber er arbeitet viel und ich bin oft allein mit dem Kleinen.",
+          "en": "My partner helps, but he works a lot and I'm often alone with the little one."
+        },
+        {
+          "role": "Berater",
+          "de": "Viele Stunden allein mit einem Säugling sind eine echte Dauerleistung, auch wenn sie selten als solche anerkannt wird. Es könnte entlasten, früh über kleine zusätzliche Unterstützung nachzudenken – etwa eine Hebamme im Wochenbett, eine Eltern-Baby-Gruppe oder Familienangebote in Ihrer Nähe. Wenn die Tränen jedoch häufiger und schwerer werden, wäre es wichtig, das ärztlich abzuklären. Möchten Sie, dass wir uns mögliche Anlaufstellen ansehen?",
+          "en": "Long hours alone with an infant are relentless work, even if it's rarely recognised as such. It could relieve you to think early about small additional support – for instance a postpartum midwife, a parent-baby group, or family services near you. If, however, the tears become more frequent and heavier, it would be important to have that checked medically. Would you like us to look at possible points of contact?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 19",
+      "label_en": "Counselling case 19",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Ich habe seit der Schulzeit Mühe, Nein zu sagen. Ich übernehme ständig Aufgaben für andere und komme selbst zu kurz. Langsam macht mich das richtig wütend.",
+          "en": "Since my school days I've struggled to say no. I constantly take on tasks for others and miss out myself. Slowly this is making me really angry."
+        },
+        {
+          "role": "Berater",
+          "de": "Diese Wut ist eigentlich ein gutes Zeichen – sie zeigt, dass ein Teil in Ihnen merkt, dass Ihre eigenen Grenzen zu lange übergangen wurden. Immer für andere da zu sein hat sicher auch schöne Seiten, aber wenn Sie dabei selbst leer ausgehen, kippt es. Was, glauben Sie, würde passieren, wenn Sie einmal Nein sagen würden?",
+          "en": "This anger is actually a good sign – it shows that a part of you notices that your own boundaries have been overridden for too long. Always being there for others surely has its good sides too, but when you're the one left with nothing, the balance tips. What do you think would happen if you said no for once?"
+        },
+        {
+          "role": "Klient",
+          "de": "Ich glaube, ich hätte Angst, dass die anderen enttäuscht sind oder mich weniger mögen.",
+          "en": "I think I'd be afraid that the others would be disappointed or like me less."
+        },
+        {
+          "role": "Berater",
+          "de": "Diese Sorge ist sehr menschlich, und doch zeigt die Erfahrung oft: Ein freundliches, klares Nein schadet guten Beziehungen nicht, sondern macht sie ehrlicher. Wir könnten klein anfangen – mit einer Situation, in der ein Nein wenig riskant wäre, damit Sie spüren, dass Sie es überleben. Möchten Sie eine solche Situation mitbringen?",
+          "en": "This worry is very human, and yet experience often shows: a friendly, clear no doesn't harm good relationships but makes them more honest. We could start small – with a situation in which a no would be low-risk, so you can sense that you'll survive it. Would you like to bring such a situation?"
+        }
+      ]
+    },
+    {
+      "label_de": "Beratungsfall 20",
+      "label_en": "Counselling case 20",
+      "conversation": [
+        {
+          "role": "Klient",
+          "de": "Mein Kind wird in der Schule gemobbt und zieht sich immer mehr zurück. Ich fühle mich so hilflos und weiß nicht, wie ich ihm helfen kann.",
+          "en": "My child is being bullied at school and is withdrawing more and more. I feel so helpless and don't know how I can help them."
+        },
+        {
+          "role": "Berater",
+          "de": "Das ist eine schwere Situation für Sie beide – mitzuerleben, wie das eigene Kind leidet, und sich dabei hilflos zu fühlen, ist sehr belastend. Dass Sie es überhaupt bemerken und sich Hilfe suchen, ist für Ihr Kind bereits ein wichtiger Rückhalt. Konnte Ihr Kind Ihnen schon erzählen, was genau in der Schule passiert?",
+          "en": "That's a hard situation for both of you – witnessing your own child suffer and feeling helpless about it is very distressing. That you notice it at all and are seeking help is already important support for your child. Has your child been able to tell you yet what exactly is happening at school?"
+        },
+        {
+          "role": "Klient",
+          "de": "Nur bruchstückhaft. Es schämt sich und redet kaum darüber.",
+          "en": "Only in fragments. They're ashamed and barely talk about it."
+        },
+        {
+          "role": "Berater",
+          "de": "Scham hält viele Kinder davon ab, sich zu öffnen – umso wichtiger ist es, dass Ihr Kind spürt, dass es bei Ihnen keine Schuld trägt. Hilfreich kann ein ruhiges, vertrauliches Gespräch mit der Klassenleitung oder Schulsozialarbeit sein, um das Problem nicht allein zu tragen. Möchten Sie, dass wir gemeinsam überlegen, wie Sie diesen Schritt vorbereiten könnten?",
+          "en": "Shame keeps many children from opening up – which makes it all the more important that your child feels that, with you, they carry no blame. A calm, confidential conversation with the class teacher or school social work can help so that you don't carry the problem alone. Would you like us to think together about how you could prepare this step?"
+        }
+      ]
+    }
+  ]
+}

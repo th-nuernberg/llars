@@ -9,7 +9,6 @@ from datetime import datetime
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, ValidationError
-from db.tables import LatexComment
 
 settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
 
@@ -61,12 +60,6 @@ def update_user_settings():
         current = user.settings_json or {}
         current.update(data['preferences'])
         user.settings_json = current
-
-    if 'collab_color' in data and prev_collab_color != user.collab_color:
-        LatexComment.query.filter_by(author_username=user.username).update(
-            {LatexComment.author_color: user.collab_color},
-            synchronize_session=False
-        )
 
     db.session.commit()
 
@@ -125,6 +118,24 @@ def upload_avatar():
     if size > 2 * 1024 * 1024:
         raise ValidationError("Datei zu groß (max 2MB)")
 
+    # SECURITY: never trust the client-supplied Content-Type or filename
+    # extension. An attacker could upload HTML/JS named "x.png" with
+    # Content-Type text/html; served back from the same origin that would be
+    # stored XSS. Sniff the real magic bytes and derive the MIME ourselves.
+    head = file.read(16)
+    file.seek(0)
+    safe_mime = None
+    if head.startswith(b'\x89PNG\r\n\x1a\n'):
+        safe_mime = 'image/png'
+    elif head.startswith(b'\xff\xd8\xff'):
+        safe_mime = 'image/jpeg'
+    elif head.startswith((b'GIF87a', b'GIF89a')):
+        safe_mime = 'image/gif'
+    elif head[0:4] == b'RIFF' and head[8:12] == b'WEBP':
+        safe_mime = 'image/webp'
+    if safe_mime is None:
+        raise ValidationError("Datei ist kein gültiges Bild (PNG/JPG/GIF/WebP)")
+
     # Check rate limit (3 changes per day)
     today = datetime.now().date()
     if user.avatar_change_date == today:
@@ -157,7 +168,7 @@ def upload_avatar():
     # Update user record
     user.avatar_file = filename
     user.avatar_public_id = public_id
-    user.avatar_mime_type = file.content_type
+    user.avatar_mime_type = safe_mime  # server-derived, never the client header
     user.avatar_updated_at = datetime.now()
     user.avatar_change_count += 1
 
@@ -195,10 +206,15 @@ def get_avatar(public_id: str):
     if not os.path.exists(filepath):
         return jsonify({'success': False, 'error': 'Avatar-Datei nicht gefunden'}), 404
 
-    return send_file(
-        filepath,
-        mimetype=user.avatar_mime_type or 'image/png'
-    )
+    # SECURITY: only ever serve a known-safe image MIME, never text/html or a
+    # client-influenced type. Add nosniff + inline disposition so the browser
+    # cannot be tricked into rendering the file as a document.
+    allowed_image_mimes = {'image/png', 'image/jpeg', 'image/gif', 'image/webp'}
+    safe_mime = user.avatar_mime_type if user.avatar_mime_type in allowed_image_mimes else 'application/octet-stream'
+    response = send_file(filepath, mimetype=safe_mime)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Content-Disposition'] = 'inline'
+    return response
 
 
 @settings_bp.route('/avatar', methods=['DELETE'])

@@ -92,35 +92,52 @@ def _fetch_user_ranking_stats(scenario_id: int = None) -> list:
     from db.database import db
     from db.tables import User, EmailThread, Feature, UserFeatureRanking
 
+    from sqlalchemy import func
+
     user_stats = []
 
-    # Get total threads with function_type_id = 1 (Ranking)
-    total_threads = db.session.query(EmailThread).filter_by(function_type_id=1).count()
+    threads = EmailThread.query.filter_by(function_type_id=1).all()
+    total_threads = len(threads)
+    users = User.query.all()
 
-    for user in User.query.all():
+    # Batch: feature counts per thread (1 query)
+    feature_counts_q = db.session.query(
+        Feature.thread_id,
+        func.count(Feature.feature_id).label('cnt')
+    ).group_by(Feature.thread_id).all()
+    features_per_thread = {tid: cnt for tid, cnt in feature_counts_q}
+
+    # Batch: ranked feature counts per (user, thread) (1 query)
+    ranked_counts_q = db.session.query(
+        UserFeatureRanking.user_id,
+        Feature.thread_id,
+        func.count(UserFeatureRanking.ranking_id).label('cnt')
+    ).join(Feature).group_by(
+        UserFeatureRanking.user_id, Feature.thread_id
+    ).all()
+    ranked_per_user_thread = {}
+    for uid, tid, cnt in ranked_counts_q:
+        ranked_per_user_thread[(uid, tid)] = cnt
+
+    for user in users:
         ranked_threads_list = []
         unranked_threads_list = []
         total_ranked_threads = 0
 
-        # Iterate over email threads with function_type_id = 1
-        for thread in EmailThread.query.filter_by(function_type_id=1).all():
-            total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
-
-            ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
-                UserFeatureRanking.user_id == user.id,
-                Feature.thread_id == thread.thread_id
-            ).count()
+        for thread in threads:
+            total_features = features_per_thread.get(thread.thread_id, 0)
+            ranked_count = ranked_per_user_thread.get((user.id, thread.thread_id), 0)
 
             thread_data = {
                 'thread_id': thread.thread_id,
                 'chat_id': thread.chat_id,
                 'institut_id': thread.institut_id,
                 'subject': thread.subject,
-                'ranked_features_count': ranked_features_count,
-                'total_features_in_thread': total_features_in_thread
+                'ranked_features_count': ranked_count,
+                'total_features_in_thread': total_features
             }
 
-            if ranked_features_count == total_features_in_thread and total_features_in_thread > 0:
+            if ranked_count == total_features and total_features > 0:
                 total_ranked_threads += 1
                 ranked_threads_list.append(thread_data)
             else:

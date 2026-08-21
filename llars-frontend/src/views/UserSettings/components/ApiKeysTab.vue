@@ -46,6 +46,35 @@
           </button>
         </div>
 
+        <!-- Scope picker — multi-select chips. Selecting nothing means
+             the key inherits the owner's RBAC permissions (legacy behaviour),
+             selecting at least one switches to scope-gated mode. -->
+        <div class="form-field scopes-field">
+          <label class="field-label">
+            {{ $t('userSettings.apiKeys.scopes.title') }}
+            <span class="field-hint">{{ $t('userSettings.apiKeys.scopes.hint') }}</span>
+          </label>
+          <div class="scope-chips">
+            <button
+              v-for="opt in scopeOptions"
+              :key="opt.id"
+              type="button"
+              class="scope-chip"
+              :class="{ active: selectedScopes.includes(opt.id), 'admin-scope': opt.id === 'admin:*' }"
+              :title="$t(opt.descriptionKey)"
+              @click="toggleScope(opt.id)"
+            >
+              <LIcon size="14">{{ opt.icon }}</LIcon>
+              <span class="scope-id">{{ opt.id }}</span>
+              <span class="scope-label">{{ $t(opt.labelKey) }}</span>
+            </button>
+          </div>
+          <p v-if="createError" class="scope-error" role="alert">
+            <LIcon size="14">mdi-alert-circle-outline</LIcon>
+            {{ createError }}
+          </p>
+        </div>
+
         <!-- New Key Display (only shown once after creation) -->
         <Transition name="slide-fade">
           <div v-if="newlyCreatedKey" class="new-key-display" role="alert">
@@ -129,6 +158,17 @@
                   {{ $t('userSettings.apiKeys.lastUsed') }}: {{ formatDate(key.last_used_at) }}
                 </span>
               </div>
+              <!-- Scope pills under the metadata row. Empty = inherits
+                   owner permissions (legacy keys); a populated list shows
+                   exactly which scopes the key can use against /api/v1. -->
+              <div v-if="keyScopes(key).length" class="key-scopes">
+                <span
+                  v-for="scope in keyScopes(key)"
+                  :key="scope"
+                  class="scope-pill"
+                  :class="{ 'admin-scope': scope === 'admin:*' }"
+                >{{ scope }}</span>
+              </div>
             </div>
             <div class="key-actions">
               <button
@@ -197,6 +237,60 @@ const newKeyName = ref('')
 const newlyCreatedKey = ref(null)
 const copied = ref(false)
 const deleteDialog = ref(null)
+const selectedScopes = ref([])
+const createError = ref('')
+
+// Scope vocabulary mirrors backend ALLOWED_API_KEY_SCOPES in
+// app/routes/auth/api_key_routes.py. Keep the lists in sync — adding a
+// new scope here without backend allow-listing it will trigger a 400.
+const scopeOptions = [
+  {
+    id: 'scenario:read',
+    icon: 'mdi-eye-outline',
+    labelKey: 'userSettings.apiKeys.scopes.scenarioRead.label',
+    descriptionKey: 'userSettings.apiKeys.scopes.scenarioRead.description',
+  },
+  {
+    id: 'scenario:write',
+    icon: 'mdi-pencil-outline',
+    labelKey: 'userSettings.apiKeys.scopes.scenarioWrite.label',
+    descriptionKey: 'userSettings.apiKeys.scopes.scenarioWrite.description',
+  },
+  {
+    id: 'chatbot:read',
+    icon: 'mdi-robot-outline',
+    labelKey: 'userSettings.apiKeys.scopes.chatbotRead.label',
+    descriptionKey: 'userSettings.apiKeys.scopes.chatbotRead.description',
+  },
+  {
+    id: 'chatbot:write',
+    icon: 'mdi-robot-confused-outline',
+    labelKey: 'userSettings.apiKeys.scopes.chatbotWrite.label',
+    descriptionKey: 'userSettings.apiKeys.scopes.chatbotWrite.description',
+  },
+  {
+    id: 'admin:*',
+    icon: 'mdi-shield-key-outline',
+    labelKey: 'userSettings.apiKeys.scopes.admin.label',
+    descriptionKey: 'userSettings.apiKeys.scopes.admin.description',
+  },
+]
+
+function toggleScope(id) {
+  const idx = selectedScopes.value.indexOf(id)
+  if (idx === -1) selectedScopes.value.push(id)
+  else selectedScopes.value.splice(idx, 1)
+  createError.value = ''
+}
+
+function keyScopes(key) {
+  if (!key) return []
+  if (Array.isArray(key.scopes)) return key.scopes
+  if (typeof key.scopes === 'string' && key.scopes.length) {
+    return key.scopes.split(',').map((s) => s.trim()).filter(Boolean)
+  }
+  return []
+}
 
 // Load API keys on mount
 onMounted(async () => {
@@ -219,19 +313,24 @@ async function createApiKey() {
   if (!newKeyName.value.trim() || creating.value) return
 
   creating.value = true
+  createError.value = ''
   try {
-    const response = await axios.post('/api/auth/api-keys', {
-      name: newKeyName.value.trim()
-    })
+    const payload = { name: newKeyName.value.trim() }
+    if (selectedScopes.value.length) payload.scopes = [...selectedScopes.value]
+
+    const response = await axios.post('/api/auth/api-keys', payload)
 
     if (response.data.success) {
-      // Show the newly created key (only shown once!)
       newlyCreatedKey.value = response.data.api_key.key
       newKeyName.value = ''
-      // Reload keys to update list
+      selectedScopes.value = []
       await loadApiKeys()
     }
   } catch (error) {
+    // Surface the backend's 400 reason (most common: admin:* without
+    // feature:api_keys:admin_scope) instead of just logging it.
+    const msg = error?.response?.data?.error || error?.message || 'Unknown error'
+    createError.value = msg
     console.error('Failed to create API key:', error)
   } finally {
     creating.value = false
@@ -465,6 +564,96 @@ function formatDate(dateStr) {
 .action-btn.danger:hover {
   background: rgba(232, 160, 135, 0.1);
   border-color: var(--llars-danger);
+}
+
+/* Scope picker (create form) */
+.scopes-field {
+  margin-top: 14px;
+}
+
+.field-hint {
+  font-weight: 400;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-left: 8px;
+}
+
+.scope-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.scope-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: var(--llars-radius-sm);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scope-chip:hover {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-color: rgba(var(--v-theme-on-surface), 0.2);
+}
+
+.scope-chip.active {
+  background: rgba(176, 202, 151, 0.18);
+  border-color: var(--llars-primary);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.scope-chip.active.admin-scope {
+  background: rgba(232, 160, 135, 0.18);
+  border-color: var(--llars-danger);
+}
+
+.scope-chip .scope-id {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.scope-chip .scope-label {
+  opacity: 0.85;
+}
+
+.scope-error {
+  margin: 8px 0 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--llars-danger);
+}
+
+/* Scope pills (in key list) */
+.key-scopes {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.scope-pill {
+  font-family: monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(176, 202, 151, 0.18);
+  color: rgba(var(--v-theme-on-surface), 0.85);
+}
+
+.scope-pill.admin-scope {
+  background: rgba(232, 160, 135, 0.18);
+  color: var(--llars-danger);
 }
 
 /* New Key Display */

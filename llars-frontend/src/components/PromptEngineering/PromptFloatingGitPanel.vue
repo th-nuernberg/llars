@@ -2,7 +2,7 @@
   PromptFloatingGitPanel.vue
 
   Floating draggable Git panel for Prompt Engineering.
-  Shows block-level changes like LaTeX shows file-level changes.
+  Shows block-level changes like the workspace git panel shows file-level changes.
   Uses LFloatingWindow for consistent LLARS design.
 -->
 <template>
@@ -344,7 +344,7 @@
  * global LFloatingWindow component for consistent LLARS design.
  *
  * Features:
- * - Block-level change tracking (like files in LaTeX)
+ * - Block-level change tracking (like files in a collab workspace)
  * - Side-by-side diff viewer
  * - Commit history
  * - Block rollback functionality

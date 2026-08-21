@@ -121,7 +121,25 @@ const buildRouteLabel = (route) => {
 
 const buildCustomUrl = (route, includeQuery) => {
   const raw = includeQuery ? route?.fullPath : route?.path
-  const path = String(raw || window.location.pathname || '/')
+  let path = String(raw || window.location.pathname || '/')
+
+  // SECURITY: never send secret-bearing path params (e.g. the password-reset
+  // token in /reset/:token) to analytics. The resolved route.path contains the
+  // concrete param values, which for the reset link is a live single-use token.
+  // Redact every NON-numeric dynamic route param to its placeholder (:key);
+  // numeric ids are kept so per-entity page reporting (e.g. /scenarios/5) still
+  // works. Mirrors the param scrubbing already done in normalizeRouteValue.
+  const params = route?.params || {}
+  for (const [key, value] of Object.entries(params)) {
+    const values = Array.isArray(value) ? value : [value]
+    for (const v of values) {
+      const s = String(v ?? '')
+      if (s.length >= 2 && !/^\d+$/.test(s)) {
+        path = path.split(s).join(`:${key}`)
+      }
+    }
+  }
+
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   try {
     return `${window.location.origin}${normalizedPath}`

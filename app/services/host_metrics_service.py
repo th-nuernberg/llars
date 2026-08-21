@@ -5,6 +5,7 @@ Provides CPU, memory, disk, and network statistics for the host machine.
 
 from __future__ import annotations
 
+import sys
 import time
 from typing import Any, Dict, List, Optional
 
@@ -13,6 +14,10 @@ try:
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
+
+# Keep both import paths pointing to the same module instance for test patching.
+sys.modules.setdefault("services.host_metrics_service", sys.modules[__name__])
+sys.modules.setdefault("app.services.host_metrics_service", sys.modules[__name__])
 
 
 class HostMetricsService:

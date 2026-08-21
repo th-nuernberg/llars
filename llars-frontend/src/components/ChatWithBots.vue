@@ -48,22 +48,20 @@
       />
 
       <!-- Main Chat Area -->
-      <div class="chat-main" :style="sourcePanelState.open ? leftPanelStyle() : {}">
+      <div class="chat-main" :style="(sourcePanelState.open && !isMobile) ? leftPanelStyle() : {}">
         <!-- Chat Header -->
         <div v-if="selectedChatbot" class="chat-header">
           <div class="header-left">
-            <v-btn
+            <button
               v-if="isMobile"
-              icon
-              variant="text"
-              size="small"
-              class="mr-2"
+              class="header-action header-menu-btn"
+              :aria-label="$t('chat.openMenu')"
               @click="sidebar.mobileSidebarOpen.value = true"
             >
-              <LIcon>mdi-menu</LIcon>
-            </v-btn>
-            <v-avatar :color="selectedChatbot.color || '#b0ca97'" :size="isMobile ? 32 : 36" class="bot-avatar">
-              <LIcon color="white" :size="isMobile ? 18 : 20">{{ selectedChatbot.icon || 'mdi-robot' }}</LIcon>
+              <LIcon size="22">mdi-menu</LIcon>
+            </button>
+            <v-avatar :color="selectedChatbot.color || '#b0ca97'" :size="isMobile ? 30 : 36" class="bot-avatar">
+              <LIcon color="white" :size="isMobile ? 17 : 20">{{ selectedChatbot.icon || 'mdi-robot' }}</LIcon>
             </v-avatar>
             <div class="header-info">
               <div class="header-title" :class="{ 'streaming-text': getHeaderTitle().isStreaming }">
@@ -81,12 +79,12 @@
           </div>
           <div class="header-actions">
             <LTooltip :text="sourcePanelState.open ? $t('chat.hideSources') : $t('chat.showSources')">
-              <button class="header-action" @click="sourcePanelComposable.toggleSourcePanel">
+              <button class="header-action" :aria-label="sourcePanelState.open ? $t('chat.hideSources') : $t('chat.showSources')" @click="sourcePanelComposable.toggleSourcePanel">
                 <LIcon size="20">{{ sourcePanelState.open ? 'mdi-text-box-remove-outline' : 'mdi-text-box-search-outline' }}</LIcon>
               </button>
             </LTooltip>
             <LTooltip :text="$t('chat.newChat')">
-              <button class="header-action" @click="startNewChat()">
+              <button class="header-action" :aria-label="$t('chat.newChat')" @click="startNewChat()">
                 <LIcon size="20">mdi-plus</LIcon>
               </button>
             </LTooltip>
@@ -102,7 +100,7 @@
             color="primary"
             size="large"
             class="mb-4"
-            @click="sidebar.mobileSidebarOpen = true"
+            @click="sidebar.mobileSidebarOpen.value = true"
           >
             <LIcon>mdi-menu</LIcon>
           </v-btn>
@@ -143,9 +141,9 @@
         />
       </div>
 
-      <!-- Resize Divider -->
+      <!-- Resize Divider (desktop only - mobile renders SourcePanel as overlay) -->
       <div
-        v-if="sourcePanelState.open"
+        v-if="sourcePanelState.open && !isMobile"
         class="resize-divider"
         :class="{ resizing: isResizing }"
         @mousedown="startResize"
@@ -153,13 +151,14 @@
         <div class="resize-handle"></div>
       </div>
 
-      <!-- Sources Side Panel -->
+      <!-- Sources Panel: side panel on desktop, full-screen overlay on mobile -->
       <SourcePanel
         v-if="sourcePanelState.open"
         :source="sourcePanelState.source"
         :active-tab="sourcePanelState.tab"
         :pinned="sourcePanelState.pinned"
-        :panel-style="rightPanelStyle()"
+        :panel-style="isMobile ? {} : rightPanelStyle()"
+        :mobile="isMobile"
         :document-content="sourcePanelState.documentContent"
         :screenshot-url="sourcePanelState.screenshotBlobUrl"
         :loading-screenshot="sourcePanelState.loadingScreenshot"
@@ -348,6 +347,9 @@ const snackbar = ref({ show: false, text: '', color: 'success' })
 
 // Draft Storage Key
 const DRAFT_STORAGE_KEY = 'llars-chat-drafts'
+// Remembers the chatbot the user last actively opened, so the "New chat" button
+// on the empty /chat page can start a fresh chat with it instead of no-op'ing.
+const LAST_CHATBOT_STORAGE_KEY = 'llars:chat:lastChatbotId'
 
 // ==================== ANALYTICS ====================
 
@@ -410,6 +412,9 @@ async function selectChatbot(bot, createNewChat = false) {
 
   selectedChatbot.value = bot
 
+  // Remember this as the last-used chatbot (drives "New chat" from the empty page).
+  try { localStorage.setItem(LAST_CHATBOT_STORAGE_KEY, String(bot.id)) } catch { /* storage may be unavailable */ }
+
   // Update URL with chatbot name for sharing/bookmarking
   const chatbotParam = bot.name?.toLowerCase() || bot.display_name?.toLowerCase()
   if (chatbotParam && route.query.chatbot !== chatbotParam) {
@@ -470,14 +475,39 @@ async function loadConversations(autoSelect = false) {
 }
 
 /**
+ * Resolve which chatbot a "New chat" should target when none is active yet:
+ * the last one the user actually used (persisted), falling back to the first
+ * available active chatbot.
+ */
+function resolveLastUsedChatbot() {
+  let lastId = null
+  try { lastId = localStorage.getItem(LAST_CHATBOT_STORAGE_KEY) } catch { /* ignore */ }
+  if (lastId) {
+    const bot = chatbots.value.find(b => String(b.id) === String(lastId))
+    if (bot) return bot
+  }
+  return chatbots.value[0] || null
+}
+
+/**
  * Start a new chat - resets state without creating conversation in DB.
  * The actual conversation is created lazily when the first message is sent.
+ *
+ * On the empty /chat page (no chatbot active) this opens a fresh chat with the
+ * LAST chatbot the user used, so they can start typing without first re-picking
+ * a bot from the sidebar.
  */
-function startNewChat() {
-  if (!selectedChatbot.value) return
-
-  // Save any existing draft before starting new chat
-  saveDraft()
+async function startNewChat() {
+  if (!selectedChatbot.value) {
+    const bot = resolveLastUsedChatbot()
+    if (!bot) return
+    // selectChatbot resets messages/session and loads the bot's conversations
+    // (without auto-selecting one); the reset below then yields a clean new chat.
+    await selectChatbot(bot)
+  } else {
+    // Save any existing draft before starting new chat
+    saveDraft()
+  }
 
   // Reset state for new chat
   selectedConversation.value = null
@@ -704,10 +734,8 @@ async function sendMessageViaREST(message, files = []) {
         updateConversationTitle(result.conversationId || selectedConversation.value?.id, result.conversationTitle)
       }
       chatMessages.updateBotMessage(messages, result.content, new Date().toLocaleTimeString(), false, result.sources)
-      // Automatically show first source in panel
-      if (result.sources && result.sources.length > 0) {
-        sourcePanelComposable.openSourceFromCitation(result.sources[0])
-      }
+      // NOTE: do NOT auto-open the source panel (same as the socket onSources
+      // path) — it opens only on a citation/source click.
       if (result.mode && result.mode !== 'standard') {
         agentEventCounter.value++
         agentStatus.value = { type: 'complete', mode: result.mode, task_type: result.task_type, reasoning_steps: result.reasoning_steps || [], _eventId: agentEventCounter.value }
@@ -843,7 +871,16 @@ function clearProcessingTimeout() {
 }
 
 function handleToggleBot(bot) {
+  const wasSelected = selectedChatbot.value?.id === bot.id
   sidebar.toggleBot(bot, selectChatbot, sidebar.loadBotConversations)
+
+  // On mobile, close the drawer when a (different) bot becomes the active chat
+  // so the user immediately sees the conversation — matching the conversation-tap
+  // behaviour. toggleBot only selects a bot when it is being expanded (not collapsed),
+  // so we mirror that condition to avoid closing the drawer on a collapse tap.
+  if (isMobile.value && !wasSelected && sidebar.expandedBots.value[bot.id]) {
+    sidebar.mobileSidebarOpen.value = false
+  }
 }
 
 function handleSelectConversation(bot, conv) {
@@ -898,10 +935,10 @@ function setupSocketHandlers() {
       if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot') {
         messages.value[lastIdx].sources = chatMessages.currentSources.value
       }
-      // Automatically show first source in panel
-      if (data.sources && data.sources.length > 0) {
-        sourcePanelComposable.openSourceFromCitation(data.sources[0])
-      }
+      // NOTE: do NOT auto-open the source panel here. It opens ONLY when the
+      // user clicks a citation/source chip (footnote-click -> openSourceFromCitation)
+      // or the header source toggle. Auto-opening was intrusive (the panel popped
+      // up on every answer, full-screen on mobile).
     },
     onResponse: (data) => {
       const lastIdx = messages.value.length - 1
@@ -991,9 +1028,43 @@ function handleBeforeUnload() {
   saveDraft()
 }
 
+// ==================== MOBILE BODY-SCROLL LOCK ====================
+// The mobile chat is a fixed, full-viewport shell (.chat-page.is-mobile). The
+// fixed shell alone does NOT stop the underlying document from scrolling:
+// Vuetify's <v-main> keeps a min-height that leaves the page taller than the
+// viewport, so the page rubber-bands behind the shell. We therefore lock
+// body/html overflow while the mobile shell is mounted and restore it on leave.
+// Desktop is never touched (gated on isMobile).
+let _prevBodyOverflow = ''
+let _prevHtmlOverflow = ''
+
+function lockPageScroll() {
+  if (typeof document === 'undefined') return
+  _prevBodyOverflow = document.body.style.overflow
+  _prevHtmlOverflow = document.documentElement.style.overflow
+  document.body.style.overflow = 'hidden'
+  document.documentElement.style.overflow = 'hidden'
+}
+
+function unlockPageScroll() {
+  if (typeof document === 'undefined') return
+  document.body.style.overflow = _prevBodyOverflow
+  document.documentElement.style.overflow = _prevHtmlOverflow
+}
+
+// React to viewport crossing the mobile breakpoint while the page is open
+// (e.g. device rotation / responsive devtools) so the lock matches the shell.
+watch(isMobile, (mobile) => {
+  if (mobile) lockPageScroll()
+  else unlockPageScroll()
+})
+
 onMounted(async () => {
   // Add beforeunload listener to save draft when closing tab/browser
   window.addEventListener('beforeunload', handleBeforeUnload)
+
+  // Lock outer page scroll for the fixed mobile shell (no-op on desktop).
+  if (isMobile.value) lockPageScroll()
 
   await withLoading('chatbots', loadChatbots)
   for (const bot of chatbots.value) {
@@ -1007,6 +1078,8 @@ onMounted(async () => {
 onUnmounted(() => {
   // Remove beforeunload listener
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  // Always restore page scroll (safe even if it was never locked).
+  unlockPageScroll()
   // Save draft before leaving the page
   saveDraft()
   clearProcessingTimeout()

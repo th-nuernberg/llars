@@ -231,6 +231,7 @@ let reconnectTimer = null
 
 // Severity filter chips
 const severityChips = [
+  { value: 'ci_cd', label: 'CI/CD', icon: 'mdi-pipe', variant: 'info' },
   { value: 'error', label: 'Error', icon: 'mdi-alert-circle', variant: 'danger' },
   { value: 'warning', label: 'Warning', icon: 'mdi-alert', variant: 'warning' },
   { value: 'info', label: 'Info', icon: 'mdi-information', variant: 'info' },
@@ -257,6 +258,7 @@ const getEventStyle = (eventType, severity) => {
   }
 
   if (eventStyles[eventType]) return eventStyles[eventType]
+  if (severity === 'ci_cd') return { icon: 'mdi-pipe', color: '#1976D2' }
   if (severity === 'error' || severity === 'critical') return { icon: 'mdi-alert-circle', color: '#f44336' }
   if (severity === 'warning') return { icon: 'mdi-alert', color: '#FF9800' }
   if (severity === 'success') return { icon: 'mdi-check-circle', color: '#4CAF50' }
@@ -291,6 +293,7 @@ const severityVariant = (severity) => {
   const s = String(severity || '').toLowerCase()
   if (s === 'success') return 'success'
   if (s === 'warning') return 'warning'
+  if (s === 'ci_cd') return 'info'
   if (s === 'error' || s === 'critical') return 'danger'
   return 'info'
 }

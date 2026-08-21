@@ -8,10 +8,20 @@ Handles real-time communication for:
 """
 
 import logging
+import time
 from flask_socketio import emit, join_room, leave_room
 from flask import request
 
+from socketio_handlers.socket_auth import socket_user, socket_authorize
+from auth.access_control import require_scenario_membership
+
 logger = logging.getLogger(__name__)
+
+# Throttle stats emissions: max 1 per scenario every N seconds.
+# Without this, each completed/failed item triggers a full stats recomputation
+# (6+ seconds for large scenarios), causing 100% CPU with hundreds of items.
+_STATS_THROTTLE_SECONDS = 10
+_last_stats_emission: dict = {}  # scenario_id -> timestamp
 
 
 def register_llm_evaluation_events(socketio):
@@ -38,6 +48,19 @@ def register_llm_evaluation_events(socketio):
         scenario_id = data.get('scenario_id')
         if not scenario_id:
             emit('llm_eval:error', {'message': 'scenario_id erforderlich'})
+            return
+
+        # AuthN + AuthZ: only scenario members (or admin) may stream a scenario's
+        # live LLM-evaluation progress/results/reasoning. Same check as HTTP.
+        user = socket_user('llm_eval:error')
+        if user is None:
+            return
+        try:
+            scenario_id = int(scenario_id)
+        except (TypeError, ValueError):
+            emit('llm_eval:error', {'message': 'Ungültige scenario_id'})
+            return
+        if not socket_authorize(require_scenario_membership, scenario_id, user, error_event='llm_eval:error'):
             return
 
         room = f"llm_eval_scenario_{scenario_id}"
@@ -79,6 +102,9 @@ def register_llm_evaluation_events(socketio):
         Handle client joining the evaluation overview room.
         This room receives updates for ALL active evaluations.
         """
+        # Require an authenticated account (cross-scenario broadcast room).
+        if socket_user('llm_eval:error') is None:
+            return
         room = "llm_eval_overview"
         join_room(room)
         logger.info(f"[LLM Eval] Client {request.sid} joined overview room")
@@ -109,6 +135,17 @@ def register_llm_evaluation_events(socketio):
         scenario_id = data.get('scenario_id')
         if not scenario_id:
             emit('llm_eval:error', {'message': 'scenario_id erforderlich'})
+            return
+
+        user = socket_user('llm_eval:error')
+        if user is None:
+            return
+        try:
+            scenario_id = int(scenario_id)
+        except (TypeError, ValueError):
+            emit('llm_eval:error', {'message': 'Ungültige scenario_id'})
+            return
+        if not socket_authorize(require_scenario_membership, scenario_id, user, error_event='llm_eval:error'):
             return
 
         scenario = RatingScenarios.query.get(scenario_id)
@@ -182,6 +219,17 @@ def register_llm_evaluation_events(socketio):
 
         if not all([scenario_id, thread_id, model_id]):
             emit('llm_eval:error', {'message': 'scenario_id, thread_id und model_id erforderlich'})
+            return
+
+        user = socket_user('llm_eval:error')
+        if user is None:
+            return
+        try:
+            scenario_id = int(scenario_id)
+        except (TypeError, ValueError):
+            emit('llm_eval:error', {'message': 'Ungültige scenario_id'})
+            return
+        if not socket_authorize(require_scenario_membership, scenario_id, user, error_event='llm_eval:error'):
             return
 
         result = LLMTaskResult.query.filter_by(
@@ -282,14 +330,8 @@ def broadcast_evaluation_completed(
     socketio.emit('llm_eval:task_completed', data, room=room)
     socketio.emit('llm_eval:task_completed', data, room="llm_eval_overview")
 
-    # Also emit scenario stats update for unified progress tracking
-    try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-        logger.info("[LLM Eval] Emitting scenario stats update for scenario %s after task completion", scenario_id)
-        emit_scenario_stats_updated(socketio, scenario_id)
-        logger.info("[LLM Eval] Successfully emitted scenario stats update for scenario %s", scenario_id)
-    except Exception as exc:
-        logger.warning("[LLM Eval] Failed to emit scenario stats update: %s", exc, exc_info=True)
+    # Throttled scenario stats update - max once per 10s per scenario
+    _throttled_stats_emit(socketio, scenario_id)
 
 
 def broadcast_evaluation_failed(
@@ -323,12 +365,32 @@ def broadcast_evaluation_failed(
     socketio.emit('llm_eval:task_failed', data, room=room)
     socketio.emit('llm_eval:task_failed', data, room="llm_eval_overview")
 
-    # Also emit scenario stats update for unified progress tracking
+    # Throttled scenario stats update - max once per 10s per scenario
+    _throttled_stats_emit(socketio, scenario_id)
+
+
+def _throttled_stats_emit(socketio, scenario_id: int) -> None:
+    """Mark stats dirty (throttled). Background thread handles recompute + push."""
+    now = time.time()
+    last = _last_stats_emission.get(scenario_id, 0)
+    if (now - last) < _STATS_THROTTLE_SECONDS:
+        return
+    _last_stats_emission[scenario_id] = now
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-        emit_scenario_stats_updated(socketio, scenario_id)
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
     except Exception as exc:
-        logger.warning("[LLM Eval] Failed to emit scenario stats update: %s", exc)
+        logger.warning("[LLM Eval] Failed to mark stats dirty: %s", exc)
+
+
+def force_stats_emit(socketio, scenario_id: int) -> None:
+    """Force immediate stats dirty mark (used at end of evaluation run)."""
+    _last_stats_emission.pop(scenario_id, None)
+    try:
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
+    except Exception as exc:
+        logger.warning("[LLM Eval] Failed to mark stats dirty (final): %s", exc)
 
 
 def broadcast_scenario_completed(
@@ -353,9 +415,5 @@ def broadcast_scenario_completed(
     socketio.emit('llm_eval:scenario_completed', data, room=room)
     socketio.emit('llm_eval:scenario_completed', data, room="llm_eval_overview")
 
-    # Final stats update when all evaluations complete
-    try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-        emit_scenario_stats_updated(socketio, scenario_id)
-    except Exception as exc:
-        logger.warning("[LLM Eval] Failed to emit final scenario stats update: %s", exc)
+    # Force final stats update when all evaluations complete (bypass throttle)
+    force_stats_emit(socketio, scenario_id)

@@ -20,6 +20,9 @@ Event Namespaces:
     - presence:*  - Live user presence (admin)
     - llm_eval:*  - LLM evaluator progress and results
     - generation:* - Batch generation rooms and stream state
+    - pipeline:*  - Automated pipeline run sessions
+    - messaging:* - Real-time messaging (chat, typing, read receipts)
+    - anonymization:* - Anonymization pipeline NER sessions and progress
     - (default)   - Chat streaming, connection events
 """
 
@@ -38,12 +41,14 @@ from .events_scenarios import register_scenarios_events
 from .events_docker_monitor import register_docker_monitor_events
 from .events_comparison import register_comparison_events
 from .events_markdown_collab import register_markdown_collab_events
-from .events_latex_collab import register_latex_collab_events
 from .events_prompt_collab import register_prompt_collab_events
 from .events_wizard import register_wizard_events
 from .events_presence import register_presence_events
 from .events_llm_evaluation import register_llm_evaluation_events
 from .events_generation import register_generation_events
+from .events_pipeline import register_pipeline_events
+from .events_messaging import register_messaging_events
+from .events_anonymization import register_anonymization_events
 
 # Enhanced logging format
 logging.basicConfig(
@@ -120,12 +125,14 @@ def configure_socket_routes(socketio, verbose=True):
     register_docker_monitor_events(socketio)
     register_comparison_events(socketio)
     register_markdown_collab_events(socketio)
-    register_latex_collab_events(socketio)
     register_prompt_collab_events(socketio)
     register_wizard_events(socketio)
     register_presence_events(socketio)
     register_llm_evaluation_events(socketio)
     register_generation_events(socketio)
+    register_pipeline_events(socketio)
+    register_messaging_events(socketio)
+    register_anonymization_events(socketio)
 
     logging.info("SocketIO routes configured successfully")
 

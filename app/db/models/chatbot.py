@@ -60,6 +60,12 @@ class Chatbot(db.Model):
     # Reranker: None = use system default, otherwise model_id from llm_models
     rag_reranker_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True, default=None)
     rag_use_cross_encoder: Mapped[bool] = mapped_column(db.Boolean, default=False)  # Default: off
+    # When True, always keep top-K context even if nothing clears
+    # rag_min_relevance (forced grounding). When False (default), a query that
+    # finds no sufficiently relevant source returns NO sources, so the bot
+    # answers from general knowledge instead of citing irrelevant chunks. See
+    # ChatRAGRetrieval relevance filter + ChatService._compose_system_prompt.
+    rag_force_grounding: Mapped[bool] = mapped_column(db.Boolean, default=False, nullable=False)
 
     # Behavior
     welcome_message: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
@@ -112,8 +118,26 @@ DEFAULT_RAG_UNKNOWN_ANSWER = "Das kann ich dir leider nicht beantworten."
 DEFAULT_RAG_CITATION_INSTRUCTIONS = """
 Antworte natürlich und gesprächig. Nutze die bereitgestellten Informationen als Grundlage, aber formuliere frei und menschlich. Halte das Gespräch am Laufen - stelle Rückfragen, biete Hilfe an, sei freundlich.
 
-Bei Fakten aus dem Kontext: Verweise mit [1], [2] etc. auf die Quelle.
-Bei Gespräch, Smalltalk oder Rückfragen: Antworte einfach natürlich.
+Quellen:
+- Verweise auf genutzte Quellen mit [1], [2] etc. - aber nur bei konkreten Fakten aus dem Kontext und nur, wenn die Quelle wirklich relevant ist, nicht erzwungen bei jedem Satz.
+- Bei Smalltalk, Rückfragen oder allgemeinem Gespräch antworte einfach natürlich, ohne Quellenangabe.
+- Gib niemals selbst URLs oder Links aus und erfinde keine Pfade. Die Marker [1], [2] werden vom System automatisch in anklickbare Quellen umgewandelt.
+""".strip()
+
+# Always appended to the system prompt for RAG-enabled bots (2026-06-13).
+# Calibration showed the bi-encoder relevance score cannot separate on-topic
+# from off-topic queries on the LLARS corpus (a generic "weather in Berlin"
+# out-scores a real LLARS question), so we DON'T gate on a threshold — instead
+# the model is told how to treat the (possibly irrelevant) attached context:
+# cite only genuinely relevant sources, answer general-knowledge questions from
+# its own knowledge without citations, and be honest about LLARS-specific gaps
+# rather than inventing. See ChatService._compose_system_prompt.
+DEFAULT_RAG_GENERAL_MODE_INSTRUCTIONS = """
+Umgang mit Quellen und Wissen:
+- Zitiere [1], [2] … nur für Quellen, die die Frage wirklich beantworten – niemals erzwungen.
+- Wenn die bereitgestellten Quellen die Frage nicht abdecken (etwa eine allgemeine Wissens- oder Smalltalk-Frage), beantworte sie ganz normal und hilfreich aus deinem eigenen Wissen – ohne Quellenangaben und ohne [1], [2]-Marker.
+- Wenn die Frage LLARS-spezifisch ist (das System, seine Funktionen) oder konkrete fachliche Beratungsdetails verlangt und die Quellen das nicht hergeben, sag ehrlich, dass dir dazu keine belastbare Information vorliegt, statt etwas zu erfinden. Biete an, die Frage zu präzisieren.
+- Erfinde keine Fakten, Links oder Quellenangaben.
 """.strip()
 
 DEFAULT_RAG_CONTEXT_PREFIX = "Kontext aus der Dokumentation:"
@@ -243,6 +267,9 @@ class ChatbotPromptSettings(db.Model):
     rag_use_cross_encoder: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
     rag_unknown_answer: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_UNKNOWN_ANSWER, nullable=False)
     rag_citation_instructions: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_CITATION_INSTRUCTIONS, nullable=False)
+    # Instructions used when no relevant source was found (general-knowledge +
+    # honesty branch). See DEFAULT_RAG_GENERAL_MODE_INSTRUCTIONS.
+    rag_general_mode_instructions: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_GENERAL_MODE_INSTRUCTIONS, nullable=False)
     rag_context_prefix: Mapped[str] = mapped_column(db.String(100), default=DEFAULT_RAG_CONTEXT_PREFIX, nullable=False)
     rag_context_item_template: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE, nullable=False)
 
@@ -287,6 +314,7 @@ class ChatbotPromptSettings(db.Model):
             'rag_use_cross_encoder': self.rag_use_cross_encoder,
             'rag_unknown_answer': self.rag_unknown_answer,
             'rag_citation_instructions': self.rag_citation_instructions,
+            'rag_general_mode_instructions': self.rag_general_mode_instructions,
             'rag_context_prefix': self.rag_context_prefix,
             'rag_context_item_template': self.rag_context_item_template,
             # Agent Settings

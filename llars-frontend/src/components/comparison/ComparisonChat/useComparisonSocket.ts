@@ -94,9 +94,6 @@ export function useComparisonSocket(options: UseComparisonSocketOptions) {
       transports: socketioTransports,
       upgrade: socketioEnableWebsocket,
       query,
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8'
-      }
     });
 
     socket.value.on('connect', () => {

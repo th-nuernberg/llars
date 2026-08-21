@@ -9,6 +9,7 @@ from db.models.chatbot import (
     DEFAULT_RAG_CITATION_INSTRUCTIONS,
     DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE,
     DEFAULT_RAG_CONTEXT_PREFIX,
+    DEFAULT_RAG_GENERAL_MODE_INSTRUCTIONS,
     DEFAULT_RAG_UNKNOWN_ANSWER,
 )
 
@@ -38,17 +39,17 @@ class ChatPromptBuilder:
         return str(unknown)
 
     def requires_sources(self) -> bool:
-        """Check if the chatbot requires RAG sources for responses."""
-        if not (self.chatbot.rag_enabled and self.chatbot.collections):
-            return False
-        settings = self._get_prompt_settings()
-        require_citations = bool(getattr(settings, 'rag_require_citations', True))
-        if not require_citations:
-            return False
-        # Allow the default LLARS assistant to answer system questions without RAG sources.
-        if self.chatbot.name == 'standard_admin':
-            return False
-        return True
+        """Whether the bot must have RAG sources to answer AT ALL.
+
+        UX 2026-06-11: decoupled from citations. The bot now ALWAYS attempts an
+        answer — on a generic question where RAG finds nothing it responds from
+        general knowledge WITHOUT sources (instead of the canned fallback), and
+        when sources DO exist it still cites them (see get_require_citations,
+        which is unchanged). So this returns False: the no-sources path never
+        short-circuits to the fallback. The fallback message still applies if the
+        LLM itself returns an empty response (see chat_service).
+        """
+        return False
 
     def build_citation_instructions(self) -> str:
         """Build citation instructions to append to system prompt."""
@@ -65,6 +66,20 @@ class ChatPromptBuilder:
         )
 
         return "\n\n" + rendered.strip() + "\n"
+
+    def build_general_mode_instructions(self) -> str:
+        """Build the 'no relevant sources' instructions to append to the system
+        prompt: answer general questions from own knowledge without citations,
+        but be honest about LLARS/counselling specifics there is no source for.
+
+        Per-bot overrideable via ChatbotPromptSettings.rag_general_mode_instructions;
+        falls back to DEFAULT_RAG_GENERAL_MODE_INSTRUCTIONS.
+        """
+        settings = self._get_prompt_settings()
+        template = getattr(settings, 'rag_general_mode_instructions', None) if settings else None
+        if template is None or str(template).strip() == "":
+            template = DEFAULT_RAG_GENERAL_MODE_INSTRUCTIONS
+        return "\n\n" + str(template).strip() + "\n"
 
     def build_numbered_context(self, sources: List[Dict[str, Any]]) -> str:
         """

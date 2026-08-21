@@ -9,6 +9,11 @@ from . import db as db_instance
 # Re-export the db instance for backwards compatibility (modules import `from db.database import db`)
 db = db_instance
 
+
+def escape_like(value: str) -> str:
+    """Escape SQL LIKE/ILIKE wildcard characters."""
+    return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
 migrate = Migrate()  # Initialisiere Flask-Migrate
 
 
@@ -48,7 +53,25 @@ def configure_database(app):
     migrate.init_app(app, db_instance)
 
     with app.app_context():
-        db_instance.create_all()
+        # Make schema setup idempotent across the multiple init paths that
+        # touch this code in development:
+        #   1) start_flask.sh "test import" subprocess (warms code, runs config)
+        #   2) Werkzeug auto-reloader parent process (file-watcher)
+        #   3) Werkzeug auto-reloader child process (actual server)
+        # SQLAlchemy create_all uses checkfirst=True per default, but
+        # Flask-SQLAlchemy's multi-bind has_table check has been observed to
+        # mis-detect existing tables when the same metadata is re-initialized
+        # across processes, raising OperationalError(1050) "already exists".
+        # The retry below tolerates that race; if the schema is genuinely
+        # broken, the seeders / first request will surface it.
+        try:
+            db_instance.create_all()
+        except Exception as exc:  # pragma: no cover - defensive
+            msg = str(exc).lower()
+            if "already exists" in msg or "1050" in msg:
+                pass  # schema was set up by an earlier import in this start
+            else:
+                raise
 
         # Run all database seeders
         from .seeders import run_all_seeders

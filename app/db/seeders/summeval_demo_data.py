@@ -241,6 +241,8 @@ def seed_summeval_demo_scenario(db):
     evaluator = User.query.filter_by(username='evaluator').first()
     researcher = User.query.filter_by(username='researcher').first()
     admin = User.query.filter_by(username='admin').first()
+    ijcai_reviewer_1 = User.query.filter_by(username='ijcai_reviewer_1').first()
+    ijcai_reviewer_2 = User.query.filter_by(username='ijcai_reviewer_2').first()
 
     if not evaluator or not researcher:
         print("  ERROR: Required users not found")
@@ -384,26 +386,25 @@ def seed_summeval_demo_scenario(db):
     db.session.add(scenario)
     db.session.flush()
 
-    # Add users to scenario
-    # EVALUATOR can interact (rate/evaluate), VIEWER is read-only
+    # Add users to scenario: ijcai_reviewer_1=EVALUATOR, ijcai_reviewer_2=EVALUATOR
     for user, role in [
+        (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
+        (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
         (evaluator, ScenarioRoles.VIEWER),
-        (researcher, ScenarioRoles.EVALUATOR)
+        (researcher, ScenarioRoles.EVALUATOR),
+        (admin, ScenarioRoles.VIEWER),
     ]:
-        scenario_user = ScenarioUsers(
-            scenario_id=scenario.id,
-            user_id=user.id,
-            role=role
-        )
-        db.session.add(scenario_user)
-
-    if admin:
-        admin_scenario_user = ScenarioUsers(
-            scenario_id=scenario.id,
-            user_id=admin.id,
-            role=ScenarioRoles.VIEWER
-        )
-        db.session.add(admin_scenario_user)
+        if user:
+            db.session.add(ScenarioUsers(
+                scenario_id=scenario.id,
+                user_id=user.id,
+                role=role,
+                access_level='MEMBER',
+                is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                is_viewer=(role == ScenarioRoles.VIEWER),
+                manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
+            ))
 
     db.session.flush()
 
@@ -419,10 +420,13 @@ def seed_summeval_demo_scenario(db):
 
     db.session.flush()
 
-    # Create distributions for evaluator (who can interact)
-    evaluator_user = ScenarioUsers.query.filter_by(
-        scenario_id=scenario.id,
-        role=ScenarioRoles.EVALUATOR
+    # Create distributions for assessor (who can interact)
+    evaluator_user = ScenarioUsers.query.filter(
+        ScenarioUsers.scenario_id == scenario.id,
+        db.or_(
+            ScenarioUsers.is_assessor == True,
+            ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+        )
     ).first()
 
     if evaluator_user:

@@ -8,9 +8,9 @@
             <div class="body">{{ $t('consent.body') }}</div>
           </div>
           <div class="actions">
-            <v-btn variant="text" size="small" @click="openPrivacy">{{ $t('consent.privacy') }}</v-btn>
-            <v-btn variant="outlined" size="small" class="ml-2" @click="decline">{{ $t('consent.decline') }}</v-btn>
-            <v-btn color="primary" size="small" class="ml-2" @click="accept">{{ $t('consent.accept') }}</v-btn>
+            <v-btn variant="text" size="small" data-testid="consent-privacy" @click="openPrivacy">{{ $t('consent.privacy') }}</v-btn>
+            <v-btn variant="outlined" size="small" class="ml-2" data-testid="consent-decline" @click="decline">{{ $t('consent.decline') }}</v-btn>
+            <v-btn color="primary" size="small" class="ml-2" data-testid="consent-accept" @click="accept">{{ $t('consent.accept') }}</v-btn>
           </div>
         </div>
       </v-card>
@@ -43,7 +43,8 @@ const accept = () => setAnalyticsConsentState('granted')
 const decline = () => setAnalyticsConsentState('denied')
 
 const openPrivacy = () => {
-  router.push('/datenschutz')
+  // Kanonische Schreibweise der Route (Router matcht zwar case-insensitiv).
+  router.push('/Datenschutz')
 }
 </script>
 

@@ -24,6 +24,14 @@ from datetime import datetime
 from pathlib import Path
 
 
+def parse_iso_timestamp(value: str) -> datetime:
+    """Parse ISO timestamps and accept trailing 'Z' (UTC) format."""
+    ts = value.strip()
+    if ts.endswith('Z'):
+        ts = ts[:-1] + '+00:00'
+    return datetime.fromisoformat(ts)
+
+
 def load_metrics(metrics_dir: Path) -> dict:
     """Load all metrics files."""
     metrics = {}
@@ -58,7 +66,7 @@ def get_coverage_icon(coverage: float) -> str:
 
 def generate_backend_section(python_metrics: dict) -> str:
     """Generate the Backend metrics section."""
-    timestamp = datetime.fromisoformat(python_metrics['timestamp']).strftime('%d.%m.%Y %H:%M')
+    timestamp = parse_iso_timestamp(python_metrics['timestamp']).strftime('%d.%m.%Y %H:%M')
     summary = python_metrics['summary']
 
     section = f"""### Backend (Python)
@@ -83,7 +91,7 @@ def generate_backend_section(python_metrics: dict) -> str:
 
 def generate_frontend_section(frontend_metrics: dict) -> str:
     """Generate the Frontend metrics section."""
-    timestamp = datetime.fromisoformat(frontend_metrics['timestamp']).strftime('%d.%m.%Y %H:%M')
+    timestamp = parse_iso_timestamp(frontend_metrics['timestamp']).strftime('%d.%m.%Y %H:%M')
     summary = frontend_metrics['summary']
 
     section = f"""### Frontend (Vue.js)

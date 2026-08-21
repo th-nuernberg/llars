@@ -127,14 +127,14 @@ def test_DEMO_PROVENANCE_001_prompt_feature_type_resolution_handles_aliases():
 def test_DEMO_PROVENANCE_002_partial_selection_balances_prompt_and_model():
     """Partial selection should choose one feature per prompt and per model when possible."""
     features = [
-        SimpleNamespace(feature_id=10, type_id=1, llm_id=101),
-        SimpleNamespace(feature_id=11, type_id=1, llm_id=202),
-        SimpleNamespace(feature_id=12, type_id=2, llm_id=101),
-        SimpleNamespace(feature_id=13, type_id=2, llm_id=202),
+        SimpleNamespace(feature_id=10, type_id=1, model_id='model_a'),
+        SimpleNamespace(feature_id=11, type_id=1, model_id='model_b'),
+        SimpleNamespace(feature_id=12, type_id=2, model_id='model_a'),
+        SimpleNamespace(feature_id=13, type_id=2, model_id='model_b'),
     ]
 
     selected = _select_balanced_partial_features(features)
 
     assert len(selected) == 2
     assert selected[0].type_id != selected[1].type_id
-    assert selected[0].llm_id != selected[1].llm_id
+    assert selected[0].model_id != selected[1].model_id

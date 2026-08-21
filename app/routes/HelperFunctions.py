@@ -1,6 +1,6 @@
 
 from db.database import db
-from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
+from db.tables import (User, EmailThread, Message, Feature, FeatureType, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
@@ -39,6 +39,15 @@ def serialize_user_brief(user) -> dict:
 
 MAIL_RATING_FUNCTION_TYPE_ID = 3
 
+# Comparison-style function types (paarweiser Vergleich = 4,
+# communication_comparison = 8) share the ItemComparisonEvaluation
+# persistence and — like mail_rating — present EVERY item to EVERY
+# assessor (see EvaluationSessionService._get_items_for_scenario, which
+# never applies thread distribution). They must therefore default to the
+# "all" distribution mode so progress stats count each assessor against
+# all items instead of against an empty ScenarioThreadDistribution set.
+COMPARISON_FUNCTION_TYPE_IDS = (4, 8)
+
 DISTRIBUTION_MODE_ALL = "all"
 DISTRIBUTION_MODE_ROUND_ROBIN = "round_robin"
 
@@ -67,6 +76,11 @@ def get_scenario_distribution_mode(scenario, function_type_id=None):
         function_type_id = scenario.function_type_id
 
     if function_type_id == MAIL_RATING_FUNCTION_TYPE_ID:
+        return DISTRIBUTION_MODE_ALL
+
+    # Comparison / communication_comparison serve all items to all assessors
+    # (no per-user distribution), so default them to "all" too.
+    if function_type_id in COMPARISON_FUNCTION_TYPE_IDS:
         return DISTRIBUTION_MODE_ALL
 
     return DISTRIBUTION_MODE_ROUND_ROBIN
@@ -206,22 +220,27 @@ def get_progression_labeling(thread: EmailThread, user_id: int) -> ProgressionSt
     """
     Berechnet den Fortschritt für das Labeling (function_type_id=7).
 
-    Prüft ItemDimensionRating für dieses Item - Labeling speichert die
-    Kategorie-Auswahl als dimension_ratings JSON.
+    Labeling speichert die Kategorie-Auswahl in ItemLabelingEvaluation
+    (NICHT ItemDimensionRating). Eine Zeile mit gewählter Kategorie oder
+    is_unsure markiert das Item als DONE — analog zur Session-View-Logik
+    (session_service._batch_get_evaluation_statuses) und zur Aggregation in
+    scenario_stats_service._batch_get_progression_states.
     """
+    from db.models.scenario import ItemLabelingEvaluation
+
     scenario_thread = db.session.query(ScenarioThreads).filter_by(
         thread_id=thread.thread_id
     ).first()
 
     if scenario_thread:
-        dim_rating = db.session.query(ItemDimensionRating).filter_by(
+        evaluation = db.session.query(ItemLabelingEvaluation).filter_by(
             user_id=user_id,
             item_id=thread.thread_id,
             scenario_id=scenario_thread.scenario_id
         ).first()
 
-        if dim_rating:
-            return dim_rating.status if dim_rating.status else ProgressionStatus.NOT_STARTED
+        if evaluation and (evaluation.category_id is not None or evaluation.is_unsure):
+            return ProgressionStatus.DONE
 
     return ProgressionStatus.NOT_STARTED
 
@@ -246,35 +265,41 @@ def can_access_thread(user_id, thread_id, function_type_id):
         RatingScenarios.end >= current_time
     ).all()
 
-    for scenario_user in scenario_users:
-        scenario_id = scenario_user.scenario_id
-        role = scenario_user.role
-        scenario = getattr(scenario_user, "rating_scenario", None)
+    from db.models.scenario import ManagerRole, EvaluationRole
+
+    for su in scenario_users:
+        scenario_id = su.scenario_id
+        scenario = getattr(su, "rating_scenario", None)
         if scenario is None:
             scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
-        if role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER) or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer, Owner oder All-Distribution-Evaluator sehen alle Threads des Szenarios
+        # Manager role != 'none' → can see all threads
+        has_full_access = su.manager_role != ManagerRole.NONE.value
+        # Evaluation role == 'assessor' → can evaluate (and see assigned threads)
+        is_assessor = su.evaluation_role == EvaluationRole.ASSESSOR.value
+
+        if has_full_access or (is_assessor and raters_receive_all_threads(scenario, function_type_id)):
+            # Viewer/Editor/Owner oder All-Distribution-Assessor sehen alle Threads des Szenarios
             if db.session.query(ScenarioThreads).join(
                 RatingScenarios, RatingScenarios.id == ScenarioThreads.scenario_id
             ).filter(
                 ScenarioThreads.scenario_id == scenario_id,
                 ScenarioThreads.thread_id == thread_id,
-                RatingScenarios.begin <= current_time, # TODO: Gedanken zu Zeitzonen machen
+                RatingScenarios.begin <= current_time,
                 RatingScenarios.end >= current_time
             ).first():
                 return True
 
-        elif role == ScenarioRoles.EVALUATOR:
-            # Wenn der User Rater ist, muss der Thread zugeordnet sein
+        elif is_assessor:
+            # Assessor mit Thread-Zuweisung sieht nur zugeordnete Threads
             if (
                 db.session.query(ScenarioThreadDistribution)
                 .join(ScenarioThreads, ScenarioThreads.id==ScenarioThreadDistribution.scenario_thread_id)
                 .join(RatingScenarios, RatingScenarios.id == ScenarioThreadDistribution.scenario_id)
                 .filter(
-                    ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                    ScenarioThreadDistribution.scenario_user_id == su.id,
                     ScenarioThreads.thread_id == thread_id,
-                    RatingScenarios.begin <= current_time, # TODO: Gedanken zu Zeitzonen machen
+                    RatingScenarios.begin <= current_time,
                     RatingScenarios.end >= current_time
                 )
                 .first()
@@ -335,10 +360,9 @@ def get_user_threads(user_id, function_type_id):
     scenario_order_modes = {}
 
     # Durchlaufe alle Szenarien und deren zugeordnete Threads
-    for scenario_user in scenario_users:
-        scenario_id = scenario_user.scenario_id
-        role = scenario_user.role
-        scenario = getattr(scenario_user, "rating_scenario", None)
+    for su in scenario_users:
+        scenario_id = su.scenario_id
+        scenario = getattr(su, "rating_scenario", None)
         if scenario is None:
             scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
@@ -348,8 +372,12 @@ def get_user_threads(user_id, function_type_id):
         if scenario_id not in scenario_order_modes:
             scenario_order_modes[scenario_id] = get_scenario_order_mode(scenario)
 
-        if role == ScenarioRoles.VIEWER or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer oder All-Distribution-Evaluator sehen alle Threads im Szenario
+        from db.models.scenario import ManagerRole, EvaluationRole
+        has_full_access = su.manager_role != ManagerRole.NONE.value
+        is_assessor = su.evaluation_role == EvaluationRole.ASSESSOR.value
+
+        if has_full_access or (is_assessor and raters_receive_all_threads(scenario, function_type_id)):
+            # Viewer/Owner/Manager oder All-Distribution-Assessor sehen alle Threads im Szenario
             threads = (
                 db.session.query(EmailThread)
                 .join(ScenarioThreads, ScenarioThreads.thread_id == EmailThread.thread_id)
@@ -361,14 +389,14 @@ def get_user_threads(user_id, function_type_id):
             )
             scenario_threads_map[scenario_id].extend(threads)
 
-        elif role == ScenarioRoles.EVALUATOR:
-            # Evaluator mit Thread-Zuweisung sehen nur ihre zugeordneten Threads
+        elif is_assessor:
+            # Assessor mit Thread-Zuweisung sehen nur ihre zugeordneten Threads
             thread_distributions = (
                 db.session.query(ScenarioThreadDistribution)
                 .join(ScenarioThreads, ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
                 .join(EmailThread, ScenarioThreads.thread_id == EmailThread.thread_id)
                 .filter(
-                    ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                    ScenarioThreadDistribution.scenario_user_id == su.id,
                     ScenarioThreadDistribution.scenario_id == scenario_id,
                     EmailThread.function_type_id == function_type_id,
                 )
@@ -401,8 +429,9 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     """
     Check if a user can submit evaluations for a scenario.
 
-    OWNER and EVALUATOR roles can submit evaluations.
-    VIEWER role is read-only.
+    Only ACTIVE assessors (is_assessor flag + membership_status=ACTIVE)
+    can submit evaluations. Archived or non-assessor users are read-only.
+    Falls back to legacy EVALUATOR role check for backwards compatibility.
 
     Args:
         user_id: The user ID to check
@@ -411,6 +440,8 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     Returns:
         True if the user can submit evaluations, False otherwise
     """
+    from db.models.scenario import MembershipStatus, EvaluationRole
+
     scenario_user = ScenarioUsers.query.filter_by(
         user_id=user_id,
         scenario_id=scenario_id
@@ -419,7 +450,11 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     if not scenario_user:
         return False
 
-    return scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER)
+    # Archived users cannot evaluate regardless of role
+    if scenario_user.membership_status != MembershipStatus.ACTIVE:
+        return False
+
+    return scenario_user.evaluation_role == EvaluationRole.ASSESSOR.value
 
 
 def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:
@@ -439,14 +474,32 @@ def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:
     return any(user_can_evaluate(user_id, sid) for sid in scenario_ids)
 
 
+def get_progression_comparison(thread: EmailThread, user_id: int) -> ProgressionStatus:
+    """Fortschritt für paarweisen Vergleich (function_type_id=4 und
+    communication_comparison=8): DONE sobald eine Bewertung existiert.
+
+    Beide Typen teilen sich die ItemComparisonEvaluation-Persistenz, daher
+    deckt dieser Handler beide function_type_ids ab."""
+    from db.models.scenario import ItemComparisonEvaluation
+    eval_exists = db.session.query(ItemComparisonEvaluation).filter_by(
+        user_id=user_id, item_id=thread.thread_id
+    ).first()
+    return ProgressionStatus.DONE if eval_exists else ProgressionStatus.NOT_STARTED
+
+
 def get_thread_progression_state(thread: EmailThread, user_id: int, function_type_id: int) -> ProgressionStatus:
     """ Dynamische Auswahl der Progressionslogik basierend auf function_type_id """
     PROGRESSION_HANDLERS = {
         1: get_progression_ranking,
         2: get_progression_rating,
         3: get_progression_mail_rating,
+        4: get_progression_comparison,
         5: get_progression_authenticity,
         7: get_progression_labeling,
+        8: get_progression_comparison,  # communication_comparison shares the comparison persistence
+        # conversation_labeling writes ItemLabelingEvaluation rows too, so the
+        # same handler applies; it only sees more rows per item (one per span).
+        9: get_progression_labeling,
     }
     handler = PROGRESSION_HANDLERS.get(function_type_id)
 

@@ -100,6 +100,17 @@ The interface is divided into three main areas:
 | **Progress bar** | Shows current progress |
 | **Item X of Y** | Current position |
 
+### Task pop-up & confirmation
+
+- **Task ("Aufgabe"):** on **first** entry into a scenario the task description
+  auto-opens as a pop-up — on **all** screen sizes (desktop and mobile). It then
+  stays closed; the thin "Aufgabe" bar re-opens it on demand. (Gated on a
+  localStorage flag so it does not reappear on every reload.)
+- **First evaluation:** after the **first** fully saved evaluation in a scenario,
+  a universal "thank you" pop-up appears **once**, nudging toward the "Next" step.
+  It fires exactly once **per scenario** and for **all** evaluation types
+  (rating, ranking, labeling, authenticity, comparison …).
+
 ---
 
 ## Evaluation Types

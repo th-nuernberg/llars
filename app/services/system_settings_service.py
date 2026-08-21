@@ -55,6 +55,10 @@ def _load_settings_to_cache() -> dict:
         'referral_system_enabled': settings.referral_system_enabled,
         'self_registration_enabled': settings.self_registration_enabled,
         'default_referral_role': settings.default_referral_role,
+        # Communication
+        'communication_enabled': settings.communication_enabled,
+        # Self-Service Password Reset
+        'self_service_password_reset_enabled': settings.self_service_password_reset_enabled,
     }
 
     with _cache_lock:
@@ -136,5 +140,15 @@ def get_default_chunk_overlap() -> int:
 
 
 def get_batch_generation_max_parallel() -> int:
-    """Get max parallel outputs for batch generation (default: 1)."""
-    return get_setting('batch_generation_max_parallel', 1)
+    """Get max parallel outputs for batch generation (default: 4)."""
+    return get_setting('batch_generation_max_parallel', 4)
+
+
+def is_communication_enabled() -> bool:
+    """Check if communication features are globally enabled (default: False)."""
+    return get_setting('communication_enabled', False)
+
+
+def is_self_service_password_reset_enabled() -> bool:
+    """Check if the self-service password-reset flow is enabled (default: False)."""
+    return get_setting('self_service_password_reset_enabled', False)

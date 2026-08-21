@@ -1,9 +1,21 @@
 <!-- SourcePanel.vue - Source details side panel -->
 <template>
-  <div class="sources-panel" :style="panelStyle">
+  <div class="sources-panel" :class="{ 'sources-panel--mobile': mobile }" :style="panelStyle">
     <div class="sources-panel-card">
       <!-- Panel Header -->
       <div class="sources-panel-header">
+        <!-- Mobile: prominent BACK affordance (full-screen sheet has no
+             surrounding chat to tap, so a clear "← Zurück" is the way out).
+             44px touch target; emits 'close' to return to the chat. -->
+        <button
+          v-if="mobile"
+          class="panel-back-btn"
+          :aria-label="$t('common.back')"
+          @click="$emit('close')"
+        >
+          <LIcon size="22">mdi-arrow-left</LIcon>
+          <span>{{ $t('common.back') }}</span>
+        </button>
         <div class="header-title-area">
           <div class="source-icon">
             <LIcon size="20">mdi-text-box-multiple-outline</LIcon>
@@ -27,7 +39,9 @@
               <LIcon size="18">{{ pinned ? 'mdi-pin' : 'mdi-pin-outline' }}</LIcon>
             </button>
           </LTooltip>
-          <LTooltip text="Schließen">
+          <!-- Desktop keeps the compact × ; on mobile the prominent BACK button
+               (top-left) is the close affordance, so the × is hidden there. -->
+          <LTooltip v-if="!mobile" text="Schließen">
             <button class="panel-action close" @click="$emit('close')">
               <LIcon size="18">mdi-close</LIcon>
             </button>
@@ -217,6 +231,12 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
+  // When true the panel renders as a full-screen overlay (mobile) instead of a
+  // side panel, so it never squeezes the chat column on narrow screens.
+  mobile: {
+    type: Boolean,
+    default: false
+  },
   // Content state
   documentContent: {
     type: String,
@@ -253,8 +273,14 @@ defineEmits([
   'fullscreen'
 ])
 
+// Only true when the backend actually provides a screenshot URL. Earlier this
+// also accepted any source with a document_id, but EVERY RAG source has one —
+// so text/docs/PDF sources (no screenshot) showed an enabled Screenshot tab
+// that 404'd on /api/rag/documents/<id>/screenshot ("Konnte Screenshot nicht
+// laden"). Crawled web pages get an explicit screenshot_url, so gating on it
+// keeps the tab for those and disables it everywhere else.
 const hasScreenshot = computed(() => {
-  return !!(props.source?.screenshot_url || props.source?.document_id)
+  return !!props.source?.screenshot_url
 })
 
 const hasDocument = computed(() => {
@@ -270,6 +296,34 @@ const hasDocument = computed(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Mobile: render as a full-screen overlay sheet instead of a side panel so it
+   never squeezes/breaks the chat column. Sits above the chat with safe-area
+   padding for notch / home-indicator. */
+.sources-panel--mobile {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  height: 100dvh;
+  border-left: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.25);
+  animation: source-panel-slide-up 0.22s ease;
+}
+
+@keyframes source-panel-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Bigger touch targets for the header buttons on mobile */
+.sources-panel--mobile .panel-action {
+  width: 44px;
+  height: 44px;
 }
 
 .sources-panel-card {
@@ -516,5 +570,74 @@ const hasDocument = computed(() => {
   background: rgba(232, 160, 135, 0.1);
   border-radius: 8px;
   color: #e8a087;
+}
+
+/* ==================== Mobile bottom-sheet refinements ==================== */
+/* The base .sources-panel--mobile already makes it a full-screen slide-up sheet.
+   These tweaks make it feel like a native sheet: a rounded top edge, a sticky
+   header with a prominent close affordance, full-height scroll (no inner
+   max-height clamps that would create a scroll-within-scroll), and tab labels
+   that stay legible on narrow screens. */
+.sources-panel--mobile .sources-panel-card {
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
+}
+
+.sources-panel--mobile .sources-panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 12px 14px;
+}
+
+/* Prominent, high-contrast close button on the sheet (clear close affordance). */
+.sources-panel--mobile .panel-action.close {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+/* Mobile BACK button: large, obvious "← Zurück" at the top-left of the sheet so
+   the user can clearly return to the chat (44px touch-target height). */
+.panel-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 12px 0 6px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+  font-size: 15px;
+  font-weight: 600;
+  /* LLARS signature asymmetric radius. */
+  border-radius: 12px 4px 12px 4px;
+  transition: background 0.2s ease;
+}
+
+.panel-back-btn:hover,
+.panel-back-btn:focus-visible {
+  background: rgba(var(--v-theme-primary), 0.2);
+}
+
+.sources-panel--mobile .source-tab span {
+  font-size: 12px;
+}
+
+/* On the full-height sheet the excerpt/document should scroll with the sheet
+   rather than inside their own clamped boxes. */
+.sources-panel--mobile .document-text {
+  max-height: none;
+  overflow: visible;
+}
+
+.sources-panel--mobile .sources-panel-body {
+  padding: 14px;
+}
+
+/* Larger screenshot preview to use the available vertical space. */
+.sources-panel--mobile .screenshot-frame :deep(.v-img) {
+  max-height: 60dvh !important;
 }
 </style>

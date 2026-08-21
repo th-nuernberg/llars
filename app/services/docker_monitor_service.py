@@ -3,7 +3,17 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+try:
+    import docker  # type: ignore
+except Exception:  # pragma: no cover - handled in _get_api()
+    docker = None
+
+# Keep both import paths pointing to the same module instance for test patching.
+sys.modules.setdefault("services.docker_monitor_service", sys.modules[__name__])
+sys.modules.setdefault("app.services.docker_monitor_service", sys.modules[__name__])
 
 
 class DockerMonitorService:
@@ -18,9 +28,12 @@ class DockerMonitorService:
         if cls._api is not None:
             return cls._api
 
-        import docker
+        docker_client_module = sys.modules.get("docker", docker)
+        if docker_client_module is None:
+            import importlib
+            docker_client_module = importlib.import_module("docker")
 
-        client = docker.from_env()
+        client = docker_client_module.from_env()
         cls._api = client.api
         return cls._api
 

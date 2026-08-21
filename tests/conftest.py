@@ -171,7 +171,7 @@ def app():
         )
         # Scenario models (includes ComparisonSession, ComparisonMessage, etc.)
         from db.models.scenario import (  # noqa: F401
-            FeatureFunctionType, EmailThread, Message, LLM, FeatureType,
+            FeatureFunctionType, EmailThread, Message, FeatureType,
             ConsultingCategoryType, UserConsultingCategorySelection, Feature,
             UserFeatureRanking, UserFeatureRating, RatingScenarios, ScenarioUsers,
             ScenarioThreads, ScenarioThreadDistribution, UserMailHistoryRating,
@@ -201,22 +201,26 @@ def app():
         from db.models.markdown_collab import (  # noqa: F401
             MarkdownWorkspace, MarkdownWorkspaceMember, MarkdownDocument, MarkdownCommit
         )
-        from db.models.latex_collab import (  # noqa: F401
-            LatexWorkspace, LatexWorkspaceMember, LatexDocument, LatexAsset,
-            LatexCommit, LatexCompileJob, LatexComment
-        )
         from db.models.kaimo import (  # noqa: F401
             KaimoCase, KaimoDocument, KaimoCategory, KaimoSubcategory, KaimoHint,
             KaimoCaseCategory, KaimoAIContent, KaimoUserAssessment, KaimoHintAssignment,
             KaimoCasePermission
         )
         from db.models.authenticity import AuthenticityConversation, UserAuthenticityVote  # noqa: F401
-        from db.models.zotero import (  # noqa: F401
-            ZoteroConnection, WorkspaceZoteroLibrary, ZoteroSyncLog
-        )
         from db.models.prompt_template import PromptTemplate  # noqa: F401
         from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget  # noqa: F401
         from db.models.llm_task_result import LLMTaskResult  # noqa: F401
+        from db.models.llm_eval_run import LLMEvalRun  # noqa: F401
+        from db.models.conference import Conference, Paper, PaperAuthor  # noqa: F401
+        from db.models.referral import (  # noqa: F401
+            ReferralCampaign, ReferralLink, ReferralRegistration
+        )
+        from db.models.scenario_stats_job import ScenarioStatsJob  # noqa: F401
+        from db.models.messaging import (  # noqa: F401
+            MessagingConversation, MessagingParticipant, MessagingMessage,
+            MessagingAttachment, MessagingReaction, MessagingReadReceipt,
+            MessagingEncryptionKey, MessagingAIKeyGrant, MessagingLinkPreview
+        )
 
         # Create all tables
         _test_db_instance.create_all()
@@ -497,15 +501,12 @@ def _register_test_blueprints(app):
     # =========================================================================
     debug_bp = Blueprint('test_debug', __name__)
 
+    from auth.decorators import system_api_key_required
+
     @debug_bp.route('/info')
+    @system_api_key_required
     def debug_info():
         """Debug info - requires system API key."""
-        from flask import request
-        # Check both header and query param (matches system_api_key_required decorator)
-        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
-        expected_key = os.environ.get('SYSTEM_ADMIN_API_KEY', 'test-system-api-key-12345')
-        if api_key != expected_key:
-            return jsonify({'error': 'Invalid API key'}), 401
         return jsonify({'success': True, 'info': 'Debug endpoint'})
 
     app.register_blueprint(debug_bp, url_prefix='/debug')
@@ -533,7 +534,7 @@ def db(app):
         )
         # Scenario models (includes ComparisonSession, ComparisonMessage, etc.)
         from db.models.scenario import (  # noqa: F401
-            FeatureFunctionType, EmailThread, Message, LLM, FeatureType,
+            FeatureFunctionType, EmailThread, Message, FeatureType,
             ConsultingCategoryType, UserConsultingCategorySelection, Feature,
             UserFeatureRanking, UserFeatureRating, RatingScenarios, ScenarioUsers,
             ScenarioThreads, ScenarioThreadDistribution, UserMailHistoryRating,
@@ -563,22 +564,25 @@ def db(app):
         from db.models.markdown_collab import (  # noqa: F401
             MarkdownWorkspace, MarkdownWorkspaceMember, MarkdownDocument, MarkdownCommit
         )
-        from db.models.latex_collab import (  # noqa: F401
-            LatexWorkspace, LatexWorkspaceMember, LatexDocument, LatexAsset,
-            LatexCommit, LatexCompileJob, LatexComment
-        )
         from db.models.kaimo import (  # noqa: F401
             KaimoCase, KaimoDocument, KaimoCategory, KaimoSubcategory, KaimoHint,
             KaimoCaseCategory, KaimoAIContent, KaimoUserAssessment, KaimoHintAssignment,
             KaimoCasePermission
         )
         from db.models.authenticity import AuthenticityConversation, UserAuthenticityVote  # noqa: F401
-        from db.models.zotero import (  # noqa: F401
-            ZoteroConnection, WorkspaceZoteroLibrary, ZoteroSyncLog
-        )
         from db.models.prompt_template import PromptTemplate  # noqa: F401
         from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget  # noqa: F401
         from db.models.llm_task_result import LLMTaskResult  # noqa: F401
+        from db.models.conference import Conference, Paper, PaperAuthor  # noqa: F401
+        from db.models.referral import (  # noqa: F401
+            ReferralCampaign, ReferralLink, ReferralRegistration
+        )
+        from db.models.messaging import (  # noqa: F401
+            MessagingConversation, MessagingParticipant, MessagingMessage,
+            MessagingAttachment, MessagingReaction, MessagingReadReceipt,
+            MessagingEncryptionKey, MessagingAIKeyGrant, MessagingLinkPreview
+        )
+        from db.models.scenario_stats_cache import ScenarioStatsCache  # noqa: F401
 
         _db.create_all()
 

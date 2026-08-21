@@ -260,7 +260,7 @@ const loadModels = async () => {
             const fullId = ownerName
               ? `user-provider:${provider.id}:${ownerName}:${mid}`
               : `user-provider:${provider.id}:${mid}`
-            const parsed = parseUserProviderModelId(fullId)
+            const parsed = parseUserProviderModelId(fullId, provider.name)
             providerModels.push({
               model_id: fullId,
               display_name: parsed?.displayName || `${provider.name || 'Provider'} / ${mid}`,
@@ -281,7 +281,7 @@ const loadModels = async () => {
         const fullId = ownerName
           ? `user-provider:${provider.id}:${ownerName}:${modelId}`
           : `user-provider:${provider.id}:${modelId}`
-        const parsed = parseUserProviderModelId(fullId)
+        const parsed = parseUserProviderModelId(fullId, provider.name)
         providerModels.push({
           model_id: fullId,
           display_name: parsed?.displayName || `${provider.name || 'Provider'} / ${modelId}`,

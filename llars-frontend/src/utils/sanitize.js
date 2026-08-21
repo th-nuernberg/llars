@@ -19,7 +19,9 @@ export function sanitizeHtml(html) {
 
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'div', 'span', 'a'],
-    ALLOWED_ATTR: ['href', 'class', 'style'],
+    // 'style' bewusst NICHT erlaubt: LLM-/Import-Content könnte sonst per
+    // inline-CSS (position:fixed, Overlays) die Eval-UI verdecken/spoofen.
+    ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
     ALLOW_DATA_ATTR: false,
   });
 }

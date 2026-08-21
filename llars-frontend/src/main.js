@@ -26,6 +26,9 @@ import LTooltip from '@/components/common/LTooltip.vue'
 import LActionGroup from '@/components/common/LActionGroup.vue'
 import LSlider from '@/components/common/LSlider.vue'
 import LTag from '@/components/common/LTag.vue'
+import LLabelButton from '@/components/common/LLabelButton.vue'
+import LUserOrigin from '@/components/common/LUserOrigin.vue'
+import LOriginLegend from '@/components/common/LOriginLegend.vue'
 import LCard from '@/components/common/LCard.vue'
 import LCardSkeleton from '@/components/common/LCardSkeleton.vue'
 import LSkeleton from '@/components/common/LSkeleton.vue'
@@ -35,6 +38,8 @@ import LAvatar from '@/components/common/LAvatar.vue'
 import LChart from '@/components/common/LChart.vue'
 import LGauge from '@/components/common/LGauge.vue'
 import LThemeToggle from '@/components/common/LThemeToggle.vue'
+import LViewToggle from '@/components/common/LViewToggle.vue'
+import LListTable from '@/components/common/LListTable.vue'
 import LLanguageToggle from '@/components/common/LLanguageToggle.vue'
 import LEvaluationLayout from '@/components/common/LEvaluationLayout.vue'
 import LEvaluationStatus from '@/components/common/LEvaluationStatus.vue'
@@ -47,15 +52,21 @@ import LRadio from '@/components/common/LRadio.vue'
 import LRadioGroup from '@/components/common/LRadioGroup.vue'
 import LSwitch from '@/components/common/LSwitch.vue'
 import LAIFieldButton from '@/components/common/LAIFieldButton.vue'
+import LlarsBrand from '@/components/common/LlarsBrand.vue'
+import LShareDialog from '@/components/common/LShareDialog.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
 import { initAppTheme } from '@/composables/useAppTheme'
 import { initLanguage } from '@/composables/useLanguage'
 import i18n from '@/i18n'
 import { logI18n } from '@/utils/logI18n'
+import { installConsoleController } from '@/utils/consoleController'
 
 // Composables
 import { createApp } from 'vue'
+
+// Suppress console output in production (before anything else logs)
+installConsoleController()
 
 const app = createApp(App)
 const CHUNK_RELOAD_STORAGE_KEY = 'llars:chunk-reload-at'
@@ -123,6 +134,9 @@ app.component('LTooltip', LTooltip)
 app.component('LActionGroup', LActionGroup)
 app.component('LSlider', LSlider)
 app.component('LTag', LTag)
+app.component('LLabelButton', LLabelButton)
+app.component('LUserOrigin', LUserOrigin)
+app.component('LOriginLegend', LOriginLegend)
 app.component('LCard', LCard)
 app.component('LCardSkeleton', LCardSkeleton)
 app.component('LSkeleton', LSkeleton)
@@ -132,6 +146,8 @@ app.component('LAvatar', LAvatar)
 app.component('LChart', LChart)
 app.component('LGauge', LGauge)
 app.component('LThemeToggle', LThemeToggle)
+app.component('LViewToggle', LViewToggle)
+app.component('LListTable', LListTable)
 app.component('LLanguageToggle', LLanguageToggle)
 app.component('LEvaluationLayout', LEvaluationLayout)
 app.component('LEvaluationStatus', LEvaluationStatus)
@@ -144,6 +160,8 @@ app.component('LRadio', LRadio)
 app.component('LRadioGroup', LRadioGroup)
 app.component('LSwitch', LSwitch)
 app.component('LAIFieldButton', LAIFieldButton)
+app.component('LlarsBrand', LlarsBrand)
+app.component('LShareDialog', LShareDialog)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'
@@ -167,16 +185,42 @@ axios.interceptors.request.use(config => {
   return Promise.reject(error)
 })
 
-// Token refresh interceptor - redirect to login if token expires
+// Re-arm silent renewal for a session restored from storage (page reload).
+// login() arms it for fresh logins; without this a reload would leave the tab
+// with no scheduled refresh and it would die at the 60-minute mark again.
+auth.scheduleTokenRefresh()
+
+// Token refresh interceptor.
+//
+// INCIDENT 2026-07-29: this used to log the user out on the FIRST 401, with no
+// attempt to renew — even though a refresh_token was sitting in storage the
+// whole time. Raters were ejected mid-study every hour. Now a 401 first tries
+// exactly one silent refresh and replays the original request; only if the
+// refresh itself is rejected (revoked/expired) do we fall back to logging out.
 axios.interceptors.response.use(
   response => response,
   async error => {
-    // Don't redirect for login requests - let the login form handle auth errors
-    const isLoginRequest = error.config?.url?.includes('/auth/') &&
-                           error.config?.url?.includes('/login');
+    const original = error.config || {}
 
-    // If 401 Unauthorized on non-login requests, redirect to login
-    if (error.response?.status === 401 && !isLoginRequest) {
+    // Don't redirect for login requests - let the login form handle auth errors
+    const isLoginRequest = original.url?.includes('/auth/') &&
+                           original.url?.includes('/login');
+    // The refresh call itself must never recurse through this handler.
+    const isRefreshRequest = original._skipAuthRefresh === true ||
+                             original.url?.includes('/auth/authentik/refresh');
+
+    if (error.response?.status === 401 && !isLoginRequest && !isRefreshRequest) {
+      // `_retried` bounds this to one attempt per request: if the replay also
+      // 401s, the new token is genuinely not accepted and we stop.
+      if (!original._retried) {
+        original._retried = true
+        const newToken = await auth.refreshAccessToken()
+        if (newToken) {
+          original.headers = { ...(original.headers || {}), Authorization: `Bearer ${newToken}` }
+          return axios(original)
+        }
+      }
+
       logI18n('log', 'logs.main.tokenExpiredRedirect')
       auth.logout()
       // Redirect to login

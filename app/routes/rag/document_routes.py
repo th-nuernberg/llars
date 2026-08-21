@@ -201,6 +201,17 @@ def upload_document():
     author = request.form.get('author', '')
     language = request.form.get('language', 'de')
 
+    # AuthZ: uploading into a specific collection requires edit rights on THAT
+    # collection, not just the global feature:rag:edit — otherwise any editor could
+    # inject/poison documents into a foreign collection whose chatbot then retrieves
+    # and cites the content. Mirrors chatbot_collection_routes.assign_collection.
+    if collection_id is not None:
+        target_collection = RAGCollection.query.get(collection_id)
+        if not target_collection:
+            raise NotFoundError('Collection not found')
+        if not RAGAccessService.can_edit_collection(username, target_collection):
+            raise ForbiddenError('No edit access to the target collection')
+
     # Create document using service
     result = DocumentService.create_document(
         file=file,
@@ -264,6 +275,15 @@ def upload_multiple_documents():
 
     files = request.files.getlist('files')
     collection_id = request.form.get('collection_id', type=int)
+
+    # AuthZ: same per-collection edit check as single upload (prevent poisoning a
+    # foreign collection via the global feature:rag:edit permission).
+    if collection_id is not None:
+        target_collection = RAGCollection.query.get(collection_id)
+        if not target_collection:
+            raise NotFoundError('Collection not found')
+        if not RAGAccessService.can_edit_collection(username, target_collection):
+            raise ForbiddenError('No edit access to the target collection')
 
     # Upload documents using service
     result = DocumentService.create_multiple_documents(

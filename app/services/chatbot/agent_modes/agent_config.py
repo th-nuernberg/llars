@@ -226,7 +226,10 @@ def get_tavily_api_key(prompt_settings: Optional['ChatbotPromptSettings']) -> Op
     if prompt_settings:
         key = getattr(prompt_settings, 'tavily_api_key', None)
         if key:
-            return key
+            # Legacy plain values are returned untouched by
+            # decrypt_secret, so this works for both old and new rows.
+            from services.llm.secret_encryption import decrypt_secret
+            return decrypt_secret(key)
     return os.environ.get('TAVILY_API_KEY')
 
 
@@ -258,7 +261,7 @@ def build_completion_kwargs(
         >>> kwargs = build_completion_kwargs(chatbot, messages, stream=True)
         >>> response = llm_client.chat.completions.create(**kwargs)
     """
-    return LLMExecutionService.build_chat_completion_params(
+    params = LLMExecutionService.build_chat_completion_params(
         model=model_id or chatbot.model_name,
         messages=messages,
         stream=stream,
@@ -266,3 +269,6 @@ def build_completion_kwargs(
         top_p=chatbot.top_p,
         max_tokens=chatbot.max_tokens,
     )
+    # Keep compatibility with call sites/tests that expect explicit stream=False.
+    params.setdefault("stream", bool(stream))
+    return params

@@ -226,6 +226,44 @@ if [ -n "${MATOMO_TRUSTED_HOST_FROM_URL:-}" ] && [ "${MATOMO_TRUSTED_HOST_FROM_U
   ensure_trusted_host "${MATOMO_TRUSTED_HOST_FROM_URL}"
 fi
 
+# In Production terminiert das FH-Gateway TLS und leitet per HTTP an die App-nginx
+# weiter. Ohne diesen Hinweis erkennt Matomo die HTTPS-Herkunft nicht und baut
+# absolute http://-URLs (z.B. das Header-Logo) -> Mixed-Content-Warnungen auf der
+# HTTPS-Seite. assume_secure_protocol zwingt Matomo zu https-URLs. NUR in
+# Production (lokal/Dev laeuft Matomo ueber http; dort wuerde es umgekehrt brechen).
+ensure_assume_secure_protocol() {
+  if [ ! -f "${CONFIG_FILE}" ]; then
+    return 0
+  fi
+  if grep -qE '^[[:space:]]*assume_secure_protocol[[:space:]]*=' "${CONFIG_FILE}"; then
+    sed -i -E 's/^[[:space:]]*assume_secure_protocol[[:space:]]*=.*/assume_secure_protocol = 1/' "${CONFIG_FILE}" || true
+    return 0
+  fi
+  TMP_FILE="$(mktemp)"
+  awk '
+    BEGIN { inserted = 0 }
+    /^[[:space:]]*\[General\][[:space:]]*$/ {
+      print
+      print "assume_secure_protocol = 1"
+      inserted = 1
+      next
+    }
+    { print }
+    END {
+      if (inserted == 0) {
+        print ""
+        print "[General]"
+        print "assume_secure_protocol = 1"
+      }
+    }
+  ' "${CONFIG_FILE}" > "${TMP_FILE}"
+  mv "${TMP_FILE}" "${CONFIG_FILE}"
+}
+
+if [ "${PROJECT_STATE}" = "production" ]; then
+  ensure_assume_secure_protocol
+fi
+
 is_truthy() {
   case "$(echo "${1:-}" | tr '[:upper:]' '[:lower:]' | xargs)" in
     1|true|yes|y|on) return 0 ;;
@@ -250,6 +288,19 @@ if is_truthy "${MATOMO_OIDC_ENABLED:-false}"; then
   php "${MATOMO_DIR}/console" plugin:activate RebelOIDC --no-interaction --ignore-warn --matomo-domain="${MATOMO_DOMAIN}"
 
   php /configure-rebeloidc.php
+fi
+
+# LLARS-Branding: Custom-Logo einspielen. misc/user/ ist Matomos Ort fuer eigene
+# Logos; Matomo nutzt logo.png (Login/Reports) und logo-header.png (Kopfzeile).
+# configure-branding.php setzt die Option branding_use_custom_logo=1. Best-effort:
+# fehlt das Logo oder schlaegt das Script fehl, laeuft der Init trotzdem weiter.
+if [ -f /llars-logo.png ]; then
+  echo "[branding] Installing LLARS custom logo..."
+  mkdir -p "${MATOMO_DIR}/misc/user"
+  cp -f /llars-logo.png "${MATOMO_DIR}/misc/user/logo.png" || true
+  cp -f /llars-logo.png "${MATOMO_DIR}/misc/user/logo-header.png" || true
+  chown -R www-data:www-data "${MATOMO_DIR}/misc/user" || true
+  php /configure-branding.php || true
 fi
 
 echo "[4/4] Ensuring permissions..."

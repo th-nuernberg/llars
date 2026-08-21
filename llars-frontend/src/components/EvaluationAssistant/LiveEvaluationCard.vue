@@ -69,9 +69,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 
 const { t } = useI18n()
+const { formatModelName: registryFormatModelName } = useModelRegistry()
 
 const props = defineProps({
   evaluation: {
@@ -95,8 +96,7 @@ const progressSteps = computed(() => {
 })
 
 const displayModelName = computed(() => {
-  const parsed = parseUserProviderModelId(props.evaluation?.model_id)
-  return parsed?.displayName || props.evaluation?.model_id || 'LLM'
+  return registryFormatModelName(props.evaluation?.model_id)
 })
 
 function formatElapsed(startTime) {

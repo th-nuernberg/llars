@@ -1,0 +1,145 @@
+{
+  "type": "labeling",
+  "items": [
+    {
+      "label_de": "Beratungsfall 1",
+      "label_en": "Counselling case 1",
+      "content_de": "Seit Wochen habe ich das Gefühl, dass mir alles über den Kopf wächst. Die Aufgaben stapeln sich, ich komme nachts kaum zur Ruhe und morgens fühle ich mich schon erschöpft, bevor der Tag überhaupt losgeht. Ich weiß gar nicht mehr, wo ich anfangen soll.",
+      "content_en": "For weeks I've had the feeling that everything is getting on top of me. The tasks are piling up, I can barely find rest at night, and in the morning I already feel exhausted before the day has even started. I don't even know where to begin anymore.",
+      "ground_truth": "stress"
+    },
+    {
+      "label_de": "Beratungsfall 2",
+      "content_de": "Mein Partner und ich streiten in letzter Zeit fast jeden Tag über Kleinigkeiten. Es endet immer damit, dass wir uns gegenseitig Vorwürfe machen und schweigend ins Bett gehen. Ich liebe ihn, aber ich weiß nicht mehr, wie wir da wieder rauskommen.",
+      "label_en": "Counselling case 2",
+      "content_en": "My partner and I have been arguing almost every day lately over little things. It always ends with us blaming each other and going to bed in silence. I love him, but I don't know how we get out of this anymore.",
+      "ground_truth": "relationship"
+    },
+    {
+      "label_de": "Beratungsfall 3",
+      "content_de": "Seit ich in die neue Stadt gezogen bin, habe ich kaum noch Kontakt zu Menschen. Abends sitze ich oft allein in meiner Wohnung und keiner würde es merken, wenn ich tagelang nicht rausgehe. Manchmal fehlt mir einfach jemand zum Reden.",
+      "label_en": "Counselling case 3",
+      "content_en": "Since I moved to the new city, I've barely had contact with people. In the evenings I often sit alone in my apartment, and nobody would notice if I didn't go out for days. Sometimes I just miss having someone to talk to.",
+      "ground_truth": "loneliness"
+    },
+    {
+      "label_de": "Beratungsfall 4",
+      "content_de": "Vor zwei Monaten ist meine Großmutter gestorben, mit der ich sehr eng war. Ich dachte, es würde langsam besser, aber manchmal überrollt mich die Traurigkeit völlig unerwartet. Wie geht man eigentlich damit um, wenn so eine Lücke bleibt?",
+      "label_en": "Counselling case 4",
+      "content_en": "Two months ago my grandmother died, with whom I was very close. I thought it would slowly get better, but sometimes the sadness completely overwhelms me out of nowhere. How do you even cope when a gap like that stays with you?",
+      "ground_truth": "grief"
+    },
+    {
+      "label_de": "Beratungsfall 5",
+      "content_de": "Ich studiere im fünften Semester und merke immer mehr, dass mich das Fach gar nicht interessiert. Die Prüfungen schiebe ich vor mir her und überlege ständig, ob ich abbrechen soll. Aber ich habe Angst, was meine Eltern dazu sagen würden.",
+      "label_en": "Counselling case 5",
+      "content_en": "I'm in my fifth semester and increasingly realize that the subject doesn't interest me at all. I keep putting off the exams and constantly wonder whether I should drop out. But I'm afraid of what my parents would say about it.",
+      "ground_truth": "study_work"
+    },
+    {
+      "label_de": "Beratungsfall 6",
+      "content_de": "Auf der Arbeit habe ich gerade so viel zu tun, dass ich kaum noch Pausen mache und ständig erreichbar bin. Mein Kopf rattert auch am Wochenende weiter und ich kann nicht abschalten. Ich habe Angst, dass ich irgendwann einfach umkippe.",
+      "label_en": "Counselling case 6",
+      "content_en": "At work I currently have so much to do that I barely take breaks anymore and am constantly reachable. My head keeps spinning even on weekends and I can't switch off. I'm afraid that at some point I'll just collapse.",
+      "ground_truth": "stress"
+    },
+    {
+      "label_de": "Beratungsfall 7",
+      "content_de": "Meine beste Freundin und ich hatten einen heftigen Streit und reden seit Wochen nicht mehr miteinander. Ich weiß nicht, ob ich den ersten Schritt machen soll oder ob es das überhaupt noch wert ist. Die ganze Sache macht mich sehr traurig.",
+      "label_en": "Counselling case 7",
+      "content_en": "My best friend and I had a serious fight and haven't spoken to each other for weeks. I don't know whether I should take the first step or whether it's even worth it anymore. The whole thing makes me very sad.",
+      "ground_truth": "relationship"
+    },
+    {
+      "label_de": "Beratungsfall 8",
+      "content_de": "Am Wochenende sehe ich auf Social Media, wie alle etwas mit Freunden unternehmen, und ich bin einfach nur zu Hause. Ich habe das Gefühl, nirgendwo richtig dazuzugehören. Mit der Zeit traue ich mich kaum noch, auf andere zuzugehen.",
+      "label_en": "Counselling case 8",
+      "content_en": "On weekends I see on social media how everyone is doing something with friends, and I'm just at home. I have the feeling I don't really belong anywhere. These days I hardly dare to approach other people at all.",
+      "ground_truth": "loneliness"
+    },
+    {
+      "label_de": "Beratungsfall 9",
+      "content_de": "Mein Hund, der über zwölf Jahre an meiner Seite war, musste letzte Woche eingeschläfert werden. Das Haus fühlt sich jetzt so leer an und ich ertappe mich dabei, wie ich nach ihm rufe. Viele verstehen nicht, wie sehr mich das mitnimmt.",
+      "label_en": "Counselling case 9",
+      "content_en": "My dog, who was at my side for over twelve years, had to be put to sleep last week. The house feels so empty now and I catch myself calling out for him. Many people don't understand how much this is affecting me.",
+      "ground_truth": "grief"
+    },
+    {
+      "label_de": "Beratungsfall 10",
+      "content_de": "Ich habe vor drei Wochen eine neue Stelle angefangen und fühle mich völlig überfordert. Alle scheinen schon alles zu wissen, nur ich stehe ständig auf dem Schlauch. Ich habe ständig Angst, einen Fehler zu machen und entlassen zu werden.",
+      "label_en": "Counselling case 10",
+      "content_en": "I started a new job three weeks ago and feel completely overwhelmed. Everyone else seems to know everything already, and I'm the only one who is permanently lost. I'm terrified of making a mistake and getting fired.",
+      "ground_truth": "study_work"
+    },
+    {
+      "label_de": "Beratungsfall 11",
+      "content_de": "Zwischen Job, Haushalt und der Pflege meiner Mutter bleibt für mich überhaupt keine Zeit mehr. Ich funktioniere nur noch und merke, wie gereizt und müde ich ständig bin. Ich weiß nicht, wie lange ich das noch durchhalten kann.",
+      "label_en": "Counselling case 11",
+      "content_en": "Between my job, the household, and caring for my mother, there's no time left for me at all. I'm just running on autopilot and I notice how irritable and tired I am all the time. I don't know how much longer I can keep this up.",
+      "ground_truth": "stress"
+    },
+    {
+      "label_de": "Beratungsfall 12",
+      "content_de": "Meine Eltern lassen sich gerade scheiden und ich stehe ständig zwischen den Fronten. Beide wollen, dass ich ihre Seite verstehe, und ich fühle mich dabei völlig zerrissen. Egal was ich sage, ich habe das Gefühl, jemanden zu verletzen.",
+      "label_en": "Counselling case 12",
+      "content_en": "My parents are getting divorced right now and I'm constantly caught in the middle. Both want me to understand their side, and I feel completely torn by it. No matter what I say, I have the feeling I'm hurting someone.",
+      "ground_truth": "relationship"
+    },
+    {
+      "label_de": "Beratungsfall 13",
+      "content_de": "Seit ich in Rente bin, weiß ich oft gar nicht, wohin mit mir. Die Kollegen sind weg, die Kinder wohnen weit entfernt und manche Tage spreche ich mit keinem einzigen Menschen. Diese Stille macht mir mehr zu schaffen, als ich dachte.",
+      "label_en": "Counselling case 13",
+      "content_en": "Since I retired, I often don't know what to do with myself. My colleagues are gone, the children live far away, and some days I don't speak to a single person. This silence weighs on me more than I thought it would.",
+      "ground_truth": "loneliness"
+    },
+    {
+      "label_de": "Beratungsfall 14",
+      "content_de": "Vor einem halben Jahr habe ich mein Kind in der Schwangerschaft verloren. Nach außen tue ich so, als wäre alles wieder normal, aber innerlich bin ich oft wie gelähmt. Ich traue mich kaum, mit jemandem darüber zu sprechen.",
+      "label_en": "Counselling case 14",
+      "content_en": "Half a year ago I lost my child during pregnancy. On the outside I act as if everything is back to normal, but inside I often feel paralyzed. I hardly dare to talk to anyone about it.",
+      "ground_truth": "grief"
+    },
+    {
+      "label_de": "Beratungsfall 15",
+      "content_de": "In wenigen Tagen stehen meine Abschlussprüfungen an und ich kann vor Nervosität kaum noch lernen. Mein Kopf ist wie leergefegt, sobald ich an die Klausur denke. Ich habe richtig Angst, alles zu vermasseln, worauf ich jahrelang hingearbeitet habe.",
+      "label_en": "Counselling case 15",
+      "content_en": "In a few days my final exams are coming up and I can barely study anymore out of nervousness. My head goes blank the moment I think about the exam. I'm really afraid of messing up everything I've worked toward for years.",
+      "ground_truth": "study_work"
+    },
+    {
+      "label_de": "Beratungsfall 16",
+      "content_de": "Ich habe momentan einfach von allem zu viel. Drei Deadlines gleichzeitig, dazu private Probleme, und ich habe das Gefühl, ständig allem hinterherzulaufen. Selbst kleine Entscheidungen überfordern mich gerade völlig.",
+      "label_en": "Counselling case 16",
+      "content_en": "I just have too much of everything right now. Three deadlines at once, plus personal problems, and I feel like I'm permanently running to catch up. Even small decisions completely overwhelm me at the moment.",
+      "ground_truth": "stress"
+    },
+    {
+      "label_de": "Beratungsfall 17",
+      "content_de": "Mein Freund und ich haben uns nach drei Jahren getrennt und ich komme einfach nicht darüber hinweg. Ich frage mich ständig, ob ich etwas falsch gemacht habe und vermisse ihn jeden Tag. Gleichzeitig weiß ich, dass es so nicht weitergehen konnte.",
+      "label_en": "Counselling case 17",
+      "content_en": "My boyfriend and I broke up after three years and I just can't get over it. I keep wondering whether I did something wrong and I miss him every day. At the same time I know that it couldn't have gone on like that.",
+      "ground_truth": "relationship"
+    },
+    {
+      "label_de": "Beratungsfall 18",
+      "content_de": "Ich bin neu an der Uni und habe bisher niemanden kennengelernt. In den Vorlesungen sitze ich immer allein und in den Pausen scrolle ich nur am Handy, um nicht so verloren zu wirken. Ich wünsche mir so sehr, endlich irgendwo anzukommen.",
+      "label_en": "Counselling case 18",
+      "content_en": "I'm new at university and haven't gotten to know anyone so far. In lectures I always sit alone, and during breaks I just scroll on my phone so I don't look so lost. I so badly want to finally feel like I belong somewhere.",
+      "ground_truth": "loneliness"
+    },
+    {
+      "label_de": "Beratungsfall 19",
+      "content_de": "Mein Großvater ist letzten Monat plötzlich verstorben und ich konnte mich nicht einmal verabschieden. Seitdem kreisen meine Gedanken nur darum, was ich ihm noch hätte sagen wollen. Die Schuldgefühle lassen mich nachts kaum schlafen.",
+      "label_en": "Counselling case 19",
+      "content_en": "My grandfather passed away suddenly last month and I couldn't even say goodbye. Since then my thoughts only circle around what I still wanted to say to him. The guilt barely lets me sleep at night.",
+      "ground_truth": "grief"
+    },
+    {
+      "label_de": "Beratungsfall 20",
+      "content_de": "Ich überlege schon länger, mich beruflich komplett umzuorientieren, aber traue mich nicht. Mein jetziger Job macht mich unglücklich, doch der Gedanke an einen Neuanfang macht mir große Angst. Wie findet man eigentlich heraus, was wirklich zu einem passt?",
+      "label_en": "Counselling case 20",
+      "content_en": "I've been thinking for a while about completely changing my career direction, but I don't dare to. My current job makes me unhappy, yet the thought of a fresh start scares me a lot. How do you even figure out what really suits you?",
+      "ground_truth": "study_work"
+    }
+  ]
+}

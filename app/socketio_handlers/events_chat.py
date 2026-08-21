@@ -118,6 +118,17 @@ def register_chat_events(socketio, chat_manager):
             user_message = data.get("message", "").encode('utf-8').decode('utf-8')
             temperature = data.get("temperature", 0.15)
 
+            # Anti-cost-DoS (pentest 2026-06-10): cap LLM stream starts per socket.
+            # Keyed on the connection sid (public KI-Beratung flow stays untouched for
+            # humans; only a scripted message flood on one connection is throttled).
+            from socketio_handlers.socket_rate_limit import allow_llm_event
+            if not allow_llm_event(f"chat:{client_id}"):
+                emit('chat_response', {
+                    'content': 'Zu viele Anfragen — bitte einen Moment warten.',
+                    'complete': True, 'sender': 'bot'
+                }, room=client_id)
+                return
+
             # Command Handling
             if user_message.strip().startswith('/'):
                 command = user_message.strip()[1:]
@@ -247,6 +258,44 @@ def register_chat_events(socketio, chat_manager):
         # Validate parameters
         temperature = max(0.0, min(1.0, float(temperature)))
         max_tokens = max(100, min(8192, int(max_tokens)))
+
+        # --- Authorization (security fix, pentest 2026-06-10) ---
+        # test_prompt_stream is the Prompt-Engineering test tool: the client picks
+        # the `model` freely. Without these checks any authenticated socket (incl. a
+        # read-only evaluator) could run arbitrary prompts on admin-only models using
+        # the org's keys, or pass model="user-provider:<id>:<victim>:<m>" to abuse
+        # another user's private provider key. We therefore (1) require the
+        # prompt-engineering feature permission and (2) enforce per-model access —
+        # user_can_access_model checks the allowlist for global models and
+        # ownership/share against the REQUESTING user for user-provider models.
+        from socketio_handlers.socket_auth import socket_user
+        from socketio_handlers.socket_rate_limit import allow_llm_event
+        from services.permission_service import PermissionService
+        from services.llm.llm_access_service import LLMAccessService
+
+        user = socket_user('auth:error')
+        if user is None:
+            emit("test_prompt_response",
+                 {"content": "Fehler: Authentifizierung erforderlich", "complete": True},
+                 room=client_id)
+            return
+        username = getattr(user, 'username', None)
+        if not PermissionService.check_permission(username, 'feature:prompt_engineering:view'):
+            emit("test_prompt_response",
+                 {"content": "Fehler: Keine Berechtigung für Prompt-Tests.", "complete": True},
+                 room=client_id)
+            return
+        if model and not LLMAccessService.user_can_access_model(username, model):
+            emit("test_prompt_response",
+                 {"content": "Fehler: Kein Zugriff auf das gewählte Modell.", "complete": True},
+                 room=client_id)
+            return
+        # Anti-cost-DoS: cap LLM stream starts per user (generous; only trips scripted abuse).
+        if not allow_llm_event(username or client_id):
+            emit("test_prompt_response",
+                 {"content": "Fehler: Zu viele Anfragen — bitte kurz warten.", "complete": True},
+                 room=client_id)
+            return
 
         # Single cached call: validates model, falls back to default, resolves client.
         # Avoids 4-6 redundant DB queries that previously ran on every request.

@@ -562,7 +562,6 @@ e2e/
 │
 └── collaboration/                 # Collab Tests
     ├── markdown-collab.spec.ts
-    └── latex-collab.spec.ts
 ```
 
 ---

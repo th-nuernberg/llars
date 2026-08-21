@@ -60,12 +60,12 @@ def _require_document_access(document: MarkdownDocument, username: str) -> None:
 
 def _doc_to_dict(doc: MarkdownDocument) -> dict:
     """Convert MarkdownDocument to API response dict."""
-    return _generic_doc_to_dict(doc, include_asset=False, include_zotero=False)
+    return _generic_doc_to_dict(doc)
 
 
 def _workspace_to_dict(ws: MarkdownWorkspace) -> dict:
     """Convert MarkdownWorkspace to API response dict."""
-    return _generic_workspace_to_dict(ws, include_compile=False)
+    return _generic_workspace_to_dict(ws)
 
 
 # ============================================================================

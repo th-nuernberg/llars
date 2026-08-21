@@ -464,14 +464,14 @@ class TestFeatureManagement:
         assert feature.content == 'This is a summary of the situation.'
         assert error is None
 
-    def test_THREAD_061_add_feature_creates_llm(self, app, db, app_context):
+    def test_THREAD_061_add_feature_sets_model_id(self, app, db, app_context):
         """
-        [THREAD-061] Add Feature - Creates LLM
+        [THREAD-061] Add Feature - Sets model_id
 
-        LLM sollte erstellt werden wenn nicht vorhanden.
+        Feature sollte model_id als String setzen.
         """
         from services.thread_service import ThreadService
-        from db.models import EmailThread, FeatureFunctionType, LLM
+        from db.models import EmailThread, FeatureFunctionType
 
         function_type = FeatureFunctionType(name='test_func_061')
         db.session.add(function_type)
@@ -481,15 +481,13 @@ class TestFeatureManagement:
             thread_id=2061,
             chat_id=61,
             institut_id=61,
-            subject='LLM Create Test',
+            subject='Model ID Test',
             function_type_id=function_type.function_type_id
         )
         db.session.add(thread)
         db.session.commit()
 
-        # Ensure LLM doesn't exist
         unique_llm_name = f'NewLLM_{uuid4().hex[:8]}'
-        assert LLM.query.filter_by(name=unique_llm_name).first() is None
 
         success, feature, _ = ThreadService.add_feature_to_thread(
             thread_id=2061,
@@ -499,9 +497,8 @@ class TestFeatureManagement:
         )
 
         assert success is True
-        # LLM should now exist
-        llm = LLM.query.filter_by(name=unique_llm_name).first()
-        assert llm is not None
+        # Feature should have model_id set to the llm_name string
+        assert feature.model_id == unique_llm_name
 
     def test_THREAD_062_add_feature_creates_feature_type(self, app, db, app_context):
         """
@@ -510,7 +507,7 @@ class TestFeatureManagement:
         Feature Type sollte erstellt werden wenn nicht vorhanden.
         """
         from services.thread_service import ThreadService
-        from db.models import EmailThread, FeatureFunctionType, FeatureType, LLM
+        from db.models import EmailThread, FeatureFunctionType, FeatureType
 
         function_type = FeatureFunctionType(name='test_func_062')
         db.session.add(function_type)
@@ -524,9 +521,6 @@ class TestFeatureManagement:
             function_type_id=function_type.function_type_id
         )
         db.session.add(thread)
-
-        llm = LLM(name='TestLLM062')
-        db.session.add(llm)
         db.session.commit()
 
         # Ensure FeatureType doesn't exist
@@ -552,7 +546,7 @@ class TestFeatureManagement:
         Doppeltes Feature sollte existierendes zurückgeben.
         """
         from services.thread_service import ThreadService
-        from db.models import EmailThread, FeatureFunctionType, LLM, FeatureType
+        from db.models import EmailThread, FeatureFunctionType, FeatureType
 
         function_type = FeatureFunctionType(name='test_func_063')
         db.session.add(function_type)
@@ -566,9 +560,6 @@ class TestFeatureManagement:
             function_type_id=function_type.function_type_id
         )
         db.session.add(thread)
-
-        llm = LLM(name='DupLLM063')
-        db.session.add(llm)
 
         feature_type = FeatureType(name='dup_type_063')
         db.session.add(feature_type)
@@ -650,7 +641,7 @@ class TestThreadWithData:
         from services.thread_service import ThreadService
         from db.models import (
             EmailThread, FeatureFunctionType, Message,
-            Feature, LLM, FeatureType
+            Feature, FeatureType
         )
 
         function_type = FeatureFunctionType(name='test_func_070')
@@ -677,8 +668,6 @@ class TestThreadWithData:
         db.session.add(message)
 
         # Add feature
-        llm = LLM(name='TestLLM070')
-        db.session.add(llm)
         feature_type = FeatureType(name='test_type_070')
         db.session.add(feature_type)
         db.session.flush()
@@ -686,7 +675,7 @@ class TestThreadWithData:
         feature = Feature(
             thread_id=2070,
             type_id=feature_type.type_id,
-            llm_id=llm.llm_id,
+            model_id='TestLLM070',
             content='Test feature'
         )
         db.session.add(feature)
@@ -760,7 +749,7 @@ class TestUtilityMethods:
         """
         from services.thread_service import ThreadService
         from db.models import (
-            EmailThread, FeatureFunctionType, Feature, LLM, FeatureType
+            EmailThread, FeatureFunctionType, Feature, FeatureType
         )
 
         function_type = FeatureFunctionType(name='test_func_081')
@@ -775,9 +764,6 @@ class TestUtilityMethods:
             function_type_id=function_type.function_type_id
         )
         db.session.add(thread)
-
-        llm = LLM(name='CountLLM081')
-        db.session.add(llm)
         db.session.flush()
 
         # Create features
@@ -789,7 +775,7 @@ class TestUtilityMethods:
             feature = Feature(
                 thread_id=2081,
                 type_id=feature_type.type_id,
-                llm_id=llm.llm_id,
+                model_id='CountLLM081',
                 content=f'Feature {i}'
             )
             db.session.add(feature)

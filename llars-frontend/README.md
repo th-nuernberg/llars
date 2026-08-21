@@ -178,7 +178,6 @@ VITE_MATOMO_URL=/analytics/
 npm run dev      # Development mit HMR
 npm run build    # Production Build
 npm run preview  # Preview Production Build
-npm run lint     # ESLint
 ```
 
 ## Referenzen

@@ -159,6 +159,7 @@ ENTITY_PRIORITY = {
     "AHV": 1,
     "SVN": 1,  # German social security number, same priority as AHV
     "IBAN": 1,  # Bank account number - high priority
+    "SECRET": 1,  # Passwords/tokens/secrets (privacy-filter engine) - always mask
     "URL": 2,
     "PHONE": 2,
     "PLZ": 3,
@@ -235,3 +236,34 @@ Regeln:
 - AGE: numerische Altersangaben (z.B. "3", "15", "42") wenn klar als Alter gemeint.
 - Markiere KEINE Pronomen oder generische Rollen ohne Identifikatoren (z.B. "mein Sohn"), keine Krankheiten/Symptome, keine allgemeinen Orte wie "Kindergarten" ohne konkreten Namen.
 - Markiere keine Inhalte, die nicht im Originaltext stehen."""
+
+
+# ============================================================
+# privacy-filter engine (openai/privacy-filter, HF token-classification)
+# ============================================================
+# The model is English-centric (degraded on German per its model card) and is a
+# pure DETECTOR: it only marks spans, it has NO consistent-replacement logic.
+# We therefore treat it like Flair - it emits spans, and the existing
+# pseudonymization/grouping pipeline in anonymize_service.py does the rest.
+#
+# Default to the HuggingFace hub id; override with a local path via the env var
+# for fully offline operation. The model is downloaded/cached on first use.
+PRIVACY_FILTER_MODEL_ID = "openai/privacy-filter"
+
+# Map the model's 8 native span types onto the LLARS label taxonomy.
+# - private_address -> STREET (masked) rather than LOC, since the model emits a
+#   full address blob; masking is the privacy-safe choice when we cannot resolve
+#   it to a single municipality for the recommender.
+# - account_number -> IBAN (both masked).
+# - secret -> SECRET (new label, always masked - never falls through to "keep
+#   original" which would leak the secret).
+PRIVACY_FILTER_LABEL_MAP = {
+    "private_person": "PER",
+    "private_address": "STREET",
+    "private_email": "MAIL",
+    "private_phone": "PHONE",
+    "private_url": "URL",
+    "private_date": "DATE",
+    "account_number": "IBAN",
+    "secret": "SECRET",
+}

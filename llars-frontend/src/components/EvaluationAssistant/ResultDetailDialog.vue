@@ -133,7 +133,7 @@
 
 <script setup>
 import { computed, defineAsyncComponent } from 'vue'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 
 const props = defineProps({
   result: {
@@ -167,9 +167,10 @@ const resultComponent = computed(() => {
   }
 })
 
+const { formatModelName: registryFormatModelName } = useModelRegistry()
+
 const displayModelName = computed(() => {
-  const parsed = parseUserProviderModelId(props.result?.model_id)
-  return parsed?.displayName || props.result?.model_id || 'LLM'
+  return registryFormatModelName(props.result?.model_id)
 })
 
 const displayEvaluatorName = computed(() => {

@@ -189,15 +189,6 @@
               ></div>
             </div>
 
-            <!-- AI Reserved Color Info -->
-            <div v-if="aiAssistantSettings.enabled" class="d-flex align-center gap-2 mb-3 text-caption text-medium-emphasis">
-              <div
-                class="ai-reserved-color"
-                :style="{ backgroundColor: aiAssistantSettings.color }"
-              ></div>
-              <span>{{ $t('settings.aiReservedColorHint', { name: aiAssistantSettings.username }) }}</span>
-            </div>
-
             <!-- Auto-save indicator -->
             <div v-if="savingCollabColor" class="d-flex align-center gap-2 text-caption text-medium-emphasis">
               <v-progress-circular size="14" width="2" indeterminate color="primary" />
@@ -279,13 +270,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useAuth } from '@/composables/useAuth'
 import { useLanguage } from '@/composables/useLanguage'
-import { COLLAB_COLOR_PRESETS, isColorInAiReservedRange } from '@/constants/colors'
+import { COLLAB_COLOR_PRESETS } from '@/constants/colors'
 
 const { t } = useI18n()
 
@@ -329,32 +319,8 @@ const avatarInput = ref(null)
 const avatarUploading = ref(false)
 const avatarError = ref('')
 
-// AI Assistant settings (reserved color)
-const aiAssistantSettings = ref({
-  enabled: false,
-  color: '#9B59B6',
-  username: 'LLARS KI'
-})
-
-// Fetch AI assistant settings to know which color is reserved
-async function fetchAiAssistantSettings() {
-  try {
-    const response = await axios.get('/api/system/ai-assistant')
-    if (response.data.success) {
-      aiAssistantSettings.value = response.data.ai_assistant
-    }
-  } catch {
-    // Use defaults if API fails
-  }
-}
-
 // Use global LLARS color presets
-const allCollabColorPresets = COLLAB_COLOR_PRESETS
-
-// Filter out colors in the AI reserved purple/violet range
-const collabColorPresets = computed(() => {
-  return allCollabColorPresets.filter(c => !isColorInAiReservedRange(c))
-})
+const collabColorPresets = COLLAB_COLOR_PRESETS
 
 // Collab color state
 const selectedCollabColor = ref(auth.collabColor.value || null)
@@ -452,13 +418,7 @@ watch(() => props.modelValue, (isOpen) => {
     selectedLanguage.value = currentLanguage.value
     avatarError.value = ''
     auth.fetchUserSettings()
-    fetchAiAssistantSettings()
   }
-})
-
-// Fetch AI settings on mount (in case dialog is already open)
-onMounted(() => {
-  fetchAiAssistantSettings()
 })
 
 // User profile data
@@ -588,14 +548,6 @@ function closeDialog() {
   border-color: rgb(var(--v-theme-on-surface));
   transform: scale(1.1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.ai-reserved-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
-  flex-shrink: 0;
 }
 
 /* Animation for dialog */

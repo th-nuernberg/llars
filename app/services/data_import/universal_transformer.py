@@ -89,8 +89,12 @@ class UniversalTransformer:
         "bot": MessageRole.ASSISTANT,
         "ai": MessageRole.ASSISTANT,
         "berater": MessageRole.ASSISTANT,
+        "beraterin": MessageRole.ASSISTANT,
         "beratende": MessageRole.ASSISTANT,
         "beratender": MessageRole.ASSISTANT,
+        # English counsellor spellings used by the EMNLP/Turing-Test pipeline
+        "counsellor": MessageRole.ASSISTANT,
+        "counselor": MessageRole.ASSISTANT,
         "agent": MessageRole.ASSISTANT,
         "response": MessageRole.ASSISTANT,
         "answer": MessageRole.ASSISTANT,
@@ -216,6 +220,14 @@ class UniversalTransformer:
         # Extract metadata
         metadata = self._extract_metadata(data, config)
 
+        # Preserve nested LLARS-Native features. When the item already carries a
+        # `features: [{type, content, generated_by}]` array (the format produced
+        # by the LLARS-Native importer / Turing-Test seeders / the EMNLP study
+        # exporter), parse it through unchanged. Without this, comparison items
+        # arrive in the DB with a conversation context but no Option A/B
+        # candidates — the assessor sees an empty A/B picker.
+        native_features = self._extract_native_features(data)
+
         # Create item based on type
         if item_type == ItemType.CONVERSATION:
             messages = self._extract_messages(data, config)
@@ -229,6 +241,7 @@ class UniversalTransformer:
                         content=content,
                         subject=subject,
                         label=str(label) if label is not None else None,
+                        features=native_features,
                         metadata=metadata,
                     )
                 return None
@@ -239,6 +252,7 @@ class UniversalTransformer:
                 conversation=messages,
                 subject=subject,
                 label=str(label) if label is not None else None,
+                features=native_features,
                 metadata=metadata,
             )
 
@@ -254,6 +268,7 @@ class UniversalTransformer:
                 content=content,
                 subject=subject,
                 label=str(label) if label is not None else None,
+                features=native_features,
                 metadata=metadata,
             )
 
@@ -262,6 +277,25 @@ class UniversalTransformer:
             if not text_a or not text_b:
                 self._warnings.append(f"Item {index}: Missing text pair")
                 return None
+
+            # When a structured messages list accompanies response_a/b, use
+            # CONVERSATION layout: messages = dialogue context, features = the two
+            # candidate replies. This is the "counselling / Turing-Test" format
+            # produced by research data exporters (context + 2 steered responses).
+            context_messages = self._extract_messages(data, config)
+            if context_messages:
+                return ImportItem(
+                    id=item_id,
+                    item_type=ItemType.CONVERSATION,
+                    conversation=context_messages,
+                    features=[
+                        Feature(type='candidate', content=text_a, generated_by=label_a),
+                        Feature(type='candidate', content=text_b, generated_by=label_b),
+                    ],
+                    subject=subject,
+                    label=str(label) if label is not None else None,
+                    metadata=metadata,
+                )
 
             return ImportItem(
                 id=item_id,
@@ -545,25 +579,114 @@ class UniversalTransformer:
 
         return None
 
+    def _extract_native_features(self, data: dict[str, Any]) -> list[Feature]:
+        """
+        Parse a nested ``features`` array from an LLARS-Native item.
+
+        Recognised shape (matches `llars-import-v1` and the Turing-Test
+        seeders): ``features: [{type, content, generated_by}, ...]``. Each
+        entry's ``generated_by`` is the provenance string that ends up in
+        ``Feature.model_id`` and feeds the comparison preference parser
+        (`comparison_preference_stats_service._categorize`). Returning an
+        empty list is the deliberate no-op for inputs without features.
+        """
+        feats_raw = data.get("features")
+        if not isinstance(feats_raw, list):
+            return []
+
+        out: list[Feature] = []
+        for f in feats_raw:
+            if not isinstance(f, dict):
+                continue
+            content = f.get("content")
+            if not content:
+                continue
+            out.append(Feature(
+                type=str(f.get("type") or "candidate"),
+                content=str(content),
+                generated_by=(
+                    f.get("generated_by")
+                    or f.get("model")
+                    or f.get("model_id")
+                ),
+            ))
+        return out
+
+    # Fields the transformer consumes structurally (id, conversation/content,
+    # subject, label, variant features, …). Anything NOT in this set lands in
+    # metadata so per-item-header templates can reference it via {{var}}.
+    # Keep in sync with _transform_item / _extract_id / _extract_field /
+    # _extract_messages / _extract_content and the LLARS-Native variant fields.
+    _CONSUMED_TOPLEVEL_FIELDS = frozenset({
+        # IDs
+        "id", "identifier", "item_id", "chat_id", "thread_id", "conversation_id",
+        "_source",  # internal frontend marker
+        # Subject / title aliases
+        "subject", "title", "topic", "betreff", "name",
+        # Label / class aliases
+        "label", "class", "category", "ground_truth",
+        # Single-text content aliases
+        "content", "text", "body", "message",
+        # Conversation aliases
+        "messages", "conversation", "dialogue", "dialog", "exchanges", "context",
+        # LLARS-Native nested features + Q&A
+        "features", "options", "choices", "question", "answer",
+        # Ranking / comparison variant features (a–e suffix family)
+        "response_a", "response_b", "response_c", "response_d", "response_e",
+        "summary_a", "summary_b", "summary_c", "summary_d", "summary_e",
+        "output_a", "output_b", "output_c", "output_d", "output_e",
+        # Reference text for ranking
+        "source_text", "reference",
+        # Already handled below (explicit nested dict)
+        "metadata",
+    })
+
     def _extract_metadata(
         self,
         data: dict[str, Any],
         config: TransformConfig
     ) -> dict[str, Any]:
-        """Extract metadata from data."""
+        """
+        Build the metadata dict that ends up in EvaluationItem.metadata_json.
+
+        Three sources, merged in order (later overwrites earlier):
+        1. Nested ``metadata`` dict (LLARS-Native / wide-format exports).
+        2. **All other top-level fields** that aren't structurally consumed
+           (id, subject, conversation, variant features, …).  This is what
+           lets user uploads with custom columns — ``hauptanliegen``,
+           ``persona_name``, ``target_style``, ``axis``, … — flow through
+           to ``{{variable}}`` substitution in per-item-header templates.
+           Without this, the previous hard-coded whitelist silently dropped
+           anything not in research-specific seeders.
+        3. Explicit research-export whitelist (``is_synthetic``,
+           ``augmentation_type``, ``model``, …) — kept as a stable contract
+           for the authenticity / generation pipelines even if those names
+           ever collide with the consumed-field list.
+        """
         metadata: dict[str, Any] = {}
 
-        # Extract from explicit metadata field
+        # 1. Nested metadata dict (LLARS-Native, wide-format ranking, …)
         if "metadata" in data and isinstance(data["metadata"], dict):
             metadata.update(data["metadata"])
 
-        # Extract specific fields that should be preserved
+        # 2. Generic passthrough: every top-level field the transformer does
+        #    not consume becomes metadata.  None / empty values are skipped
+        #    to keep the JSON column compact.
+        for key, value in data.items():
+            if key in self._CONSUMED_TOPLEVEL_FIELDS:
+                continue
+            if value is None:
+                continue
+            if key in metadata:
+                continue  # don't overwrite nested-metadata source
+            metadata[key] = value
+
+        # 3. Research-export whitelist (explicit, last-write wins)
         preserve_fields = [
             "is_synthetic", "augmentation_type", "model", "model_short",
             "generated_at", "format_version", "saeule", "split",
             "source_conversation_id", "num_replacements", "replaced_positions"
         ]
-
         for field_name in preserve_fields:
             if field_name in data:
                 metadata[field_name] = data[field_name]
@@ -623,45 +746,79 @@ class UniversalTransformer:
             "summary", "response", "output", "text", "answer",
             "generation", "completion", "result"
         ]
-        feature_suffixes = ["_a", "_b", "_c", "_d", "_e", "_1", "_2", "_3", "_4", "_5"]
 
         features: list[Feature] = []
         found_keys: set[str] = set()
 
-        # Search for pattern-based features
-        for prefix in feature_prefixes:
-            for suffix in feature_suffixes:
-                key_patterns = [
-                    f"{prefix}{suffix}",           # summary_a
-                    f"{prefix.title()}{suffix}",   # Summary_a
-                    f"{prefix.upper()}{suffix}",   # SUMMARY_a
-                ]
+        # Search for pattern-based features dynamically so >5 variants are supported.
+        # Matches keys like summary_a, summary_i, response_10, output_2, ...
+        feature_pattern = re.compile(
+            rf"^({'|'.join(re.escape(prefix) for prefix in feature_prefixes)})_([a-z0-9]+)$",
+            re.IGNORECASE
+        )
+        prefix_order = {prefix: idx for idx, prefix in enumerate(feature_prefixes)}
 
-                for key_pattern in key_patterns:
-                    # Direct match
-                    if key_pattern in data and data[key_pattern] and key_pattern not in found_keys:
-                        # Generate a label from suffix (A, B, C or 1, 2, 3)
-                        label_char = suffix[-1].upper()
-                        features.append(Feature(
-                            type="Summary",
-                            content=str(data[key_pattern]),
-                            generated_by=f"Model_{label_char}"
-                        ))
-                        found_keys.add(key_pattern)
-                        break
+        def _suffix_sort_key(suffix: str) -> tuple[int, int | str]:
+            """Sort lettered variants before numeric variants, then naturally."""
+            if len(suffix) == 1 and suffix.isalpha():
+                return (0, ord(suffix.lower()) - ord("a"))
+            if suffix.isdigit():
+                return (1, int(suffix))
+            return (2, suffix.lower())
 
-                    # Case-insensitive search
-                    for actual_key in data.keys():
-                        if actual_key.lower() == key_pattern.lower() and actual_key not in found_keys:
-                            if data[actual_key]:
-                                label_char = suffix[-1].upper()
-                                features.append(Feature(
-                                    type="Summary",
-                                    content=str(data[actual_key]),
-                                    generated_by=f"Model_{label_char}"
-                                ))
-                                found_keys.add(actual_key)
-                                break
+        seen_feature_keys: set[str] = set()
+        detected_fields: list[tuple[tuple[int, int | str], int, str, str]] = []
+
+        # Suffixes that look like features but are actually metadata fields
+        # e.g. "output_tokens", "response_time", "summary_count"
+        excluded_suffixes = {
+            "tokens", "count", "type", "format", "id", "ids",
+            "time", "length", "size", "index", "score", "status",
+            "name", "label", "path", "url", "key", "date",
+        }
+
+        for actual_key, value in data.items():
+            if not value:
+                continue
+
+            match = feature_pattern.match(actual_key)
+            if not match:
+                continue
+
+            suffix = match.group(2).lower()
+            if suffix in excluded_suffixes:
+                continue
+
+            normalized_key = actual_key.lower()
+            if normalized_key in seen_feature_keys:
+                continue
+            seen_feature_keys.add(normalized_key)
+
+            prefix = match.group(1).lower()
+            suffix = match.group(2)
+            detected_fields.append(
+                (
+                    _suffix_sort_key(suffix),
+                    prefix_order.get(prefix, len(feature_prefixes)),
+                    normalized_key,
+                    actual_key,
+                )
+            )
+
+        detected_fields.sort(key=lambda item: (item[0], item[1], item[2]))
+
+        for _, _, _, actual_key in detected_fields:
+            match = feature_pattern.match(actual_key)
+            if not match:
+                continue
+            suffix = match.group(2)
+            label_token = suffix.upper() if suffix.isalpha() else suffix
+            features.append(Feature(
+                type="Summary",
+                content=str(data[actual_key]),
+                generated_by=f"Model_{label_token}"
+            ))
+            found_keys.add(actual_key)
 
         # Also check for numbered/lettered items array (summaries: [...])
         array_keys = ["summaries", "responses", "outputs", "items", "texts"]
@@ -682,16 +839,24 @@ class UniversalTransformer:
         if "metadata" in data and isinstance(data["metadata"], dict):
             metadata = data["metadata"]
             for i, feature in enumerate(features):
-                suffix = chr(97 + i)  # a, b, c, d, ...
-                model_key = f"model_{suffix}"
-                if model_key in metadata and metadata[model_key]:
-                    feature.generated_by = str(metadata[model_key])
+                suffix_keys: list[str] = []
+                if i < 26:
+                    suffix_keys.append(chr(97 + i))  # a, b, c, ...
+                suffix_keys.append(str(i + 1))  # 1, 2, 3, ...
+
+                for suffix in suffix_keys:
+                    model_key = f"model_{suffix}"
+                    if model_key in metadata and metadata[model_key]:
+                        feature.generated_by = str(metadata[model_key])
+                        break
 
                 if split_by_prompt:
-                    prompt_key = f"prompt_{suffix}"
-                    prompt_label = metadata.get(prompt_key)
-                    if prompt_label:
-                        feature.type = str(prompt_label).strip() or feature.type
+                    for suffix in suffix_keys:
+                        prompt_key = f"prompt_{suffix}"
+                        prompt_label = metadata.get(prompt_key)
+                        if prompt_label:
+                            feature.type = str(prompt_label).strip() or feature.type
+                            break
 
         logger.info(
             f"Ranking features detected: {len(features)} features, "

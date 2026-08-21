@@ -283,7 +283,7 @@
         {
           "do": "type",
           "target": "Share User Search",
-          "text": "ijcai_reviewer_2",
+          "text": "ijcai",
           "speed": "fast"
         },
         {
@@ -296,13 +296,13 @@
           "target": "Share User Suggestion"
         },
         {
-          "do": "click",
+          "do": "click_if_present",
           "target": "Share Add Button"
         },
         {
           "do": "wait_for",
           "target": "Share Reviewer 2 Chip",
-          "timeout": 3
+          "timeout": 5
         }
       ]
     },
@@ -450,19 +450,7 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject: {",
-          "speed": "fast"
-        },
-        {
-          "do": "type",
-          "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "{subject}",
-          "speed": "fast"
-        },
-        {
-          "do": "type",
-          "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "}",
+          "text": "Subject: {{subject}}",
           "speed": "fast"
         }
       ]
@@ -482,21 +470,7 @@
         {
           "do": "collab_type",
           "target": "Last Block Editor",
-          "text": "Content: {",
-          "cursor": "end",
-          "delay": 0.02
-        },
-        {
-          "do": "collab_type",
-          "target": "Last Block Editor",
-          "text": "{content}",
-          "cursor": "end",
-          "delay": 0.02
-        },
-        {
-          "do": "collab_type",
-          "target": "Last Block Editor",
-          "text": "}\nThe fields come from one counselling case: subject line and full message thread.",
+          "text": "Content: {{content}}\nThe fields come from one counselling case: subject line and full message thread.",
           "cursor": "end",
           "delay": 0.02
         },
@@ -1860,16 +1834,33 @@
       "actions": [
         {
           "do": "goto",
-          "url": "/scenarios"
+          "url": "/Home"
+        },
+        {
+          "do": "wait_for",
+          "target": "Scenario Manager",
+          "timeout": 15
+        },
+        {
+          "do": "click",
+          "target": "Scenario Manager"
         },
         {
           "do": "wait",
-          "seconds": 3.0
+          "seconds": 2.5
         },
         {
           "do": "wait_for",
           "target": "Counselling Demo Scenario",
-          "timeout": 15
+          "timeout": 30
+        },
+        {
+          "do": "scroll_to",
+          "target": "Counselling Demo Scenario"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
         },
         {
           "do": "highlight",

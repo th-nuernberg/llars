@@ -20,8 +20,8 @@
       <span>{{ statusConfig.label }}</span>
     </div>
 
-    <!-- Actions Menu -->
-    <v-menu offset-y location="bottom end">
+    <!-- Actions Menu (hidden for shared jobs) -->
+    <v-menu v-if="!isShared" offset-y location="bottom end">
       <template v-slot:activator="{ props }">
         <v-btn
           icon
@@ -60,6 +60,14 @@
         </v-list-item>
 
         <v-divider v-if="canStart || canPause || canCancel" />
+
+        <!-- Share -->
+        <v-list-item @click.stop="$emit('share')">
+          <template v-slot:prepend>
+            <LIcon size="18" color="accent" class="mr-2">mdi-share-variant</LIcon>
+          </template>
+          <v-list-item-title>{{ $t('generation.share.shareAction') }}</v-list-item-title>
+        </v-list-item>
 
         <!-- Delete (if not running) -->
         <v-list-item v-if="canDelete" @click.stop="$emit('delete')">
@@ -116,6 +124,10 @@
           <LIcon size="14" class="mr-1">mdi-clock-outline</LIcon>
           {{ formatDate(job.created_at) }}
         </span>
+        <span v-if="isShared" class="shared-owner">
+          <LIcon size="14" class="mr-1">mdi-account-outline</LIcon>
+          {{ job.created_by }}
+        </span>
       </div>
     </div>
 
@@ -144,12 +156,16 @@ const props = defineProps({
   job: {
     type: Object,
     required: true
+  },
+  isShared: {
+    type: Boolean,
+    default: false
   }
 })
 
-defineEmits(['click', 'start', 'pause', 'cancel', 'delete'])
+defineEmits(['click', 'start', 'pause', 'cancel', 'delete', 'share'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Status configuration
 const STATUS_CONFIG = {
@@ -212,7 +228,8 @@ const canDelete = computed(() =>
 function formatDate(dateStr) {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleDateString('de-DE', {
+  const loc = locale.value === 'de' ? 'de-DE' : 'en-US'
+  return date.toLocaleDateString(loc, {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -281,6 +298,13 @@ function formatDate(dateStr) {
 
 .job-card:hover .card-menu-btn {
   opacity: 1;
+}
+
+/* Touch devices: always show menu button since hover is unreliable */
+@media (hover: none), (pointer: coarse) {
+  .card-menu-btn {
+    opacity: 0.7;
+  }
 }
 
 /* Card Body */
@@ -352,7 +376,8 @@ function formatDate(dateStr) {
   justify-content: space-between;
 }
 
-.created-at {
+.created-at,
+.shared-owner {
   display: flex;
   align-items: center;
   font-size: 0.75rem;

@@ -39,13 +39,12 @@
 <script setup>
   import { computed } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { docsUrlForLocale } from '@/utils/docsUrl'
 
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
-  const docsUrl = computed(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    return `${origin}/mkdocs/en/`
-  })
+  // Doku in der aktuellen UI-Sprache (DE -> /mkdocs/, EN -> /mkdocs/en/).
+  const docsUrl = computed(() => docsUrlForLocale(locale.value))
 
   const links = computed(() => [
     {

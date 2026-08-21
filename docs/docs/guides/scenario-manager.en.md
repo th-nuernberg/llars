@@ -242,11 +242,28 @@ Manage evaluators:
 
 #### Roles
 
-| Role | Description |
-|------|-------------|
+Scenario roles have **two independent axes** on `ScenarioUsers`
+(`app/db/models/scenario.py`):
+
+- **Manager role** (`manager_role`) — Scenario Manager access: `owner` (full
+  control, delete) · `editor` (settings + team, no delete) · `viewer` (read-only
+  analysis/IRR, **no** editing) · `none`.
+- **Evaluation role** (`evaluation_role`) — participation in evaluation:
+  `assessor` (rates items) · `viewer` (sees items read-only) · `none`.
+
+A person can combine both axes — e.g. the **read-only manager viewer**
+(`manager_role='viewer'`) who sees the live aggregated analysis but edits or
+reconfigures nothing. This is exactly the combination granted by the
+[IJCAI demo link](../human_studies/ijcai-demo.md) (assessor **and** manager viewer
+on the same scenarios).
+
+| Role (display) | Meaning |
+|----------------|---------|
 | **Owner** | Scenario creator, full rights |
-| **Evaluator** | Rates items and can interact |
-| **Viewer** | Read-only, no ratings |
+| **Editor** | Manage settings + team, no delete |
+| **Viewer** | Read-only manager: sees analysis/IRR + raw export, edits nothing |
+| **Assessor** | Rates items |
+| **Eval. Viewer** | Sees items read-only, submits no ratings |
 
 #### LLM Evaluation
 
@@ -332,7 +349,20 @@ Accessible via the gear icon (⚙️):
 | See team | ❌ |
 | See results | ❌ |
 
-### Viewer (Invited, read-only)
+### Viewer (read-only manager)
+
+The manager viewer (`manager_role='viewer'`) sees the analysis but may change
+nothing:
+
+| Action | Allowed |
+|--------|---------|
+| See workspace / analysis + IRR | ✅ |
+| Export raw results | ✅ |
+| Change settings | ❌ |
+| Manage team | ❌ |
+| Delete scenario | ❌ |
+
+### Eval. Viewer (Invited, read-only)
 
 | Action | Allowed |
 |--------|---------|
@@ -340,6 +370,14 @@ Accessible via the gear icon (⚙️):
 | Submit ratings | ❌ |
 | See own progress | ✅ |
 | Open workspace | ❌ |
+
+!!! warning "Authorization hardening"
+    - **Raw export** (`GET /api/scenarios/:id/export`) is restricted to
+      **owner / editor / viewer / admin**. Plain assessors **cannot** read every
+      other participant's raw per-user evaluations (rater blinding is preserved).
+    - **Removed / rejected members lose access:** `membership_status=ARCHIVED`
+      (soft-removed) and `invitation_status=REJECTED` no longer count as members
+      (`require_scenario_membership` in `app/auth/access_control.py`).
 
 ---
 

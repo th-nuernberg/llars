@@ -6,11 +6,13 @@
     :disabled="disabled || !fieldKey"
     :tooltip="tooltip || $t('aiAssist.generate')"
     :tooltip-location="tooltipLocation"
-    :prepend-icon="icon"
+    :prepend-icon="iconOnly ? undefined : icon"
     class="l-ai-field-button"
+    :class="{ 'l-ai-field-button--icon-only': iconOnly }"
     @click="handleGenerate"
   >
-    <slot>{{ $t('aiAssist.generateShort') }}</slot>
+    <LIcon v-if="iconOnly" :icon="icon" :size="size === 'small' ? 16 : 20" />
+    <slot v-else>{{ $t('aiAssist.generateShort') }}</slot>
   </LBtn>
 </template>
 
@@ -103,6 +105,13 @@ const props = defineProps({
     default: false
   },
   /**
+   * Show only the icon without text (for use inside input append slots)
+   */
+  iconOnly: {
+    type: Boolean,
+    default: false
+  },
+  /**
    * Icon to show (defaults to sparkles)
    */
   icon: {
@@ -154,6 +163,11 @@ async function handleGenerate() {
 .l-ai-field-button {
   /* Ensure button fits well in input append slots */
   flex-shrink: 0;
+}
+
+.l-ai-field-button--icon-only {
+  min-width: 28px !important;
+  padding: 4px 6px !important;
 }
 
 /* Add subtle glow effect when generating */

@@ -6,7 +6,9 @@
         <v-divider class="my-4"></v-divider>
 
         <h3>{{ $t('contactPage.sections.email.title') }}</h3>
-        <p>{{ $t('contactPage.sections.email.address') }}</p>
+        <p>
+          <a :href="`mailto:${contactEmail}`">{{ contactEmail }}</a>
+        </p>
 
         <h3>{{ $t('contactPage.sections.phone.title') }}</h3>
         <p>{{ $t('contactPage.sections.phone.number') }}</p>
@@ -25,26 +27,49 @@
 
         <h3>{{ $t('contactPage.sections.social.title') }}</h3>
         <p>
-          <a href="https://www.linkedin.com/company/institut-f%C3%BCr-e-beratung/about/" target="_blank">LinkedIn</a> |
-          <a href="https://www.facebook.com/eberatungsinstitut/" target="_blank">Facebook</a> |
-          <a href="https://www.instagram.com/e_beratungsinstitut/" target="_blank">Instagram</a> |
-          <a href="https://www.youtube.com/@institutfure-beratung8798" target="_blank">YouTube</a>
+          <a href="https://www.linkedin.com/company/institut-f%C3%BCr-e-beratung/about/" target="_blank" rel="noopener noreferrer">LinkedIn</a> |
+          <a href="https://www.facebook.com/eberatungsinstitut/" target="_blank" rel="noopener noreferrer">Facebook</a> |
+          <a href="https://www.instagram.com/e_beratungsinstitut/" target="_blank" rel="noopener noreferrer">Instagram</a> |
+          <a href="https://www.youtube.com/@institutfure-beratung8798" target="_blank" rel="noopener noreferrer">YouTube</a>
         </p>
 
         <v-divider class="my-4"></v-divider>
 
         <h3>{{ $t('contactPage.sections.location.title') }}</h3>
-        <div style="width: 100%">
+        <!--
+          Google-Maps-Einbettung nach der DSGVO-konformen "Zwei-Klick-Lösung":
+          Die iframe (und damit der Verbindungsaufbau zu Google inkl.
+          IP-Übertragung/Cookies) wird ERST nach expliziter Zustimmung des
+          Nutzers gerendert. Vorher steht nur ein lokaler Platzhalter — es geht
+          kein Request an maps.google.com raus. Die Zustimmung wird pro Browser
+          gemerkt (localStorage), damit sie nicht bei jedem Besuch neu abgefragt
+          wird.
+        -->
+        <div class="map-wrapper">
           <iframe
+            v-if="mapConsent"
+            :src="mapSrc"
             width="100%"
             height="600"
             frameborder="0"
             scrolling="no"
             marginheight="0"
             marginwidth="0"
-            src="https://maps.google.com/maps?width=100%25&amp;height=600&amp;hl=en&amp;q=Innere%20Cramer-Klett-Stra%C3%9Fe%204-8,%2090403%20N%C3%BCrnberg+(My%20Business%20Name)&amp;t=&amp;z=17&amp;ie=UTF8&amp;iwloc=B&amp;output=embed"
-          >
-          </iframe>
+            :title="$t('contactPage.sections.location.title')"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+
+          <div v-else class="map-consent">
+            <v-icon size="48" color="primary">mdi-map-marker-radius-outline</v-icon>
+            <p class="map-consent-text">{{ $t('contactPage.sections.location.consentText') }}</p>
+            <p class="map-consent-privacy">
+              <router-link to="/datenschutz">{{ $t('contactPage.links.privacy') }}</router-link>
+            </p>
+            <v-btn color="primary" variant="flat" @click="loadMap">
+              {{ $t('contactPage.sections.location.loadMap') }}
+            </v-btn>
+          </div>
         </div>
 
         <v-divider class="my-4"></v-divider>
@@ -59,6 +84,35 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
+// Offizielle LLARS-Kontaktadresse (identisch zu MAIL_REPLY_TO im Backend,
+// app/services/email_service.py). Bewusst als Konstante statt i18n-Text, da
+// es sich um eine feste Adresse handelt, die in allen Sprachen gleich ist.
+const contactEmail = 'llars@e-beratungsinstitut.de'
+
+// Google-Maps-Consent (Zwei-Klick-Lösung, siehe Template-Kommentar).
+const MAP_CONSENT_KEY = 'llars-maps-consent'
+const mapSrc = 'https://maps.google.com/maps?width=100%25&height=600&hl=de&q=Innere%20Cramer-Klett-Stra%C3%9Fe%204-8,%2090403%20N%C3%BCrnberg&t=&z=17&ie=UTF8&iwloc=B&output=embed'
+
+const mapConsent = ref(readMapConsent())
+
+function readMapConsent() {
+  try {
+    return localStorage.getItem(MAP_CONSENT_KEY) === 'true'
+  } catch (_) {
+    return false
+  }
+}
+
+function loadMap() {
+  mapConsent.value = true
+  try {
+    localStorage.setItem(MAP_CONSENT_KEY, 'true')
+  } catch (_) {
+    // Private-Mode / geblockter Storage: Karte lädt trotzdem für diese Session.
+  }
+}
 </script>
 
 <style scoped>
@@ -78,5 +132,36 @@ a {
 }
 a:hover {
   text-decoration: underline;
+}
+
+.map-wrapper {
+  width: 100%;
+}
+
+/* Platzhalter, solange keine Zustimmung vorliegt — visuell an eine Karte
+ * erinnernd, aber ohne jeden externen Request. */
+.map-consent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  min-height: 320px;
+  padding: 32px 24px;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.25);
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.map-consent-text {
+  max-width: 440px;
+  margin: 0;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.map-consent-privacy {
+  margin: 0;
+  font-size: 0.85rem;
 }
 </style>

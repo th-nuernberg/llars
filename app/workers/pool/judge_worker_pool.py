@@ -36,6 +36,8 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
+import flask
+
 # Import from specialized modules
 from .worker_pool_constants import (
     MAX_WORKERS,
@@ -72,6 +74,16 @@ from .worker_pool_statistics import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class _CurrentAppAccessor:
+    """Patch-friendly accessor for Flask current_app."""
+
+    def _get_current_object(self):
+        return flask.current_app._get_current_object()
+
+
+current_app = _CurrentAppAccessor()
 
 
 # =============================================================================
@@ -560,8 +572,6 @@ def trigger_judge_worker_pool(session_id: int, worker_count: int = 1) -> None:
         session_id: ID of the session to process
         worker_count: Number of parallel workers (1-5)
     """
-    from flask import current_app
-
     # Stop existing pool if any
     with _pool_lock:
         if session_id in _pools:

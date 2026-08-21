@@ -39,6 +39,9 @@ export { default as LFloatingWindow } from './LFloatingWindow.vue'
 // Other Common Components
 export { default as KatexFormula } from './KatexFormula.vue'
 export { default as LCardSkeleton } from './LCardSkeleton.vue'
+export { default as LlarsBrand } from './LlarsBrand.vue'
+export { default as LUserOrigin } from './LUserOrigin.vue'
+export { default as LOriginLegend } from './LOriginLegend.vue'
 
 /**
  * Plugin for global registration
@@ -65,6 +68,7 @@ export const LlarsComponents = {
     app.component('KatexFormula', () => import('./KatexFormula.vue'))
     app.component('LCardSkeleton', () => import('./LCardSkeleton.vue'))
     app.component('LFloatingWindow', () => import('./LFloatingWindow.vue'))
+    app.component('LlarsBrand', () => import('./LlarsBrand.vue'))
   }
 }
 

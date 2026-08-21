@@ -44,6 +44,15 @@ from .anonymize_llm_detection import (
     llm_quick_status,
     find_llm_entities,
 )
+from .anonymize_privacy_filter_detection import (
+    privacy_filter_quick_status,
+    find_privacy_filter_ner,
+)
+from .ner_remote import (
+    detect_ner_remote,
+    DETECTOR_FLAIR,
+    DETECTOR_PRIVACY_FILTER,
+)
 from .anonymize_cache import (
     get_cached_ner_result,
     set_cached_ner_result,
@@ -60,6 +69,27 @@ from services.anonymize.pseudonymize_db import PseudonymizeDBHandler
 logger = logging.getLogger(__name__)
 
 
+def _resolve_model_ner(text: str, detector: str) -> list[EntityOccurrence]:
+    """Run the heavy NER model, preferring the warm worker over a local load.
+
+    Tries the worker-container offload first (ner_remote); the 2.2GB Flair model
+    then never loads in the gevent web tier (no ~35s cold load, no per-worker RAM
+    copies). Falls back to loading the model locally if the worker is unavailable
+    or times out, so behaviour is never worse than before. See ner_remote.py and
+    the [[gunicorn-gevent-preload-pitfall]] memory for the rationale.
+    """
+    spans = detect_ner_remote(text, detector)
+    if spans is not None:
+        return [
+            EntityOccurrence(label=s["label"], start=s["start"], end=s["end"], text=s["text"])
+            for s in spans
+        ]
+    # Local fallback (worker down / remote disabled).
+    if detector == DETECTOR_PRIVACY_FILTER:
+        return find_privacy_filter_ner(text)
+    return find_flair_ner(text)
+
+
 class AnonymizeService:
     """Main service class for text anonymization/pseudonymization."""
 
@@ -67,6 +97,7 @@ class AnonymizeService:
     _paths = staticmethod(get_paths)
     llm_quick_status = staticmethod(llm_quick_status)
     _find_llm_entities = staticmethod(find_llm_entities)
+    privacy_filter_quick_status = staticmethod(privacy_filter_quick_status)
 
     @staticmethod
     def quick_status() -> dict[str, Any]:
@@ -97,6 +128,33 @@ class AnonymizeService:
         with open(paths["scaler"], "rb") as f:
             scaler = pickle.load(f)
         return recommender, scaler
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _load_ner_tagger():
+        try:
+            import torch
+            import flair
+            from flair.models import SequenceTagger
+        except Exception as e:  # pragma: no cover
+            raise RuntimeError(
+                "Flair is not installed - install 'flair' in backend requirements."
+            ) from e
+
+        flair.device = torch.device("cpu")
+        paths = AnonymizeService._paths()
+
+        # Prefer local model artifact (offline-friendly), then fall back to HuggingFace.
+        local_model = paths["ner_model"]
+        if local_model.exists():
+            try:
+                logger.info(f"[Anonymize] Loading local NER model: {local_model}")
+                return SequenceTagger.load(str(local_model))
+            except Exception as e:
+                logger.warning(f"[Anonymize] Local NER model load failed, falling back to HuggingFace: {e}")
+
+        logger.info("[Anonymize] Loading NER model from HuggingFace: flair/ner-german-large")
+        return SequenceTagger.load("flair/ner-german-large")
 
     @staticmethod
     def health_check() -> dict[str, Any]:
@@ -178,7 +236,7 @@ class AnonymizeService:
         name_origin = name_origin or os.environ.get("ANONYMIZE_NAME_REGION", "Swiss_DE")
         name_count = int(name_count or os.environ.get("ANONYMIZE_NAME_COUNT", "1000"))
         engine = (engine or "offline").strip().lower()
-        if engine not in {"offline", "llm", "hybrid"}:
+        if engine not in {"offline", "llm", "hybrid", "privacy-filter"}:
             engine = "offline"
 
         cleaned_text = (text or "").replace("'", "")
@@ -246,7 +304,10 @@ class AnonymizeService:
 
             ner_entities: list[EntityOccurrence] = []
             if engine in {"offline", "hybrid"}:
-                ner_entities = find_flair_ner(cleaned_text)
+                ner_entities = _resolve_model_ner(cleaned_text, DETECTOR_FLAIR)
+            elif engine == "privacy-filter":
+                ner_entities = _resolve_model_ner(cleaned_text, DETECTOR_PRIVACY_FILTER)
+            if ner_entities:
                 candidates.extend(ner_entities)
                 candidates.extend(find_plz_from_loc(cleaned_text, ner_entities))
 
@@ -433,6 +494,11 @@ class AnonymizeService:
                 elif label == "STREET":
                     replacement = "▓▓▓straße ▓▓"
                     mode = "auto"
+                elif label == "SECRET":
+                    # Passwords/tokens/secrets (privacy-filter engine): always
+                    # fully masked - must never fall through to "keep original".
+                    replacement = "▓" * 8
+                    mode = "auto"
                 else:
                     replacement = original
                     mode = "auto"
@@ -535,10 +601,11 @@ class AnonymizeService:
         - {"type": "error", "error": "..."}
         """
         group_overrides = group_overrides or {}
+        warnings: list[str] = []
         name_origin = name_origin or os.environ.get("ANONYMIZE_NAME_REGION", "Swiss_DE")
         name_count = int(name_count or os.environ.get("ANONYMIZE_NAME_COUNT", "1000"))
         engine = (engine or "offline").strip().lower()
-        if engine not in {"offline", "llm", "hybrid"}:
+        if engine not in {"offline", "llm", "hybrid", "privacy-filter"}:
             engine = "offline"
 
         yield {"type": "progress", "step": "init", "percent": 5, "message": "Initializing..."}
@@ -611,7 +678,11 @@ class AnonymizeService:
             ner_entities: list[EntityOccurrence] = []
             if engine in {"offline", "hybrid"}:
                 yield {"type": "progress", "step": "ner_detection", "percent": 45, "message": "Running NER model..."}
-                ner_entities = find_flair_ner(cleaned_text)
+                ner_entities = _resolve_model_ner(cleaned_text, DETECTOR_FLAIR)
+            elif engine == "privacy-filter":
+                yield {"type": "progress", "step": "ner_detection", "percent": 45, "message": "Running privacy-filter..."}
+                ner_entities = _resolve_model_ner(cleaned_text, DETECTOR_PRIVACY_FILTER)
+            if ner_entities:
                 candidates.extend(ner_entities)
                 candidates.extend(find_plz_from_loc(cleaned_text, ner_entities))
 
@@ -799,6 +870,11 @@ class AnonymizeService:
                     mode = "auto"
                 elif label == "STREET":
                     replacement = "▓▓▓straße ▓▓"
+                    mode = "auto"
+                elif label == "SECRET":
+                    # Passwords/tokens/secrets (privacy-filter engine): always
+                    # fully masked - must never fall through to "keep original".
+                    replacement = "▓" * 8
                     mode = "auto"
                 else:
                     replacement = original

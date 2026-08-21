@@ -15,7 +15,7 @@
         <!-- Header with Logo -->
         <div class="login-header">
           <img src="@/assets/logo/llars-logo.png" alt="LLARS Logo" class="login-logo" />
-          <h1 class="login-title">{{ $t('appbar.platform') }}</h1>
+          <h1 class="login-title"><LlarsBrand /> {{ $t('appbar.platformSuffix') }}</h1>
           <p class="login-subtitle">{{ $t('auth.welcomeBack') }}</p>
         </div>
 
@@ -120,6 +120,13 @@
           >
             {{ errorMessage }}
           </v-alert>
+
+          <!-- Self-service password reset (shown only when enabled) -->
+          <div v-if="showPasswordReset" class="login-forgot">
+            <router-link to="/forgot-password" class="login-link" data-testid="forgot-password-link">
+              {{ $t('auth.forgotPassword') }}
+            </router-link>
+          </div>
         </div>
 
         <!-- Dev Mode Quick Login -->
@@ -154,11 +161,13 @@ import { useTheme } from 'vuetify';
 import { useI18n } from 'vue-i18n';
 import { useAuth } from '@/composables/useAuth';
 import { useMobile } from '@/composables/useMobile';
+import { usePasswordResetStatus } from '@/composables/usePasswordResetStatus';
 
 const theme = useTheme();
 const isDarkMode = computed(() => theme.global.current.value.dark);
 const { isMobile, isIOS, safeAreaInsets } = useMobile();
 const { t } = useI18n();
+const { passwordResetEnabled: showPasswordReset, fetchPasswordResetStatus } = usePasswordResetStatus();
 
 const username = ref('');
 const password = ref('');
@@ -185,19 +194,47 @@ const devUsers = [
   { username: 'chatbot_manager', password: devPassword, labelKey: 'auth.devUsers.chatbotManager', icon: 'mdi-robot', color: 'info' }
 ];
 
+/**
+ * Validate a post-login `?redirect=` target. Guards against open redirects:
+ * only same-origin absolute paths are allowed — a single leading "/" but NOT
+ * "//host" or "/\host", which browsers resolve as protocol-relative EXTERNAL
+ * URLs. Returns the safe path or null. Used by all three login entry points so
+ * the rule lives in exactly one place.
+ */
+function safeRedirectPath(r) {
+  if (typeof r !== 'string') return null;
+  if (!r.startsWith('/')) return null;
+  if (r.startsWith('//') || r.startsWith('/\\')) return null;
+  return r;
+}
+
 // Check if already authenticated on mount
 onMounted(() => {
   if (auth.isAuthenticated.value) {
-    const redirect = route.query.redirect;
-    if (typeof redirect === 'string' && redirect.startsWith('/')) {
+    const redirect = safeRedirectPath(route.query.redirect);
+    if (redirect) {
       router.push(redirect);
       return;
     }
     router.push('/Home');
+    return;
   }
+  // Fetch the public self-service password-reset toggle so we know
+  // whether to show the "Passwort vergessen?" link.
+  fetchPasswordResetStatus();
 });
 
 async function handleLogin() {
+  // Re-entrancy guard. Pressing Enter in the password field fires BOTH
+  // `@keyup.enter` here and the surrounding v-form's `@submit.prevent`, so a
+  // single Enter used to issue TWO concurrent POST /auth/authentik/login
+  // requests. Each one runs a full Authentik flow, mints its own token pair
+  // and burns the per-IP login rate-limit budget twice; whichever response
+  // lands last wins the sessionStorage write. Harmless-looking but it doubled
+  // the auth load and made the login path racy (visible in the prod access
+  // log as duplicate login POSTs one millisecond apart).
+  if (isLogging.value) return;
+
   // Clear previous error messages
   errorMessage.value = '';
 
@@ -215,12 +252,8 @@ async function handleLogin() {
     const result = await auth.login(username.value, password.value);
 
     if (result.success) {
-      const redirect = route.query.redirect;
-      if (typeof redirect === 'string' && redirect.startsWith('/')) {
-        router.push(redirect);
-      } else {
-        router.push('/Home');
-      }
+      const redirect = safeRedirectPath(route.query.redirect);
+      router.push(redirect || '/Home');
     } else {
       // Login failed, show error
       errorMessage.value = result.error;
@@ -251,12 +284,8 @@ async function quickLogin(user) {
   loadingUser.value = null;
 
   if (result.success) {
-    const redirect = route.query.redirect;
-    if (typeof redirect === 'string' && redirect.startsWith('/')) {
-      router.push(redirect);
-    } else {
-      router.push('/Home');
-    }
+    const redirect = safeRedirectPath(route.query.redirect);
+    router.push(redirect || '/Home');
   } else {
     errorMessage.value = result.error;
   }
@@ -397,6 +426,22 @@ async function quickLogin(user) {
 .login-error {
   margin-top: 12px;
   border-radius: var(--llars-radius-xs);
+}
+
+/* Self-service password-reset link */
+.login-forgot {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.login-link {
+  font-size: 0.85rem;
+  color: rgb(var(--v-theme-primary));
+  text-decoration: none;
+}
+
+.login-link:hover {
+  text-decoration: underline;
 }
 
 /* Dev Login Section */

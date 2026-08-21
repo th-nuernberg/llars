@@ -371,6 +371,34 @@ class LLMModel(db.Model):
             return []
 
     @classmethod
+    def get_all_assigned_colors(cls) -> list[str]:
+        """
+        Return all assigned colors from both llm_models and user_llm_providers.
+
+        Combines global model colors with per-model colors stored in
+        user_llm_providers.config_json.model_colors to ensure distance-aware
+        color assignment considers the full universe of assigned colors.
+        """
+        colors = cls.get_assigned_colors()
+        try:
+            from db.models.user_llm_provider import UserLLMProvider
+            providers = db.session.query(
+                UserLLMProvider.config_json
+            ).filter(UserLLMProvider.is_active.is_(True)).all()
+            for (config_json,) in providers:
+                if not config_json or not isinstance(config_json, dict):
+                    continue
+                model_colors = config_json.get('model_colors', {})
+                if isinstance(model_colors, dict):
+                    for color in model_colors.values():
+                        normalized = _color_key(color)
+                        if normalized:
+                            colors.append(normalized)
+        except Exception:
+            pass
+        return colors
+
+    @classmethod
     def generate_color(
         cls,
         model_id: str,
@@ -477,6 +505,50 @@ class LLMModel(db.Model):
         return cls.query.filter_by(model_id=model_id).first()
 
     @classmethod
+    def get_or_register(cls, model_id: str, **kwargs) -> 'LLMModel':
+        """Get existing model or auto-register a new one.
+
+        Used when features reference a model_id that isn't yet in llm_models.
+        Infers display_name and provider from the model_id string.
+        """
+        if not model_id:
+            return None
+
+        existing = cls.query.filter_by(model_id=model_id).first()
+        if existing:
+            return existing
+
+        # Infer defaults from model_id
+        display_name = model_id
+        provider = 'unknown'
+
+        if model_id.startswith('Global/'):
+            parts = model_id.split('/', 2)
+            if len(parts) >= 3:
+                provider = parts[1].lower()
+                display_name = parts[2]
+            elif len(parts) == 2:
+                display_name = parts[1]
+        elif model_id.startswith('user-provider:'):
+            provider = 'user-provider'
+            parts = model_id.split(':')
+            display_name = parts[-1] if len(parts) > 1 else model_id
+
+        model = cls(
+            model_id=model_id,
+            display_name=kwargs.get('display_name', display_name),
+            provider=kwargs.get('provider', provider),
+            model_type=kwargs.get('model_type', cls.MODEL_TYPE_LLM),
+            color=cls.generate_color(model_id),
+            context_window=kwargs.get('context_window', 0),
+            max_output_tokens=kwargs.get('max_output_tokens', 0),
+            is_active=True,
+        )
+        db.session.add(model)
+        db.session.flush()
+        return model
+
+    @classmethod
     def get_default_model_id(
         cls,
         model_type: Optional[str] = None,
@@ -504,6 +576,31 @@ DEFAULT_LLM_MODELS = [
         'input_cost_per_million': 0.1,
         'output_cost_per_million': 0.3,
         'is_default': True,
+        'is_active': True,
+    },
+    {
+        # NEW dense flagship from the KIZ cluster. Routing is automatic:
+        # Global/Mistral/<X> -> litellm provider, api-model 'mistralai/<X>'
+        # (see LLMClientFactory MANUFACTURER_TO_PROVIDER / MANUFACTURER_API_PREFIX).
+        # Seeded as available but NOT default — the LLARS litellm key is not yet
+        # entitled for it, so making it default would break chat/judge until the
+        # cluster activates it. To promote it to the chat+judge default once the
+        # key is live, set env LLARS_DEFAULT_LLM_MODEL_ID to this model_id and
+        # restart (handled in seed_default_models) — no code change needed.
+        'model_id': 'Global/Mistral/Mistral-Medium-3.5-128B',
+        'display_name': 'Mistral Medium 3.5 (128B Dense)',
+        'provider': 'mistral',
+        'description': 'Dichtes 128B-Flaggschiff von Mistral. Höchste Qualität für Chat und LLM-Bewertung (Judge). Hinweis: erst nutzbar, sobald der LLARS-Key im KIZ-Cluster dafür freigeschaltet ist.',
+        'model_type': LLMModel.MODEL_TYPE_LLM,
+        'supports_vision': False,
+        'supports_reasoning': False,
+        'supports_function_calling': True,
+        'supports_streaming': True,
+        'context_window': 131072,
+        'max_output_tokens': 16384,
+        'input_cost_per_million': 0.4,
+        'output_cost_per_million': 2.0,
+        'is_default': False,
         'is_active': True,
     },
     {
@@ -768,6 +865,30 @@ def seed_default_models():
                     continue
                 if key != 'is_default' or not existing.is_default:
                     setattr(existing, key, value)
+
+    # Explicit default-promotion switch. The normal seed path deliberately never
+    # overrides an existing default (so an admin's manual choice survives
+    # restarts) — which also means a newly-seeded model can NEVER become the
+    # default on an already-seeded DB. This env var is the controlled override:
+    # set LLARS_DEFAULT_LLM_MODEL_ID=<model_id> to promote that (active) model to
+    # the LLM default, demoting the current one. Used to flip the chat+judge
+    # default to Mistral-Medium-3.5-128B once the cluster key is entitled.
+    import os as _os
+    desired_default = (_os.environ.get('LLARS_DEFAULT_LLM_MODEL_ID') or '').strip()
+    if desired_default:
+        target = LLMModel.query.filter_by(
+            model_id=desired_default, model_type=LLMModel.MODEL_TYPE_LLM
+        ).first()
+        if target is None:
+            print(f"  [LLM Models] LLARS_DEFAULT_LLM_MODEL_ID={desired_default!r} not found — skipping promotion")
+        elif not target.is_active:
+            print(f"  [LLM Models] LLARS_DEFAULT_LLM_MODEL_ID={desired_default!r} is inactive — skipping promotion")
+        elif not target.is_default:
+            LLMModel.query.filter_by(
+                model_type=LLMModel.MODEL_TYPE_LLM, is_default=True
+            ).update({'is_default': False}, synchronize_session=False)
+            target.is_default = True
+            print(f"  [LLM Models] Promoted default LLM to {desired_default}")
 
     # Rebalance auto-managed colors (missing/legacy/old hash-seeded) to maximize distance.
     try:

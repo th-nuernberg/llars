@@ -91,9 +91,7 @@ const iconAttrs = computed(() => {
 }
 
 .l-its-hover__file-fold,
-.l-its-hover__markdown-fold,
-.l-its-hover__latex-fold,
-.l-its-hover__latex-doc-fold {
+.l-its-hover__markdown-fold {
   transform-box: fill-box;
   /* Origin at the diagonal crease line (top-left of fold element) */
   transform-origin: 0% 0%;
@@ -106,9 +104,7 @@ const iconAttrs = computed(() => {
 
 /* Crease lines - smooth fade transition */
 .l-its-hover__file-crease,
-.l-its-hover__markdown-crease,
-.l-its-hover__latex-crease,
-.l-its-hover__latex-doc-crease {
+.l-its-hover__markdown-crease {
   transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   /* DEFAULT STATE: Crease line fully visible, thinner stroke */
   opacity: 1;
@@ -116,14 +112,12 @@ const iconAttrs = computed(() => {
 }
 
 /* Document shape swap - folded vs flat */
-.l-its-hover__markdown-file-folded,
-.l-its-hover__latex-file-folded {
+.l-its-hover__markdown-file-folded {
   transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 1;
 }
 
-.l-its-hover__markdown-file-flat,
-.l-its-hover__latex-file-flat {
+.l-its-hover__markdown-file-flat {
   transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
 }
@@ -713,45 +707,6 @@ const iconAttrs = computed(() => {
   animation: llars-cursor-blink 0.8s ease-in-out infinite;
 }
 
-@keyframes llars-latex-write {
-  0%, 100% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  50% {
-    stroke-dashoffset: -4;
-    opacity: 0.7;
-  }
-}
-
-@keyframes llars-sigma-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 0.85;
-  }
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-sigma {
-  animation: llars-sigma-pulse 1.2s ease-in-out infinite;
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-eq {
-  stroke-dasharray: 8;
-  animation: llars-latex-write 1.5s ease-in-out infinite;
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-ai-sparkle {
-  animation: llars-sparkle-pulse 0.6s ease-in-out infinite;
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-ai-sparkle--two {
-  animation-delay: 0.2s;
-}
-
 :is(
   .v-icon:hover,
   .feature-card:hover .v-icon,
@@ -771,17 +726,7 @@ const iconAttrs = computed(() => {
   .theme-toggle-btn:hover .v-icon,
   button:hover .v-icon,
   [role="button"]:hover .v-icon
-) .l-its-hover__markdown-fold,
-:is(
-  .v-icon:hover,
-  .feature-card:hover .v-icon,
-  .category-item:hover .v-icon,
-  .mobile-category-item:hover .v-icon,
-  .theme-option:hover .v-icon,
-  .theme-toggle-btn:hover .v-icon,
-  button:hover .v-icon,
-  [role="button"]:hover .v-icon
-) .l-its-hover__latex-fold {
+) .l-its-hover__markdown-fold {
   /* HOVER STATE: Unfold - rotate around 45° diagonal crease line */
   transform: perspective(200px) rotate3d(1, 1, 0, -180deg);
 }
@@ -789,45 +734,6 @@ const iconAttrs = computed(() => {
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover__file-crease {
   /* HOVER STATE: Crease line fades as paper flattens */
   opacity: 0;
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-crease,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-file-folded,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-fold {
-  /* HOVER STATE: Crease, fold and folded document fade */
-  opacity: 0;
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-file-flat {
-  /* HOVER STATE: Flat document appears */
-  opacity: 1;
-}
-
-:is(
-  .v-icon:hover,
-  .feature-card:hover .v-icon,
-  .category-item:hover .v-icon,
-  .mobile-category-item:hover .v-icon,
-  .theme-option:hover .v-icon,
-  .theme-toggle-btn:hover .v-icon,
-  button:hover .v-icon,
-  [role="button"]:hover .v-icon
-) .l-its-hover--latex-doc .l-its-hover__latex-doc-fold {
-  /* HOVER STATE: Unfold - rotate around 45° diagonal crease line */
-  transform: perspective(200px) rotate3d(1, 1, 0, -180deg);
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-doc .l-its-hover__latex-doc-crease {
-  /* HOVER STATE: Crease line fades as paper flattens */
-  opacity: 0;
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--latex-doc .l-its-hover__latex-doc-formula {
-  transform: scale(1.05);
-}
-
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--latex-doc .l-its-hover__latex-doc-dx {
-  transform: translateX(1px);
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-crease,

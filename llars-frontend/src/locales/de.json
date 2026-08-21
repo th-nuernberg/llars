@@ -29,14 +29,37 @@
     "retry": "Erneut versuchen",
     "dismiss": "Schließen",
     "copy": "Kopieren",
-    "create": "Erstellen"
+    "create": "Erstellen",
+    "download": "Herunterladen",
+    "leave": "Verlassen",
+    "actions": "Aktionen",
+    "shareDialog": {
+      "members": "Geteilt mit",
+      "emptyMembers": "Noch mit niemandem geteilt.",
+      "addUser": "Benutzer hinzufügen",
+      "addButton": "Teilen",
+      "searchPlaceholder": "Benutzer suchen...",
+      "removeMember": "Entfernen"
+    },
+    "gotIt": "Verstanden"
   },
   "auth": {
     "login": "Anmelden",
     "logout": "Abmelden",
     "register": "Registrieren",
+    "signupModes": {
+      "emailButton": "Beitreten",
+      "instantButton": "Los geht's"
+    },
     "registerTitle": "Registrierung",
     "registerSubtitle": "Erstelle deinen Account",
+    "joinStudyTitle": "Studie beitreten",
+    "joinStudyLoading": "Du wirst zur Studie weitergeleitet …",
+    "joinSuccess": {
+      "title": "Sie sind in der Studie eingetragen",
+      "body": "Ihr Konto wurde der Studie „Kann KI Beratung?“ hinzugefügt. Sie können jetzt mit der Bewertung beginnen.",
+      "cta": "Zur Studie"
+    },
     "welcomeBack": "Willkommen zurück",
     "devLabel": "Entwicklung",
     "inviteCode": "Einladungscode",
@@ -47,6 +70,8 @@
     "username": "Benutzername",
     "password": "Passwort",
     "email": "E-Mail",
+    "emailOptional": "E-Mail (optional)",
+    "storeEmailConsent": "Ja, das KI-Zentrum Bayern darf meine E-Mail-Adresse speichern, um mich über künftige Studien zu informieren. (optional, jederzeit widerrufbar)",
     "forgotPassword": "Passwort vergessen?",
     "noAccount": "Noch kein Konto?",
     "hasAccount": "Bereits ein Konto?",
@@ -64,31 +89,182 @@
       "missingCredentials": "Bitte geben Sie Benutzername und Passwort ein.",
       "registrationDisabled": "Die Selbst-Registrierung ist derzeit deaktiviert.",
       "invalidCode": "Ungültiger Code",
-      "registrationFailed": "Registrierung fehlgeschlagen"
+      "registrationFailed": "Registrierung fehlgeschlagen",
+      "consentRequired": "Bitte stimmen Sie zuerst der Datenschutzerklärung und der Studienteilnahme zu (Kontrollkästchen oben).",
+      "formIncomplete": "Bitte füllen Sie alle Pflichtfelder korrekt aus (Benutzername, E-Mail, Passwort).",
+      "joinFailed": "Beitritt zur Studie fehlgeschlagen. Du wirst zur Startseite weitergeleitet.",
+      "termsRequired": "Bitte akzeptieren Sie die Nutzungsbedingungen und die Datenschutzerklärung, um fortzufahren."
+    },
+    "joinInvalid": {
+      "title": "Diese Einladung ist nicht mehr gültig",
+      "body": "Der verwendete Einladungs-Link ist abgelaufen, wurde widerrufen oder existiert nicht. Bitte kontaktieren Sie die Studienleitung für einen neuen Link oder melden Sie sich an, falls Sie bereits ein Konto haben.",
+      "codeLabel": "Verwendeter Code:",
+      "toLogin": "Zur Anmeldung",
+      "contact": "Studienleitung kontaktieren"
     },
     "messages": {
       "registrationSuccess": "Registrierung erfolgreich! Du wirst zur Anmeldung weitergeleitet..."
     },
-    "logoutConfirmation": "Es gibt ungesicherte Änderungen. Möchten Sie wirklich ausloggen?"
+    "passwordReset": {
+      "requestTitle": "Passwort zurücksetzen",
+      "requestSubtitle": "Wir senden dir einen Link zum Zurücksetzen.",
+      "identifierLabel": "Benutzername oder E-Mail",
+      "requestSubmit": "Link anfordern",
+      "requestSent": "Falls ein Konto mit diesen Angaben existiert, wurde eine E-Mail mit Anweisungen zum Zurücksetzen des Passworts gesendet.",
+      "backToLogin": "Zurück zur Anmeldung",
+      "resetTitle": "Neues Passwort festlegen",
+      "resetSubtitle": "Wähle ein neues Passwort für dein Konto.",
+      "resetSubmit": "Passwort zurücksetzen",
+      "resetSuccess": "Dein Passwort wurde erfolgreich zurückgesetzt. Du kannst dich jetzt anmelden.",
+      "resetFailed": "Das Passwort konnte nicht zurückgesetzt werden. Bitte versuche es erneut.",
+      "invalidToken": "Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.",
+      "requestNew": "Neuen Link anfordern"
+    },
+    "logoutConfirmation": "Es gibt ungesicherte Änderungen. Möchten Sie wirklich ausloggen?",
+    "consent": {
+      "title": "Einwilligung zur Studienteilnahme",
+      "intro": "Dieser Einladungs-Link führt zu einer Forschungsstudie. Bitte lesen Sie die folgenden Informationen und bestätigen Sie die Pflicht-Einwilligungen, bevor Sie ein Konto anlegen. Sie können Ihre Einwilligung jederzeit widerrufen.",
+      "linkLabel": "Studien- und Datenschutzinformationen",
+      "mandatoryLabel": "Ich bin mind. 18 Jahre alt und willige in die pseudonymisierte Speicherung sowie die Veröffentlichung aggregierter, anonymisierter Ergebnisse ein (Art. 6 Abs. 1 lit. a + Art. 9 Abs. 2 lit. j DSGVO i.V.m. §27 BDSG). Die {link} habe ich gelesen.",
+      "mandatoryLabelStandalone": "Ich bin mindestens 18 Jahre alt, habe die obigen Studieninformationen gelesen und willige in die pseudonymisierte Speicherung meiner Bewertungsdaten sowie deren Verwendung für die Veröffentlichung aggregierter, anonymisierter Ergebnisse ein (Art. 6 Abs. 1 lit. a + Art. 9 Abs. 2 lit. j DSGVO i.V.m. §27 BDSG). Erforderlich.",
+      "activateLabel": "Ich bin mind. 18 und willige freiwillig in die oben beschriebene Datenverarbeitung zu Forschungszwecken ein. Widerruf jederzeit ohne Nachteile (Art. 7 Abs. 3 DSGVO).",
+      "datasetReleaseLabel": "Optional: Ich willige in die Veröffentlichung eines de-identifizierten Datensatzes auf Zenodo/HuggingFace zur Reproduzierbarkeit ein (DOI ist dauerhaft und nicht rückrufbar).",
+      "followupLabel": "Optional: Ich bin damit einverstanden, einmalig per E-Mail über die zentralen Ergebnisse informiert zu werden.",
+      "decideHeading": "Ihre Einwilligungen",
+      "submitButton": "Einwilligung erteilen und zur Registrierung",
+      "banner": {
+        "requiredTitle": "Studienteilnahme: Einwilligung erforderlich",
+        "requiredBody": "Diese Studie benötigt Ihre informierte Einwilligung gemäß DSGVO. Die Einwilligung erfolgt auf einer eigenen Seite und dauert ca. 2 Minuten.",
+        "requiredCta": "Studieninformationen und Einwilligung",
+        "grantedTitle": "Einwilligung erteilt",
+        "grantedBody": "Sie haben den Studieninformationen am {date} zugestimmt. Sie können diese jederzeit über die Studienseite anpassen.",
+        "grantedCta": "Anpassen",
+        "grantedRevoke": "Widerrufen"
+      },
+      "pill": {
+        "requiredShort": "Studien-Einwilligung erforderlich",
+        "requiredCta": "Jetzt erteilen",
+        "grantedShort": "Einwilligung erteilt {date}"
+      },
+      "inline": {
+        "intro": "Bitte zuerst öffnen:",
+        "fulltextLink": "Studieninformationen & Datenschutz",
+        "mandatoryLabel": "Ich bin mind. 18 und willige freiwillig in die in den Studieninformationen beschriebene Datenverarbeitung zu Forschungszwecken ein. Widerruf jederzeit ohne Nachteile (Art. 7 Abs. 3 DSGVO).",
+        "submit": "Einwilligung speichern"
+      },
+      "classic": {
+        "checkboxLabel": "Ich bin mind. 18 Jahre alt und stimme der Datenschutzerklärung sowie der Teilnahme an dieser Studie zu (pseudonymisierte Speicherung und Veröffentlichung aggregierter, anonymisierter Ergebnisse, Art. 6 Abs. 1 lit. a + Art. 9 Abs. 2 lit. j DSGVO i.V.m. §27 BDSG).",
+        "fulltextLink": "Datenschutzerklärung & Studieninformationen lesen",
+        "submitButton": "Zustimmen und registrieren"
+      },
+      "footer": "Wir speichern die Version dieses Einwilligungstextes und den Zeitpunkt Ihrer Zustimmung zu Nachweiszwecken. Ein späterer Widerruf ist genauso einfach wie die Erteilung der Einwilligung — kontaktieren Sie hierzu die oben genannte verantwortliche Stelle.",
+      "details": {
+        "heading": "Informationen zur Studie und zum Datenschutz",
+        "purpose": {
+          "title": "Zweck und Freiwilligkeit",
+          "body": "Im Forschungsprojekt LLARS des Zentrums für Künstliche Intelligenz (KIZ) der Technischen Hochschule Nürnberg Georg Simon Ohm untersuchen wir, wie gut aktuelle Sprachmodelle die Antworten erfahrener Online-Berater:innen nachahmen können. Ihre Bewertungen (Präferenz-Vergleiche zwischen jeweils zwei anonymisierten Antworten) fließen in wissenschaftliche Publikationen (z.B. EMNLP, ACL) ein und helfen einzuschätzen, wo KI Beratung sinnvoll unterstützen kann. Die Teilnahme ist vollständig freiwillig; aus einer Nichtteilnahme oder einem späteren Widerruf entstehen Ihnen keinerlei Nachteile."
+        },
+        "data": {
+          "title": "Welche Daten wir verarbeiten",
+          "body": "(a) Account-Daten: Benutzername, E-Mail-Adresse, gewählte Sprache, Zeitstempel. (b) Studien-Daten: Ihre Bewertungsentscheidungen, Reihenfolge der Vorlagen, technische Metadaten (Browser-Typ, IP-Adresse — diese wird vor der Speicherung gehasht). (c) Optional und freiwillig: einfache demografische Angaben. Beratungsdaten von Ihnen selbst werden nicht erhoben — alle Vergleichs-Beispiele in der Studie stammen aus forschungs-freigegebenen Korpora. Vor jeder Auswertung wird Ihre Identität pseudonymisiert (Trennung von Identitäts- und Bewertungsdaten gemäß §22 Abs. 2 BDSG)."
+        },
+        "legal": {
+          "title": "Rechtsgrundlage",
+          "body": "Die Verarbeitung Ihrer Daten erfolgt auf Grundlage Ihrer Einwilligung gemäß Art. 6 Abs. 1 lit. a DSGVO. Sofern besondere Kategorien personenbezogener Daten betroffen sind (z.B. bei freiwilligen demografischen Angaben), stützen wir uns zusätzlich auf Art. 9 Abs. 2 lit. a + lit. j DSGVO i.V.m. §27 Abs. 1 BDSG (Forschungsprivileg) sowie Art. 89 Abs. 1 DSGVO. Wir sichern technische und organisatorische Maßnahmen gemäß §22 Abs. 2 BDSG zu (insbesondere Pseudonymisierung und Zugangskontrolle). Diese Forschung folgt dem DFG-Kodex ‚Leitlinien zur Sicherung guter wissenschaftlicher Praxis‘ und den Ethikleitlinien der TH Nürnberg."
+        },
+        "recipients": {
+          "title": "Empfänger und Datenübermittlung",
+          "body": "Aggregierte, anonymisierte Ergebnisse werden ausschließlich in wissenschaftlichen Veröffentlichungen (z.B. EMNLP, ACL) publiziert. Eine zeilenweise Rohdaten-Veröffentlichung auf Zenodo, HuggingFace oder vergleichbaren Repositorien erfolgt NICHT. Empfänger innerhalb der TH Nürnberg sind nur die unmittelbar an der Studie beteiligten Forschenden. Eine Übermittlung in Drittländer findet nicht statt. Eine Weiterverwendung der pseudonymisierten Daten für inhaltlich verwandte Folgestudien derselben Forschungslinie am KIZ (Erwgr. 33 DSGVO) ist von dieser Einwilligung umfasst."
+        },
+        "retention": {
+          "title": "Speicherdauer",
+          "body": "Pseudonymisierte Bewertungsdaten werden gemäß den DFG-Leitlinien sowie §27 Abs. 1 BDSG für bis zu zehn Jahre nach Studien-Ende zu Reproduzierbarkeits- und Archivzwecken gespeichert. Account-Zugangsdaten werden bei Widerruf bzw. spätestens zwölf Monate nach Studien-Ende gelöscht. Bereits in aggregierter, anonymisierter Form veröffentlichte Ergebnisse können nicht zurückgerufen werden — Art. 17 Abs. 3 lit. d DSGVO erlaubt diese Ausnahme für wissenschaftliche Forschung."
+        },
+        "rights": {
+          "title": "Ihre Rechte",
+          "body": "Sie haben jederzeit das Recht auf: (1) Auskunft (Art. 15 DSGVO), (2) Berichtigung (Art. 16), (3) Löschung (Art. 17, mit der oben genannten Ausnahme nach Art. 17 Abs. 3 lit. d), (4) Einschränkung der Verarbeitung (Art. 18), (5) Datenübertragbarkeit (Art. 20), (6) Widerspruch (Art. 21) und (7) Widerruf Ihrer Einwilligung jederzeit ohne Angabe von Gründen mit Wirkung für die Zukunft (Art. 7 Abs. 3). Der Widerruf berührt nicht die Rechtmäßigkeit der bis dahin erfolgten Verarbeitung. Es findet keine automatisierte Entscheidungsfindung einschließlich Profiling im Sinne von Art. 22 DSGVO statt. Beschwerden zur Datenverarbeitung können Sie beim Bayerischen Landesamt für Datenschutzaufsicht einreichen: BayLDA, Promenade 18, 91522 Ansbach, poststelle{'@'}lda.bayern.de."
+        },
+        "contact": {
+          "title": "Verantwortliche Stelle und Kontakt",
+          "body": "Verantwortlich: Technische Hochschule Nürnberg Georg Simon Ohm, Keßlerplatz 12, 90489 Nürnberg, gesetzlich vertreten durch den Präsidenten Prof. Dr. Niels Oberbeck. Forschungsdurchführung: Zentrum für Künstliche Intelligenz (KIZ), Hohfederstraße 40, 90489 Nürnberg. Studienleitung: Philipp Steigerwald, philipp.steigerwald{'@'}th-nuernberg.de (Telefon auf Anfrage). Datenschutzbeauftragte:r der TH Nürnberg: datenschutz{'@'}th-nuernberg.de. Bei Fragen zur Studie oder zur Verarbeitung Ihrer Daten wenden Sie sich bitte zuerst an die Studienleitung."
+        }
+      },
+      "checkbox": {
+        "participation": "Ich bin mindestens 18 Jahre alt und nehme freiwillig an dieser Forschungsstudie teil. (erforderlich)",
+        "dataStorage": "Ich willige in die pseudonymisierte Speicherung und Verarbeitung meiner Bewertungsdaten auf Servern in Deutschland zu den oben genannten Zwecken ein. (erforderlich)",
+        "publication": "Ich willige in die Veröffentlichung aggregierter, anonymisierter Ergebnisse in wissenschaftlichen Beiträgen (z.B. EMNLP 2026) und die Freigabe des de-identifizierten Bewertungsdatensatzes zur Reproduzierbarkeit ein. (erforderlich)",
+        "followup": "Ich bin damit einverstanden, einmalig per E-Mail über die zentralen Ergebnisse der Studie informiert zu werden. (optional)"
+      }
+    },
+    "terms": {
+      "label": "Ich akzeptiere die {terms} und die {privacy}.",
+      "termsLink": "Nutzungsbedingungen",
+      "privacyLink": "Datenschutzerklärung",
+      "researchNote": "LLARS ist eine Forschungsplattform: Ihre eingegebenen sowie im Rahmen von Evaluationen erhobenen Daten werden zu wissenschaftlichen Forschungszwecken verarbeitet (Details in der Datenschutzerklärung)."
+    }
   },
   "appbar": {
     "platform": "LLars Plattform",
+    "platformSuffix": "Plattform",
     "platformShort": "LLars"
   },
   "footer": {
     "copyright": "LLars Plattform",
     "copyrightShort": "LLars",
     "documentation": "Dokumentation",
+    "changelog": "Changelog ansehen",
     "imprint": "Impressum",
     "privacy": "Datenschutz",
-    "contact": "Kontakt"
+    "terms": "Nutzungsbedingungen",
+    "contact": "Kontakt",
+    "legal": "Rechtliches"
   },
   "consent": {
-    "title": "Analytics & Datenschutz",
-    "body": "Wir nutzen Matomo, um die Nutzung der Plattform zu verbessern. Sie können zustimmen oder ablehnen. Details finden Sie in der Datenschutzerklärung.",
+    "title": "Datenschutz-Einstellungen",
+    "body": "Wir verwenden technisch notwendige Cookies für den Betrieb der Plattform. Zusätzlich möchten wir mit Matomo – anonymisiert und selbst gehostet – die Nutzung auswerten, um die Plattform zu verbessern. Diese Analyse erfolgt nur mit Ihrer Zustimmung.",
     "privacy": "Datenschutz",
-    "decline": "Ablehnen",
-    "accept": "Zustimmen"
+    "decline": "Nur notwendige",
+    "accept": "Alle akzeptieren"
+  },
+  "onboarding": {
+    "demographics": {
+      "title": "Willkommen! Ein paar kurze Fragen vorab",
+      "subtitle": "Diese Angaben helfen uns, die Studienergebnisse besser einzuordnen. Sie werden nur einmalig erhoben und vertraulich behandelt.",
+      "optional": "(optional)",
+      "no_answer": "Keine Angabe",
+      "skip": "Alles überspringen",
+      "submit": "Speichern und fortfahren",
+      "thanks": "Vielen Dank für Ihre Angaben!",
+      "errorSave": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+      "progress": "{answered} von {total} beantwortet",
+      "gender": {
+        "label": "Welches Geschlecht haben Sie?",
+        "female": "Weiblich",
+        "male": "Männlich",
+        "non_binary": "Nicht-binär"
+      },
+      "age": {
+        "label": "Wie alt sind Sie?",
+        "under_29": "29 Jahre oder jünger",
+        "30_49": "30 bis 49 Jahre",
+        "50_64": "50 bis 64 Jahre",
+        "65_plus": "65 Jahre oder älter"
+      },
+      "education": {
+        "label": "Was ist Ihr höchster abgeschlossener Bildungs- oder Ausbildungsabschluss?",
+        "phd": "Promotion / PhD",
+        "master": "Master-Abschluss oder gleichwertig",
+        "bachelor": "Bachelor-Abschluss oder gleichwertig",
+        "vocational": "Abgeschlossene berufliche Ausbildung",
+        "abitur": "(Fach-)Abitur",
+        "realschule": "Realschulabschluss (z. B. Realschule, Hauptschule)",
+        "no_formal": "Kein formeller Schulabschluss oder keine Ausbildung"
+      },
+      "profession": {
+        "label": "Berufliche Tätigkeit",
+        "placeholder": "z. B. Onlineberater*in, Studierende*r, Pädagog*in"
+      }
+    }
   },
   "settings": {
     "title": "Profil & Einstellungen",
@@ -117,8 +293,7 @@
     "collabColor": "Kollaborationsfarbe",
     "collabColorHint": "Diese Farbe wird verwendet, um deine Bearbeitungen in Echtzeit-Kollaborationen hervorzuheben.",
     "noColorSelected": "Keine Farbe gewählt",
-    "saveColor": "Farbe speichern",
-    "aiReservedColorHint": "Diese Farbe ist für {name} reserviert."
+    "saveColor": "Farbe speichern"
   },
   "theme": {
     "system": "System",
@@ -191,6 +366,16 @@
       "neutral": "Neutral"
     }
   },
+  "chatbotManagerPage": {
+    "title": "Chatbot Workspace",
+    "subtitle": "Erstellen & Verwalten",
+    "homeLink": "Zur Startseite",
+    "nav": {
+      "chatbots": "Meine Chatbots",
+      "rag": "RAG Dokumente",
+      "crawler": "Web Crawler"
+    }
+  },
   "adminDashboard": {
     "title": "Admin",
     "subtitle": "Dashboard",
@@ -213,7 +398,10 @@
       "rag": "RAG Dokumente",
       "permissions": "Berechtigungen",
       "llmProviders": "LLM Provider",
-      "fieldPrompts": "KI-Feld-Prompts"
+      "researchGroups": "Forschungsgruppen",
+      "fieldPrompts": "KI-Feld-Prompts",
+      "communication": "Kommunikation",
+      "communications": "Mail-Center"
     }
   },
   "aiAssist": {
@@ -637,40 +825,80 @@
     }
   },
   "privacyPolicy": {
-    "title": "Datenschutzerklärung (Stand 05/24)",
-    "sections": {
-      "controller": {
-        "title": "Wer ist verantwortlich für die Datenverarbeitung?",
-        "intro": "Verantwortlich für den Datenschutz auf dieser Website ist:",
-        "contact": "Sigrid Zauter, Geschäftsführung des Instituts für E-Beratung<br>Keßlerplatz 12, 90489 Nürnberg<br>Tel.: 0911-5880-2580<br>Fax: 0911-5880-602580<br>E-Mail: info [at] e-beratungsinstitut . de"
-      },
-      "dataCollection": {
-        "title": "Welche Daten werden erhoben und warum?",
-        "paragraph1": "Wenn Sie unsere Website besuchen, werden automatisch einige Daten erfasst, wie zum Beispiel Ihre IP-Adresse und die besuchten Seiten. Diese Daten helfen uns, die Nutzung der Website zu analysieren und sie kontinuierlich zu verbessern.",
-        "paragraph2": "Zusätzlich nutzen wir die Daten, die Sie freiwillig zur Verfügung stellen, um sie im Rahmen des Forschungsprojekts LLars zu evaluieren. LLars ist eine Software, die zur Bewertung und Analyse von KI-generierten Inhalten entwickelt wurde. Alle erfassten Daten werden ausschließlich für wissenschaftliche Forschungszwecke genutzt und anonymisiert verarbeitet, soweit dies möglich ist."
-      },
-      "recipients": {
-        "title": "Wer bekommt meine Daten?",
-        "paragraph1": "Ihre Daten werden intern für die Forschung und Entwicklung im Rahmen des LLars-Projekts verwendet. Sie werden nicht an Dritte weitergegeben, es sei denn, eine Weitergabe ist gesetzlich erforderlich oder Sie haben uns Ihre ausdrückliche Zustimmung gegeben.",
-        "paragraph2": "Die Server für dieses Projekt werden auf Maschinen der Technischen Hochschule Nürnberg gehostet, und es wurde ein Vertrag über Auftragsverarbeitung abgeschlossen, um die Datenschutzkonformität sicherzustellen."
-      },
-      "protection": {
-        "title": "Wie werden meine Daten geschützt?",
-        "paragraph1": "Wir ergreifen Maßnahmen, um Ihre Daten zu schützen und sicher aufzubewahren. Dazu gehören technische Sicherheitsvorkehrungen wie Verschlüsselung und sichere Passwörter."
-      },
-      "rights": {
-        "title": "Was sind meine Auskunftsrechte?",
-        "paragraph1": "Sie haben das Recht zu erfahren, welche Daten wir über Sie gespeichert haben, und Sie können verlangen, dass diese Daten korrigiert oder gelöscht werden. Kontaktieren Sie uns über die oben genannten Kontaktinformationen, um Ihre Rechte wahrzunehmen."
-      },
-      "changes": {
-        "title": "Änderungen an dieser Datenschutzerklärung",
-        "paragraph1": "Diese Datenschutzerklärung kann gelegentlich aktualisiert werden. Änderungen werden auf unserer Website veröffentlicht."
-      },
-      "thNuremberg": "Zusätzlich gilt die {0}."
-    },
+    "title": "Datenschutzerklärung (Stand 07/2026)",
+    "intro": "Der Schutz Ihrer personenbezogenen Daten ist uns wichtig. Nachfolgend informieren wir Sie gemäß Art. 13 und 14 DSGVO darüber, welche Daten wir bei der Nutzung der LLARS-Plattform verarbeiten, zu welchen Zwecken und auf welcher Rechtsgrundlage.",
     "links": {
       "thNuremberg": "Datenschutzerklärung der TH Nürnberg"
-    }
+    },
+    "sections": {
+      "controller": {
+        "title": "1. Wer ist verantwortlich für die Datenverarbeitung?",
+        "intro": "Verantwortlich im Sinne der DSGVO für die Datenverarbeitung auf dieser Plattform ist:",
+        "contact": "Institut für E-Beratung an der Technischen Hochschule Nürnberg Georg Simon Ohm<br>Sigrid Zauter (Geschäftsführung)<br>Keßlerplatz 12, 90489 Nürnberg<br>Tel.: 0911-5880-2580<br>E-Mail: info [at] e-beratungsinstitut . de",
+        "dpo": "Bei Fragen zum Datenschutz können Sie sich zudem an den Datenschutzbeauftragten der TH Nürnberg wenden (Kontaktdaten siehe Datenschutzerklärung der TH Nürnberg, verlinkt am Ende dieser Seite)."
+      },
+      "dataCollection": {
+        "title": "2. Welche Daten werden erhoben und warum?",
+        "paragraph1": "Beim bloßen Besuch der Website werden zunächst nur diejenigen Daten verarbeitet, die Ihr Browser automatisch übermittelt (siehe Abschnitt Server-Logfiles). Darüber hinaus verarbeiten wir Daten, die Sie aktiv eingeben, sowie – nach Ihrer Einwilligung – Nutzungsdaten zur Reichweitenmessung.",
+        "paragraph2": "LLARS ist eine Forschungsplattform zur Bewertung und Analyse von KI-generierten Inhalten. Mit der Nutzung werden die von Ihnen eingegebenen sowie im Rahmen von Evaluationen erhobenen Daten zu wissenschaftlichen Forschungszwecken verarbeitet und – soweit möglich – pseudonymisiert bzw. anonymisiert. Rechtsgrundlage ist die Wahrnehmung einer im öffentlichen Interesse liegenden (Forschungs-)Aufgabe nach Art. 6 Abs. 1 lit. e DSGVO i. V. m. Art. 4 BayDSG bzw. für besondere Datenkategorien Art. 9 Abs. 2 lit. j DSGVO i. V. m. Art. 25 BayDSG (Forschungsprivileg); bei Studienteilnahmen zusätzlich Ihre Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO."
+      },
+      "serverLogs": {
+        "title": "3. Server-Logfiles",
+        "text": "Beim Aufruf der Website erhebt der Server automatisch Informationen, die Ihr Browser übermittelt (u. a. IP-Adresse, Datum und Uhrzeit des Zugriffs, aufgerufene Seite, verwendeter Browser und Betriebssystem). Diese Daten dienen dem technischen Betrieb, der Sicherheit und der Stabilität der Plattform und werden nach kurzer Zeit gelöscht oder anonymisiert.",
+        "legalBasis": "Rechtsgrundlage: Art. 6 Abs. 1 lit. e DSGVO i. V. m. Art. 4 BayDSG (Wahrnehmung einer im öffentlichen Interesse liegenden Aufgabe) sowie unser berechtigtes Interesse an einem sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO)."
+      },
+      "cookies": {
+        "title": "4. Cookies und lokale Speicherung",
+        "text": "Wir verwenden technisch notwendige Cookies und lokalen Speicher (localStorage), die für den Betrieb der Plattform erforderlich sind – etwa zur Verwaltung Ihrer Anmelde-Sitzung, für Spracheinstellungen und zum Speichern Ihrer Zustimmungs-Entscheidungen. Diese notwendigen Cookies setzen wir ohne gesonderte Einwilligung auf Grundlage von § 25 Abs. 2 TDDDG.",
+        "optional": "Nicht notwendige Cookies bzw. Verarbeitungen (z. B. Reichweitenmessung, Kartendienst) setzen wir ausschließlich nach Ihrer Einwilligung ein, die Sie über den Cookie-Hinweis erteilen und jederzeit widerrufen können."
+      },
+      "analytics": {
+        "title": "5. Reichweitenmessung mit Matomo",
+        "text": "Zur statistischen Auswertung der Nutzung setzen wir die Open-Source-Software Matomo ein, die wir selbst auf Servern der TH Nürnberg betreiben – es werden keine Daten an Dritte übertragen. Matomo wird standardmäßig cookiefrei und mit gekürzter IP-Adresse betrieben.",
+        "consent": "Die Reichweitenmessung erfolgt erst, nachdem Sie über den Cookie-Hinweis eingewilligt haben. Ohne Ihre Zustimmung findet keine Analyse statt. Ihre Entscheidung wird lokal in Ihrem Browser gespeichert; Sie können sie jederzeit widerrufen, indem Sie den lokalen Speicher Ihres Browsers leeren.",
+        "legalBasis": "Rechtsgrundlage: Ihre Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO sowie § 25 Abs. 1 TDDDG."
+      },
+      "maps": {
+        "title": "6. Kartendarstellung (Google Maps)",
+        "text": "Auf der Kontaktseite binden wir eine Karte des Dienstes Google Maps ein (Anbieter: Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland). Die Karte wird erst geladen, nachdem Sie dem Laden aktiv zugestimmt haben (Zwei-Klick-Lösung). Vorher wird keine Verbindung zu Google aufgebaut.",
+        "consent": "Mit dem Laden der Karte werden Daten – insbesondere Ihre IP-Adresse – an Google übertragen und ggf. in Drittländer (USA) übermittelt. Grundlage der Übermittlung sind die Standardvertragsklauseln der EU-Kommission. Ihre Zustimmung wird lokal in Ihrem Browser gespeichert und ist jederzeit widerrufbar.",
+        "legalBasis": "Rechtsgrundlage: Ihre Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO sowie § 25 Abs. 1 TDDDG. Weitere Informationen: Datenschutzerklärung von Google."
+      },
+      "account": {
+        "title": "7. Konto, Anmeldung und Authentifizierung",
+        "text": "Für die Nutzung geschützter Funktionen ist ein Nutzerkonto erforderlich, das nur über einen Einladungscode angelegt werden kann. Die Anmeldung und Verwaltung von Konten erfolgt über die selbst betriebene Open-Source-Lösung Authentik. Verarbeitet werden dabei Ihr Benutzername, ein verschlüsseltes Passwort, ggf. ein Anzeigename und – sofern angegeben – Ihre E-Mail-Adresse sowie Sitzungs- und Protokolldaten zur Absicherung des Logins.",
+        "legalBasis": "Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Durchführung des Nutzungsverhältnisses) bzw. Art. 6 Abs. 1 lit. e DSGVO i. V. m. Art. 4 BayDSG."
+      },
+      "email": {
+        "title": "8. E-Mail-Versand",
+        "text": "Zum Versand von Einladungs-, Benachrichtigungs- und Systemnachrichten setzen wir einen E-Mail-Versanddienstleister als Auftragsverarbeiter ein. Dabei werden die für den Versand erforderlichen Daten (E-Mail-Adresse, Inhalt der Nachricht) verarbeitet. Mit dem Dienstleister besteht ein Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO.",
+        "legalBasis": "Rechtsgrundlage: Art. 6 Abs. 1 lit. b bzw. lit. e DSGVO."
+      },
+      "recipients": {
+        "title": "9. Wer bekommt meine Daten?",
+        "paragraph1": "Ihre Daten werden intern für Forschung und Entwicklung im Rahmen des LLARS-Projekts verwendet. Eine Weitergabe an Dritte erfolgt nur, wenn dies gesetzlich erforderlich ist, Sie ausdrücklich eingewilligt haben oder dies zur Nutzung der oben genannten Dienste (Kartendienst, E-Mail-Versand) technisch notwendig ist.",
+        "paragraph2": "Die Server dieses Projekts werden auf Maschinen der Technischen Hochschule Nürnberg gehostet. Mit beteiligten Auftragsverarbeitern wurden Verträge zur Auftragsverarbeitung nach Art. 28 DSGVO geschlossen, um die Datenschutzkonformität sicherzustellen."
+      },
+      "retention": {
+        "title": "10. Wie lange werden meine Daten gespeichert?",
+        "text": "Wir speichern personenbezogene Daten nur so lange, wie es für die genannten Zwecke erforderlich ist. Server-Logfiles werden kurzfristig gelöscht oder anonymisiert. Kontodaten werden für die Dauer des Bestehens Ihres Kontos gespeichert und nach dessen Löschung entfernt, soweit keine gesetzlichen Aufbewahrungspflichten entgegenstehen. Forschungsdaten werden entsprechend dem jeweiligen Studien- und Einwilligungskontext verarbeitet und anschließend anonymisiert oder gelöscht."
+      },
+      "protection": {
+        "title": "11. Wie werden meine Daten geschützt?",
+        "paragraph1": "Wir ergreifen technische und organisatorische Maßnahmen, um Ihre Daten zu schützen. Dazu gehören insbesondere die Verschlüsselung der Übertragung (TLS), eine rollenbasierte Zugriffskontrolle sowie die verschlüsselte Speicherung von Zugangsdaten."
+      },
+      "rights": {
+        "title": "12. Welche Rechte habe ich?",
+        "paragraph1": "Sie haben das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) sowie das Recht, einer Verarbeitung zu widersprechen (Art. 21 DSGVO). Eine erteilte Einwilligung können Sie jederzeit mit Wirkung für die Zukunft widerrufen.",
+        "complaint": "Unabhängig davon haben Sie das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren (Art. 77 DSGVO). Zuständig ist der Bayerische Landesbeauftragte für den Datenschutz (BayLfD), Wagmüllerstraße 18, 80538 München.",
+        "contact": "Zur Wahrnehmung Ihrer Rechte wenden Sie sich bitte an die oben genannten Kontaktdaten."
+      },
+      "changes": {
+        "title": "13. Änderungen dieser Datenschutzerklärung",
+        "paragraph1": "Diese Datenschutzerklärung kann gelegentlich aktualisiert werden, um sie an geänderte Rechtslage oder Funktionen anzupassen. Die jeweils aktuelle Fassung ist auf dieser Seite abrufbar."
+      }
+    },
+    "thNuremberg": "Ergänzend gilt die {0}."
   },
   "historyGeneration": {
     "detail": {
@@ -775,7 +1003,7 @@
     "sections": {
       "email": {
         "title": "E-Mail",
-        "address": "E-Mail: info [at] e-beratungsinstitut . de"
+        "address": "llars@e-beratungsinstitut.de"
       },
       "phone": {
         "title": "Telefon",
@@ -795,7 +1023,9 @@
         "title": "Soziale Medien"
       },
       "location": {
-        "title": "Standort"
+        "title": "Standort",
+        "consentText": "Beim Laden der Karte werden Daten (u. a. Ihre IP-Adresse) an Google Maps übertragen. Die Karte wird erst nach Ihrer Zustimmung geladen.",
+        "loadMap": "Karte laden"
       },
       "privacy": {
         "title": "Datenschutz Hinweis",
@@ -819,6 +1049,13 @@
         "bad": "Schlecht",
         "neutral": "Neutral"
       }
+    },
+    "featureTypes": {
+      "summary": "Zusammenfassung",
+      "analysis": "Analyse",
+      "evaluation": "Bewertung",
+      "recommendation": "Empfehlung",
+      "candidate": "Antwort"
     }
   },
   "rater": {
@@ -888,6 +1125,8 @@
       "confidenceLabel": "Sicherheit (optional)",
       "notesLabel": "Notizen (optional)",
       "notesPlaceholder": "Ihre Beobachtungen oder Begründung...",
+      "detailsLabel": "Sicherheit & Notizen",
+      "readFullscreen": "Vollbild lesen",
       "noContent": "Kein Inhalt vorhanden",
       "emptyTitle": "Kein Thread ausgewählt",
       "errors": {
@@ -2543,14 +2782,6 @@
         "title": "Markdown Collab",
         "description": "Kollaboratives Arbeiten an Markdown-Dateien mit Live-Preview"
       },
-      "latexCollab": {
-        "title": "LaTeX Collab",
-        "description": "Overleaf-ähnlicher LaTeX-Editor mit PDF-Preview"
-      },
-      "latexCollabAi": {
-        "title": "LaTeX Collab KI",
-        "description": "LaTeX-Editor mit KI-Schreibassistent (Ghost Text, KI-Befehle, RAG Citations)"
-      },
       "chatbotArena": {
         "title": "Chatbot Arena",
         "description": "Paarweise Vergleiche von Chatbot-Antworten im Arena-Modus"
@@ -2567,17 +2798,33 @@
         "title": "OnCoCo Analyse",
         "description": "Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)"
       },
+      "dbAgent": {
+        "title": "DB Preisagent",
+        "description": "Deutsche Bahn Preise überwachen und günstige Verbindungen finden"
+      },
       "adminDashboard": {
         "title": "Admin Dashboard",
         "description": "System-Übersicht und Administration"
       },
+      "landingPagePreview": {
+        "title": "Landing Page Vorschau",
+        "description": "Öffentliche Startseite ansehen ohne Logout"
+      },
       "chatbotAdmin": {
-        "title": "Chatbot Verwaltung",
+        "title": "Chatbot Workspace",
         "description": "Chatbots erstellen, konfigurieren und teilen"
       },
       "ragAdmin": {
-        "title": "RAG Verwaltung",
-        "description": "Dokumente für die RAG-Pipeline verwalten und hochladen"
+        "title": "RAG Dokumente",
+        "description": "Dokumente und Datenquellen verwalten und hochladen"
+      },
+      "pipeline": {
+        "title": "Pipeline",
+        "description": "Automatisierte LLM-Evaluation: Prompt-Optimierung, Generierung, Bewertung im Loop"
+      },
+      "conferenceManager": {
+        "title": "Konferenz-Manager",
+        "description": "Konferenzen, Deadlines und Paper-Einreichungen verfolgen"
       },
       "userSettings": {
         "title": "Einstellungen",
@@ -2591,7 +2838,9 @@
       "test": "Test"
     },
     "videoPage": {
-      "fallback": "Ihr Browser unterstuetzt das Video-Tag nicht."
+      "fallback": "Ihr Browser unterstuetzt das Video-Tag nicht.",
+      "backupLabel": "Backup:",
+      "backupLink": "auf YouTube ansehen"
     }
   },
   "scenarioManager": {
@@ -2631,6 +2880,26 @@
       "invitedBy": "Eingeladen von {name}",
       "invitedAt": "Eingeladen am {date}"
     },
+    "origin": {
+      "existing": "Bestandsnutzer",
+      "viaLink": "Über Link",
+      "tooltip": {
+        "referral": "Über Einladungslink registriert",
+        "existing": "War bereits ein LLARS-Konto",
+        "campaign": "Kampagne: {campaign}",
+        "link": "Link: {slug}",
+        "registeredAt": "Registriert am {date}"
+      },
+      "join": {
+        "owner": "Ersteller des Szenarios",
+        "autoenroll": "Automatisch über den Link zugeordnet",
+        "invited": "Eingeladen von {by}",
+        "self": "Selbst beigetreten"
+      },
+      "legend": {
+        "title": "Herkunft"
+      }
+    },
     "status": {
       "draft": "Entwurf",
       "dataCollection": "Daten sammeln",
@@ -2653,7 +2922,8 @@
     },
     "delete": {
       "title": "Szenario löschen",
-      "confirm": "Möchten Sie das Szenario \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      "confirm": "Möchten Sie das Szenario \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "success": "Szenario erfolgreich gelöscht"
     },
     "duplicate": {
       "title": "Szenario duplizieren",
@@ -2688,6 +2958,8 @@
       "evaluation": "Evaluierung",
       "results": "Ergebnisse",
       "team": "Team",
+      "assessors": "Gutachter",
+      "settings": "Einstellungen",
       "myScenarios": "Meine Szenarien",
       "invitations": "Einladungen",
       "dataFormat": "Datenformat"
@@ -2756,7 +3028,16 @@
         "idealDataRankingHint": "source_text = Kontext (rechts), items = zu rankende Items (links)",
         "idealDataHint": "Feldnamen wie text/message/label/score helfen beim automatischen Mapping.",
         "dropFiles": "Dateien hierher ziehen oder klicken",
-        "supportedFormats": "Unterstützte Formate: JSON, CSV, XLSX",
+        "supportedFormats": "Akzeptiert: LLARS-Native JSON ($schema=llars-import-v1) oder LLARS-Generation-Export (JSON/CSV)",
+        "analyzing": "Analysiere Daten...",
+        "analyzedSummary": "{count} Items erkannt — Typ: {type}",
+        "analysisPending": "Analyse startet…",
+        "formatErrors": {
+          "unsupportedExtension": "{name}: Nicht unterstützt — nur .json und .csv erlaubt.",
+          "unsupportedJson": "{name}: Kein gültiges LLARS-JSON. Erwartet: $schema=llars-import-v1 oder LLARS-Generation-Export.",
+          "unsupportedCsv": "{name}: Kein LLARS-Generation-Export-CSV (Marker '# _llars_generation_export' fehlt).",
+          "parseError": "{name}: Datei konnte nicht gelesen werden."
+        },
         "multiFileHint": "Mehrere Dateien mit Cmd+A oder Strg+A auswählen",
         "filesSelected": "Dateien ausgewählt",
         "addMore": "Weitere hinzufügen",
@@ -2765,7 +3046,6 @@
         "filesProcessed": "Dateien verarbeitet",
         "fileBreakdown": "Datei-Details",
         "aiAnalysis": "KI-Analyse",
-        "analyzing": "Analysiere Daten...",
         "itemsDetected": "Datensätze erkannt",
         "fieldsDetected": "Felder erkannt",
         "suggestedType": "Empfohlener Typ",
@@ -2796,10 +3076,21 @@
         "basedOn": "Basiert auf",
         "basicInfo": "Grunddaten",
         "name": "Szenario-Name",
-        "descriptionField": "Beschreibung",
+        "descriptionField": "Szenariobeschreibung",
         "descriptionHint": "Optional: Beschreiben Sie den Zweck dieses Szenarios",
+        "aiGenerationPromptField": "KI-Generierungs-Prompt",
+        "aiGenerationPromptHint": "Optional: Beschreiben Sie kurz, welche Perspektive oder Schwerpunkte die KI bei Aufgabenbeschreibung und Kriterien berücksichtigen soll",
+        "taskDescriptionField": "Aufgabenbeschreibung",
+        "taskDescriptionHint": "Optional: Beschreiben Sie die konkrete Bewertungsaufgabe für Evaluatoren",
+        "taskDescriptionTooltipTitle": "Was gehört in die Aufgabenbeschreibung?",
+        "taskDescriptionTooltipMarkdown": "Beschreibt den **Bewertungsauftrag** für Evaluatoren.\n\nBeispiele:\n- Welchen Aspekt sollen Evaluatoren priorisieren?\n- Welche Zielgruppe oder welcher Kontext liegt vor?\n- Wie soll bei Unsicherheit entschieden werden?",
+        "evaluationCriteriaField": "Evaluationskriterien",
+        "evaluationCriteriaHint": "Optional: Kriterien als Stichworte erfassen (Enter oder Komma)",
+        "evaluationCriteriaTooltipTitle": "Wie sollen Evaluationskriterien genutzt werden?",
+        "evaluationCriteriaTooltipMarkdown": "Kriterien definieren, **woran** bewertet wird.\n\nTipps:\n- Ein Kriterium pro Stichwort (z. B. Empathie, Klarheit, Fachlichkeit)\n- Möglichst präzise und beobachtbar formulieren\n- Kriterien sollten zur Aufgabenbeschreibung passen",
         "startDate": "Startdatum",
-        "endDate": "Enddatum"
+        "endDate": "Enddatum",
+        "rankingDisabledHint": "Ranking benötigt mindestens 2 Varianten pro Eingabe (mehrere Modelle oder Prompts)"
       },
       "step3": {
         "title": "Konfiguration",
@@ -2830,7 +3121,8 @@
         "aiAutoStart": "KI startet automatisch nach Erstellung",
         "systemModels": "System-Modelle",
         "myProviders": "Meine Provider",
-        "addProviderHint": "Eigenen API-Schlüssel in den Einstellungen hinzufügen"
+        "addProviderHint": "Eigenen API-Schlüssel in den Einstellungen hinzufügen",
+        "ownerAsAssessor": "Ich möchte auch als Gutachter teilnehmen"
       },
       "step5": {
         "title": "Zusammenfassung",
@@ -2842,7 +3134,9 @@
         "team": "Team",
         "type": "Typ",
         "name": "Name",
-        "descriptionLabel": "Beschreibung",
+        "descriptionLabel": "Szenariobeschreibung",
+        "taskDescriptionLabel": "Aufgabenbeschreibung",
+        "evaluationCriteriaLabel": "Evaluationskriterien",
         "preset": "Vorlage",
         "file": "Datei",
         "files": "Dateien",
@@ -2863,7 +3157,10 @@
       "mailRating": "E-Mail Bewertung",
       "comparison": "Vergleich",
       "authenticity": "Authentizität",
-      "labeling": "Labeling"
+      "labeling": "Labeling",
+      "communicationComparison": "Kommunikations-Vergleich",
+      "conversationLabeling": "Konversationslabeling",
+      "unknown": "Unbekannt"
     },
     "typeDescriptions": {
       "ranking": "Items nach Qualität sortieren oder in Kategorien einteilen",
@@ -2950,16 +3247,67 @@
         "constraints": "Einschränkungen",
         "minLabels": "Mindestanzahl Labels",
         "maxLabels": "Maximalanzahl Labels",
-        "unlimited": "Unbegrenzt"
+        "unlimited": "Unbegrenzt",
+        "copilot": {
+          "title": "Co-Pilot (LLM-Vorschläge)",
+          "enable": "Co-Pilot aktivieren",
+          "description": "Ein LLM generiert vorab pro Item einen Label-Vorschlag mit Begründung und Textbeleg. Vorschläge werden klar gekennzeichnet und nie vorausgewählt — die Entscheidung bleibt beim Menschen.",
+          "model": "Co-Pilot-Modell",
+          "topK": "Anzahl Vorschläge",
+          "topKOptions": {
+            "one": "Top-1 (nur bester Vorschlag)",
+            "two": "Top-2 (gerankt: primär + sekundär)"
+          },
+          "prompt": "System-/Task-Prompt",
+          "promptPlaceholder": "Eigenen Prompt schreiben — Platzhalter über die Chips einfügen",
+          "promptHint": "Die Platzhalter werden beim Generieren durch Item-Text, Kontext, Labelliste und Codebook ersetzt. Eine Änderung des Prompts erzeugt eine neue Prompt-Version; die Zuordnung Item zu Prompt-Version bleibt erhalten.",
+          "codebook": "Codebook / Kodierregeln (optional)",
+          "codebookPlaceholder": "Entscheidungsregeln, Ankerbeispiele, Abgrenzungen schwieriger Fälle …",
+          "hiddenControl": "Verdecktes Kontrollsubset",
+          "hiddenControlHint": "Anteil der Item-Bewerter-Paare, bei denen der Vorschlag verdeckt ausgeblendet wird (Anchoring-Kontrolle für die Auswertung). Die Zuweisung ist randomisiert, reproduzierbar und für Bewerter:innen nicht erkennbar."
+        },
+        "parts": {
+          "title": "Teile / Phasen",
+          "enable": "Szenario in Teile gliedern",
+          "description": "Optional: Items in geordnete Teile aufteilen (z. B. Kalibrierungsphasen). Gesperrte Teile sind für Bewerter:innen unsichtbar, bis sie freigeschaltet werden — die Teilung selbst ist für sie nie erkennbar.",
+          "partName": "Teil {n}",
+          "partSize": "Anzahl Items",
+          "rest": "Rest",
+          "order": "Reihenfolge",
+          "orderSequential": "Sequenziell (für alle identisch)",
+          "orderRandom": "Zufällig (deterministisch pro Person)",
+          "copilotSwitch": "Co-Pilot in diesem Teil",
+          "startLocked": "Gesperrt starten",
+          "addPart": "Teil hinzufügen",
+          "itemsInfo": "{total} Items hochgeladen — {assigned} explizit zugeordnet, Rest: {rest}",
+          "sizeMissing": "Jeder Teil außer dem letzten braucht eine Größe von mindestens 1.",
+          "sizeExceeds": "Die Summe der Teilgrößen muss kleiner als {total} sein — der letzte Teil erhält den Rest.",
+          "settingsTooltip": "Teile werden Bewerter:innen in dieser Reihenfolge ausgeliefert. Freischalten ist das Studien-Gate zwischen Phasen — für Bewerter:innen sieht es aus, als wären neue Items hinzugekommen.",
+          "items": "Items",
+          "locked": "Gesperrt",
+          "open": "Offen",
+          "lock": "Sperren",
+          "unlock": "Freischalten",
+          "updated": "Teil aktualisiert",
+          "manageInSettings": "Sperren/Freischalten und Co-Pilot pro Teil verwaltest du im Einstellungen-Tab."
+        }
       },
       "comparison": {
         "comparisonType": "Vergleichs-Typ",
+        "testInstruction": "Testanweisung",
+        "testInstructionPlaceholder": "z.B. Welche Option ist inhaltlich klarer und hilfreicher?",
         "typeOptions": {
           "pairwise": "Paarweiser Vergleich",
           "tournament": "Turnier-Format"
         },
         "allowTie": "Unentschieden erlauben",
         "showConfidence": "Konfidenz abfragen",
+        "gamificationEnabled": "Reward-System aktivieren",
+        "gamificationThresholds": "Reward-Schwellen",
+        "gamificationFirstMilestone": "Erste Belohnung nach (Items)",
+        "gamificationRecurringMilestone": "Danach alle (Items)",
+        "progressiveReveal": "Karten schrittweise freischalten",
+        "progressiveRevealHint": "Bewerter:innen sehen anfangs nur die ersten X Karten. Nach jedem Reward werden die nächsten freigeschaltet.",
         "itemsPerComparison": "Items pro Vergleich",
         "confidenceScale": "Konfidenz-Skala",
         "confidenceMin": "Minimum",
@@ -3005,6 +3353,8 @@
       "details": "Details",
       "type": "Typ",
       "description": "Beschreibung",
+      "taskDescription": "Aufgabenbeschreibung",
+      "evaluationCriteria": "Evaluationskriterien",
       "created": "Erstellt am",
       "period": "Zeitraum",
       "distribution": "Verteilung",
@@ -3016,6 +3366,7 @@
       "pending": "Ausstehend",
       "accuracy": "Genauigkeit",
       "noEvaluators": "Noch keine Evaluatoren",
+      "failed": "Fehlgeschlagen",
       "threads": "Threads",
       "users": "Nutzer",
       "agreementMetrics": "Agreement-Metriken",
@@ -3136,6 +3487,11 @@
         "human": "Mensch",
         "llm": "Maschine"
       },
+      "copilotFilter": {
+        "all": "Alle Labels",
+        "with": "Mit Co-Pilot",
+        "without": "Ohne Co-Pilot"
+      },
       "totalProgress": "Gesamtfortschritt",
       "evaluators": "Evaluatoren",
       "humanEvaluators": "Menschliche Evaluatoren",
@@ -3145,6 +3501,31 @@
     "results": {
       "title": "Ergebnisse",
       "export": "Exportieren",
+      "voteMatrix": {
+        "title": "Einzelstimmen",
+        "description": "Wer (welcher Evaluator) hat pro Vergleich wie abgestimmt (A / B / Unentschieden).",
+        "item": "Vergleich",
+        "noData": "Noch keine Stimmen vorhanden.",
+        "tie": "Unent.",
+        "sourceLegend": "Quelle",
+        "human": "Mensch",
+        "voters": "Voter",
+        "voterExclude": "{name} ausblenden",
+        "voterInclude": "{name} wieder einblenden",
+        "votersExcluded": "{n} ausgeblendet"
+      },
+      "authorRanking": {
+        "title": "Autoren-Auswertung",
+        "description": "Wie häufig wurde welcher Autor (Mensch vs. KI) gewählt — Siegquote mit 95%-Konfidenzintervall, Bradley–Terry-Stärke und paarweise Siegquoten.",
+        "system": "System",
+        "winRate": "Sieg % [95% KI]",
+        "bt": "BT",
+        "rank": "Rang",
+        "reference": "Referenz",
+        "pairing": "Paarung",
+        "pairWinRate": "Siegquote (%)",
+        "selfAgreement": "Bewerter AB/BA-Selbstübereinstimmung"
+      },
       "totalEvaluations": "Gesamt-Evaluierungen",
       "totalVotes": "Gesamte Stimmen",
       "humanEvaluators": "Menschliche Evaluatoren",
@@ -3180,6 +3561,22 @@
       "topBucketHitRatio": "Top-Bucket-Treffer ({bucket})",
       "assignments": "Zuordnungen",
       "noProvenanceData": "Noch keine Provenance-Daten verfügbar",
+      "conversationProvenance": "Gesprächspartner-Provenance",
+      "conversationProvenanceDescription": "Analysiert, welche Gesprächspartner-Kombinationen die höchsten Bewertungen erzielen. Berater (erster Wert) und Klient (zweiter Wert) zeigen, ob Nachrichten von Menschen oder KI-Modellen verfasst wurden. Format: Berater × Klient.",
+      "bestCounselorSource": "Beste Berater-Quelle",
+      "bestClientSource": "Beste Klient-Quelle",
+      "bestCounselorClientPair": "Bestes Berater × Klient-Paar",
+      "counselorSourceRanking": "Berater-Quellen-Ranking",
+      "clientSourceRanking": "Klient-Quellen-Ranking",
+      "counselorClientRanking": "Berater × Klient-Ranking",
+      "authenticityProvenance": "Authentizitäts-Provenance-Analyse",
+      "authenticityProvenanceDescription": "Analysiert, welche LLM-Generierungsquellen Bewerter am besten täuschen. Zeigt die Täuschungsrate (Prozentsatz der Bewertungen, die gefälschten Inhalt fälschlicherweise als echt klassifiziert haben) pro Quelle und die Falsch-Positiv-Rate für menschlich geschriebene Inhalte.",
+      "bestFoolingLLM": "Überzeugendste KI-Quelle",
+      "humanFalsePositiveRate": "Falsch-Positiv-Rate (Mensch)",
+      "humanFalsePositiveRateDescription": "Echter Inhalt fälschlicherweise als Fälschung markiert",
+      "foolRate": "Täuschungsrate",
+      "sourceRanking": "Quellen-Ranking",
+      "votes": "Stimmen",
       "ratingProvenanceAnalysis": "Rating-Provenance-Analyse",
       "ratingProvenanceDescription": "Zeigt, welche Generierungs-LLMs und Prompts mit höheren normalisierten Rating-Ergebnissen verbunden sind.",
       "ratingProvenanceMetricExplanation": "Primärmetrik: durchschnittlicher normalisierter Score (0-100). Sekundärmetrik: Anteil hoher Scores (>= {threshold}%).",
@@ -3266,21 +3663,25 @@
         "byEvaluator": "Nach Evaluator",
         "noData": "Nicht genügend Daten für Konfusionsmatrix",
         "selectEvaluator": "Wählen Sie einen Evaluator um dessen Konfusionsmatrix anzuzeigen"
-      }
+      },
+      "kappaMatrix": "Cohen's-κ-Matrix (paarweise)"
     },
     "team": {
-      "title": "Team",
+      "title": "Gutachter",
       "invite": "Einladen",
-      "evaluators": "Evaluatoren",
+      "evaluators": "Gutachter",
       "llmModels": "LLM Modelle",
-      "humanEvaluators": "Human Evaluators",
-      "llmEvaluators": "LLM Evaluators",
+      "humanEvaluators": "Menschliche Gutachter",
+      "llmEvaluators": "LLM Evaluatoren",
       "addLLM": "LLM hinzufügen",
-      "noEvaluators": "Noch keine Evaluatoren eingeladen",
+      "noEvaluators": "Noch keine Gutachter eingeladen",
+      "humanViewers": "Menschliche Betrachter",
+      "viewers": "Betrachter",
+      "noViewers": "Noch keine Betrachter eingeladen",
       "noLLM": "Noch keine LLM-Modelle konfiguriert",
       "changeRole": "Rolle ändern",
       "remove": "Entfernen",
-      "inviteTitle": "Nutzer einladen",
+      "inviteTitle": "Gutachter einladen",
       "selectUsers": "Nutzer auswählen",
       "searchUsers": "Benutzer suchen...",
       "role": "Rolle",
@@ -3293,37 +3694,97 @@
       "removeConfirm": "Möchten Sie {name} wirklich aus diesem Szenario entfernen?",
       "changeRoleFor": "Rolle ändern für {name}:",
       "newRole": "Neue Rolle",
-      "viewerHint": "Viewer haben nur Lesezugriff und können keine Bewertungen abgeben.",
+      "viewerHint": "Betrachter haben nur Lesezugriff und können keine Bewertungen abgeben.",
+      "retry": "Wiederholen",
+      "retryAll": "Alle wiederholen",
+      "startLLM": "Starten",
+      "llmStarted": "Evaluation für {model} gestartet",
+      "llmStartFailed": "Start von {model} fehlgeschlagen: {error}",
+      "llmAdded": "{model} als Assessor hinzugefügt — Labeling startet automatisch",
+      "llmAddFailed": "LLM-Assessor konnte nicht hinzugefügt werden: {error}",
+      "llmRemoved": "{model} als Assessor entfernt",
+      "llmRemoveFailed": "{model} konnte nicht entfernt werden: {error}",
+      "errorDetailsTitle": "Fehlerdetails",
+      "noErrors": "Keine Fehler gefunden",
+      "llmFailed": "Fehlgeschlagen",
+      "llmCompleted": "Abgeschlossen",
+      "llmRunning": "Läuft",
+      "llmPending": "Ausstehend",
+      "llmStopped": "Gestoppt",
+      "editorHint": "Editoren können Szenario-Einstellungen verwalten und Nutzer einladen, aber keine Bewertungen abgeben.",
       "roles": {
         "owner": "Besitzer",
-        "evaluator": "Evaluator",
-        "viewer": "Betrachter"
-      }
+        "manager": "Manager",
+        "editor": "Editor",
+        "assessor": "Gutachter",
+        "evaluator": "Gutachter",
+        "viewer": "Betrachter",
+        "eval_viewer": "Eval.-Betrachter",
+        "eval. viewer": "Eval.-Betrachter"
+      },
+      "sourceDirect": "Direkt"
     },
     "settings": {
       "title": "Szenario-Einstellungen",
       "basicInfo": "Grundinformationen",
       "name": "Name",
-      "description": "Beschreibung",
+      "description": "Szenariobeschreibung",
+      "aiGenerationPrompt": "KI-Generierungs-Prompt",
+      "aiGenerationPromptHint": "Optional: Freier Prompt für KI-Vorschläge zu Aufgabenbeschreibung und Evaluationskriterien",
+      "taskDescription": "Aufgabenbeschreibung",
+      "taskDescriptionHint": "Markdown-Briefing für Evaluatoren, worauf sie achten sollen",
+      "taskDescriptionTooltipTitle": "Was gehört in die Aufgabenbeschreibung?",
+      "taskDescriptionTooltipMarkdown": "Beschreibt den **Bewertungsauftrag** für Evaluatoren.\n\nBeispiele:\n- Welchen Aspekt sollen Evaluatoren priorisieren?\n- Welche Zielgruppe oder welcher Kontext liegt vor?\n- Wie soll bei Unsicherheit entschieden werden?",
+      "evaluationCriteria": "Evaluationskriterien",
+      "evaluationCriteriaHint": "Markdown mit Kriterien, Gewichtungen oder Bewertungsregeln",
+      "evaluationCriteriaTooltipTitle": "Wie sollen Evaluationskriterien genutzt werden?",
+      "evaluationCriteriaTooltipMarkdown": "Kriterien definieren, **woran** bewertet wird.\n\nTipps:\n- Ein Kriterium pro Stichwort (z. B. Empathie, Klarheit, Fachlichkeit)\n- Möglichst präzise und beobachtbar formulieren\n- Kriterien sollten zur Aufgabenbeschreibung passen",
       "timePeriod": "Zeitraum",
       "startDate": "Startdatum",
       "endDate": "Enddatum",
       "distribution": "Verteilung",
       "distributionAll": "Alle an jeden",
-      "distributionAllDesc": "Jeder Evaluator bewertet alle Threads",
+      "distributionAllDesc": "Jeder Gutachter bewertet alle Items",
       "distributionRandom": "Zufällig",
-      "distributionRandomDesc": "Threads werden zufällig auf Evaluatoren verteilt",
+      "distributionRandomDesc": "Items werden zufällig auf Gutachter verteilt",
       "distributionSequential": "Sequentiell",
-      "distributionSequentialDesc": "Threads werden der Reihe nach zugewiesen",
+      "distributionSequentialDesc": "Items werden der Reihe nach zugewiesen",
       "order": "Reihenfolge",
       "orderFixed": "Feste Reihenfolge",
       "orderRandom": "Zufällige Reihenfolge",
-      "visibility": "Sichtbarkeit",
-      "visibilityPrivate": "Privat (nur für mich)",
-      "visibilityTeam": "Team (eingeladene Nutzer)",
-      "visibilityPublic": "Öffentlich",
+      "collaboration": "Zusammenarbeit",
+      "collaborationTooltip": "Fügen Sie Kollegen als Manager (können Einstellungen bearbeiten und Gutachter einladen) oder Betrachter (können alle Tabs einsehen) hinzu.",
+      "addCollaborator": "Mitarbeiter hinzufügen",
+      "roleManager": "Manager",
+      "roleEditor": "Editor",
+      "roleManagerDesc": "Kann Einstellungen bearbeiten und Gutachter verwalten",
+      "roleViewer": "Betrachter",
+      "roleViewerDesc": "Kann alle Tabs einsehen aber nichts ändern",
+      "noCollaborators": "Noch keine Mitarbeiter hinzugefügt",
+      "removeCollaborator": "Mitarbeiter entfernen",
       "status": "Status",
-      "delete": "Szenario löschen"
+      "delete": "Szenario löschen",
+      "distributionTooltip": "Legt fest, wie Items an Gutachter verteilt werden. \"Alle\" gibt jedem alle Items, \"Zufällig\" verteilt zufällig, und \"Sequentiell\" weist der Reihe nach zu.",
+      "orderTooltip": "Legt die Reihenfolge fest, in der Items angezeigt werden. \"Fest\" zeigt allen die gleiche Reihenfolge, \"Zufällig\" mischt die Reihenfolge pro Gutachter.",
+      "copilotRegenerate": "Vorschläge generieren",
+      "copilotRunning": "Generierung läuft …",
+      "copilotStatusText": "v{version} · {completed}/{total} aktuell · {stale} veraltet · {errors} Fehler",
+      "copilotQueued": "Generierung eingereiht — Vorschläge werden im Hintergrund erstellt.",
+      "copilotSaveFirst": "Erst speichern — die Generierung nutzt die zuletzt gespeicherte Prompt-Version."
+    },
+    "settingsTab": {
+      "teamSection": "Team",
+      "accessLevel": "Zugangsstufe",
+      "tags": {
+        "owner": "Besitzer",
+        "manager": "Manager",
+        "editor": "Editor",
+        "viewer": "Betrachter",
+        "assessor": "Gutachter",
+        "member": "Mitglied"
+      },
+      "toggleViewer": "Ergebnisse einsehen",
+      "toggleAssessor": "Items bewerten"
     },
     "distribution": {
       "all": "Alle an jeden",
@@ -3401,7 +3862,10 @@
       "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
       "provenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge am häufigsten im Top-Bucket landen. Format x/y = Treffer im Top-Bucket geteilt durch alle Zuordnungen der jeweiligen Herkunft.",
       "ratingProvenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge aktuell die höchsten normalisierten Rating-Scores erreichen.",
-      "rankingAgreement": "Pro Zusammenfassung: Haben beide Evaluatoren sie in denselben Bucket sortiert? Gezählt als: Übereinstimmende Zusammenfassungen / Gemeinsam bewertete Zusammenfassungen. Metriken ordinal berechnet (Bucket-Krippendorff)."
+      "conversationProvenance": "Analysiert Gesprächspartner-Kombinationen. Ermittelt, wer die Berater- und Klient-Nachrichten verfasst hat (Mensch vs. KI) und zeigt, welche Kombinationen die besten Bewertungen erzielen. Format: Berater × Klient.",
+      "authenticityProvenance": "Zeigt, wie gut jede LLM-Generierungsquelle Bewerter täuscht. Täuschungsrate = Prozentsatz der Stimmen, die gefälschten Inhalt fälschlicherweise als echt klassifiziert haben. Höhere Rate bedeutet überzeugendere Fälschung.",
+      "rankingAgreement": "Pro Zusammenfassung: Haben beide Evaluatoren sie in denselben Bucket sortiert? Gezählt als: Übereinstimmende Zusammenfassungen / Gemeinsam bewertete Zusammenfassungen. Metriken ordinal berechnet (Bucket-Krippendorff).",
+      "kappaMatrix": "Zufallskorrigierte Übereinstimmung (Cohen's Kappa) für jedes Bewerter-Paar. Im Gegensatz zur einfachen Übereinstimmungs-Heatmap wird herausgerechnet, wie viel Übereinstimmung allein durch Zufall zu erwarten wäre. Richtwerte: ≥ 0,61 substanziell, ≥ 0,81 fast perfekt."
     },
     "session": {
       "title": "Evaluierung",
@@ -3779,12 +4243,21 @@
       "ranking": "Ranking",
       "labeling": "Labeling",
       "comparison": "Vergleich",
-      "authenticity": "Authentizität"
+      "authenticity": "Authentizität",
+      "mail_rating": "Mail-Bewertung",
+      "communication_comparison": "Kommunikations-Vergleich",
+      "conversation_labeling": "Konversationslabeling"
     },
     "noToolsAvailable": "Für deinen Account sind aktuell keine Evaluierungstools freigeschaltet.",
     "noScenarios": "Keine Szenarien",
     "noScenariosAssigned": "Keine Szenarien zugewiesen",
     "noScenariosAvailable": "Keine Szenarien verfügbar. Du musst zu einem Szenario eingeladen werden, um an einer Evaluation teilzunehmen.",
+    "expired": "Zeitraum beendet",
+    "justAdded": "Neu freigeschaltet",
+    "filters": {
+      "active": "Aktiv",
+      "expired": "Beendet"
+    },
     "backToEvaluations": "Evaluierungen",
     "progress": "{done} / {total} abgeschlossen",
     "caseNumber": "Fall {current} / {total}",
@@ -3796,13 +4269,26 @@
       "noItems": "Keine Einträge zur Bewertung verfügbar",
       "noItemsHint": "Möglicherweise wurden Ihnen noch keine Einträge zugewiesen.",
       "complete": "Bewertung abgeschlossen!",
-      "completeMessage": "Sie haben alle zugewiesenen Einträge bewertet."
+      "completeMessage": "Sie haben alle zugewiesenen Einträge bewertet.",
+      "firstEvaluationNotice": {
+        "title": "Herzlichen Dank!",
+        "saved": "Ihre erste Bewertung wurde gespeichert.",
+        "next": "Klicken Sie nun unten in der Leiste auf „Weiter“, um zum nächsten Fall zu gelangen.",
+        "button": "Verstanden"
+      }
     },
     "noItemsInFilter": "Keine Einträge mit diesem Status",
     "showAll": "Alle anzeigen",
     "clickToView": "Klicken zum Öffnen",
     "viewerBanner": "Sie sind Betrachter. Wechseln Sie im Team-Tab zur Evaluator-Rolle, um teilzunehmen.",
     "viewerReadOnly": "Nur-Lese-Modus",
+    "briefing": {
+      "title": "Aufgabe",
+      "taskDescription": "Aufgabenbeschreibung",
+      "taskDescriptionPlaceholder": "z.B. Beschreiben Sie kurz die Aufgabe und den Bewertungsfokus.",
+      "criteria": "Kriterien",
+      "collapseHint": "Klick zum Einklappen"
+    },
     "item": "Eintrag #{num}",
     "tools": {
       "ranking": {
@@ -3842,12 +4328,64 @@
       "notesPlaceholder": "Optionale Anmerkungen..."
     },
     "comparison": {
+      "firstSaveNotice": {
+        "title": "Herzlichen Dank!",
+        "saved": "Ihre Bewertung wurde gespeichert.",
+        "next": "Klicken Sie nun unten in der Leiste auf „Weiter“, um zum nächsten Fall zu gelangen.",
+        "button": "Verstanden"
+      },
+      "title": "Vergleich",
       "pageTitle": "Gegenüberstellung",
       "pageSubtitle": "Wähle eine Persona, um den Vergleichs-Chat zu betreten.",
       "emptyTitle": "Keine Sessions verfügbar",
       "emptyHint": "Es wurden noch keine Gegenüberstellungs-Sessions erstellt.",
       "scenarioLabel": "Szenario {id}",
-      "ratedMessages": "{count} Nachrichten bewertet"
+      "ratedMessages": "{count} Nachrichten bewertet",
+      "noContent": "Kein Inhalt vorhanden",
+      "selectA": "Option A wählen",
+      "selectB": "Option B wählen",
+      "tie": "Gleichwertig",
+      "notesLabel": "Anmerkungen",
+      "notesPlaceholder": "Optionale Anmerkungen...",
+      "autoAdvanceOn": "Auto-Weiter an: Klick auf A/B springt direkt zum nächsten Item",
+      "autoAdvanceOff": "Auto-Weiter aus: nach A/B-Klick auf der aktuellen Karte bleiben",
+      "autoAdvanceShort": "Auto-Weiter",
+      "autoAdvanceHint": "Tipp: Auto-Weiter aktivieren",
+      "gamification": {
+        "countdown": "Noch {n} bis zur Belohnung",
+        "countdownTooltip": "Nach {n} weiteren Vergleichen öffnet sich dein nächstes Belohnungs-Pop-up.",
+        "rewardLabel": "Belohnung",
+        "milestoneTooltip": "Belohnungs-Karte — wenn du dieses Item auswertest, öffnet sich dein nächstes Reward-Pop-up.",
+        "milestoneFirstTitle": "Erstes Etappenziel erreicht!",
+        "milestoneRecurringTitle": "{n} Vergleiche geschafft",
+        "subtitle": "Deine Präferenzen bisher",
+        "humanVsLLM": "Mensch gewählt: {chosen}/{total}",
+        "trainedVsBase": "Trainiertes Modell bevorzugt: {chosen}/{total}",
+        "largerVsSmaller": "Größeres Modell bevorzugt: {chosen}/{total}",
+        "closedVsOpen": "Closed-source bevorzugt: {chosen}/{total}",
+        "viewHistory": "Alle Vergleiche anzeigen",
+        "historyDrawerTitle": "Dein Fortschritt",
+        "historyEntry": "Du wähltest A ({a}) vs B ({b})",
+        "historyEmpty": "Noch keine Vergleiche bewertet.",
+        "totalCompleted": "Vergleiche abgeschlossen",
+        "privacyNote": "Aus Datenschutzgründen werden keine einzelnen Entscheidungen gezeigt – nur deine aggregierten Präferenzen. So können andere Bewerter:innen nicht ableiten, was du auf welchem Item gewählt hast.",
+        "lockedLabel": "Gesperrt",
+        "lockedTooltip": "Noch {n} Vergleich(e) bis zum nächsten Reward, dann wird diese Karte freigeschaltet.",
+        "unlocksIn": "Noch {n} Vergleich(e), dann werden weitere Karten freigeschaltet.",
+        "noSignal": "Noch zu wenig Daten — mach ein paar Vergleiche mehr!",
+        "continueButton": "Weitermachen",
+        "categories": {
+          "Human": "Mensch",
+          "Trained-SFT": "Trainiertes Modell",
+          "Pre-Base": "Untrainiertes Basis-Modell",
+          "Pre-Instruct": "Instruct-Modell",
+          "Closed-Baseline": "Closed-Source-Modell",
+          "Unknown": "Unbekannt"
+        }
+      },
+      "readFullscreen": "Vollbild lesen",
+      "contextTitle": "Verlauf bisher",
+      "contextPrompt": "Welche der beiden möglichen nächsten Beraterantworten ist passender?"
     },
     "rating": {
       "pageTitle": "Rating",
@@ -3916,6 +4454,46 @@
         "positive": "Positiv",
         "neutral": "Neutral",
         "negative": "Negativ"
+      },
+      "readFullscreen": "Vollbild lesen",
+      "saveAndNext": "Speichern & weiter",
+      "complete": "Abschließen",
+      "copilot": {
+        "title": "Co-Pilot-Vorschlag",
+        "primary": "Vorschlag 1",
+        "secondary": "Vorschlag 2",
+        "apply": "Übernehmen",
+        "guardrail": "Vorschlag am Text prüfen oder revidieren — bei dünner Evidenz konservativ labeln.",
+        "helpfulQuestion": "Hilfreich?",
+        "helpfulYes": "Vorschlag war hilfreich",
+        "helpfulNo": "Vorschlag war nicht hilfreich",
+        "confidence": {
+          "high": "Hohe Konfidenz",
+          "medium": "Mittlere Konfidenz",
+          "low": "Niedrige Konfidenz"
+        }
+      }
+    },
+    "conversationLabeling": {
+      "pageTitle": "Konversationslabeling",
+      "conversation": "Gesprächsverlauf",
+      "currentSpan": "Zu labeln",
+      "spanCounter": "Span {index} von {total}",
+      "earlierMessages": "{count} frühere Nachricht(en) ausgeblendet",
+      "futureHidden": "Spätere Nachrichten werden bewusst nicht gezeigt.",
+      "keyboardHint": "Tastatur: 1–9 Modus wählen · Enter speichern und weiter · Backspace zurück",
+      "allSpansDone": "Alle Spans dieses Gesprächs sind bewertet.",
+      "autoAdvance": "Automatisch zum nächsten Span",
+      "split": {
+        "trigger": "Span trennen",
+        "hint": "Klicke im Text an die Stelle, an der geteilt werden soll.",
+        "confirm": "Teilen"
+      },
+      "merge": {
+        "trigger": "Span zusammenführen",
+        "markMore": "Mit ⌘/Strg mehrere Spans markieren",
+        "notJoinable": "Nur direkt aufeinanderfolgende Spans derselben Nachricht",
+        "sameLabel": "Beide gleich gelabelt — markieren"
       }
     },
     "featureTypes": {
@@ -3940,6 +4518,10 @@
       "emptyTitle": "Keine Threads verfügbar",
       "real": "Echt",
       "fake": "Fake"
+    },
+    "source": {
+      "human": "Mensch",
+      "ai": "KI"
     }
   },
   "judge": {
@@ -4405,7 +4987,8 @@
     "engineOptions": {
       "offline": "Offline (lokal, Regeln + NER)",
       "llm": "LLM (Regeln + LLM-Extraktion)",
-      "hybrid": "Hybrid (Offline + LLM)"
+      "hybrid": "Hybrid (Offline + LLM)",
+      "privacyFilter": "privacy-filter (Regeln + OpenAI privacy-filter)"
     },
     "nameOrigins": {
       "swissDe": "Schweiz (DE)",
@@ -4508,6 +5091,8 @@
     "chatDeleted": "Chat gelöscht",
     "deleteFailed": "Fehler beim Löschen",
     "homePage": "Startseite",
+    "openMenu": "Menü öffnen",
+    "typing": "schreibt …",
     "showSources": "Quellen anzeigen",
     "hideSources": "Quellen ausblenden",
     "source": "Quelle",
@@ -4688,7 +5273,6 @@
     "tree": {
       "title": "Dateien",
       "searchPlaceholder": "Suchen...",
-      "zoteroReadonly": "Zotero-Dateien sind schreibgeschützt.",
       "root": "Wurzel",
       "nodeFallback": "Element {id}",
       "defaults": {
@@ -4743,646 +5327,6 @@
         "connectionFailed": "Collab-Verbindung fehlgeschlagen: {message}",
         "connectionLost": "Collab-Verbindung getrennt (wird wieder verbunden...)"
       }
-    }
-  },
-  "latexCollab": {
-    "permissions": {
-      "missing": "Du benötigst die Berechtigung {permission}, um diese Funktion zu nutzen."
-    },
-    "visibility": {
-      "private": "Privat",
-      "team": "Team",
-      "org": "Organisation"
-    },
-    "errors": {
-      "createFailed": "Workspace konnte nicht erstellt werden",
-      "deleteFailed": "Workspace konnte nicht gelöscht werden",
-      "leaveFailed": "Workspace konnte nicht verlassen werden",
-      "membersLoadFailed": "Mitglieder konnten nicht geladen werden",
-      "inviteFailed": "Mitglieder konnten nicht eingeladen werden",
-      "removeFailed": "Mitglied konnte nicht entfernt werden"
-    },
-    "home": {
-      "title": "LaTeX Collab",
-      "titleShort": "LaTeX",
-      "subtitle": "Kollaboratives Arbeiten an LaTeX-Dokumenten mit Live-PDF-Preview.",
-      "actions": {
-        "newShort": "Neu",
-        "create": "Workspace erstellen",
-        "createConfirm": "Workspace erstellen",
-        "open": "Öffnen",
-        "leave": "Verlassen"
-      },
-      "workspaces": {
-        "title": "Workspaces"
-      },
-      "status": {
-        "owner": "Besitzer",
-        "guest": "Mitglied"
-      },
-      "lastUpdated": "Zuletzt aktualisiert {date}",
-      "empty": {
-        "title": "Noch keine Workspaces",
-        "subtitle": "Erstelle einen Workspace, um loszulegen."
-      },
-      "dialogs": {
-        "createTitle": "Workspace erstellen",
-        "deleteTitle": "Workspace löschen",
-        "deleteConfirm": "Workspace {name} löschen?",
-        "deleteHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
-        "leaveTitle": "Workspace verlassen",
-        "leaveConfirm": "Workspace {name} verlassen?",
-        "leaveHint": "Du kannst vom Besitzer erneut eingeladen werden."
-      },
-      "form": {
-        "nameLabel": "Workspace-Name",
-        "namePlaceholder": "z.B. Abschlussarbeit",
-        "visibilityLabel": "Sichtbarkeit",
-        "inviteLabel": "Mitglieder einladen",
-        "userPlaceholder": "Nutzer suchen und hinzufügen..."
-      }
-    },
-    "workspace": {
-      "nav": {
-        "home": "Home",
-        "workspaces": "Workspaces"
-      },
-      "actions": {
-        "backToWorkspaces": "Zurück zu Workspaces"
-      },
-      "view": {
-        "editor": "Editor",
-        "split": "Split-Ansicht",
-        "preview": "Vorschau"
-      },
-      "empty": {
-        "noDocument": "Kein Dokument ausgewählt",
-        "selectFile": "Wähle eine Datei, um zu starten."
-      },
-      "fallbackName": "Workspace #{id}",
-      "assetWarning": "Dieses Asset ist schreibgeschützt.",
-      "zoteroReadonly": "Dateien aus {brand} sind schreibgeschützt."
-    },
-    "share": {
-      "title": "Teilen",
-      "ownerLabel": "Besitzer",
-      "ownerTag": "Besitzer",
-      "inviteLabel": "Nutzer einladen",
-      "addButton": "Hinzufügen",
-      "members": "Mitglieder",
-      "emptyMembers": "Noch keine Mitglieder",
-      "removeMember": "Mitglied entfernen"
-    },
-    "tree": {
-      "files": "Dateien",
-      "filePlaceholder": "Dateiname",
-      "uploadAsset": "Asset hochladen",
-      "collapse": "Dateibaum einklappen"
-    },
-    "header": {
-      "menuOpen": "Menü öffnen",
-      "backToWorkspaces": "Zurück zu Workspaces",
-      "workspaces": "Workspaces",
-      "setMain": "Als main.tex setzen",
-      "reviewMode": "Review-Modus",
-      "liveSync": "Live-Sync",
-      "reconnecting": "Verbinde neu...",
-      "ghostText": "Ghost Text",
-      "ghostTextEnabled": "Aktiv",
-      "ghostTextDisabled": "Inaktiv",
-      "view": {
-        "editor": "Editor",
-        "split": "Split-Ansicht",
-        "preview": "Vorschau"
-      }
-    },
-    "compile": {
-      "actions": {
-        "compile": "Kompilieren",
-        "showLogs": "Logs anzeigen"
-      },
-      "versionLabel": "Version",
-      "auto": {
-        "title": "Auto-Kompilieren",
-        "enable": "Auto-Kompilieren aktivieren",
-        "delayLabel": "Verzögerung (ms)",
-        "syncLabel": "Synchronisation aktivieren"
-      },
-      "logTitle": "Kompilier-Log",
-      "issuesTitle": "Probleme",
-      "noLog": "Kein Log verfügbar",
-      "current": "Aktuell",
-      "status": {
-        "queued": "In Warteschlange",
-        "running": "Kompiliert...",
-        "success": "Erfolgreich",
-        "failed": "Fehlgeschlagen",
-        "idle": "Bereit"
-      },
-      "issue": {
-        "line": "Zeile {line}",
-        "unknownLocation": "Unbekannte Position",
-        "errorLabel": "Fehler",
-        "warningLabel": "Warnung",
-        "overfullLabel": "Overfull Box"
-      },
-      "errors": {
-        "failed": "Kompilierung fehlgeschlagen"
-      }
-    },
-    "comments": {
-      "title": "Kommentare",
-      "archiveTitle": "Archiv",
-      "add": "Kommentar hinzufügen",
-      "addLabel": "Kommentar",
-      "comment": "Kommentieren",
-      "addToSelection": "Markierten Text kommentieren",
-      "empty": "Noch keine Kommentare",
-      "archiveEmpty": "Keine archivierten Kommentare",
-      "showArchive": "Archiv anzeigen",
-      "showActive": "Aktive Kommentare anzeigen",
-      "resolved": "Erledigt",
-      "reopen": "Wieder öffnen",
-      "resolve": "Erledigen",
-      "reply": "Antworten",
-      "replyPlaceholder": "Antwort schreiben...",
-      "dialog": {
-        "title": "Kommentar hinzufügen",
-        "label": "Kommentar",
-        "placeholder": "Kommentar eingeben... (Strg+Enter zum Speichern)",
-        "cancelTitle": "Abbrechen",
-        "saveTitle": "Speichern"
-      },
-      "errors": {
-        "selectText": "Bitte Text markieren",
-        "saveFailed": "Kommentar konnte nicht gespeichert werden"
-      },
-      "aiResolve": "Mit KI umsetzen",
-      "aiResolveTitle": "KI analysiert den Kommentar und setzt die Anmerkung um",
-      "aiProcessing": "KI verarbeitet...",
-      "aiSuccess": "KI hat die Änderung umgesetzt",
-      "aiError": "KI konnte die Änderung nicht umsetzen: {error}",
-      "aiDisabled": "KI-Assistent ist deaktiviert",
-      "aiStreaming": "KI generiert...",
-      "aiWaiting": "Warte auf KI-Antwort...",
-      "aiCompleted": "Fertig",
-      "aiChars": "Zeichen",
-      "aiStreamToggle": "Stream-Fenster ein-/ausblenden"
-    },
-    "ai": {
-      "rewrite": "Umformulieren",
-      "expand": "Erweitern",
-      "summarize": "Zusammenfassen",
-      "fix": "LaTeX korrigieren"
-    },
-    "pdf": {
-      "title": "PDF-Preview",
-      "compiling": "Kompiliere...",
-      "zoomOut": "Herauszoomen",
-      "zoomIn": "Hineinzoomen",
-      "fitWidth": "Auf Breite anpassen",
-      "pages": "{count} Seiten",
-      "empty": "Noch kein PDF erstellt",
-      "loading": "Laden...",
-      "compilingStatus": "Kompiliere...",
-      "preparing": "PDF wird vorbereitet...",
-      "loadFailed": "PDF konnte nicht geladen werden"
-    },
-    "outline": {
-      "title": "Gliederung",
-      "show": "Gliederung anzeigen",
-      "hide": "Gliederung ausblenden",
-      "expand": "Aufklappen",
-      "collapse": "Zuklappen",
-      "emptySections": "Noch keine Abschnitte",
-      "emptyDocument": "Dokument leer",
-      "part": "Teil",
-      "chapter": "Kapitel",
-      "section": "Abschnitt",
-      "subsection": "Unterabschnitt",
-      "subsubsection": "Unter-Unterabschnitt",
-      "paragraph": "Paragraph"
-    },
-    "editor": {
-      "toolbar": {
-        "show": "Toolbar anzeigen",
-        "hide": "Toolbar ausblenden",
-        "label": "Label",
-        "bold": "Fett",
-        "italic": "Kursiv",
-        "underline": "Unterstreichen",
-        "emph": "Hervorheben",
-        "typewriter": "Typewriter",
-        "section": "Abschnitt",
-        "subsection": "Unterabschnitt",
-        "subsubsection": "Unter-Unterabschnitt",
-        "paragraph": "Paragraph",
-        "itemize": "Aufzählung",
-        "enumerate": "Nummerierte Liste",
-        "description": "Beschreibungsliste",
-        "figure": "Abbildung",
-        "table": "Tabelle",
-        "code": "Code-Block",
-        "quote": "Zitat",
-        "inlineMath": "Inline-Mathe",
-        "displayMath": "Display-Mathe",
-        "equation": "Gleichung",
-        "align": "Align",
-        "frac": "Bruch",
-        "cite": "Zitieren",
-        "ref": "Referenz",
-        "footnote": "Fußnote",
-        "url": "URL"
-      },
-      "table": {
-        "size": "Tabellengröße",
-        "rows": "Zeilen",
-        "columns": "Spalten",
-        "preview": "{rows}×{cols} Tabelle",
-        "insert": "Tabelle einfügen"
-      },
-      "userFallback": "Unbekannter Benutzer",
-      "userUnknown": "Unbekannter Benutzer",
-      "deletedText": "Gelöschter Text",
-      "errors": {
-        "initFailed": "Editor-Initialisierung fehlgeschlagen: {message}",
-        "connectionFailed": "Collab-Verbindung fehlgeschlagen: {message}",
-        "connectionLost": "Collab-Verbindung getrennt (wird wieder verbunden...)"
-      }
-    },
-    "completions": {
-      "documentclass": "Dokumentklasse",
-      "usepackage": "Paket laden",
-      "begin": "Umgebung starten",
-      "end": "Umgebung beenden",
-      "section": "Abschnitt",
-      "subsection": "Unterabschnitt",
-      "subsubsection": "Unter-Unterabschnitt",
-      "paragraph": "Paragraph",
-      "textbf": "Fett",
-      "textit": "Kursiv",
-      "emph": "Hervorheben",
-      "underline": "Unterstreichen",
-      "item": "Listenpunkt",
-      "label": "Label",
-      "ref": "Referenz",
-      "pageref": "Seitenreferenz",
-      "cite": "Zitat",
-      "citet": "Textzitat",
-      "citep": "Klammerzitat",
-      "includegraphics": "Grafik",
-      "caption": "Beschriftung",
-      "centering": "Zentrieren",
-      "footnote": "Fußnote",
-      "url": "URL",
-      "href": "Link",
-      "title": "Titel",
-      "author": "Autor",
-      "date": "Datum",
-      "maketitle": "Titelseite",
-      "tableofcontents": "Inhaltsverzeichnis",
-      "newcommand": "Neues Kommando",
-      "renewcommand": "Kommando ändern",
-      "input": "Datei einfügen",
-      "include": "Datei einbinden",
-      "frac": "Bruch",
-      "sqrt": "Wurzel",
-      "sum": "Summe",
-      "int": "Integral"
-    },
-    "aiCommands": {
-      "ai": "Freie KI-Anfrage",
-      "rewrite": "Text umformulieren",
-      "expand": "Text erweitern",
-      "summarize": "Text zusammenfassen",
-      "fix": "LaTeX/Grammatik korrigieren",
-      "translate": "Übersetzen (z.B. //translate en)",
-      "cite": "Zitat aus RAG finden",
-      "abstract": "Abstract generieren",
-      "titles": "Titel vorschlagen"
-    },
-    "zotero": {
-      "title": "Zotero",
-      "connection": {
-        "title": "Zotero-Verbindung",
-        "connected": "Verbunden",
-        "accountLabel": "Konto:",
-        "connectedSince": "Verbunden seit {date}",
-        "prompt": "Verbinde dein Zotero-Konto, um Bibliotheken und Zitate zu synchronisieren."
-      },
-      "connect": {
-        "oauthTitle": "Mit OAuth verbinden",
-        "oauthHint": "Melde dich mit Zotero an, um sicher zu verbinden.",
-        "apiKeyTitle": "Mit API-Schlüssel verbinden",
-        "apiKeyHint": "Gib einen Zotero-API-Schlüssel ein, um dich zu verbinden.",
-        "apiKeyHintAlt": "Nutze einen API-Schlüssel statt OAuth.",
-        "apiKeyLabel": "API-Schlüssel",
-        "apiKeyPlaceholder": "API-Schlüssel einfügen",
-        "apiKeyLink": "API-Schlüssel in Zotero erstellen",
-        "or": "oder"
-      },
-      "actions": {
-        "disconnect": "Trennen",
-        "connectOAuth": "Mit Zotero verbinden",
-        "connect": "Verbinden",
-        "add": "Hinzufügen",
-        "addLibrary": "Bibliothek hinzufügen",
-        "sync": "Synchronisieren",
-        "settings": "Einstellungen",
-        "remove": "Entfernen"
-      },
-      "libraries": {
-        "title": "Bibliotheken",
-        "empty": "Noch keine Bibliotheken verknüpft.",
-        "entries": "{count} Einträge",
-        "autoSync": "Auto-Sync alle {minutes} Min.",
-        "lastSynced": "Zuletzt synchronisiert {date}",
-        "neverSynced": "Nie synchronisiert"
-      },
-      "dialogs": {
-        "addTitle": "Bibliothek hinzufügen",
-        "selectLibrary": "Bibliothek auswählen",
-        "allCollections": "Alle Sammlungen",
-        "collectionLabel": "Sammlung",
-        "filenameLabel": "BibTeX-Dateiname",
-        "filenamePlaceholder": "z.B. literatur",
-        "autoSync": "Auto-Sync aktivieren",
-        "syncInterval": "Sync-Intervall (Minuten)",
-        "settingsTitle": "Bibliothekseinstellungen",
-        "removeTitle": "Bibliothek entfernen",
-        "removeConfirm": "{name} aus diesem Workspace entfernen?",
-        "removeHint": "Die Bibliothek wird nur entkoppelt, nicht aus Zotero gelöscht."
-      },
-      "errors": {
-        "filenameRequired": "Dateiname ist erforderlich",
-        "connectFailed": "Zotero konnte nicht verbunden werden",
-        "oauthUnavailable": "OAuth ist nicht konfiguriert",
-        "oauthFailed": "OAuth-Anmeldung fehlgeschlagen",
-        "oauthNotConfigured": "OAuth nicht konfiguriert",
-        "disconnectFailed": "Trennen fehlgeschlagen",
-        "loadLibrariesFailed": "Bibliotheken konnten nicht geladen werden",
-        "addFailed": "Bibliothek konnte nicht hinzugefügt werden",
-        "syncFailed": "Synchronisierung fehlgeschlagen",
-        "saveFailed": "Einstellungen konnten nicht gespeichert werden",
-        "removeFailed": "Bibliothek konnte nicht entfernt werden"
-      },
-      "messages": {
-        "connected": "Zotero verbunden",
-        "disconnected": "Zotero getrennt",
-        "added": "Bibliothek hinzugefügt",
-        "synced": "Bibliothek synchronisiert",
-        "settingsSaved": "Einstellungen gespeichert",
-        "removed": "Bibliothek entfernt"
-      },
-      "relative": {
-        "justNow": "Gerade eben",
-        "minutesAgo": "vor {count} Min.",
-        "hoursAgo": "vor {count} Std.",
-        "daysAgo": "vor {count} Tagen"
-      }
-    },
-    "zip": {
-      "menuTitle": "ZIP Import/Export",
-      "downloadTitle": "Als ZIP herunterladen",
-      "downloadSubtitle": "Projekt als ZIP-Archiv exportieren",
-      "importTitle": "ZIP importieren",
-      "importSubtitle": "Dateien aus ZIP-Archiv hinzufügen",
-      "downloadSuccess": "ZIP-Download gestartet",
-      "downloadError": "ZIP-Download fehlgeschlagen",
-      "importSuccess": "{imported} Dateien importiert, {skipped} übersprungen",
-      "importError": "ZIP-Import fehlgeschlagen: {error}",
-      "invalidFile": "Bitte eine ZIP-Datei auswählen"
-    }
-  },
-  "latexCollabAi": {
-    "visibility": {
-      "private": "Privat",
-      "team": "Team",
-      "org": "Organisation"
-    },
-    "errors": {
-      "createFailed": "Workspace konnte nicht erstellt werden",
-      "deleteFailed": "Workspace konnte nicht gelöscht werden",
-      "leaveFailed": "Workspace konnte nicht verlassen werden",
-      "processingFailed": "KI-Verarbeitung fehlgeschlagen",
-      "chatFailed": "Chat fehlgeschlagen",
-      "commandFailed": "Befehl fehlgeschlagen"
-    },
-    "home": {
-      "title": "LaTeX Collab KI",
-      "titleShort": "LaTeX KI",
-      "subtitle": "Kollaborativer LaTeX-Workspace mit KI-Schreibassistent.",
-      "actions": {
-        "newShort": "Neu",
-        "create": "Workspace erstellen",
-        "createConfirm": "Workspace erstellen",
-        "open": "Öffnen",
-        "leave": "Verlassen"
-      },
-      "banner": {
-        "title": "KI-Funktionen aktiviert",
-        "body": "Enthält Ghost Text, KI-Befehle, die KI-Seitenleiste und RAG-Zitate."
-      },
-      "workspaces": {
-        "title": "Workspaces"
-      },
-      "status": {
-        "owner": "Besitzer",
-        "guest": "Mitglied"
-      },
-      "lastUpdated": "Zuletzt aktualisiert {date}",
-      "empty": {
-        "title": "Noch keine Workspaces",
-        "subtitle": "Erstelle einen Workspace, um loszulegen."
-      },
-      "dialogs": {
-        "createTitle": "Workspace erstellen",
-        "deleteTitle": "Workspace löschen",
-        "deleteConfirm": "Workspace {name} löschen?",
-        "deleteHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
-        "leaveTitle": "Workspace verlassen",
-        "leaveConfirm": "Workspace {name} verlassen?",
-        "leaveHint": "Du kannst vom Besitzer erneut eingeladen werden."
-      },
-      "form": {
-        "nameLabel": "Workspace-Name",
-        "namePlaceholder": "z.B. KI-Entwurf",
-        "visibilityLabel": "Sichtbarkeit",
-        "inviteLabel": "Mitglieder einladen",
-        "userPlaceholder": "Nutzer suchen und hinzufügen..."
-      }
-    },
-    "workspace": {
-      "actions": {
-        "openAssistant": "KI-Assistent öffnen"
-      }
-    },
-    "citations": {
-      "title": "Zitat finden",
-      "claimLabel": "Aussage oder Text",
-      "collectionsLabel": "Sammlungen",
-      "resultsTitle": "Ergebnisse",
-      "insertBibtex": "BibTeX einfügen",
-      "noResults": "Keine Zitate gefunden",
-      "searchError": "Suche fehlgeschlagen: {message}",
-      "bibtexInserted": "BibTeX eingefügt"
-    },
-    "shortcuts": {
-      "title": "Tastenkürzel",
-      "toggleFloatingAi": "KI-Assistent ein-/ausblenden",
-      "toggleSidebar": "KI-Seitenleiste umschalten",
-      "toggleGhostText": "Ghost Text umschalten",
-      "requestCompletion": "Vervollständigung anfordern",
-      "acceptSuggestion": "Vorschlag annehmen",
-      "rejectSuggestion": "Vorschlag verwerfen",
-      "rewriteSelection": "Auswahl umformulieren",
-      "expandSelection": "Auswahl erweitern",
-      "summarizeSelection": "Auswahl zusammenfassen",
-      "findCitation": "Zitat finden",
-      "showShortcuts": "Tastenkürzel anzeigen"
-    },
-    "notifications": {
-      "inserting": "Wird eingefügt...",
-      "clipboardCopied": "In Zwischenablage kopiert",
-      "rewritten": "Text umformuliert",
-      "expanded": "Text erweitert",
-      "summarized": "Zusammenfassung erstellt",
-      "chatQuestion": "KI gefragt: {text}...",
-      "latexErrorsFound": "{count} LaTeX-Probleme gefunden",
-      "latexErrorsNone": "Keine LaTeX-Probleme gefunden",
-      "latexFixed": "LaTeX korrigiert",
-      "aiInserted": "KI-Inhalt eingefügt",
-      "errorsFound": "{count} Probleme gefunden",
-      "errorsNone": "Keine Probleme gefunden",
-      "translated": "Übersetzt nach {lang}",
-      "abstractGenerated": "Abstract erstellt",
-      "titlesGenerated": "{count} Titel generiert",
-      "commandExecuted": "Befehl ausgeführt",
-      "error": "Fehler: {message}",
-      "ghostTextEnabled": "Ghost Text aktiviert",
-      "ghostTextDisabled": "Ghost Text deaktiviert"
-    },
-    "prompts": {
-      "translate": "Übersetze den folgenden Text nach {lang}: {text}"
-    },
-    "sidebar": {
-      "title": "KI-Assistent",
-      "quickTools": "Schnellwerkzeuge",
-      "tools": {
-        "abstract": "Abstract",
-        "titles": "Titel",
-        "citations": "Zitat-Check",
-        "fixLatex": "LaTeX korrigieren"
-      },
-      "chat": {
-        "title": "Chat",
-        "clear": "Chat löschen",
-        "thinking": "Denke...",
-        "placeholder": "Frage stellen...",
-        "contextLabel": "Kontext gesendet",
-        "contextEmpty": "Nur aktuelles Dokument",
-        "contextTruncatedSuffix": "(gekuerzt)"
-      },
-      "welcome": {
-        "greeting": "Hi! Ich bin dein KI-Schreibassistent.",
-        "intro": "Ich kann dir helfen mit:",
-        "items": {
-          "phrasing": "Formulierungen verbessern",
-          "latex": "LaTeX und Grammatik korrigieren",
-          "structure": "Struktur stärken",
-          "literature": "Quellen finden"
-        }
-      },
-      "artifact": {
-        "insert": "In Dokument einfügen"
-      },
-      "footerTip": "Tipp: Nutze KI-Befehle im Editor für schnelle Aktionen.",
-      "toolResults": {
-        "title": {
-          "abstract": "Generiertes Abstract",
-          "titles": "Titel-Vorschläge",
-          "citations": "Zitat-Analyse",
-          "fixLatex": "LaTeX-Check"
-        },
-        "wordCount": "{count} Wörter",
-        "cited": "{count} zitiert",
-        "uncited": "{count} unzitiert",
-        "noUncited": "Alle Zitate sehen gut aus.",
-        "errorsTitle": "Fehler",
-        "suggestionsTitle": "Vorschläge",
-        "noErrors": "Keine Fehler gefunden."
-      }
-    },
-    "selection": {
-      "rewrite": "Umformulieren",
-      "expand": "Erweitern",
-      "summarize": "Zusammenfassen",
-      "cite": "Zitat finden",
-      "chat": "KI fragen",
-      "fixLatex": "LaTeX korrigieren"
-    },
-    "commandDescriptions": {
-      "ai": "Stelle eine beliebige Frage oder gib eine Anweisung.",
-      "rewrite": "Formuliert den markierten Text wissenschaftlicher.",
-      "expand": "Erweitert den markierten Text mit mehr Details.",
-      "summarize": "Fasst den markierten Text zusammen.",
-      "fix": "Korrigiert LaTeX- und Grammatikfehler.",
-      "translate": "Übersetzt den Text in die Zielsprache.",
-      "cite": "Sucht passende Quellen für die Aussage.",
-      "abstract": "Generiert ein Abstract für das Dokument.",
-      "titles": "Schlägt Titel für das Dokument vor."
-    }
-  },
-  "floatingAi": {
-    "title": "KI-Assistent",
-    "minimize": "Minimieren",
-    "close": "Schließen",
-    "selection": "Auswahl",
-    "openAssistant": "KI-Assistent öffnen",
-    "thinking": "Denke nach...",
-    "welcome": {
-      "title": "Hallo! Ich bin dein KI-Assistent.",
-      "subtitle": "Ich kenne dein Dokument und kann direkt Änderungen einsetzen.",
-      "features": {
-        "context": "Automatische Dokumenterkennung",
-        "insert": "Direkt einsetzen mit einem Klick",
-        "quick": "Schnellaktionen für häufige Aufgaben"
-      }
-    },
-    "quickActions": {
-      "title": "Titel vorschlagen",
-      "abstract": "Abstract",
-      "rewrite": "Umformulieren",
-      "expand": "Erweitern",
-      "fix": "LaTeX prüfen",
-      "selectFirst": "Zuerst Text markieren"
-    },
-    "input": {
-      "placeholder": "Frage stellen oder Anweisung geben...",
-      "placeholderSelection": "Frage zur markierten Stelle...",
-      "contextHint": "Kontext: {section}"
-    },
-    "actions": {
-      "insert": "Einsetzen",
-      "copy": "Kopieren",
-      "applied": "Änderung wurde eingesetzt.",
-      "failed": "Konnte nicht eingesetzt werden: {error}"
-    },
-    "suggestions": {
-      "titleIntro": "Hier sind Titel-Vorschläge für dein Dokument:",
-      "abstractIntro": "Hier ist ein Abstract basierend auf deinem Dokument:",
-      "rewriteIntro": "Hier ist der umformulierte Text:",
-      "expandIntro": "Hier ist der erweiterte Text:",
-      "noErrors": "Keine LaTeX-Fehler gefunden."
-    },
-    "fix": {
-      "errorsFound": "{count} Fehler gefunden",
-      "suggestions": "Vorschläge"
-    },
-    "errors": {
-      "noSelection": "Bitte markiere zuerst einen Text im Editor.",
-      "noContent": "Kein Dokumentinhalt verfügbar. Bitte öffne zuerst ein Dokument.",
-      "actionFailed": "Aktion fehlgeschlagen. Bitte versuche es erneut."
     }
   },
   "workspaceGit": {
@@ -5496,9 +5440,26 @@
     "subtitle": "Verwalten Sie Ihre persönlichen Einstellungen und Präferenzen",
     "tabs": {
       "personal": "Persönlich",
+      "preferences": "Präferenzen",
       "apikeys": "API-Schlüssel",
       "providers": "LLM-Provider",
-      "referrals": "Einladungen"
+      "referrals": "Einladungen",
+      "admin": "Admin Dashboard"
+    },
+    "preferences": {
+      "description": "Persönliche Präferenzen und Tastatur-Shortcuts",
+      "shortcuts": {
+        "title": "Tastatur-Shortcuts",
+        "description": "Optionale Tastenkürzel für die Evaluation. Standardmäßig deaktiviert — hier pro Person aktivierbar.",
+        "spacebarAdvance": {
+          "label": "Leertaste springt zum nächsten Item",
+          "key": "Leertaste",
+          "hint": "Wenn aktiviert, blättert die Leertaste in jeder Evaluation zum nächsten Item weiter. In Textfeldern tippt sie wie gewohnt ein Leerzeichen."
+        }
+      }
+    },
+    "admin": {
+      "description": "Schnellzugriff auf das Admin Dashboard"
     },
     "apiKeys": {
       "description": "Erstellen und verwalten Sie API-Schlüssel für den programmatischen Zugriff",
@@ -5518,9 +5479,53 @@
       "activate": "Aktivieren",
       "deactivate": "Deaktivieren",
       "deleteTitle": "Schlüssel löschen",
-      "deleteConfirm": "Möchten Sie den Schlüssel \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      "deleteConfirm": "Möchten Sie den Schlüssel \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "scopes": {
+        "title": "Berechtigungen (Scopes)",
+        "hint": "Optional — leer = alle Rechte des Eigentümers",
+        "scenarioRead": {
+          "label": "Szenarien lesen",
+          "description": "Ermöglicht /api/v1/scenarios GET-Anfragen — Szenarien und Bewerter auflisten."
+        },
+        "scenarioWrite": {
+          "label": "Szenarien schreiben",
+          "description": "Ermöglicht das Erstellen, Patchen und Löschen von Szenarien sowie das Hochladen von Items und Bewertern."
+        },
+        "chatbotRead": {
+          "label": "Chatbots lesen",
+          "description": "Ermöglicht GET-Anfragen unter /api/v1/chatbots* — Chatbots auflisten, Konfigurationen einsehen, Konversationen für Auswertungen lesen."
+        },
+        "chatbotWrite": {
+          "label": "Chatbots schreiben",
+          "description": "Ermöglicht das Erstellen, Patchen und Löschen von Chatbots, das Konfigurieren von RAG-Sammlungen, das Tweaken laufender Bots und Chat-Anfragen."
+        },
+        "admin": {
+          "label": "Admin (alle Rechte)",
+          "description": "Vollzugriff auf alle v1-Endpunkte. Nur für Administratoren freigeschaltet."
+        }
+      }
     },
     "personal": {
+      "redeem": {
+        "title": "Einladungscode einlösen",
+        "description": "Sie haben einen Einladungscode für eine Studie erhalten? Geben Sie ihn hier ein, um teilzunehmen. Ihre bestehende Rolle bleibt unverändert.",
+        "submit": "Einlösen",
+        "success": "Code erfolgreich eingelöst. Sie nehmen jetzt an der Studie teil.",
+        "alreadyEnrolled": "Sie nehmen an dieser Studie bereits teil.",
+        "goToStudy": "Zur Studie",
+        "error": "Code konnte nicht eingelöst werden. Bitte prüfen Sie den Code und versuchen Sie es erneut."
+      },
+      "profile": {
+        "title": "Meine Angaben",
+        "description": "Hier sehen Sie Ihre hinterlegte E-Mail-Adresse und können die demografischen Angaben aus der Eingangsbefragung jederzeit einsehen und ändern.",
+        "emailLabel": "Hinterlegte E-Mail:",
+        "emailNone": "Keine E-Mail hinterlegt (anonyme Teilnahme).",
+        "save": "Angaben speichern",
+        "saved": "Gespeichert",
+        "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.",
+        "emailConsentLabel": "Meine E-Mail-Adresse darf gespeichert werden, um mich über künftige Studien zu informieren.",
+        "emailConsentSaved": "Einstellung gespeichert."
+      },
       "avatar": {
         "title": "Profilbild",
         "upload": "Hochladen",
@@ -5534,9 +5539,7 @@
         "title": "Kollaborationsfarbe",
         "description": "Diese Farbe wird verwendet, um Ihre Cursor und Markierungen in kollaborativen Editoren anzuzeigen.",
         "custom": "Eigene",
-        "preview": "Vorschau",
-        "aiReservedHint": "Lila/Violett-Töne sind für {name} reserviert",
-        "aiReservedError": "Diese Farbe liegt im reservierten Lila/Violett-Bereich für die KI. Bitte wählen Sie eine andere Farbe."
+        "preview": "Vorschau"
       },
       "preferences": {
         "title": "Präferenzen",
@@ -5619,11 +5622,16 @@
         "labelPlaceholder": "z.B. IJCAI Reviewer",
         "slug": "Kurz-URL",
         "slugPlaceholder": "z.B. ijcai-2026",
+        "slugHint": "Optionaler kurzer Name für die URL",
+        "slugTooShort": "Slug muss mindestens 3 Zeichen haben",
+        "slugTaken": "Dieser Slug ist bereits vergeben",
+        "slugAvailable": "Slug ist verfügbar",
         "description": "Beschreibung",
         "descriptionPlaceholder": "Optionale Beschreibung für diesen Link",
         "maxUses": "Max. Nutzungen",
         "maxUsesPlaceholder": "Unbegrenzt",
-        "expiresAt": "Gültig bis"
+        "expiresAt": "Gültig bis",
+        "optionalSettings": "Erweiterte Einstellungen"
       }
     }
   },
@@ -5700,7 +5708,8 @@
       "clearFilter": "Filter zurücksetzen",
       "createFirst": "Ersten Job erstellen",
       "deleteTitle": "Job löschen",
-      "deleteConfirm": "Bist du sicher, dass du den Job \"{name}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden."
+      "deleteConfirm": "Bist du sicher, dass du den Job \"{name}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "sharedWithMe": "Mit mir geteilt"
     },
     "status": {
       "created": "Erstellt",
@@ -5743,6 +5752,9 @@
         "promptOnlySourceDesc": "Probiere verschiedene Prompts über mehrere Modelle aus; vorhandene Prompt-Engineering-Variablen werden automatisch eingesetzt.",
         "promptOnlyTooltip": "Probiere verschiedene Prompts über mehrere Modelle aus; vorhandene Prompt-Engineering-Variablen werden automatisch eingesetzt.",
         "selectJob": "Generation Job auswählen",
+        "ownJobsHeader": "Eigene Jobs",
+        "sharedJobsHeader": "Mit mir geteilt",
+        "sharedBy": "von",
         "dropFiles": "Dateien hier ablegen oder klicken zum Hochladen",
         "pasteData": "Oder Daten direkt einfügen",
         "pasteDataPlaceholder": "JSON-Array oder CSV-Daten einfügen...",
@@ -5775,7 +5787,10 @@
         "budget": "Budget-Limit",
         "budgetLimit": "Max. Kosten (USD)",
         "budgetHint": "Leer lassen für kein Limit",
-        "retryCount": "Wiederholungen"
+        "retryCount": "Wiederholungen",
+        "parallelism": "Parallelismus",
+        "maxParallel": "Gleichzeitige Streams",
+        "maxParallelHint": "Anzahl gleichzeitig verarbeiteter Outputs. Mehr = schneller, aber höhere API-Last."
       },
       "step5": {
         "title": "Prüfen & Erstellen",
@@ -5808,17 +5823,245 @@
       "generatedContent": "Generierter Inhalt",
       "errorMessage": "Fehlermeldung",
       "currentlyProcessing": "Wird verarbeitet",
+      "liveStreams": "Live-Streams",
+      "active": "aktiv",
+      "waitingForBatch": "Warte auf nächsten Batch...",
       "waitingForResponse": "Warte auf LLM-Antwort...",
+      "thinkingHidden": "Modell denkt nach (ausgeblendet)...",
+      "showThoughts": "Gedanken anzeigen",
       "reconnecting": "Verbinde zum laufenden Stream...",
       "inputPrompt": "Eingabe-Prompt",
       "noPromptData": "Prompt-Daten nicht verfügbar",
       "noContent": "Kein Inhalt generiert",
       "sourceData": "Eingabedaten"
     },
+    "share": {
+      "title": "Teilen",
+      "shareAction": "Teilen",
+      "addUserPlaceholder": "Benutzer suchen...",
+      "notSharedYet": "Dieser Job wurde noch nicht geteilt.",
+      "shared": "Job erfolgreich geteilt",
+      "unshared": "Freigabe entfernt",
+      "sharedByOwner": "Geteilt von {owner}",
+      "readOnlyHint": "Sie haben Lesezugriff auf diesen Job. Starten, Pausieren und Löschen ist nur dem Ersteller möglich."
+    },
+    "messages": {
+      "jobCreated": "Job \"{name}\" erstellt",
+      "jobDeleted": "Job gelöscht",
+      "jobStarted": "Job gestartet",
+      "jobPaused": "Job pausiert",
+      "jobCancelled": "Job abgebrochen",
+      "jobCompleted": "Job abgeschlossen: {count} Outputs",
+      "jobFailed": "Job fehlgeschlagen: {error}",
+      "budgetExceeded": "Budget-Limit erreicht: ${cost}",
+      "scenarioCreated": "Szenario \"{name}\" erstellt",
+      "csvDownloaded": "CSV heruntergeladen",
+      "csvExportFailed": "CSV-Export fehlgeschlagen",
+      "jsonDownloaded": "JSON heruntergeladen",
+      "jsonExportFailed": "JSON-Export fehlgeschlagen",
+      "loadJobsFailed": "Jobs konnten nicht geladen werden",
+      "loadJobFailed": "Job konnte nicht geladen werden",
+      "createJobFailed": "Job konnte nicht erstellt werden",
+      "deleteJobFailed": "Job konnte nicht gelöscht werden",
+      "startJobFailed": "Job konnte nicht gestartet werden",
+      "pauseJobFailed": "Job konnte nicht pausiert werden",
+      "cancelJobFailed": "Job konnte nicht abgebrochen werden",
+      "loadOutputFailed": "Ausgabe-Details konnten nicht geladen werden",
+      "createScenarioFailed": "Szenario konnte nicht erstellt werden",
+      "shareJobFailed": "Job konnte nicht geteilt werden",
+      "unshareJobFailed": "Freigabe konnte nicht entfernt werden"
+    },
     "scenario": {
       "name": "Szenario-Name",
       "evaluationType": "Evaluationstyp",
       "info": "{count} abgeschlossene Ausgaben werden verwendet um Evaluations-Items zu erstellen."
+    }
+  },
+  "pipeline": {
+    "title": "Pipeline",
+    "subtitle": "Automatisierte LLM-Evaluation im Loop",
+    "backToHub": "Zurück zur Übersicht",
+    "newRun": "Neue Pipeline",
+    "allStatuses": "Alle Status",
+    "activeRuns": "Aktive Pipelines",
+    "allRuns": "Alle Pipelines",
+    "emptyTitle": "Keine Pipelines vorhanden",
+    "emptyHint": "Erstelle deine erste automatisierte Pipeline.",
+    "emptyFilterHint": "Keine Pipelines mit diesem Status.",
+    "createFirst": "Erste Pipeline erstellen",
+    "iteration": "Iteration",
+    "iterations": "Iterationen",
+    "iterationLabel": "Iteration {n}",
+    "budget": "Budget",
+    "models": "Modelle",
+    "bestScore": "Bester Score",
+    "bestSetup": "Bestes Setup",
+    "avgScore": "Durchschn. Score",
+    "threshold": "Schwellenwert",
+    "scoreChart": "Score-Verlauf",
+    "noScoresYet": "Noch keine Scores vorhanden",
+    "noIterationsYet": "Noch keine Iterationen gestartet",
+    "notFound": "Pipeline nicht gefunden",
+    "variantsGenerated": "Varianten generiert",
+    "pause": "Pausieren",
+    "start": "Starten",
+    "cancel": "Abbrechen",
+    "status": {
+      "created": "Erstellt",
+      "running": "Läuft",
+      "paused": "Pausiert",
+      "waitingForReview": "Wartet auf Review",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen"
+    },
+    "phases": {
+      "prompts": "Prompts",
+      "generation": "Generierung",
+      "evaluation": "Evaluation",
+      "promptGeneration": "Prompts werden generiert...",
+      "batchGeneration": "Ausgaben werden generiert...",
+      "evaluating": "Evaluation läuft...",
+      "analyzing": "Analyse läuft..."
+    },
+    "review": {
+      "title": "Human Review erforderlich",
+      "bestConfig": "Beste Konfiguration",
+      "deploy": "Übernehmen",
+      "continue": "Weiterlaufen lassen",
+      "reject": "Verwerfen",
+      "reason": {
+        "plateau": "Die Pipeline hat ein Plateau erreicht — keine signifikante Verbesserung mehr.",
+        "budget_exhausted": "Das Token-Budget ist erschöpft.",
+        "max_iterations": "Die maximale Anzahl an Iterationen wurde erreicht."
+      }
+    },
+    "messages": {
+      "created": "Pipeline erstellt",
+      "createFailed": "Pipeline konnte nicht erstellt werden",
+      "started": "Pipeline gestartet",
+      "startFailed": "Pipeline konnte nicht gestartet werden",
+      "paused": "Pipeline pausiert",
+      "pauseFailed": "Pipeline konnte nicht pausiert werden",
+      "cancelled": "Pipeline abgebrochen",
+      "cancelFailed": "Pipeline konnte nicht abgebrochen werden",
+      "deleted": "Pipeline gelöscht",
+      "deleteFailed": "Pipeline konnte nicht gelöscht werden",
+      "reviewSubmitted": "Review-Entscheidung übermittelt",
+      "reviewFailed": "Review-Entscheidung konnte nicht übermittelt werden",
+      "runFailed": "Pipeline ist fehlgeschlagen"
+    },
+    "session": {
+      "config": "Konfiguration",
+      "taskSpec": "Aufgabenstellung",
+      "candidateModels": "Kandidaten-Modelle",
+      "evalModel": "Evaluations-Modell",
+      "metaModel": "Meta-Modell",
+      "thresholds": "Schwellenwerte",
+      "globalThreshold": "Global",
+      "tokensUsed": "Tokens verbraucht",
+      "tokenBudget": "Token-Budget",
+      "maxIterations": "Max. Iterationen",
+      "duration": "Dauer",
+      "decision": "Entscheidung",
+      "decisionContinue": "Weiter optimieren",
+      "decisionConverged": "Konvergiert",
+      "decisionEscalate": "Eskaliert",
+      "promptVariants": "Prompt-Varianten",
+      "systemPrompt": "System-Prompt",
+      "userTemplate": "User-Template",
+      "thresholdMet": "Erreicht",
+      "thresholdNotMet": "Nicht erreicht",
+      "dimensions": "Dimensionen",
+      "dimension": "Dimension",
+      "score": "Score",
+      "status": "Status",
+      "bestPrompts": "Beste Prompt-Varianten",
+      "totalRatings": "Bewertungen",
+      "clickToExpand": "Klicken für Details",
+      "generationJobId": "Generierungs-Job",
+      "evalScenarioId": "Eval-Szenario",
+      "agentReasoning": "Agent-Begründung",
+      "convergenceDecision": "Konvergenz-Entscheidung",
+      "metaInfo": "Meta-Informationen",
+      "noTaskSpec": "Keine Aufgabenstellung angegeben"
+    },
+    "wizard": {
+      "title": "Neue Pipeline erstellen",
+      "subtitle": "Konfiguriere die automatisierte LLM-Evaluation",
+      "step1": "Grundkonfiguration",
+      "step2": "Modelle & Daten",
+      "step3": "Limits & Schwellenwerte",
+      "name": "Name",
+      "nameRequired": "Name ist erforderlich",
+      "description": "Beschreibung",
+      "taskSpec": "Task-Spezifikation",
+      "taskSpecHint": "Beschreibe die Aufgabe, die das LLM lösen soll (z.B. 'Erstelle empathische Beratungsantworten')",
+      "scenarioType": "Szenario-Typ",
+      "greenfield": "Greenfield (neues Projekt)",
+      "migration": "Migration (bestehendes Modell ersetzen)",
+      "evaluationType": "Evaluationstyp",
+      "evalTypeRating": "Rating (Multi-dimensional)",
+      "evalTypeRanking": "Ranking (Kategorisierung)",
+      "evalTypeComparison": "Vergleich (Paarweise)",
+      "candidateModels": "Kandidaten-Modelle",
+      "evalModel": "Evaluations-Modell",
+      "evalModelHint": "LLM-Modell für die automatische Bewertung",
+      "metaModel": "Meta-Modell",
+      "metaModelHint": "LLM-Modell für Prompt-Generierung und Analyse",
+      "referenceModel": "Referenz-Modell (aktuelles Produktionsmodell)",
+      "maxIterations": "Maximale Iterationen",
+      "budgetTokens": "Token-Budget",
+      "tokens": "Tokens",
+      "globalThreshold": "Globaler Schwellenwert (1-5)",
+      "numVariants": "Prompt-Varianten pro Iteration",
+      "autoStart": "Pipeline sofort starten",
+      "create": "Erstellen",
+      "createAndStart": "Erstellen & Starten",
+      "summary": "Zusammenfassung",
+      "selected": "ausgewählt"
+    },
+    "research": {
+      "title": "Forschung & Methodik",
+      "description": "Die LLARS-Pipeline kombiniert Ansätze aus aktueller Forschung zu automatisierter Prompt-Optimierung und LLM-Evaluation.",
+      "approach": "Unser Ansatz: Iterative Prompt-Optimierung mit automatischer LLM-Evaluation in einem geschlossenen Feedback-Loop, inspiriert von DSPy und TextGrad.",
+      "papers": {
+        "dspy": "DSPy — Deklarative Sprache für LLM-Pipelines mit automatischer Compile-Time-Optimierung (Stanford, 2024)",
+        "textgrad": "TextGrad — Automatische Differenzierung über Text für iterative Verfeinerung (MIT, 2024)",
+        "agentJudge": "Agent-as-a-Judge — Agent-basierte Evaluation statt statischer Metriken (2025)",
+        "llmJudgeSurvey": "LLM-as-a-Judge Survey — Umfassende Übersicht zu LLM-Evaluationsmethoden (2025)",
+        "promptomatix": "Promptomatix — Feedback-basierte Prompt-Optimierung mit Kostensteuerung (2025)",
+        "opro": "OPRO — LLM-gesteuerte Prompt-Suche via Optimization by PROmpting (Google DeepMind, 2023)"
+      }
+    }
+  },
+  "referral": {
+    "errors": {
+      "codeRequired": "Einladungscode ist erforderlich",
+      "validationFailed": "Fehler bei der Code-Validierung",
+      "registrationFailed": "Registrierung fehlgeschlagen",
+      "loadCampaigns": "Fehler beim Laden der Kampagnen",
+      "loadCampaign": "Fehler beim Laden der Kampagne",
+      "createCampaign": "Fehler beim Erstellen der Kampagne",
+      "updateCampaign": "Fehler beim Aktualisieren der Kampagne",
+      "updateStatus": "Fehler beim Aktualisieren des Status",
+      "deleteCampaign": "Fehler beim Löschen der Kampagne",
+      "loadLinks": "Fehler beim Laden der Links",
+      "createLink": "Fehler beim Erstellen des Links",
+      "loadLink": "Fehler beim Laden des Links",
+      "updateLink": "Fehler beim Aktualisieren des Links",
+      "deactivateLink": "Fehler beim Deaktivieren des Links",
+      "deleteLink": "Fehler beim Löschen des Links",
+      "loadAnalytics": "Fehler beim Laden der Analytics",
+      "loadCampaignAnalytics": "Fehler beim Laden der Kampagnen-Analytics",
+      "loadRegistrations": "Fehler beim Laden der Registrierungen"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "active": "Aktiv",
+      "paused": "Pausiert",
+      "expired": "Abgelaufen",
+      "archived": "Archiviert"
     }
   },
   "admin": {
@@ -5828,8 +6071,7 @@
       "lastUpdated": "Zuletzt aktualisiert: {date}",
       "errors": {
         "saveFailed": "Fehler beim Speichern: {error}",
-        "loadFailed": "Fehler beim Laden der Einstellungen",
-        "zoteroSaveFailed": "Fehler beim Speichern der Zotero-Einstellungen"
+        "loadFailed": "Fehler beim Laden der Einstellungen"
       },
       "crawlerTimeouts": {
         "title": "Crawler Timeouts",
@@ -5866,7 +6108,7 @@
       "batchGeneration": {
         "title": "Batch-Generierung",
         "maxParallel": "Maximale parallele Outputs",
-        "maxParallelHint": "Globales Limit für gleichzeitig verarbeitete Outputs in der Batch-Generierung (Standard: 1)."
+        "maxParallelHint": "Globales Limit für gleichzeitig verarbeitete Outputs in der Batch-Generierung (Standard: 4, empfohlen zunächst 4-6)."
       },
       "referral": {
         "title": "Referral-System",
@@ -5879,33 +6121,12 @@
         "defaultRoleHint": "Rolle, die neuen Benutzern bei der Registrierung zugewiesen wird (falls kein Link-spezifischer Override).",
         "activeAlert": "Selbst-Registrierung ist aktiv. Der \"Registrieren\"-Button wird auf der Login-Seite angezeigt."
       },
-      "aiAssistant": {
-        "title": "KI-Assistent (LaTeX Collab)",
-        "info": "Der KI-Assistent kann in LaTeX Collab Kommentare automatisch auflösen. Die KI-Farbe ist exklusiv für den Assistenten reserviert und kann nicht von Nutzern gewählt werden.",
-        "enable": "KI-Assistent aktivieren",
-        "enableHint": "Aktiviert den KI-Button bei Kommentaren für automatische Auflösung.",
-        "username": "KI-Anzeigename",
-        "usernameHint": "Name, der als Autor bei KI-Antworten angezeigt wird.",
-        "color": "KI-Farbe (Hex)",
-        "colorHint": "Reservierte Farbe für KI-Änderungen. Standard: #9B59B6 (Lila)",
-        "preview": "Vorschau:"
-      },
-      "zotero": {
-        "title": "Zotero Integration",
-        "statusEnv": "Aktiv (.env)",
-        "statusDb": "Aktiv (DB)",
-        "statusNone": "Nicht konfiguriert",
-        "info": "Zotero OAuth ermöglicht Usern, ihre Bibliotheken mit LaTeX-Workspaces zu synchronisieren.",
-        "registerApp": "Registriere eine App unter",
-        "priority": "Priorität: .env-Variablen → Datenbank-Fallback",
-        "envVariables": "Umgebungsvariablen (.env)",
-        "active": "AKTIV",
-        "notSet": "(nicht gesetzt)",
-        "databaseFallback": "Datenbank-Fallback",
-        "enableFallback": "Datenbank-Fallback aktivieren",
-        "clientKey": "Client Key",
-        "clientSecret": "Client Secret (leer = unverändert)",
-        "newSecretPlaceholder": "Neues Secret eingeben..."
+      "passwordReset": {
+        "title": "Passwort-Selbstservice",
+        "info": "Ermöglicht es Nutzern, ihr Passwort über einen \"Passwort vergessen?\"-Link auf der Login-Seite selbst zurückzusetzen.",
+        "enable": "Selbstservice-Passwort-Reset aktivieren",
+        "enableHint": "Zeigt den \"Passwort vergessen?\"-Link auf der Anmeldeseite an. Setzt einen konfigurierten E-Mail-Versand voraus.",
+        "activeAlert": "Der Passwort-Selbstservice ist aktiv. Der \"Passwort vergessen?\"-Link wird auf der Login-Seite angezeigt."
       }
     },
     "users": {
@@ -5939,7 +6160,22 @@
         "details": "Details",
         "lock": "Sperren",
         "unlock": "Entsperren",
+        "sendResetEmail": "Passwort-Reset-E-Mail senden",
+        "copyResetLink": "Reset-Link erzeugen und kopieren",
         "delete": "Löschen"
+      },
+      "passwordReset": {
+        "emailSent": "Passwort-Reset-E-Mail an {username} gesendet.",
+        "emailFailed": "Passwort-Reset-E-Mail konnte nicht gesendet werden.",
+        "noEmail": "{username} hat keine E-Mail-Adresse hinterlegt.",
+        "linkCopied": "Reset-Link in die Zwischenablage kopiert.",
+        "linkFailed": "Reset-Link konnte nicht erzeugt werden."
+      },
+      "consoleLogs": {
+        "enable": "Console-Logs aktivieren",
+        "disable": "Console-Logs deaktivieren",
+        "activeLabel": "Console-Logs aktiv",
+        "activeNotice": "Console-Logging ist fuer diesen Account aktiviert. Ein Admin hat dies zu Debug-Zwecken eingeschaltet."
       },
       "empty": {
         "noResults": "Keine Benutzer gefunden",
@@ -6039,6 +6275,7 @@
         "socketUnavailable": "Live-Updates nicht verfügbar (Socket.IO)",
         "crawlingFailed": "Crawling fehlgeschlagen",
         "sessionUnavailable": "Crawler-Session nicht mehr verfügbar (Backend neu gestartet oder Crawl beendet). Live-Updates sind nicht verfügbar.",
+        "sessionResyncing": "Crawler-Live-Session nicht mehr verfügbar. Der aktuelle Status wird aus dem Backend synchronisiert...",
         "embeddingFailed": "Embedding fehlgeschlagen",
         "createFailed": "Fehler beim Erstellen"
       }
@@ -6050,7 +6287,9 @@
         "campaigns": "Kampagnen",
         "active": "Aktiv",
         "links": "Links",
-        "registrations": "Registrierungen"
+        "registrations": "Registrierungen",
+        "clicks": "Aufrufe",
+        "conversion": "Konversionsrate"
       },
       "systemStatus": {
         "referralEnabled": "Referral-System: Aktiviert",
@@ -6094,7 +6333,9 @@
         "label": "Label/Beschreibung (optional)",
         "roleForNewUsers": "Rolle für neue User",
         "maxUses": "Max. Verwendungen (optional)",
-        "expiresAt": "Ablaufdatum (optional)"
+        "expiresAt": "Ablaufdatum (optional)",
+        "color": "Farbe",
+        "colorAuto": "Auto"
       },
       "deleteDialog": {
         "deleteCampaign": "Kampagne löschen?",
@@ -6118,8 +6359,12 @@
           "active": "Aktiv",
           "user": "Benutzer",
           "source": "Quelle",
-          "registeredAt": "Registriert am"
-        }
+          "registeredAt": "Registriert am",
+          "clicks": "Aufrufe",
+          "funnel": "Aufrufe → Registrierungen"
+        },
+        "color": "Farbe ändern",
+        "colorAuto": "Auto"
       },
       "statusOptions": {
         "draft": "Entwurf",
@@ -6145,7 +6390,78 @@
         "linkCopied": "Link kopiert",
         "copyFailed": "Kopieren fehlgeschlagen",
         "campaignDeleted": "Kampagne gelöscht",
-        "linkDeleted": "Link gelöscht"
+        "linkDeleted": "Link gelöscht",
+        "linkColorUpdated": "Farbe aktualisiert"
+      },
+      "invitations": {
+        "column": "Einladungen",
+        "invited": "Eingeladen",
+        "accepted": "Angenommen",
+        "pending": "Offen",
+        "unmatched": "Registrierungen ohne E-Mail-Zuordnung",
+        "inviteBtn": "Einladen",
+        "dialogTitle": "Per E-Mail einladen",
+        "dialogHelp": "Sende eine gebrandete Einladung mit dem Link „{link}“ an die unten genannten Adressen.",
+        "recipients": "Empfänger (Komma, Semikolon oder Zeilenumbruch)",
+        "recipientsHint": "Ungültige und doppelte Adressen werden automatisch übersprungen.",
+        "intro": "Einleitungstext (optional)",
+        "sendBtn": "Einladungen senden",
+        "sentResult": "{sent} gesendet, {failed} fehlgeschlagen, {skipped} übersprungen"
+      },
+      "qr": {
+        "title": "QR-Code",
+        "showTooltip": "QR-Code anzeigen",
+        "rendering": "QR-Code wird erstellt …",
+        "renderFailed": "QR-Code konnte nicht erstellt werden",
+        "downloadPng": "PNG",
+        "downloadSvg": "SVG",
+        "downloadPdf": "PDF",
+        "close": "Schließen"
+      },
+      "welcomeMail": {
+        "title": "Willkommensmail für diesen Link",
+        "templateLabel": "Willkommensmail-Vorlage",
+        "templates": {
+          "standard": "Standard (automatisch: Name, Benutzername, Studie)",
+          "kkb": "„Kann KI Beratung?\" (Studien-Mail)",
+          "custom": "Benutzerdefiniert (eigener Text mit Platzhaltern)"
+        },
+        "subject": "Betreff",
+        "body": "Nachrichtentext",
+        "placeholdersHint": "Platzhalter (jeweils in geschweiften Klammern einsetzen): name, username, study, study_link, link_label — sie werden beim Versand automatisch ersetzt.",
+        "editTooltip": "Willkommensmail bearbeiten",
+        "saved": "Willkommensmail gespeichert"
+      }
+    },
+    "communication": {
+      "globalSettings": "Globale Einstellungen",
+      "masterToggle": "Kommunikation aktiviert",
+      "statusEnabled": "Kommunikationsfunktionen sind aktiv. Benutzer mit Berechtigungen können Messaging nutzen.",
+      "statusDisabled": "Kommunikationsfunktionen sind für alle Benutzer deaktiviert.",
+      "userAccess": "Benutzerzugriff verwalten",
+      "searchUser": "Benutzer suchen...",
+      "enableAll": "Alle aktivieren",
+      "disableAll": "Alle deaktivieren",
+      "toggleSaved": "Kommunikationseinstellung gespeichert",
+      "toggleError": "Fehler beim Speichern der Kommunikationseinstellung",
+      "permError": "Fehler beim Aktualisieren der Berechtigung",
+      "bulkEnabled": "Alle Benutzer aktiviert",
+      "bulkDisabled": "Alle Benutzer deaktiviert",
+      "table": {
+        "user": "Benutzer",
+        "all": "Alle",
+        "access": "Zugriff"
+      },
+      "statistics": "Kommunikationsstatistiken",
+      "stats": {
+        "conversations": "Konversationen",
+        "messages": "Nachrichten",
+        "activeUsers": "Aktive Benutzer",
+        "perUser": "Benutzerstatistiken",
+        "messagesSent": "Nachrichten gesendet",
+        "lastActive": "Zuletzt aktiv",
+        "unread": "Ungelesen",
+        "privacyNote": "Privacy-by-Design: Es werden nur aggregierte Zahlen angezeigt. Nachrichteninhalte sind für Admins niemals sichtbar."
       }
     },
     "rag": {
@@ -6350,6 +6666,959 @@
           "nameFormat": "Nur Kleinbuchstaben, Zahlen, - und _",
           "positiveNumber": "Muss größer als 0 sein"
         }
+      }
+    },
+    "mailCenter": {
+      "tabs": {
+        "compose": "Verfassen",
+        "log": "Mail-Verlauf",
+        "templates": "Vorlagen"
+      },
+      "mode": {
+        "invitation": "Einladung",
+        "announcement": "Announcement"
+      },
+      "composer": {
+        "title": "Nachricht verfassen",
+        "referralLink": "Einladungslink",
+        "intro": "Einleitungstext (optional)",
+        "introHint": "Wird oberhalb des Einladungstexts angezeigt.",
+        "subject": "Betreff",
+        "body": "Inhalt (Markdown unterstützt)",
+        "bodyHint": "Wird in das gebrandete LLARS-Layout eingebettet.",
+        "brandedBadge": "Gebrandete Vorlage · {org} — bearbeitbar",
+        "templateBody": "Vorlage (bearbeitbar)",
+        "templateBodyHint": "Roh-HTML der gebrandeten Einladung. Änderungen werden live in der Vorschau angezeigt und genau so versendet."
+      },
+      "recipients": {
+        "title": "Empfänger",
+        "help": "Kombiniere einzelne Adressen, eine eingefügte Liste, einen Link, ein Szenario oder eine Rolle.",
+        "addresses": "Adressen (Komma, Semikolon oder Zeilenumbruch)",
+        "addressesHint": "Ungültige und doppelte Adressen werden übersprungen.",
+        "byLink": "Per Einladungslink",
+        "byScenario": "Per Szenario-ID",
+        "byRole": "Per Rolle",
+        "none": "– keiner –",
+        "resolved": "{n} Empfänger",
+        "inviteLinkNote": "Einladungen gehen an die oben eingegebenen Adressen; der Link wird automatisch eingebettet."
+      },
+      "actions": {
+        "preview": "Vorschau",
+        "send": "Senden"
+      },
+      "preview": {
+        "title": "Live-Vorschau",
+        "fullscreen": "Vollbild",
+        "subject": "Betreff",
+        "skipped": "{invalid} ungültig, {dupes} doppelt übersprungen.",
+        "empty": "Die Vorschau erscheint hier, sobald Sie einen Einladungslink wählen bzw. Betreff/Text eingeben."
+      },
+      "confirm": {
+        "title": "Senden bestätigen",
+        "text": "Möchtest du diese Mail an {n} Empfänger senden?",
+        "cancel": "Abbrechen",
+        "confirm": "Jetzt senden"
+      },
+      "messages": {
+        "sent": "{sent} gesendet, {failed} fehlgeschlagen, {skipped} übersprungen"
+      },
+      "log": {
+        "title": "Mail-Verlauf",
+        "refresh": "Aktualisieren",
+        "filterType": "Typ",
+        "filterStatus": "Status",
+        "filterRecipient": "Empfänger suchen",
+        "headers": {
+          "date": "Zeitpunkt",
+          "type": "Typ",
+          "recipient": "Empfänger",
+          "subject": "Betreff",
+          "status": "Status",
+          "context": "Bezug"
+        },
+        "help": "Filtere nach Typ, Status, Datum oder Empfänger. Zeigt jede versendete E-Mail.",
+        "emptyHint": "Noch keine Einträge. Der Verlauf enthält nur E-Mails, die nach der Aktivierung der Protokollierung versendet wurden – ältere Versände werden nicht nachträglich erfasst.",
+        "filterDateFrom": "Ab Datum",
+        "scenarioRef": "Szenario {id}",
+        "linkRef": "Link {id}",
+        "columns": {
+          "opened": "Geöffnet",
+          "clicked": "Geklickt"
+        },
+        "opened": "Geöffnet am {date}",
+        "clicked": "Link geklickt am {date}",
+        "notOpened": "Nicht geöffnet",
+        "notClicked": "Nicht geklickt",
+        "trackingHint": "Öffnungs-Tracking erfordert aktiviertes Brevo-Tracking und das Laden von Bildern durch den Empfänger."
+      },
+      "types": {
+        "welcome": "Willkommen",
+        "password_reset": "Passwort-Reset",
+        "invitation": "Einladung",
+        "ijcai": "IJCAI-Demo",
+        "demo_invitation_de": "Demo-Einladung (DE)",
+        "demo_invitation_en": "Demo-Einladung (EN)",
+        "announcement": "Announcement"
+      },
+      "statuses": {
+        "sent": "Gesendet",
+        "failed": "Fehlgeschlagen",
+        "skipped": "Übersprungen"
+      },
+      "intro": "Verwalte alle E-Mails der Plattform: Standard-Vorlagen ansehen, Einladungen und Ankündigungen versenden und den Verlauf der versendeten Mails einsehen.",
+      "templates": {
+        "title": "Standard-Vorlagen",
+        "help": "Diese drei E-Mails werden automatisch versendet. Hier siehst du eine echte Vorschau, ohne eine Mail auszulösen.",
+        "sampleNote": "Vorschau mit Beispieldaten – es wird keine Mail versendet.",
+        "variables": "Variablen",
+        "refresh": "Aktualisieren",
+        "recruitmentHeader": "Einladungs-Vorlagen (Studie)",
+        "recruitmentNote": "Gebrandete Einladungen pro Organisation für die Studie „Kann KI Beratung?“.",
+        "studyBadge": "Studie",
+        "prev": "Vorherige Vorlage",
+        "next": "Nächste Vorlage",
+        "goToSlide": "Zu Vorlage {n} springen"
+      },
+      "quickSend": {
+        "button": "Schnellversand",
+        "placeholder": "E-Mail-Adresse",
+        "send": "Senden",
+        "cancel": "Abbrechen",
+        "sent": "Vorlage an {email} gesendet.",
+        "skipped": "Übersprungen: {email} ist keine echte Adresse.",
+        "failed": "Senden an {email} fehlgeschlagen."
+      }
+    }
+  },
+  "conferenceManager": {
+    "title": "Konferenz-Manager",
+    "tabs": {
+      "conferences": "Konferenzen",
+      "papers": "Papers",
+      "calendar": "Kalender",
+      "kanban": "Kanban Board",
+      "timeline": "Zeitstrahl"
+    },
+    "conference": {
+      "name": "Name",
+      "acronym": "Akronym",
+      "year": "Jahr",
+      "coreRanking": "CORE Ranking",
+      "submissionDeadline": "Einreichungsfrist",
+      "notificationDate": "Benachrichtigung",
+      "startDate": "Startdatum",
+      "endDate": "Enddatum",
+      "city": "Stadt",
+      "country": "Land",
+      "website": "Website",
+      "keywords": "Schlagwörter",
+      "notes": "Notizen",
+      "location": "Ort",
+      "create": "Neue Konferenz",
+      "edit": "Konferenz bearbeiten"
+    },
+    "paper": {
+      "title": "Titel",
+      "status": "Status",
+      "conference": "Konferenz",
+      "authors": "Autoren",
+      "authorName": "Autorenname",
+      "addAuthor": "Autor hinzufügen",
+      "addExternal": "Externen Autor hinzufügen",
+      "externalAuthor": "Externer Autor",
+      "searchUser": "Nutzer suchen...",
+      "noAuthors": "Noch keine Autoren hinzugefügt.",
+      "corresponding": "Korrespondierend",
+      "overleafUrl": "Overleaf URL",
+      "externalUrl": "Externe URL",
+      "keywords": "Schlagwörter",
+      "description": "Beschreibung",
+      "notes": "Notizen",
+      "updated": "Aktualisiert",
+      "create": "Neues Paper",
+      "edit": "Paper bearbeiten",
+      "statuses": {
+        "planning": "Planung",
+        "inProgress": "In Bearbeitung",
+        "submitted": "Eingereicht",
+        "accepted": "Akzeptiert",
+        "rejected": "Abgelehnt",
+        "published": "Veröffentlicht"
+      },
+      "submissions": "Einreichungsverlauf",
+      "addSubmission": "Einreichung hinzufügen",
+      "submittedAt": "Eingereicht am",
+      "decidedAt": "Entscheidung",
+      "noSubmissions": "Noch keine Einreichungen",
+      "currentSubmission": "Aktuell",
+      "resubmissions": "Wiedereinreichungen",
+      "submissionStatuses": {
+        "submitted": "Eingereicht",
+        "accepted": "Akzeptiert",
+        "rejected": "Abgelehnt",
+        "withdrawn": "Zurückgezogen"
+      },
+      "selectWorkspace": "Arbeitsbereich auswählen",
+      "noAccess": "Kein Zugriff",
+      "requestAccess": "Zugriff anfragen",
+      "requestSent": "Anfrage gesendet",
+      "requestPending": "Anfrage ausstehend",
+      "openWorkspace": "Arbeitsbereich öffnen"
+    },
+    "filters": {
+      "search": "Suchen...",
+      "allRankings": "Alle Rankings",
+      "allStatuses": "Alle Status",
+      "allConferences": "Alle Konferenzen"
+    },
+    "stats": {
+      "overview": "Übersicht",
+      "conferences": "Konferenzen",
+      "papers": "Papers",
+      "upcomingDeadlines": "anstehende Deadlines"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "create": "Erstellen",
+      "delete": "Löschen",
+      "confirmDelete": "Löschen bestätigen",
+      "confirmDeleteConference": "Möchten Sie \"{name}\" wirklich löschen? Papers, die mit dieser Konferenz verknüpft sind, behalten ihre Daten.",
+      "confirmDeletePaper": "Möchten Sie \"{name}\" wirklich löschen?"
+    },
+    "legend": {
+      "ranking": "CORE Ranking",
+      "status": "Paper Status"
+    },
+    "empty": {
+      "conferences": "Noch keine Konferenzen. Erstellen Sie die erste!",
+      "papers": "Noch keine Papers. Erstellen Sie das erste!"
+    },
+    "calendar": {
+      "legend": "Legende",
+      "deadline": "Einreichungsfrist",
+      "notification": "Benachrichtigung",
+      "conference": "Konferenz"
+    },
+    "kanban": {
+      "emptyColumn": "Keine Paper",
+      "dragHint": "Ziehen um Status zu ändern",
+      "addPaper": "Paper hinzufügen"
+    },
+    "timeline": {
+      "today": "Heute",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "months3": "3 Monate",
+      "months6": "6 Monate",
+      "months12": "12 Monate",
+      "deadline": "Deadline",
+      "notification": "Benachrichtigung",
+      "conferencePeriod": "Konferenzzeitraum",
+      "todayMarker": "Aktuelles Datum",
+      "noEvents": "Keine anstehenden Events",
+      "oneDay": "1 Tag",
+      "nDays": "{n} Tage"
+    },
+    "wizard": {
+      "title": "KI-Konferenzsuche",
+      "button": "KI-Suche",
+      "description": "Geben Sie einen Konferenznamen, ein Akronym oder eine URL ein, um die Konferenzdetails automatisch zu suchen und auszufüllen.",
+      "inputLabel": "Konferenzname, Akronym oder URL",
+      "inputPlaceholder": "z.B. NeurIPS 2026",
+      "hint": "Funktioniert am besten mit spezifischen Namen inkl. Jahreszahl",
+      "search": "Mit KI suchen",
+      "retry": "Erneut versuchen",
+      "steps": {
+        "searching": "Suche nach Konferenz...",
+        "scraping": "Lese Konferenz-Website...",
+        "analyzing": "Extrahiere Konferenzdaten...",
+        "done": "Fertig"
+      },
+      "errors": {
+        "noResults": "Keine Suchergebnisse gefunden. Versuchen Sie eine andere Suche.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+        "noLlm": "Kein LLM-Modell konfiguriert. Bitte kontaktieren Sie einen Administrator."
+      }
+    },
+    "validation": {
+      "required": "Dieses Feld ist erforderlich"
+    },
+    "series": {
+      "select": "Konferenz-Reihe",
+      "hint": "Verknüpfung mit einer Reihe für jährliche Editionen",
+      "create": "Neue Reihe",
+      "addEdition": "Edition hinzufügen",
+      "linkDetected": "Bestehende Reihe erkannt",
+      "standalone": "Einzelne Konferenzen",
+      "groupBySeries": "Nach Reihe gruppieren"
+    },
+    "venueMap": {
+      "distance": "von Nürnberg",
+      "geocoding": "Karte wird geladen...",
+      "geocodeFailed": "Dieser Ort konnte auf der Karte nicht gefunden werden.",
+      "error": "Karte konnte nicht geladen werden."
+    }
+  },
+  "messaging": {
+    "title": "Nachrichten",
+    "newChat": "Neuer Chat",
+    "newGroup": "Neue Gruppe",
+    "startChat": "Chat starten",
+    "createGroup": "Gruppe erstellen",
+    "selectUser": "Benutzer auswählen",
+    "groupName": "Gruppenname",
+    "groupDescription": "Beschreibung (optional)",
+    "addMembers": "Mitglieder hinzufügen",
+    "addMember": "Mitglied hinzufügen",
+    "add": "Hinzufügen",
+    "members": "Mitglieder",
+    "groupInfo": "Gruppeninfo",
+    "leaveGroup": "Gruppe verlassen",
+    "chatDisabled": "Chat ist für Ihr Konto nicht verfügbar",
+    "typeMessage": "Nachricht eingeben...",
+    "send": "Senden",
+    "reply": "Antworten",
+    "copy": "Kopieren",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "edited": "bearbeitet",
+    "encrypted": "Ende-zu-Ende-verschlüsselt",
+    "messageDeleted": "Diese Nachricht wurde gelöscht",
+    "noMessages": "Noch keine Nachrichten",
+    "noConversations": "Noch keine Unterhaltungen",
+    "loading": "Unterhaltungen werden geladen...",
+    "loadingMessages": "Nachrichten werden geladen...",
+    "loadMore": "Ältere Nachrichten laden",
+    "searchPlaceholder": "Unterhaltungen durchsuchen...",
+    "selectConversation": "Unterhaltung auswählen",
+    "selectConversationHint": "Wähle einen Chat aus der Liste oder starte einen neuen",
+    "unavailable": "Messaging ist derzeit nicht verfügbar",
+    "unavailableHint": "Diese Funktion wurde von einem Administrator deaktiviert. Bitte wende dich an deinen Admin, wenn du Zugriff benötigst.",
+    "backToHome": "Zurück zur Startseite",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "newMessages": "Neue Nachrichten",
+    "isTyping": "tippt",
+    "areTyping": "tippen",
+    "severalTyping": "Mehrere Personen tippen",
+    "aiAccess": "KI-Zugriff",
+    "aiAccessTooltip": "KI erlauben, verschlüsselte Nachrichten für Zusammenfassungen zu lesen",
+    "close": "Schließen",
+    "errors": {
+      "sendFailed": "Nachricht konnte nicht gesendet werden",
+      "loadFailed": "Nachrichten konnten nicht geladen werden"
+    }
+  },
+  "researchGroup": {
+    "title": "Forschungsgruppen",
+    "loading": "Gruppen werden geladen...",
+    "myGroups": "Meine Gruppen",
+    "name": "Name",
+    "slug": "Slug",
+    "description": "Beschreibung",
+    "createdBy": "Erstellt von",
+    "create": "Gruppe erstellen",
+    "edit": "Gruppe bearbeiten",
+    "delete": "Gruppe löschen",
+    "selection": {
+      "title": "Forschungsgruppe auswählen",
+      "noGroups": "Du bist noch in keiner Gruppe.",
+      "otherGroups": "Weitere Gruppen"
+    },
+    "members": {
+      "title": "Mitglieder",
+      "invite": "Einladen",
+      "searchUser": "Benutzer suchen",
+      "role": "Rolle",
+      "confirmRemove": "Mitglied {name} wirklich entfernen?",
+      "roles": {
+        "owner": "Eigentümer",
+        "member": "Mitglied",
+        "viewer": "Betrachter"
+      }
+    },
+    "accessRequest": {
+      "title": "Zugang beantragen",
+      "pending": "Ausstehende Anfragen",
+      "approve": "Annehmen",
+      "reject": "Ablehnen",
+      "message": "Nachricht (optional)",
+      "submit": "Anfrage senden",
+      "sent": "Deine Anfrage wurde gesendet. Du wirst benachrichtigt, sobald sie bearbeitet wurde."
+    },
+    "admin": {
+      "title": "Forschungsgruppen verwalten",
+      "noGroups": "Keine Gruppen vorhanden",
+      "selectGroup": "Wähle eine Gruppe, um Details anzuzeigen",
+      "search": "Gruppen suchen...",
+      "stats": {
+        "conferences": "Konferenzen",
+        "papers": "Paper",
+        "members": "Mitglieder"
+      },
+      "tabs": {
+        "members": "Mitglieder",
+        "requests": "Anfragen",
+        "content": "Inhalte"
+      },
+      "members": {
+        "add": "Mitglied hinzufügen",
+        "noMembers": "Keine Mitglieder in dieser Gruppe",
+        "changeRole": "Rolle ändern",
+        "removeMember": "Mitglied entfernen"
+      },
+      "requests": {
+        "noRequests": "Keine ausstehenden Anfragen"
+      },
+      "content": {
+        "conferences": "Konferenzen",
+        "papers": "Paper",
+        "noConferences": "Keine Konferenzen in dieser Gruppe",
+        "noPapers": "Keine Paper in dieser Gruppe",
+        "location": "Ort",
+        "deadline": "Deadline"
+      },
+      "deleteDialog": {
+        "title": "Forschungsgruppe löschen",
+        "confirm": "\"{name}\" wirklich löschen? Konferenzen und Paper bleiben erhalten, verlieren aber ihre Gruppenzuordnung.",
+        "info": "Diese Aktion kann nicht rückgängig gemacht werden."
+      },
+      "removeMemberDialog": {
+        "title": "Mitglied entfernen",
+        "confirm": "\"{name}\" wirklich aus der Gruppe entfernen?"
+      }
+    }
+  },
+  "dbAgent": {
+    "title": "DB Preisagent",
+    "subtitle": "Dortmund Hbf ↔ Nürnberg Hbf · BahnCard 25 · 2. Klasse",
+    "loading": "Lade Daten...",
+    "status": {
+      "active": "Agent aktiv",
+      "inactive": "Agent inaktiv"
+    },
+    "actions": {
+      "startAgent": "Agent starten",
+      "stopAgent": "Agent stoppen",
+      "scanNow": "Jetzt scannen",
+      "deleteData": "Daten löschen"
+    },
+    "tabs": {
+      "search": "Reise suchen",
+      "deals": "Top Deals",
+      "calendar": "Kalender",
+      "timing": "Timing",
+      "analysis": "Analyse"
+    },
+    "overview": {
+      "loading": "Aktuelle Preise werden geladen...",
+      "topDeals": "Aktuelle Top-Deals",
+      "fromScans": "Aus Scans"
+    },
+    "search": {
+      "title": "Reise suchen",
+      "stationFrom": "Von",
+      "stationTo": "Nach",
+      "dateFrom": "Hinfahrt am",
+      "dateTo": "Rückfahrt am",
+      "outbound": "Hinfahrt",
+      "returnTrip": "Rückfahrt",
+      "flexibility": "Flexibilität",
+      "go": "Suchen",
+      "newSearch": "Neue Suche",
+      "results": "{count} Verbindungen gefunden",
+      "bookOnBahn": "Auf bahn.de buchen",
+      "selectOutbound": "Hinfahrt wählen",
+      "selectReturn": "Rückfahrt wählen",
+      "totalPrice": "Gesamtpreis",
+      "directOnly": "Nur Direktverbindungen",
+      "directConnections": "Direktverbindungen",
+      "noDirectConnections": "Keine Direktverbindungen verfügbar"
+    },
+    "suggestions": {
+      "title": "Vorschläge",
+      "found": "gefunden"
+    },
+    "followup": {
+      "title": "Reiseberater",
+      "placeholder": "z.B. Vorschlag #3 passt, aber ich kann erst einen Tag später..."
+    },
+    "history": {
+      "title": "Letzte Suchen"
+    },
+    "deals": {
+      "title": "Günstigste Verbindungen"
+    },
+    "calendar": {
+      "title": "Preiskalender",
+      "viewYear": "Jahr",
+      "viewMonth": "Monat",
+      "viewDay": "Tag",
+      "roundTrip": "Hin + Rück",
+      "tripSuggestions": "Reise-Empfehlungen",
+      "days": "Tage",
+      "cheapestShort": "ab",
+      "connections": "Verbindungen",
+      "noDataForDay": "Keine Daten für diesen Tag. Starte einen Scan oder suche eine Reise.",
+      "legend": {
+        "cheap": "Günstig (< 30€)",
+        "medium": "Mittel (30–60€)",
+        "expensive": "Teuer (60–100€)",
+        "veryExpensive": "Sehr teuer (> 100€)",
+        "stddev": "±σ = Standardabweichung",
+        "highVolatility": "Hohe Preisschwankung",
+        "tripStrip": "Reise-Empfehlung (Hin + Rück)"
+      }
+    },
+    "stats": {
+      "title": "Preisstatistik",
+      "outbound": "Hinfahrt (DO → N)",
+      "return": "Rückfahrt (N → DO)",
+      "totalEntries": "Gesamteinträge",
+      "noData": "Noch keine Preisdaten vorhanden. Starte einen Scan."
+    },
+    "weekday": {
+      "title": "Wochentag-Analyse"
+    },
+    "timing": {
+      "title": "Wann buchen?",
+      "departureTime": "Abfahrtszeit",
+      "departureTimeHint": "Durchschnittspreise nach Abfahrtszeit",
+      "leadTime": "Buchungsvorlauf",
+      "leadTimeHint": "Durchschnittspreise nach Buchungszeitpunkt vor Abreise",
+      "transfers": "Direkt vs. Umstieg",
+      "transfersHint": "Preisvergleich nach Anzahl Umstiege",
+      "priceTrend": "Preisentwicklung",
+      "priceTrendHint": "Wie sich der günstigste Preis ändert, je näher der Reisetag rückt",
+      "avgPrice": "Ø Preis",
+      "minPrice": "Min",
+      "medianPrice": "Median",
+      "connections": "Verbindungen",
+      "avgCheapest": "Ø Günstigster",
+      "datesWithData": "Reisetage",
+      "cheapest": "Am günstigsten",
+      "noData": "Noch keine Daten. Starte einen Scan, damit die Timing-Analyse gefüllt wird.",
+      "tip": "Tipp",
+      "tipLeadTime": "Am günstigsten bei {bucket} Vorlauf (Ø {price}€)",
+      "tipDeparture": "Günstigste Abfahrtszeit: {slot} (Ø {price}€)",
+      "tipTransfers": "{label} spart im Schnitt {percent}% gegenüber Direktverbindungen"
+    },
+    "analysis": {
+      "title": "KI-Analyse",
+      "run": "Analyse starten",
+      "hint": "Klicke auf 'Analyse starten' um eine KI-gestützte Preisanalyse zu erhalten."
+    },
+    "table": {
+      "date": "Datum",
+      "direction": "Richtung",
+      "departure": "Abfahrt",
+      "arrival": "Ankunft",
+      "price": "Preis",
+      "transfers": "Umstiege",
+      "trains": "Züge"
+    }
+  },
+  "landing": {
+    "skipLink": "Zum Inhalt springen",
+    "nav": {
+      "features": "Funktionen",
+      "demo": "Live-Demo",
+      "evalTypes": "Evaluationstypen",
+      "openSource": "Open Source"
+    },
+    "hero": {
+      "badge": "Vorgestellt auf der IJCAI 2026",
+      "openSource": "100 % Open Source · MIT",
+      "headline": "Kollaboratives Prompt Engineering, Batch-Generierung & Hybride Evaluation",
+      "subtitle": "Die Open-Source-Plattform für Evaluationsstudien mit LLM-Ausgaben — menschliche Urteile und LLM-Assessoren in einem Workflow, von jedem Forschungsteam frei nutzbar.",
+      "cta": "Jetzt starten",
+      "demo": "Demo ansehen",
+      "github": "Quellcode auf GitHub",
+      "scrollHint": "Zum Inhalt scrollen"
+    },
+    "pipeline": {
+      "title": "Drei Schritte zu besseren LLM-Ausgaben",
+      "subtitle": "LLARS verbindet Prompt Engineering, Generierung und Evaluation in einem Workflow.",
+      "steps": {
+        "prompt": {
+          "title": "Prompt Engineering",
+          "desc": "Prompts kollaborativ in Echtzeit entwerfen, versionieren und testen."
+        },
+        "generation": {
+          "title": "Batch-Generierung",
+          "desc": "Ausgaben über Modelle und Prompts hinweg generieren — automatisch und skalierbar."
+        },
+        "evaluation": {
+          "title": "Hybride Evaluation",
+          "desc": "Menschliche Bewertungen mit LLM-Assessoren und Inter-Rater-Reliabilitätsmetriken kombinieren."
+        }
+      },
+      "note": "Neue Prompts und Modelle stehen automatisch für Generierung und Evaluation zur Verfügung."
+    },
+    "features": {
+      "title": "Entwickelt für Forschungsteams",
+      "items": {
+        "rag": {
+          "title": "RAG-Pipeline",
+          "desc": "Dokumente hochladen, ChromaDB-Sammlungen erstellen und LLM-Antworten auf eigenen Daten fundieren."
+        },
+        "llmEvaluator": {
+          "title": "LLM-Evaluator",
+          "desc": "Automatisierte LLM-Assessoren bewerten Ausgaben neben menschlichen Evaluatoren."
+        },
+        "wizard": {
+          "title": "Szenario-Wizard",
+          "desc": "KI-gestütztes Setup analysiert hochgeladene Daten und schlägt Evaluationstypen und Presets vor."
+        },
+        "agreement": {
+          "title": "Übereinstimmungsmetriken",
+          "desc": "Ordinales Krippendorff's Alpha und Übereinstimmungs-Heatmaps für Inter-Rater-Reliabilität."
+        },
+        "collab": {
+          "title": "Echtzeit-Kollaboration",
+          "desc": "YJS-CRDT-basierte kollaborative Bearbeitung für Markdown-Dokumente."
+        },
+        "chatbot": {
+          "title": "Chatbot-Builder",
+          "desc": "Chatbots mit eigenen System-Prompts, RAG-Kontexten und Modellauswahl konfigurieren."
+        },
+        "auth": {
+          "title": "Auth & RBAC",
+          "desc": "Authentik SSO mit rollenbasierten Berechtigungen — Admin, Researcher, Evaluator und mehr."
+        },
+        "copilot": {
+          "title": "Labeling Co-Pilot",
+          "desc": "LLM-Vorschläge mit Begründung und Textbeleg direkt im Labeling-Interface — klar gekennzeichnet, nie vorausgewählt. Verdeckte Kontroll-Teilmengen ermöglichen Anchoring-Bias-Analysen in Studien."
+        },
+        "designSystem": {
+          "title": "35+ L-Komponenten",
+          "desc": "Ein konsistentes Design-System mit Pastellfarben, asymmetrischem Border-Radius und Dark Mode."
+        }
+      }
+    },
+    "demo": {
+      "title": "Labeling mit Co-Pilot — live ausprobieren",
+      "subtitle": "So sieht Labeling in LLARS aus: Ein LLM schlägt vor, der Mensch entscheidet. Klicken Sie sich durch drei Beispiel-Items.",
+      "copilotTitle": "Der Labeling Co-Pilot",
+      "copilotIntro": "Ein LLM generiert vorab pro Item einen Label-Vorschlag mit Begründung und Textbeleg. Vorschläge werden klar gekennzeichnet und nie vorausgewählt — die Entscheidung bleibt beim Menschen.",
+      "points": {
+        "evidence": "Vorschlag mit Begründung und markiertem Textbeleg — direkt am Originaltext prüfbar",
+        "neverPre": "Nie vorausgewählt — die Entscheidung trifft immer der Mensch",
+        "hiddenSet": "Verdeckte Kontroll-Teilmenge: reproduzierbar randomisierte Items ohne Vorschlag für Anchoring-Bias-Analysen",
+        "logging": "Studientaugliches Logging: Anzeige, Übernahme, Hilfreich-Feedback und Bearbeitungszeit pro Item"
+      },
+      "tryIt": "Probieren Sie es aus — die Demo rechts ist klickbar.",
+      "scenario": "Szenario: Beratungsantworten",
+      "item": "Item",
+      "copilotSuggestion": "Co-Pilot-Vorschlag",
+      "confidence": {
+        "high": "Konfidenz: hoch",
+        "medium": "Konfidenz: mittel",
+        "low": "Konfidenz: niedrig"
+      },
+      "apply": "Übernehmen",
+      "applied": "Übernommen",
+      "chooseLabel": "Label wählen",
+      "saved": "Automatisch gespeichert",
+      "labels": {
+        "helpful": "Hilfreich",
+        "partlyHelpful": "Teilweise hilfreich",
+        "notHelpful": "Nicht hilfreich"
+      },
+      "items": {
+        "one": {
+          "textPre": "„Vielen Dank für Ihre Nachricht. Es ist verständlich, dass Sie sich in dieser Situation überfordert fühlen. Ein erster Schritt könnte sein, ",
+          "evidence": "feste Pausen in Ihren Tagesablauf einzuplanen",
+          "textPost": ".“",
+          "rationale": "Validiert die Emotion und nennt einen konkreten, umsetzbaren ersten Schritt."
+        },
+        "two": {
+          "textPre": "„Das klingt schwierig. Viele Menschen haben solche Probleme. ",
+          "evidence": "Vielleicht wird es von selbst besser",
+          "textPost": ".“",
+          "rationale": "Bagatellisiert das Anliegen und bietet keine konkrete Unterstützung an."
+        },
+        "three": {
+          "textPre": "„Ich kann Ihre Sorge gut nachvollziehen. Sie sollten ",
+          "evidence": "sofort den Arbeitsplatz wechseln",
+          "textPost": ", dann löst sich das Problem.“",
+          "rationale": "Empathischer Einstieg, aber die direktive Empfehlung ist durch den Kontext nicht gedeckt."
+        }
+      }
+    },
+    "evalTypes": {
+      "title": "Sieben Evaluationstypen",
+      "subtitle": "Wählen Sie die passende Evaluationsmethode für Ihre Forschungsfrage.",
+      "types": {
+        "rating": {
+          "title": "Rating",
+          "desc": "Mehrdimensionale Likert-Skalen"
+        },
+        "ranking": {
+          "title": "Ranking",
+          "desc": "Drag-and-Drop Bucket-Sortierung"
+        },
+        "comparison": {
+          "title": "Vergleich",
+          "desc": "Paarweise A-gegen-B-Bewertung"
+        },
+        "labeling": {
+          "title": "Labeling",
+          "desc": "Binäre oder Multi-Class-Kategorien — mit optionalem Co-Pilot"
+        },
+        "authenticity": {
+          "title": "Authentizität",
+          "desc": "Mensch-vs-KI-Erkennung"
+        },
+        "mail_rating": {
+          "title": "Mail-Rating",
+          "desc": "Qualitätsbewertung von E-Mail-Verläufen"
+        },
+        "communication_comparison": {
+          "title": "Kommunikationsvergleich",
+          "desc": "A/B-Vergleich von Beratungsantworten"
+        },
+        "conversation_labeling": {
+          "title": "Konversationslabeling",
+          "desc": "Spans im Gesprächsverlauf der Reihe nach labeln"
+        }
+      }
+    },
+    "tech": {
+      "title": "Open Source & produktionsbereit",
+      "counters": {
+        "components": "Eigene Komponenten",
+        "evalTypes": "Evaluationstypen",
+        "roles": "Auth-Rollen",
+        "lines": "Codezeilen"
+      }
+    },
+    "research": {
+      "title": "Von Forschenden, für Forschende",
+      "text1": "LLARS ist aus der Forschung entstanden — für Evaluationsstudien, in denen menschliche Urteile und LLM-Assessoren zusammenkommen. Die Plattform ist Open Source unter MIT-Lizenz und bleibt es.",
+      "text2": "Jede Forschungsgruppe kann LLARS frei einsetzen, selbst hosten und an die eigene Studie anpassen — ohne Lizenzkosten, ohne Vendor-Lock-in, mit voller Kontrolle über die eigenen Daten.",
+      "points": {
+        "license": "MIT-Lizenz — dauerhaft frei für Forschung und Lehre",
+        "selfHost": "Self-Hosting per Docker Compose — Ihre Daten bleiben auf Ihrer Infrastruktur",
+        "reproducible": "Reproduzierbare Studien: Exporte, Versionierung und dokumentierte Metriken wie Krippendorff's Alpha"
+      },
+      "github": "Auf GitHub ansehen",
+      "photoAlt": "Forschungsteam arbeitet gemeinsam an Laptops"
+    },
+    "cta": {
+      "headline": "Bereit für Ihre nächste Evaluationsstudie?",
+      "subtitle": "Kostenlos registrieren und in wenigen Minuten das erste Szenario aufsetzen — oder LLARS auf eigener Infrastruktur hosten.",
+      "register": "Konto erstellen"
+    },
+    "footer": {
+      "demo": "Demo-Video",
+      "docs": "Dokumentation"
+    }
+  },
+  "evaluationAssistant": {
+    "title": "Bewertungsassistent",
+    "loading": "Wird geladen...",
+    "connected": "Verbunden",
+    "disconnected": "Getrennt",
+    "noResults": "Noch keine Bewertungsergebnisse",
+    "waitingForEval": "Warte auf Bewertung...",
+    "notRunning": "Bewertung läuft nicht",
+    "status": {
+      "idle": "Inaktiv",
+      "running": "Läuft",
+      "completed": "Abgeschlossen",
+      "error": "Fehler"
+    },
+    "tabs": {
+      "results": "Ergebnisse",
+      "live": "Live",
+      "comparison": "Vergleich"
+    },
+    "progress": {
+      "title": "Fortschritt",
+      "completed": "Abgeschlossen",
+      "pending": "Ausstehend",
+      "failed": "Fehlgeschlagen",
+      "currentlyEvaluating": "Wird gerade bewertet",
+      "tokenUsage": "Token-Verbrauch",
+      "tokens": "Tokens",
+      "cost": "Kosten"
+    },
+    "controls": {
+      "title": "Konfiguration",
+      "model": "LLM-Modell",
+      "template": "Prompt-Vorlage",
+      "defaultTemplate": "Standardvorlage",
+      "default": "Standard",
+      "start": "Bewertung starten",
+      "stop": "Bewertung stoppen",
+      "noModels": "Keine Modelle verfügbar",
+      "selectModel": "Bitte ein Modell auswählen"
+    },
+    "metrics": {
+      "title": "Übereinstimmungsmetriken",
+      "helpText": "Metriken zur Interrater-Reliabilität messen, wie konsistent die Bewertenden in ihren Einschätzungen sind.",
+      "rangeLabel": "Wertebereich",
+      "evaluatorsSummary": "Bewertende",
+      "krippendorffAlpha": {
+        "name": "Krippendorffs Alpha",
+        "description": "Misst die Übereinstimmung zwischen mehreren Bewertenden für verschiedene Datentypen. Berücksichtigt zufällige Übereinstimmung.",
+        "range": "-1 bis 1 (>0,8 zuverlässig, >0,67 akzeptabel)"
+      },
+      "cohensKappa": {
+        "name": "Cohens Kappa",
+        "description": "Misst die Übereinstimmung zwischen genau zwei Bewertenden bei kategorialen Daten und korrigiert um den Zufall.",
+        "range": "-1 bis 1 (>0,8 ausgezeichnet, >0,6 substanziell)"
+      },
+      "fleissKappa": {
+        "name": "Fleiss’ Kappa",
+        "description": "Erweiterung von Cohens Kappa für mehrere Bewertende bei kategorialen Daten.",
+        "range": "-1 bis 1 (>0,75 ausgezeichnet)"
+      },
+      "spearmanRho": {
+        "name": "Spearmans Rho",
+        "description": "Misst die Rangkorrelation zwischen zwei Bewertenden. Robust gegenüber Ausreißern.",
+        "range": "-1 bis 1 (|rho| > 0,7 stark)"
+      },
+      "kendallTau": {
+        "name": "Kendalls Tau",
+        "description": "Misst die ordinale Assoziation. Robuster als Spearman bei kleinen Stichproben.",
+        "range": "-1 bis 1 (|tau| > 0,5 stark)"
+      },
+      "percentAgreement": {
+        "name": "Prozentuale Übereinstimmung",
+        "description": "Einfacher Prozentsatz der Elemente, bei denen die Bewertenden übereinstimmen. Korrigiert nicht um den Zufall.",
+        "range": "0–100 % (>90 % ausgezeichnet)"
+      }
+    },
+    "responseCard": {
+      "reasoning": "Begründung",
+      "detailedResult": "Detailliertes Ergebnis",
+      "confidenceTooltip": "Vom LLM selbst angegebene Konfidenz seiner Bewertung",
+      "confidenceScore": "Konfidenzwert",
+      "indicators": "Indikatoren",
+      "linguisticAnalysis": "Linguistische Analyse",
+      "behavioralAnalysis": "Verhaltensanalyse",
+      "keyPhrases": "Schlüsselphrasen",
+      "summary": "Zusammenfassung",
+      "overallRating": "Gesamtbewertung",
+      "tokenUsage": "Token-Verbrauch",
+      "viewDetails": "Details anzeigen"
+    },
+    "live": {
+      "evaluating": "Bewertung läuft",
+      "output": "Ausgabe",
+      "steps": {
+        "preparing": "Vorbereiten",
+        "processing": "Verarbeiten",
+        "analyzing": "Analysieren",
+        "completing": "Abschließen"
+      }
+    },
+    "comparison": {
+      "title": "Bewertenden-Vergleich",
+      "needMoreEvaluators": "Mindestens 2 Bewertende für einen Vergleich erforderlich",
+      "evaluator1": "Bewertende:r 1",
+      "evaluator2": "Bewertende:r 2",
+      "agreementRate": "Übereinstimmungsrate",
+      "thread": "Thread",
+      "match": "Übereinstimmung",
+      "tie": "UNENTSCHIEDEN",
+      "winner": "Gewinner: {winner}"
+    },
+    "detail": {
+      "thread": "Thread",
+      "confidence": "Konfidenz",
+      "result": "Ergebnis",
+      "reasoning": "Begründung",
+      "meta": "Meta-Informationen",
+      "model": "Modell",
+      "template": "Vorlage",
+      "tokens": "Tokens",
+      "cost": "Kosten",
+      "processingTime": "Verarbeitungszeit",
+      "rawData": "Rohdaten",
+      "averageRating": "Durchschnittliche Bewertung",
+      "strengths": "Stärken",
+      "weaknesses": "Schwächen",
+      "confidenceScore": "Konfidenzwert",
+      "indicators": "Indikatoren",
+      "linguisticAnalysis": "Linguistische Analyse",
+      "behavioralAnalysis": "Verhaltensanalyse",
+      "aspects": "Vergleichsaspekte",
+      "alternatives": "Alternativen",
+      "keyPhrases": "Schlüsselphrasen",
+      "criteria": "Kriterien",
+      "improvements": "Verbesserungspotenziale",
+      "summary": "Zusammenfassung",
+      "overallRating": "Gesamtbewertung",
+      "noFeatures": "Keine Features"
+    },
+    "taskTypes": {
+      "ranking": "Ranking",
+      "rating": "Rating",
+      "authenticity": "Authentizität",
+      "mail_rating": "E-Mail-Bewertung",
+      "comparison": "Vergleich",
+      "text_classification": "Klassifikation"
+    },
+    "buckets": {
+      "gut": "Gut",
+      "mittel": "Mittel",
+      "schlecht": "Schlecht",
+      "neutral": "Neutral"
+    },
+    "votes": {
+      "real": "Echt",
+      "fake": "Fake"
+    }
+  },
+  "autoLogin": {
+    "signingIn": "Anmeldung läuft …",
+    "failedTitle": "Anmeldung fehlgeschlagen",
+    "failedBody": "Dieser Anmeldelink ist ungültig oder abgelaufen. Möglicherweise wurde er bereits verwendet. Bitte melden Sie sich stattdessen direkt an.",
+    "toLogin": "Zur Anmeldung"
+  },
+  "termsPage": {
+    "title": "Nutzungsbedingungen",
+    "intro": "Diese Nutzungsbedingungen regeln die Nutzung der Forschungsplattform LLARS (LLM Assisted Research System), betrieben vom Institut für E-Beratung an der Technischen Hochschule Nürnberg Georg Simon Ohm. Mit der Registrierung eines Kontos erkennen Sie diese Bedingungen an.",
+    "sections": {
+      "scope": {
+        "title": "1. Geltungsbereich",
+        "text": "Diese Bedingungen gelten für alle Nutzerinnen und Nutzer der LLARS-Plattform. LLARS ist ein wissenschaftliches Werkzeug zur kollaborativen Bewertung und Analyse von KI-generierten Inhalten und richtet sich an Forschende. Ein Anspruch auf Nutzung oder auf Anlage eines Kontos besteht nicht."
+      },
+      "account": {
+        "title": "2. Registrierung und Konto",
+        "text": "Die Anlage eines Kontos ist ausschließlich über einen gültigen Einladungscode möglich. Sie sind verpflichtet, Ihre Zugangsdaten geheim zu halten und vor dem Zugriff Dritter zu schützen. Sie sind für alle Aktivitäten verantwortlich, die über Ihr Konto erfolgen. Ein Konto ist nicht übertragbar."
+      },
+      "acceptableUse": {
+        "title": "3. Zulässige Nutzung",
+        "text": "Sie verpflichten sich, die Plattform ausschließlich im Rahmen der geltenden Gesetze und für die vorgesehenen Forschungszwecke zu nutzen. Untersagt sind insbesondere: das Hochladen rechtswidriger, beleidigender oder rechteverletzender Inhalte, das Eingeben personenbezogener Daten Dritter ohne deren Einwilligung, Versuche, die Sicherheit oder Integrität der Plattform zu beeinträchtigen, sowie die automatisierte Massenabfrage außerhalb der bereitgestellten Schnittstellen."
+      },
+      "content": {
+        "title": "4. Inhalte und Forschungsdaten",
+        "text": "Für die von Ihnen eingegebenen Inhalte sind Sie selbst verantwortlich. LLARS ist eine Forschungsplattform: Die von Ihnen eingegebenen sowie im Rahmen von Evaluationen erhobenen Daten werden zu wissenschaftlichen Forschungszwecken verarbeitet (Datenspende für die Forschung) und – soweit möglich – pseudonymisiert oder anonymisiert. Einzelheiten regelt die Datenschutzerklärung sowie – bei Studienteilnahmen – die jeweilige Einwilligungserklärung. Sie räumen dem Projekt das für Betrieb, Auswertung und Forschung erforderliche, einfache Nutzungsrecht an den eingegebenen Inhalten ein."
+      },
+      "openSource": {
+        "title": "5. Open Source",
+        "text": "Die LLARS-Software ist quelloffen und unter der MIT-Lizenz verfügbar. Für die Nutzung des von uns betriebenen Dienstes gelten ergänzend diese Nutzungsbedingungen. Der Quellcode kann unabhängig davon gemäß den Lizenzbedingungen verwendet werden."
+      },
+      "availability": {
+        "title": "6. Verfügbarkeit und Änderungen",
+        "text": "Wir bemühen uns um einen zuverlässigen Betrieb, können aber keine ununterbrochene Verfügbarkeit zusichern. Als Forschungsprojekt können Funktionen jederzeit geändert, ergänzt oder eingestellt werden. Diese Nutzungsbedingungen können bei Bedarf angepasst werden; die jeweils aktuelle Fassung ist auf dieser Seite abrufbar."
+      },
+      "liability": {
+        "title": "7. Haftung",
+        "text": "Die Plattform wird im Rahmen eines Forschungsvorhabens ohne Gewähr für Eignung, Richtigkeit oder Verfügbarkeit bereitgestellt. Die Haftung richtet sich nach den gesetzlichen Bestimmungen; für leichte Fahrlässigkeit haften wir nur bei Verletzung wesentlicher Vertragspflichten und begrenzt auf den vorhersehbaren, typischen Schaden. Die Haftung für Vorsatz, grobe Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit bleibt unberührt."
+      },
+      "termination": {
+        "title": "8. Beendigung",
+        "text": "Sie können die Löschung Ihres Kontos jederzeit verlangen. Wir behalten uns vor, Konten bei Verstößen gegen diese Bedingungen oder gesetzliche Vorgaben zu sperren oder zu löschen."
+      },
+      "finalProvisions": {
+        "title": "9. Schlussbestimmungen",
+        "text": "Es gilt deutsches Recht. Sollten einzelne Bestimmungen unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt. Ergänzend gelten das Impressum und die Datenschutzerklärung."
       }
     }
   }

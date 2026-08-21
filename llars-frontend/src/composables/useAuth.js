@@ -4,12 +4,28 @@ import { matomoResetUserId, matomoSetUserId } from '@/plugins/llars-metrics';
 import { usePermissions } from '@/composables/usePermissions';
 import { decodeJwtPayload } from '@/utils/jwt';
 import { logI18n } from '@/utils/logI18n';
+import { setConsoleLogsEnabled } from '@/utils/consoleController';
+// Standalone composable (no dependency back on useAuth) — safe to import
+// here without creating a circular reference. Used to restore a returning
+// user's profile language on every login.
+import { useLanguage } from '@/composables/useLanguage';
 import {
   AUTH_STORAGE_KEYS,
   clearAuthStorage,
   getAuthStorageItem,
   setAuthStorageItem
 } from '@/utils/authStorage';
+
+// Renew this long before the access token expires. Authentik issues 60-minute
+// tokens, so 5 minutes leaves ample room for a slow network without refreshing
+// so eagerly that we churn tokens.
+const REFRESH_LEAD_MS = 5 * 60 * 1000;
+
+// Module-level (not per-composable-instance): every useAuth() call shares one
+// in-flight refresh and one timer, otherwise each component mounting the
+// composable would schedule its own renewal.
+let refreshInFlight = null;
+let refreshTimer = null;
 
 // Auth state
 const token = ref(null);
@@ -21,6 +37,7 @@ const avatarSeed = ref(null);
 const avatarUrl = ref(null);
 const avatarChangesLeft = ref(null);
 const collabColor = ref(null);
+const consoleLogsEnabled = ref(false);
 
 const parseJwt = (jwtToken) => {
   return decodeJwtPayload(jwtToken);
@@ -147,7 +164,24 @@ const fetchUserSettings = async () => {
       }
     });
 
-    const { collab_color, avatar_seed, avatar_url, avatar_changes_left } = response.data;
+    const { collab_color, avatar_seed, avatar_url, avatar_changes_left, console_logs_enabled } = response.data;
+
+    // Apply console logging preference
+    consoleLogsEnabled.value = Boolean(console_logs_enabled);
+    setConsoleLogsEnabled(consoleLogsEnabled.value);
+
+    // Restore the returning user's persisted UI language from their
+    // profile preferences. Only when a supported language is actually
+    // present — we never override an explicit in-session choice with a
+    // missing value. setLanguage itself ignores anything unsupported.
+    const profileLanguage = response.data?.preferences?.language;
+    if (profileLanguage === 'de' || profileLanguage === 'en') {
+      try {
+        useLanguage().setLanguage(profileLanguage);
+      } catch (_) {
+        // i18n not yet ready — language falls back to localStorage default
+      }
+    }
 
     if (collab_color) {
       collabColor.value = collab_color;
@@ -326,6 +360,150 @@ export const useAuth = () => {
     return userRoles.value.includes('admin');
   });
 
+  /**
+   * Apply a token bundle from any authentication flow into the current
+   * auth state. Extracted so that flows other than the explicit login
+   * form (e.g. self-registration via referral link) can authenticate
+   * the user immediately after server-side credential creation, without
+   * forcing a second password prompt.
+   *
+   * `tokenData` matches the /auth/authentik/login response shape:
+   *   { access_token, refresh_token, id_token, llars_roles, ... }
+   * `usernameHint` is used as a fallback when the JWT doesn't expose
+   * preferred_username (e.g. fresh accounts that haven't propagated yet).
+   */
+  const applyTokenBundle = async (tokenData, usernameHint) => {
+    if (!tokenData || !tokenData.access_token) return false;
+    const {
+      access_token,
+      refresh_token,
+      id_token,
+      llars_roles: roles,
+      referral_target_scenario_id: referralTarget,
+    } = tokenData;
+
+    token.value = access_token;
+    refreshToken.value = refresh_token;
+    idToken.value = id_token;
+    llarsRoles.value = roles || [];
+
+    // Mirror what login() does — persist the referral-bound scenario
+    // so the router can shortcut on subsequent navigations.
+    try {
+      if (referralTarget != null) {
+        localStorage.setItem('llars-referral-target-scenario', String(referralTarget))
+      } else {
+        localStorage.removeItem('llars-referral-target-scenario')
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    tokenParsed.value = parseJwt(access_token);
+
+    setAuthStorageItem(AUTH_STORAGE_KEYS.token, access_token);
+    setAuthStorageItem(AUTH_STORAGE_KEYS.refreshToken, refresh_token);
+    if (id_token) setAuthStorageItem(AUTH_STORAGE_KEYS.idToken, id_token);
+    setAuthStorageItem(AUTH_STORAGE_KEYS.roles, JSON.stringify(roles || []));
+
+    try {
+      const u = tokenParsed.value?.preferred_username || usernameHint;
+      if (u) localStorage.setItem('username', u);
+    } catch (_) { /* storage blocked */ }
+
+    const matomoUserId = tokenParsed.value?.preferred_username
+      || tokenParsed.value?.sub
+      || usernameHint;
+    if (matomoUserId) matomoSetUserId(matomoUserId);
+
+    // Refresh dependent state — best effort, never throw.
+    try {
+      const perms = usePermissions();
+      perms.clearPermissions();
+      await perms.fetchPermissions(true);
+    } catch (_) { /* refetched later */ }
+    try { await fetchUserProfile(); } catch (_) { /* avatar fallback */ }
+    try { await fetchUserSettings(); } catch (_) { /* default color */ }
+
+    return true;
+  };
+
+  /**
+   * Trade the stored refresh token for a fresh access token.
+   *
+   * INCIDENT 2026-07-29: Authentik access tokens live 60 minutes and a
+   * refresh_token was stored on every login — but never used. There was no
+   * backend endpoint and no client call, so after an hour the next request
+   * 401'd and the axios interceptor logged the user straight out, mid-study.
+   *
+   * Single-flight: a burst of parallel requests all 401'ing at once must
+   * trigger ONE refresh, not one per request — otherwise they race, and with
+   * refresh-token rotation the losers would invalidate the winner's token.
+   *
+   * Returns the new access token, or null when the session is genuinely over
+   * (caller should then log out).
+   */
+  const refreshAccessToken = async () => {
+    if (refreshInFlight) return refreshInFlight;
+
+    const current = refreshToken.value || getAuthStorageItem(AUTH_STORAGE_KEYS.refreshToken);
+    if (!current) return null;
+
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+
+    refreshInFlight = (async () => {
+      try {
+        // Bare axios config: the global request interceptor would attach the
+        // (expired) access token, which this endpoint neither needs nor reads.
+        const response = await axios.post(
+          `${baseUrl}/auth/authentik/refresh`,
+          { refresh_token: current },
+          { headers: { 'Content-Type': 'application/json' }, _skipAuthRefresh: true }
+        );
+
+        const applied = await applyTokenBundle(response.data);
+        if (!applied) return null;
+
+        scheduleTokenRefresh();
+        return token.value;
+      } catch (error) {
+        logI18n('error', 'logs.auth.refreshFailed', error);
+        return null;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+
+    return refreshInFlight;
+  };
+
+  /**
+   * Renew the token a few minutes BEFORE it expires, so a long-running rater
+   * never hits a 401 in the first place. Reactive refresh (in the axios
+   * interceptor) stays as the safety net for sleep/suspend, where the timer
+   * does not fire on time.
+   */
+  const scheduleTokenRefresh = () => {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+    if (typeof window === 'undefined') return;
+
+    const exp = tokenParsed.value?.exp;
+    if (!exp) return;
+
+    const msUntilExpiry = exp * 1000 - Date.now();
+    // Renew at T-5min, but never sleep less than 10s (guards against a tight
+    // loop if the clock is skewed or the token is already near-dead).
+    const delay = Math.max(10_000, msUntilExpiry - REFRESH_LEAD_MS);
+
+    refreshTimer = window.setTimeout(() => {
+      refreshTimer = null;
+      if (token.value) refreshAccessToken();
+    }, delay);
+  };
+
   const login = async (username, password) => {
     // Use backend proxy endpoint for authentication (avoids CORS issues)
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
@@ -342,12 +520,31 @@ export const useAuth = () => {
       });
 
       // Store tokens and roles
-      const { access_token, refresh_token, id_token, llars_roles: roles } = response.data;
+      const {
+        access_token,
+        refresh_token,
+        id_token,
+        llars_roles: roles,
+        referral_target_scenario_id: referralTarget
+      } = response.data;
 
       token.value = access_token;
       refreshToken.value = refresh_token;
       idToken.value = id_token;
       llarsRoles.value = roles || [];
+
+      // Persist the referral-bound landing scenario so the router can
+      // shortcut single-scenario raters on every subsequent navigation
+      // without re-asking the backend. Cleared on logout (see logout()).
+      try {
+        if (referralTarget != null) {
+          localStorage.setItem('llars-referral-target-scenario', String(referralTarget))
+        } else {
+          localStorage.removeItem('llars-referral-target-scenario')
+        }
+      } catch (e) {
+        // ignore (e.g., Safari private mode / blocked storage)
+      }
 
       // Parse token
       tokenParsed.value = parseJwt(access_token);
@@ -380,6 +577,9 @@ export const useAuth = () => {
       if (matomoUserId) {
         matomoSetUserId(matomoUserId);
       }
+
+      // Arm the silent renewal for this session.
+      scheduleTokenRefresh();
 
       // Ensure permission cache is refreshed for the newly logged-in user
       try {
@@ -428,6 +628,14 @@ export const useAuth = () => {
   };
 
   const logout = () => {
+    // Kill any pending renewal first: a timer firing after logout would mint a
+    // fresh token for a user who just signed out.
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+    refreshInFlight = null;
+
     token.value = null;
     refreshToken.value = null;
     idToken.value = null;
@@ -437,8 +645,19 @@ export const useAuth = () => {
     avatarUrl.value = null;
     avatarChangesLeft.value = null;
     collabColor.value = null;
+    consoleLogsEnabled.value = false;
+    setConsoleLogsEnabled(false);
 
     clearStoredTokens();
+
+    // Drop the referral-landing hint so the next user on this browser
+    // (e.g. shared workstation) doesn't accidentally get redirected
+    // into someone else's scenario.
+    try {
+      localStorage.removeItem('llars-referral-target-scenario')
+    } catch (e) {
+      // ignore
+    }
 
     // Matomo: end user association
     matomoResetUserId();
@@ -463,10 +682,14 @@ export const useAuth = () => {
     avatarUrl,
     avatarChangesLeft,
     collabColor,
+    consoleLogsEnabled,
     login,
+    applyTokenBundle,
     logout,
     getToken,
     isTokenExpired,
+    refreshAccessToken,
+    scheduleTokenRefresh,
     fetchUserProfile,
     fetchUserSettings,
     updateCollabColor,

@@ -156,7 +156,7 @@
                     <div class="document-sections">
                       <template v-for="(section, index) in parseDocContent(doc.content)" :key="index">
                         <h3 class="section-title">{{ section.title }}</h3>
-                        <p class="section-content" v-html="section.content"></p>
+                        <p class="section-content" v-html="sanitizeHtml(section.content)"></p>
                       </template>
                     </div>
                   </div>
@@ -198,6 +198,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { sanitizeHtml } from '@/utils/sanitize'
 
 const props = defineProps({
   caseData: {

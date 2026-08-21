@@ -428,7 +428,7 @@
           {{ $t('admin.rag.deleteCollDialog.title') }}
         </v-card-title>
         <v-card-text>
-          <p><span v-html="$t('admin.rag.deleteCollDialog.confirm', { name: collectionToDelete?.display_name || collectionToDelete?.name })"></span></p>
+          <p><span v-html="$t('admin.rag.deleteCollDialog.confirm', { name: stripHtml(collectionToDelete?.display_name || collectionToDelete?.name) })"></span></p>
           <v-alert
             v-if="collectionToDelete?.document_count > 0"
             type="warning"
@@ -719,6 +719,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { logI18n, logI18nParams } from '@/utils/logI18n';
+import { stripHtml } from '@/utils/sanitize';
 
 const { t } = useI18n();
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';

@@ -18,5 +18,6 @@ data_bp = Blueprint('data', __name__)
 # Import route handlers
 from . import auth_routes
 from . import data_routes
+from . import password_reset_routes  # noqa: F401 — attaches routes to auth_bp
 
 __all__ = ['auth_bp', 'data_bp']

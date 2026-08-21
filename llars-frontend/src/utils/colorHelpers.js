@@ -125,3 +125,25 @@ export const getConsistencyQualityColor = (quality) => {
   };
   return colors[quality] || 'grey';
 };
+
+/**
+ * Pick a readable text color (near-black or white) for a given background hex,
+ * using the WCAG relative-luminance heuristic. Used so a colored badge (e.g. a
+ * referral-link origin pill) stays legible whatever brand color it carries.
+ *
+ * @param {string} hex - Background color (#rgb, #rrggbb, with or without '#')
+ * @returns {string} '#1a1a1a' for light backgrounds, '#ffffff' for dark ones
+ */
+export const getReadableTextColor = (hex) => {
+  if (!hex || typeof hex !== 'string') return '#1a1a1a';
+  let h = hex.replace('#', '').trim();
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (h.length !== 6 || /[^0-9a-fA-F]/.test(h)) return '#1a1a1a';
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  // sRGB -> linear, then relative luminance (per WCAG 2.x)
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return luminance > 0.55 ? '#1a1a1a' : '#ffffff';
+};

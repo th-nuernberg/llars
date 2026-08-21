@@ -172,7 +172,13 @@ class ChatRAGRetrieval:
             logger.debug(f"[ChatRAGRetrieval] Lexical FTS fallback for collection {collection.id}: {exc}")
 
         # SQL LIKE fallback
-        return self._lexical_search_sql_fallback(collection, tokens, limit)
+        sql_results = self._lexical_search_sql_fallback(collection, tokens, limit)
+        if sql_results:
+            return sql_results
+
+        # Last-resort fallback: search the raw document files when chunks are not
+        # available yet or the vectorstore/index is out of sync with the DB.
+        return self._lexical_search_file_fallback(collection, tokens, limit)
 
     def _lexical_search_sql_fallback(
         self,
@@ -260,6 +266,193 @@ class ChatRAGRetrieval:
 
         return results
 
+    def _lexical_search_file_fallback(
+        self,
+        collection: RAGCollection,
+        tokens: List[str],
+        limit: int
+    ) -> List[Dict[str, Any]]:
+        """Search raw document files when no chunks/index entries are available."""
+        from sqlalchemy import and_, or_
+
+        if not collection or not tokens:
+            return []
+
+        docs = (
+            db.session.query(RAGDocument)
+            .outerjoin(
+                CollectionDocumentLink,
+                and_(
+                    CollectionDocumentLink.document_id == RAGDocument.id,
+                    CollectionDocumentLink.collection_id == collection.id
+                )
+            )
+            .filter(
+                or_(
+                    CollectionDocumentLink.id.isnot(None),
+                    RAGDocument.collection_id == collection.id
+                )
+            )
+            .order_by(RAGDocument.uploaded_at.desc(), RAGDocument.id.desc())
+            .limit(max(limit * 10, 40))
+            .all()
+        )
+
+        results: List[Dict[str, Any]] = []
+        lowered_tokens = [t.lower() for t in tokens if t]
+
+        for doc in docs:
+            text = self._read_document_file(doc.file_path)
+            if not text:
+                continue
+
+            title = (
+                doc.title
+                or doc.original_filename
+                or doc.filename
+                or 'Unbekannt'
+            )
+            metadata_text = "\n".join(
+                part for part in [
+                    title,
+                    doc.description or "",
+                    doc.original_filename or "",
+                    doc.filename or "",
+                ] if part
+            )
+            searchable_text = f"{metadata_text}\n{text}"
+            normalized_text = searchable_text.lower()
+
+            matched_tokens = [token for token in lowered_tokens if token in normalized_text]
+            if not matched_tokens:
+                continue
+
+            excerpt = self._extract_matching_excerpt(text, matched_tokens)
+            score = min(1.0, len(set(matched_tokens)) / max(1, len(set(lowered_tokens))))
+
+            results.append({
+                'content': excerpt,
+                'score': score,
+                'document_id': doc.id,
+                'title': title,
+                'filename': doc.filename,
+                'chunk_index': 0,
+                'page_number': None,
+                'start_char': None,
+                'end_char': None,
+                'vector_id': None,
+                'metadata': {
+                    'document_id': doc.id,
+                    'filename': doc.filename,
+                    'collection_id': collection.id,
+                    'matched_tokens': matched_tokens,
+                    'source': 'file_fallback',
+                }
+            })
+
+        results.sort(
+            key=lambda item: (
+                float(item.get('score') or 0.0),
+                len(item.get('content') or ""),
+            ),
+            reverse=True
+        )
+        return results[:limit]
+
+    @staticmethod
+    def _read_document_file(file_path: Optional[str]) -> str:
+        """Read a raw document file for lexical fallback."""
+        if not file_path or not os.path.exists(file_path):
+            return ""
+        try:
+            with open(file_path, "r", encoding="utf-8") as handle:
+                return handle.read()
+        except UnicodeDecodeError:
+            try:
+                with open(file_path, "r", encoding="latin-1", errors="replace") as handle:
+                    return handle.read()
+            except Exception as exc:
+                logger.debug(f"[ChatRAGRetrieval] Failed to read document file {file_path}: {exc}")
+                return ""
+        except Exception as exc:
+            logger.debug(f"[ChatRAGRetrieval] Failed to read document file {file_path}: {exc}")
+            return ""
+
+    @staticmethod
+    def _extract_matching_excerpt(text: str, tokens: List[str], window: int = 220) -> str:
+        """Extract a short excerpt around the first token match."""
+        if not text:
+            return ""
+
+        lower_text = text.lower()
+        first_index = -1
+        for token in tokens:
+            idx = lower_text.find(token)
+            if idx != -1 and (first_index == -1 or idx < first_index):
+                first_index = idx
+
+        if first_index == -1:
+            excerpt = text[: window * 2]
+            return excerpt.strip()
+
+        start = max(0, first_index - window)
+        end = min(len(text), first_index + window)
+        excerpt = text[start:end].strip()
+        if start > 0:
+            excerpt = f"...{excerpt}"
+        if end < len(text):
+            excerpt = f"{excerpt}..."
+        return excerpt
+
+    def _lexical_fallback_search(self, query: str, final_k: int) -> List[Dict[str, Any]]:
+        """Fallback retrieval path when semantic search returns no usable results."""
+        tokens = self.extract_lexical_tokens(query)
+        if not tokens:
+            return []
+
+        all_results: List[Dict[str, Any]] = []
+        per_collection_limit = max(final_k * 2, 5)
+
+        for cc in sorted(self.chatbot.collections, key=lambda x: -x.priority):
+            collection = cc.collection
+            if not collection:
+                continue
+
+            try:
+                results = self.lexical_search_collection(collection, query, tokens, limit=per_collection_limit)
+            except Exception as exc:
+                logger.warning(
+                    f"[ChatRAGRetrieval] Lexical fallback failed for collection {collection.id}: {exc}"
+                )
+                continue
+
+            for result in results:
+                result['score'] = float(result.get('score') or 0.0) * cc.weight
+                result['collection_id'] = collection.id
+                result['collection_name'] = collection.display_name
+            all_results.extend(results)
+
+        deduped: List[Dict[str, Any]] = []
+        seen_keys = set()
+        for result in sorted(all_results, key=lambda item: float(item.get('score') or 0.0), reverse=True):
+            dedupe_key = (
+                result.get('document_id'),
+                result.get('chunk_index'),
+                result.get('content'),
+            )
+            if dedupe_key in seen_keys:
+                continue
+            seen_keys.add(dedupe_key)
+            deduped.append(result)
+
+        if deduped:
+            logger.info(
+                f"[ChatRAGRetrieval] Using lexical fallback for chatbot {self.chatbot.id}: "
+                f"{len(deduped)} results for query '{query[:50]}...'"
+            )
+
+        return deduped[:final_k]
+
     def get_multi_collection_context(self, query: str) -> Tuple[str, List[Dict]]:
         """
         Retrieve context from multiple collections using semantic (vector) search.
@@ -289,10 +482,67 @@ class ChatRAGRetrieval:
                 logger.error(f"Error searching collection {collection.name}: {e}")
 
         if not all_results:
+            lexical_results = self._lexical_fallback_search(query, final_k)
+            if lexical_results:
+                context, sources = self._build_context_and_sources(lexical_results)
+                if FileProcessor.is_vision_model(self.chatbot.model_name):
+                    sources = self._attach_companion_images(sources)
+                return context, sources
+
+            # Diagnose why both semantic and lexical retrieval came up empty.
+            # The most common cause in production is an embedding-model
+            # mismatch (collection embedded with model A, runtime only has
+            # model B), and the second is no chunks reachable from the
+            # collection. Log enough context to tell the two apart from a
+            # single warning line.
+            #
+            # Chunks belong to documents, not collections directly, and a
+            # document is reachable via either the explicit CollectionDocumentLink
+            # (multi-collection case) or the legacy RAGDocument.collection_id
+            # fk — the same OR clause as _lexical_search_sql_fallback above.
+            from sqlalchemy import and_, or_
+            collection_diag = []
+            for cc in self.chatbot.collections or []:
+                col = getattr(cc, 'collection', None)
+                if not col:
+                    continue
+                try:
+                    chunk_count = (
+                        db.session.query(RAGDocumentChunk.id)
+                        .join(RAGDocument, RAGDocument.id == RAGDocumentChunk.document_id)
+                        .outerjoin(
+                            CollectionDocumentLink,
+                            and_(
+                                CollectionDocumentLink.document_id == RAGDocument.id,
+                                CollectionDocumentLink.collection_id == col.id,
+                            ),
+                        )
+                        .filter(or_(
+                            CollectionDocumentLink.id.isnot(None),
+                            RAGDocument.collection_id == col.id,
+                        ))
+                        .count()
+                    )
+                except Exception as exc:
+                    logger.debug(
+                        "[ChatRAGRetrieval] chunk_count failed for collection %s: %s",
+                        col.id, exc,
+                    )
+                    chunk_count = 'unknown'
+                collection_diag.append({
+                    'id': col.id,
+                    'name': col.name,
+                    'chroma_collection_name': getattr(col, 'chroma_collection_name', None),
+                    'embedding_status': getattr(col, 'embedding_status', None),
+                    'chunks': chunk_count,
+                })
             logger.warning(
-                f"[ChatRAGRetrieval] No RAG results for chatbot {self.chatbot.id} "
-                f"(query='{query[:50]}...') using model "
-                f"{self.rag_pipeline.model_name if self.rag_pipeline else 'none'}"
+                "[ChatRAGRetrieval] No RAG results for chatbot=%s query=%r "
+                "model=%s collections=%s",
+                self.chatbot.id,
+                query[:80],
+                self.rag_pipeline.model_name if self.rag_pipeline else 'none',
+                collection_diag,
             )
             return "", []
 
@@ -317,7 +567,23 @@ class ChatRAGRetrieval:
         relevance_filtered = [r for r in filtered_results if r.get('score', 0) >= min_relevance]
 
         if not relevance_filtered:
-            relevance_filtered = filtered_results[:final_k]
+            # Nothing cleared the relevance bar. We used to blindly keep the
+            # top-K anyway, which meant a generic question ("Hauptstadt von
+            # Deutschland") still got irrelevant chunks attached + a citation
+            # nudge. Now: only force-keep top-K for bots explicitly configured to
+            # always ground (rag_force_grounding). Otherwise return NO sources so
+            # the caller answers from general knowledge instead of citing noise
+            # (see ChatService._compose_system_prompt general-mode branch).
+            if getattr(self.chatbot, 'rag_force_grounding', False):
+                relevance_filtered = filtered_results[:final_k]
+            else:
+                top_score = filtered_results[0].get('score', 0) if filtered_results else 0
+                logger.info(
+                    "[ChatRAGRetrieval] No source cleared min_relevance=%.3f "
+                    "(top score=%.4f) for chatbot=%s -> answering without sources",
+                    min_relevance, top_score, self.chatbot.id,
+                )
+                return "", []
 
         filtered_results = relevance_filtered
 
@@ -345,8 +611,29 @@ class ChatRAGRetrieval:
 
         filtered_results = filtered_results[:final_k]
 
+        if not filtered_results:
+            lexical_results = self._lexical_fallback_search(query, final_k)
+            if lexical_results:
+                context, sources = self._build_context_and_sources(lexical_results)
+                if use_vision:
+                    sources = self._attach_companion_images(sources)
+                return context, sources
+
         # Build context and sources
-        return self._build_context_and_sources(filtered_results)
+        context, sources = self._build_context_and_sources(filtered_results)
+
+        # Companion-image attachment: for vision-capable bots, pull image
+        # chunks from the same documents as the text-chunks we just
+        # retrieved. This is the workhorse path for crawler-extracted
+        # images, because image chunks often never make it into ChromaDB
+        # (image-embedding requires a multimodal embedder which may not
+        # be configured) — but the chunk row itself always exists with
+        # ``has_image=True`` + ``image_path`` populated by the crawler.
+        # See ``_attach_companion_images`` for the gating logic.
+        if use_vision:
+            sources = self._attach_companion_images(sources)
+
+        return context, sources
 
     def _build_context_and_sources(
         self,
@@ -406,6 +693,128 @@ class ChatRAGRetrieval:
 
         context = "\n\n---\n\n".join(context_parts)
         return context, sources
+
+    # Default cap for companion-image attachment per query. Each image
+    # is base64-encoded into the chat message, so larger caps blow the
+    # token budget fast (a 200KB JPG ≈ 270KB base64 ≈ ~70k tokens with
+    # most tokenizers). Four images is a comfortable upper bound for
+    # GPT-/Mistral-class context windows.
+    COMPANION_IMAGE_CAP = 4
+
+    def _attach_companion_images(
+        self,
+        sources: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Append companion image-chunks for vision-capable bots.
+
+        For each unique ``document_id`` already represented in ``sources``,
+        look up that document's ``has_image=True`` chunks (created by the
+        crawler when the page contained inline images / screenshots) and
+        append them as additional source entries. Images are added in the
+        order their parent text-chunks appear in ``sources`` — i.e. the
+        most relevant document contributes its images first.
+
+        Why this exists
+        ---------------
+        Vector search retrieves text-chunks. Image chunks live in the
+        same ``rag_document_chunks`` table but only enter ChromaDB when
+        a multimodal image-embedding ran successfully. In practice
+        ``image-embedding_status`` is often ``pending`` (no LiteLLM
+        proxy + no local model installed). The chunks are still on disk
+        with valid ``image_path`` though — this method surfaces them
+        deterministically so a vision model gets to see what the user is
+        reading about.
+
+        File existence is checked here (cheap stat) so a missing/broken
+        path is filtered out before the chat-service tries to base64 it.
+
+        Cap is :data:`COMPANION_IMAGE_CAP` total across all source docs.
+
+        Returns the *same* list shape as ``_build_context_and_sources``;
+        appended entries carry ``has_image=True``, ``image_path``,
+        ``image_alt_text``, ``image_mime_type`` so
+        ``ChatService._get_rag_images`` picks them up unchanged.
+        """
+        if not sources:
+            return sources
+
+        # Already-attached image paths (don't double-add if vector search
+        # happened to surface an image chunk too).
+        seen_paths = {
+            s.get('image_path')
+            for s in sources
+            if s.get('has_image') and s.get('image_path')
+        }
+
+        # Document ID order = relevance order (sources are already ranked).
+        ordered_doc_ids: List[int] = []
+        for s in sources:
+            did = s.get('document_id')
+            if did and did not in ordered_doc_ids:
+                ordered_doc_ids.append(did)
+
+        if not ordered_doc_ids:
+            return sources
+
+        remaining = self.COMPANION_IMAGE_CAP - sum(
+            1 for s in sources if s.get('has_image')
+        )
+        if remaining <= 0:
+            return sources
+
+        appended: List[Dict[str, Any]] = []
+        # Round-robin would be ideal but a single-doc query benefits
+        # more from multiple images of that doc; iterate doc-by-doc and
+        # let the first relevant doc fill up to remaining capacity.
+        for doc_id in ordered_doc_ids:
+            if remaining <= 0:
+                break
+
+            chunks = (
+                RAGDocumentChunk.query
+                .filter_by(document_id=doc_id, has_image=True)
+                .order_by(RAGDocumentChunk.chunk_index.asc())
+                .limit(self.COMPANION_IMAGE_CAP)
+                .all()
+            )
+
+            for chunk in chunks:
+                if remaining <= 0:
+                    break
+                path = chunk.image_path
+                if not path or path in seen_paths:
+                    continue
+                # Cheap fence — chat-service would silently drop a missing
+                # path further down, but the source list shouldn't lie.
+                if not os.path.exists(path):
+                    continue
+                seen_paths.add(path)
+
+                appended.append({
+                    'footnote_id': len(sources) + len(appended) + 1,
+                    'document_id': doc_id,
+                    'title': chunk.image_alt_text or 'Bild aus Wissensbasis',
+                    'collection_name': sources[0].get('collection_name'),
+                    'relevance': None,  # not from vector search
+                    'chunk_index': chunk.chunk_index,
+                    'has_image': True,
+                    'image_path': path,
+                    'image_url': chunk.image_url,
+                    'image_alt_text': chunk.image_alt_text,
+                    'image_mime_type': chunk.image_mime_type or 'image/jpeg',
+                    'companion': True,  # debug / UI hint
+                    'excerpt': chunk.content,
+                })
+                remaining -= 1
+
+        if appended:
+            logger.info(
+                "[ChatRAGRetrieval] attached %d companion image(s) from %d doc(s)",
+                len(appended),
+                len({a['document_id'] for a in appended}),
+            )
+
+        return sources + appended
 
     def search_collection(
         self,

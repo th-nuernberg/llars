@@ -17,6 +17,8 @@ import logging
 from flask_socketio import emit, join_room, leave_room
 from flask import request
 
+from socketio_handlers.socket_auth import socket_user, socket_authorize
+
 logger = logging.getLogger(__name__)
 
 WORKSPACE_ROOM_PREFIX = "markdown_collab_user_"
@@ -42,6 +44,15 @@ def register_markdown_collab_events(socketio):
         user_id = data.get('user_id')
         if not user_id:
             emit('markdown_collab:error', {'error': 'user_id is required'})
+            return
+
+        # AuthN + AuthZ: only subscribe to your OWN workspace-update room (or admin).
+        user = socket_user('markdown_collab:error')
+        if user is None:
+            return
+        from decorators.permission_decorator import has_role
+        if str(user_id) != str(getattr(user, 'id', '')) and not has_role(user, 'admin'):
+            emit('markdown_collab:error', {'error': 'Forbidden'})
             return
 
         room = get_workspace_room(user_id)
@@ -70,6 +81,20 @@ def register_markdown_collab_events(socketio):
         document_id = data.get('document_id')
         if not document_id:
             emit('markdown_collab:error', {'error': 'document_id is required'})
+            return
+
+        # AuthN + AuthZ: only users with access to the document's workspace may
+        # subscribe to its commit stream (same check as the HTTP routes).
+        user = socket_user('markdown_collab:error')
+        if user is None:
+            return
+        from db.tables import MarkdownDocument
+        from routes.markdown_collab.markdown_collab_helpers import _require_document_access
+        document = MarkdownDocument.query.get(document_id)
+        if not document:
+            emit('markdown_collab:error', {'error': 'Forbidden'})
+            return
+        if not socket_authorize(_require_document_access, document, user.username, error_event='markdown_collab:error'):
             return
 
         room = get_document_room(document_id)

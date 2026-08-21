@@ -1,6 +1,6 @@
 """Verbosity analysis routes for LLM-as-Judge statistics."""
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, g
 from collections import defaultdict
 
 from db.database import db
@@ -11,6 +11,7 @@ from db.tables import (
     PillarThread
 )
 from auth.decorators import authentik_required
+from auth.access_control import require_judge_session_owner
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import handle_api_errors
 
@@ -28,6 +29,7 @@ def get_verbosity_analysis(session_id: int):
     Checks if longer responses tend to win more often.
     """
     session = JudgeSession.query.get_or_404(session_id)
+    require_judge_session_owner(session_id, g.authentik_user)
 
     comparisons = JudgeComparison.query.filter_by(
         session_id=session_id,

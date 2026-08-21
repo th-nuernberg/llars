@@ -1,0 +1,13 @@
+# robots.txt — LLARS (https://llars.e-beratungsinstitut.de)
+# Öffentliche Marketing-/Info-Seiten dürfen indexiert werden; App-interne
+# und API-/Auth-Pfade nicht.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /auto-login/
+Disallow: /reset/
+Disallow: /join/
+
+Sitemap: https://llars.e-beratungsinstitut.de/sitemap.xml

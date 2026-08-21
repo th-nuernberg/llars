@@ -17,7 +17,8 @@ from decorators.error_handler import (
 from decorators.permission_decorator import require_permission, has_role
 from db.database import db
 from db.tables import (RatingScenarios, EmailThread, ScenarioThreads,
-                       ScenarioUsers, ScenarioRoles, ScenarioThreadDistribution, User)
+                       ScenarioUsers, ScenarioRoles, ScenarioThreadDistribution, User,
+                       ManagerRole, EvaluationRole)
 from .. import data_blueprint
 from ..HelperFunctions import get_scenario_distribution_mode, DISTRIBUTION_MODE_ALL
 from .scenario_utils import check_scenario_ownership, distribute_threads_to_users
@@ -49,6 +50,9 @@ def add_threads_to_scenario():
     if not scenario:
         raise NotFoundError('Scenario not found')
 
+    # Security: Verify ownership (admins can access all, researchers only their own)
+    check_scenario_ownership(scenario)
+
     # Validate threads
     threads = data.get('thread_ids')
     if not threads or not all(isinstance(thread_id, int) for thread_id in threads):
@@ -76,9 +80,16 @@ def add_threads_to_scenario():
             db.session.flush()
             thread_scenarios.append(new_scenario_thread.id)
 
+        # Find assessors (users who can rate) using new evaluation_role with legacy fallback
         scenario_users_ids = [
-            user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter_by(
-                scenario_id=scenario.id, role=ScenarioRoles.EVALUATOR).all()
+            user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter(
+                ScenarioUsers.scenario_id == scenario.id,
+                db.or_(
+                    ScenarioUsers.evaluation_role == EvaluationRole.ASSESSOR.value,
+                    ScenarioUsers.is_assessor == True,
+                    ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+                )
+            ).all()
         ]
 
         distribution_mode = get_scenario_distribution_mode(scenario, scenario.function_type_id)
@@ -103,6 +114,13 @@ def add_threads_to_scenario():
     except Exception as e:
         db.session.rollback()
         raise
+
+    # The item set changed, so cached IRR/progress stats are now stale.
+    try:
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario.id)
+    except Exception:
+        pass
 
     try:
         if validated_threads:
@@ -149,10 +167,20 @@ def add_viewers_to_scenario():
     for viewer_id in viewers:
         scenario_user = ScenarioUsers.query.filter_by(user_id=viewer_id, scenario_id=scenario_id).first()
         if not scenario_user:  # only add new users to scenario
-            db.session.add(ScenarioUsers(user_id=viewer_id, scenario_id=scenario_id, role=ScenarioRoles.VIEWER))
+            db.session.add(ScenarioUsers(
+                user_id=viewer_id, scenario_id=scenario_id,
+                role=ScenarioRoles.VIEWER,
+                access_level='MEMBER', is_viewer=True, is_assessor=False,
+                manager_role=ManagerRole.VIEWER.value,
+                evaluation_role=EvaluationRole.NONE.value,
+            ))
             db.session.commit()
         else:
             scenario_user.role = ScenarioRoles.VIEWER
+            scenario_user.is_viewer = True
+            scenario_user.is_assessor = False
+            scenario_user.manager_role = ManagerRole.VIEWER.value
+            scenario_user.evaluation_role = EvaluationRole.NONE.value
             db.session.commit()
 
     return jsonify({'message': 'Successfully added viewers to the db'}), 200
@@ -218,11 +246,19 @@ def invite_users_to_scenario():
             failed_users.append({'user_id': user_id, 'reason': 'User not found'})
             continue
 
-        # Map role string to enum
+        # Map role string to enum + legacy flags + new 2-axis roles
         if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compat
             role = ScenarioRoles.EVALUATOR
+            is_assessor = True
+            is_viewer = False
+            manager_role = ManagerRole.NONE.value
+            evaluation_role = EvaluationRole.ASSESSOR.value
         elif role_str == 'viewer':
             role = ScenarioRoles.VIEWER
+            is_assessor = False
+            is_viewer = True
+            manager_role = ManagerRole.VIEWER.value
+            evaluation_role = EvaluationRole.NONE.value
         else:
             failed_users.append({'user_id': user_id, 'reason': f'Invalid role: {role_str}'})
             continue
@@ -231,13 +267,21 @@ def invite_users_to_scenario():
         scenario_user = ScenarioUsers.query.filter_by(user_id=user_id, scenario_id=scenario_id).first()
 
         if not scenario_user:
-            # Add new user
-            db.session.add(ScenarioUsers(user_id=user_id, scenario_id=scenario_id, role=role))
+            # Add new user with legacy role + new 2-axis roles
+            db.session.add(ScenarioUsers(
+                user_id=user_id, scenario_id=scenario_id, role=role,
+                access_level='MEMBER', is_assessor=is_assessor, is_viewer=is_viewer,
+                manager_role=manager_role, evaluation_role=evaluation_role,
+            ))
             added_users.append({'user_id': user_id, 'username': user.username, 'role': role.value})
         else:
             # Update existing user's role (unless they're OWNER)
-            if scenario_user.role != ScenarioRoles.OWNER:
+            if not scenario_user.is_owner_level and scenario_user.role != ScenarioRoles.OWNER:
                 scenario_user.role = role
+                scenario_user.is_assessor = is_assessor
+                scenario_user.is_viewer = is_viewer
+                scenario_user.manager_role = manager_role
+                scenario_user.evaluation_role = evaluation_role
                 updated_users.append({'user_id': user_id, 'username': user.username, 'role': role.value})
 
     db.session.commit()
@@ -291,8 +335,9 @@ def remove_user_from_scenario():
     if not scenario_user:
         raise NotFoundError('User not found in scenario')
 
-    # Cannot remove owner
-    if scenario_user.role == ScenarioRoles.OWNER:
+    # Cannot remove owner (determined by created_by field)
+    target_user = User.query.get(user_id)
+    if target_user and scenario.created_by and target_user.username == scenario.created_by:
         raise ValidationError('Cannot remove the scenario owner')
 
     # Also remove any thread distributions for this user

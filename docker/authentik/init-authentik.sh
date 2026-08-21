@@ -12,6 +12,8 @@ BACKEND_CLIENT_SECRET="${AUTHENTIK_BACKEND_CLIENT_SECRET:-llars-backend-secret-c
 # Use LLARS_ADMIN_PASSWORD for LLARS users (admin, researcher, evaluator)
 # Falls back to AUTHENTIK_BOOTSTRAP_PASSWORD for backwards compatibility
 ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}}"
+# Second admin user password
+ADMIN_2_PASSWORD="${LLARS_ADMIN_2_PASSWORD:-qCeAa8mwX4bf5XwylghSvgVb}"
 # IJCAI reviewer password (dev-only users)
 IJCAI_REVIEWER_PASSWORD="${IJCAI_REVIEWER_PASSWORD:-ijcai_reviewer_123}"
 
@@ -311,6 +313,31 @@ if admin_group:
     print('  Added admin to authentik Admins group')
 else:
     print('  Warning: authentik Admins group not found')
+
+# Create or update admin_2 user (second admin)
+admin2, created = User.objects.get_or_create(
+    username='admin_2',
+    defaults={
+        'name': 'Admin 2',
+        'email': 'admin2@localhost',
+        'is_active': True
+    }
+)
+
+if created:
+    print('  Created admin_2 user')
+else:
+    print('  admin_2 user already exists')
+
+admin2.set_password('$ADMIN_2_PASSWORD')
+admin2.save()
+print('  Password set for admin_2 user')
+
+# Add admin_2 to admin group
+if admin_group:
+    admin2.ak_groups.add(admin_group)
+    admin2.save()
+    print('  Added admin_2 to authentik Admins group')
 "
 
 if [ "$PROJECT_STATE" = "development" ]; then
@@ -482,6 +509,11 @@ from authentik.core.models import User
 admin = User.objects.filter(username='admin').first()
 print(f'  User admin: {\"OK\" if admin else \"MISSING\"}')"
 
+ak_shell "
+from authentik.core.models import User
+admin2 = User.objects.filter(username='admin_2').first()
+print(f'  User admin_2: {\"OK\" if admin2 else \"MISSING\"}')"
+
 echo ""
 echo "======================================="
 echo "  Authentik Configuration Complete!"
@@ -490,6 +522,7 @@ echo "======================================="
 echo ""
 echo "Seeded login accounts:"
 echo "  Username: admin (password from LLARS_ADMIN_PASSWORD env var)"
+echo "  Username: admin_2 (password from LLARS_ADMIN_2_PASSWORD env var)"
 if [ "$PROJECT_STATE" = "development" ]; then
 echo ""
 echo "  Username: researcher (password from LLARS_ADMIN_PASSWORD env var)"

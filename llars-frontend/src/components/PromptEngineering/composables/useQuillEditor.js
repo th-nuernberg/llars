@@ -350,6 +350,13 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const INVALID_VAR_NAMES = new Set(['undefined', 'null', 'true', 'false', 'NaN', 'Infinity'])
 
   // Konvertiert {{variablen}} Text zu Embed-Blots (atomare Elemente)
+  //
+  // Iteriert über Delta-Ops (statt editor.getText()) damit existierende
+  // Variable-Embeds nicht fälschlich als Text-Pattern erkannt und ein zweites
+  // Mal konvertiert werden. Frühere Implementation nutzte getText() — das gab
+  // bei VariableBlot den inner-Text `{{name}}` zurück, sodass `regex.exec`
+  // den Pattern erneut traf und in Multi-User-Yjs-Szenarien doppelte/mehrfache
+  // Embeds eingefügt wurden.
   const createHighlightFunction = (editor) => {
     let inPlaceholderConversion = false
 
@@ -358,36 +365,38 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
       inPlaceholderConversion = true
 
       try {
-        const text = editor.getText()
-
-        // Finde alle {{variablen}} Platzhalter (von hinten nach vorne, um Indizes nicht zu verschieben)
-        const matches = []
-        let match
+        const delta = editor.getContents()
         const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g')
-        while ((match = regex.exec(text)) !== null) {
-          const varName = match[1]
-          // Überspringe ungültige Variablennamen
-          if (INVALID_VAR_NAMES.has(varName)) {
-            continue
+        const matches = []
+
+        // Position in Quill-Doc-Koordinaten, zählt jeden Embed als 1.
+        let pos = 0
+        for (const op of (delta.ops || [])) {
+          if (typeof op.insert === 'string') {
+            const segment = op.insert
+            let match
+            regex.lastIndex = 0
+            while ((match = regex.exec(segment)) !== null) {
+              const varName = match[1]
+              if (INVALID_VAR_NAMES.has(varName)) {
+                continue
+              }
+              matches.push({
+                index: pos + match.index,
+                length: match[0].length,
+                varName,
+              })
+            }
+            pos += segment.length
+          } else if (op.insert && typeof op.insert === 'object') {
+            // Embed-Op (z.B. existierender VariableBlot) — überspringen.
+            pos += 1
           }
-          matches.push({
-            index: match.index,
-            length: match[0].length,
-            varName
-          })
         }
 
-        // Konvertiere von hinten nach vorne (um Indizes konsistent zu halten)
+        // Konvertiere von hinten nach vorne (Indizes bleiben konsistent)
         for (let i = matches.length - 1; i >= 0; i--) {
           const m = matches[i]
-
-          // Prüfe, ob an dieser Position bereits ein Embed ist
-          const [leaf] = editor.getLeaf(m.index)
-          if (leaf && leaf.statics && leaf.statics.blotName === 'variable') {
-            continue // Bereits ein Embed-Blot
-          }
-
-          // Lösche den Text und füge ein Embed ein
           editor.deleteText(m.index, m.length, Quill.sources.SILENT)
           editor.insertEmbed(m.index, 'variable', m.varName, Quill.sources.SILENT)
         }

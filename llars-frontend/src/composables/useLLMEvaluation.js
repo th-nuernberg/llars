@@ -14,6 +14,7 @@
 import { ref, computed, onMounted, onUnmounted, readonly } from 'vue'
 import axios from 'axios'
 import { getSocket } from '@/services/socketService'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 
 /**
  * Evaluation status constants
@@ -44,6 +45,8 @@ export const TASK_TYPES = {
  * @returns {Object} Evaluation state and methods
  */
 export function useLLMEvaluation(initialScenarioId = null) {
+  const { updateRegistry } = useModelRegistry()
+
   // ===== State =====
   const status = ref(EVAL_STATUS.IDLE)
   const progress = ref({
@@ -338,6 +341,11 @@ export function useLLMEvaluation(initialScenarioId = null) {
         if (response.data.status) {
           status.value = response.data.status
         }
+
+        // Feed model registry for consistent LLM display names
+        if (response.data.model_registry) {
+          updateRegistry(response.data.model_registry)
+        }
       }
     } catch (err) {
       console.error('Error fetching LLM evaluation progress:', err)
@@ -355,13 +363,40 @@ export function useLLMEvaluation(initialScenarioId = null) {
     }
   }
 
-  async function fetchAgreementMetrics() {
+  /**
+   * Fetch inter-rater agreement metrics for the scenario, optionally restricted
+   * to a rater subset.
+   *
+   * @param {Object} [options]
+   * @param {'all'|'human'|'llm'} [options.filter='all'] — which rater group to
+   *   include. Maps to backend `include_human` / `include_llm` query params so
+   *   Krippendorff α / Fleiss κ / etc. are recomputed over only that group
+   *   instead of the union of humans and LLMs.
+   * @param {'with'|'without'|null} [options.copilot=null] — labeling co-pilot
+   *   filter: restrict human cells to (user, item) pairs labeled WITH or
+   *   WITHOUT a visible suggestion (anchoring analysis; backend `copilot`
+   *   query param).
+   */
+  async function fetchAgreementMetrics({ filter = 'all', copilot = null } = {}) {
     if (!scenarioId) {
       console.warn('Cannot fetch agreement metrics: no scenarioId')
       return null
     }
     try {
-      const response = await axios.get(`/api/evaluation/${scenarioId}/agreement-metrics`)
+      // The endpoint defaults both flags to true; only attach params when
+      // narrowing so unfiltered call-sites (and existing tests that match the
+      // bare URL) still see a 1-arg axios.get.
+      const url = `/api/evaluation/${scenarioId}/agreement-metrics`
+      const params = {}
+      if (filter === 'human') params.include_llm = false
+      else if (filter === 'llm') params.include_human = false
+      if (copilot === 'with' || copilot === 'without') params.copilot = copilot
+      let response
+      if (Object.keys(params).length > 0) {
+        response = await axios.get(url, { params })
+      } else {
+        response = await axios.get(url)
+      }
       const data = response.data
 
       // Transform API response to expected flat format
@@ -375,10 +410,8 @@ export function useLLMEvaluation(initialScenarioId = null) {
         spearman: metrics.spearman_rho?.value ?? null,
         accuracy: metrics.percent_agreement?.value ?? null,
         // New metrics
-        icc: metrics.icc?.value ?? null,
+        // icc: metrics.icc?.value ?? null,  // ICC disabled - needs more items to be meaningful
         kendallW: metrics.kendall_w?.value ?? null,
-        mae: metrics.mae?.value ?? null,
-        rmse: metrics.rmse?.value ?? null,
         macroF1: metrics.macro_f1?.value ?? null,
         microF1: metrics.micro_f1?.value ?? null,
         // Interpretations
@@ -387,6 +420,10 @@ export function useLLMEvaluation(initialScenarioId = null) {
                        metrics.cohens_kappa?.interpretation || null,
         iccInterpretation: metrics.icc?.interpretation ?? null,
         kendallWInterpretation: metrics.kendall_w?.interpretation ?? null,
+        // Labeling: pairwise Cohen's-κ matrix (heatmap-keyed "a-b") + axis labels
+        pairwiseKappa: metrics.pairwise_cohens_kappa?.matrix || null,
+        raterLabels: data.rater_labels || {},
+        raterIds: data.raters || [],
         // Metadata
         raterCount: data.rater_count || 0,
         itemCount: data.item_count || 0,

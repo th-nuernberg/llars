@@ -23,6 +23,10 @@ function debounce(fn, delay) {
 }
 
 export function useAuthenticityEvaluation(scenarioId) {
+  // Per-case timing: ms from item display to the vote save (sent with the vote
+  // so exports carry time-on-case). Backend is first-write-only.
+  const itemShownAt = ref(null)
+
   // State
   const items = ref([])
   const currentItem = ref(null)
@@ -169,6 +173,9 @@ export function useAuthenticityEvaluation(scenarioId) {
     if (index >= 0) {
       currentItemIndex.value = index
     }
+
+    // Start the per-case timer when the item becomes visible.
+    itemShownAt.value = Date.now()
   }
 
   // Get thread ID from current item
@@ -209,7 +216,11 @@ export function useAuthenticityEvaluation(scenarioId) {
         {
           vote: voteValue,
           confidence: confidence.value,
-          notes: notes.value || null
+          notes: notes.value || null,
+          // Thread-scoped endpoint: pass scenario so timing attaches to the
+          // right scenario (validated server-side against the thread).
+          scenario_id: scenarioId?.value ?? scenarioId ?? null,
+          time_on_item_ms: itemShownAt.value ? Date.now() - itemShownAt.value : null
         }
       )
 

@@ -148,10 +148,14 @@ export function useSourcePanel() {
    */
   async function loadPanelScreenshot() {
     const source = sourcePanel.value.source
-    if (!source?.screenshot_url && !source?.document_id) return
+    // Only load when the backend gave us a real screenshot URL. Don't fall back
+    // to /api/rag/documents/<id>/screenshot for every source — text/docs sources
+    // have no screenshot and that fallback 404'd ("Konnte Screenshot nicht
+    // laden"). hasScreenshot in SourcePanel.vue gates the tab on the same field.
+    if (!source?.screenshot_url) return
     if (sourcePanel.value.screenshotBlobUrl) return
 
-    const url = source.screenshot_url || `/api/rag/documents/${source.document_id}/screenshot`
+    const url = source.screenshot_url
 
     sourcePanel.value.loadingScreenshot = true
     sourcePanel.value.screenshotError = null

@@ -10,6 +10,7 @@ from db.tables import (
     EmailThread, Message
 )
 from auth.decorators import authentik_required
+from auth.access_control import require_judge_session_owner
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
@@ -37,6 +38,8 @@ def get_current_comparison(session_id: int):
     session = JudgeSession.query.get(session_id)
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
+
+    require_judge_session_owner(session_id, g.authentik_user)
 
     # Multi-worker support: find any running comparison, not just current_comparison_id
     comparison = None
@@ -175,6 +178,8 @@ def get_session_queue(session_id: int):
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
 
+    require_judge_session_owner(session_id, g.authentik_user)
+
     # Pillar names
     pillar_names = {
         1: "Rollenspiele",
@@ -276,6 +281,8 @@ def get_session_worker_streams(session_id: int):
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
 
+    require_judge_session_owner(session_id, g.authentik_user)
+
     # Get worker streams from the pool
     streams = get_worker_streams(session_id)
 
@@ -321,6 +328,8 @@ def get_session_comparisons(session_id: int):
     session = JudgeSession.query.get(session_id)
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
+
+    require_judge_session_owner(session_id, g.authentik_user)
 
     # Pillar names for display
     pillar_names = {

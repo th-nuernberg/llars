@@ -25,16 +25,21 @@ logger = logging.getLogger(__name__)
 
 
 def _check_mail_rating_access(item_id: int, user_id: int) -> bool:
-    """Check if user has access to a mail rating item."""
+    """Authorization gate for mail-thread content.
+
+    Mail threads carry client<->counsellor consulting messages (PII), so the mere
+    existence of a thread must NEVER count as access. Modern items are gated by
+    scenario membership; legacy EmailThreads by the per-user assignment check
+    (mail_rating = function_type_id 3), mirroring rating_routes.py.
+    """
     eval_item = EvaluationItem.query.get(item_id)
     if eval_item:
         scenario = SchemaAdapter.check_scenario_access(item_id, user_id)
         return scenario is not None
 
-    # Fallback to legacy check
-    from db.tables import EmailThread
-    thread = EmailThread.query.filter_by(thread_id=item_id).first()
-    return thread is not None
+    # Legacy EmailThread: require an actual scenario assignment, not mere existence.
+    from routes.HelperFunctions import can_access_thread
+    return can_access_thread(user_id, item_id, 3)
 
 
 @data_blueprint.route('/email_threads/generations/<int:thread_id>', methods=['GET'])
@@ -48,6 +53,15 @@ def get_email_thread_details(thread_id):
     """
     user = g.authentik_user
     use_schema = request.args.get('schema', 'false').lower() == 'true'
+
+    # AuthZ (IDOR fix): the caller must have access to this thread's scenario (or
+    # the legacy thread assignment) BEFORE any message content is returned.
+    # Previously the access result was only consulted on the ?schema=true branch,
+    # so any logged-in user could read arbitrary clients' consulting-mail content
+    # (PII) by iterating thread_id. NotFoundError (not 403) avoids leaking which
+    # ids exist.
+    if not _check_mail_rating_access(thread_id, user.id):
+        raise NotFoundError('Email thread not found')
 
     # First try new EvaluationItem model
     eval_item = EvaluationItem.query.get(thread_id)

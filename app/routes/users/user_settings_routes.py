@@ -15,7 +15,6 @@ from PIL import Image
 from auth.decorators import authentik_required, public_endpoint
 from decorators.error_handler import NotFoundError, ValidationError, handle_api_errors
 from db.database import db
-from db.tables import LatexComment
 from db.models.user import generate_avatar_seed
 from routes.auth import data_bp
 from services.user_profile_service import build_avatar_url, is_valid_collab_color, pick_collab_color
@@ -110,15 +109,17 @@ def _process_avatar_image(file_storage) -> bytes:
 @handle_api_errors(logger_name="user_settings")
 def get_user_settings():
     """
-    Get current user's settings (collab_color, avatar_seed).
+    Get current user's settings (collab_color, avatar_seed, console_logs_enabled).
     """
     user = g.authentik_user
+    settings = user.settings_json or {}
     return jsonify({
         "success": True,
         "collab_color": user.collab_color,
         "avatar_seed": user.get_avatar_seed() if hasattr(user, "get_avatar_seed") else None,
         "avatar_url": build_avatar_url(user),
-        "avatar_changes_left": _avatar_changes_left(user)
+        "avatar_changes_left": _avatar_changes_left(user),
+        "console_logs_enabled": bool(settings.get("console_logs_enabled", False)),
     })
 
 
@@ -144,12 +145,6 @@ def update_user_settings():
             if not is_valid_collab_color(color):
                 raise ValidationError("collab_color must be a valid hex color (#RRGGBB format)")
             user.collab_color = color
-
-    if "collab_color" in data and prev_collab_color != user.collab_color:
-        LatexComment.query.filter_by(author_username=user.username).update(
-            {LatexComment.author_color: user.collab_color},
-            synchronize_session=False
-        )
 
     db.session.commit()
 

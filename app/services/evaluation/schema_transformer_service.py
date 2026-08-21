@@ -19,7 +19,7 @@ from typing import Optional, List, Dict, Any
 
 from db.models import (
     EvaluationItem, Message, Feature, RatingScenarios,
-    ScenarioItems, FeatureType, LLM,
+    ScenarioItems, FeatureType,
     AuthenticityConversation
 )
 from schemas.evaluation_data_schemas import (
@@ -98,11 +98,24 @@ class SchemaTransformer:
             return SchemaTransformer._transform_rating(scenario, item_id, include_ground_truth)
         elif eval_type == EvaluationType.MAIL_RATING:
             return SchemaTransformer._transform_mail_rating(scenario, item_id, include_ground_truth)
-        elif eval_type == EvaluationType.COMPARISON:
+        elif eval_type in (
+            EvaluationType.COMPARISON,
+            # communication_comparison persists through the SAME comparison
+            # model (ItemComparisonEvaluation) and carries the same A/B data
+            # shape; only the mounted interface differs. Without this branch it
+            # fell through to the else and raised "Unknown evaluation type" —
+            # the type has existed since v1.9 and this was never wired up.
+            EvaluationType.COMMUNICATION_COMPARISON,
+        ):
             return SchemaTransformer._transform_comparison(scenario, item_id, include_ground_truth)
         elif eval_type == EvaluationType.AUTHENTICITY:
             return SchemaTransformer._transform_authenticity(scenario, item_id, include_ground_truth)
-        elif eval_type == EvaluationType.LABELING:
+        elif eval_type in (
+            EvaluationType.LABELING,
+            # Conversation labeling shares the labeling transform: the schema
+            # export describes the label set, which is identical.
+            EvaluationType.CONVERSATION_LABELING,
+        ):
             return SchemaTransformer._transform_labeling(scenario, item_id, include_ground_truth)
         else:
             raise ValueError(f"Unknown evaluation type: {eval_type}")
@@ -236,7 +249,9 @@ class SchemaTransformer:
         """Transformiert Comparison-Daten (A vs B)."""
         eval_item = EvaluationItem.query.get(item_id)
         messages = Message.query.filter_by(item_id=item_id).order_by(Message.timestamp).all()
-        features = Feature.query.filter_by(item_id=item_id).all()
+        # Deterministic order so features[:2] → A/B is stable and matches the
+        # results export (which orders option authors by feature_id).
+        features = Feature.query.filter_by(item_id=item_id).order_by(Feature.feature_id).all()
 
         # Reference: Kontext für Vergleich
         reference = SchemaTransformer._build_reference(eval_item, messages)
@@ -416,7 +431,7 @@ class SchemaTransformer:
         """Baut Items aus Features."""
         items = []
         for idx, feature in enumerate(features, 1):
-            llm_name = feature.llm.name if feature.llm else None
+            llm_name = feature.model_id
             feature_type_name = feature.feature_type.name if feature.feature_type else "feature"
 
             # Source bestimmen

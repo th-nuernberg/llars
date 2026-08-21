@@ -23,6 +23,10 @@ function debounce(fn, delay) {
 }
 
 export function useComparisonEvaluation(scenarioId) {
+  // Per-case timing: ms from item display to the A/B choice save (sent with the
+  // vote so exports carry time-on-case). Backend is first-write-only.
+  const itemShownAt = ref(null)
+
   // State
   const items = ref([])
   const currentItem = ref(null)
@@ -30,9 +34,18 @@ export function useComparisonEvaluation(scenarioId) {
   const config = ref(null)
   const existingComparison = ref(null)
 
-  // Option content
+  // Option content (the two candidate replies for A/B vote)
   const optionA = ref({ messages: [], content: '' })
   const optionB = ref({ messages: [], content: '' })
+
+  // Conversation context (shown above A/B for Turing-Test-style scenarios:
+  // dialogue-up-to-now, then 2 candidate next-turn replies as A/B).
+  const contextMessages = ref([])
+  const contextSubject = ref('')
+
+  // Per-item research metadata from EvaluationItem.metadata_json.
+  // Used for {{variable}} substitution in the scenario task description.
+  const currentItemMeta = ref({})
 
   // Comparison state
   const selectedOption = ref(null) // 'A', 'B', or 'tie'
@@ -63,6 +76,80 @@ export function useComparisonEvaluation(scenarioId) {
       percent: total > 0 ? Math.round((completed / total) * 100) : 0
     }
   })
+
+  // Gamification: reward-popup config + milestone trigger.
+  // Toggles + thresholds come from the scenario's config_json (set in the
+  // wizard via ComparisonConfigEditor). Defaults match the Pydantic schema.
+  // `milestoneEvent` is set in `selectOption` after a successful POST and
+  // cleared by the consumer (ComparisonInterface.vue closes the dialog and
+  // calls `clearMilestone()`).
+  const milestoneEvent = ref(null) // { count, isFirst } | null
+
+  // Pull a comparison-config field from any of the three places the wizard,
+  // the seeders and legacy clients store it:
+  //   1. `config_json.eval_config.config.<key>`  (wizard, modern flow)
+  //   2. `config_json.<key>`                      (some seeders)
+  //   3. `config_json.<snake_case_key>`           (Pydantic round-trips)
+  // Returns the first defined value, or `undefined`.
+  function readCfgField(...keys) {
+    const cfg = config.value || {}
+    const evalCfg = cfg?.eval_config?.config || {}
+    for (const k of keys) {
+      if (evalCfg[k] !== undefined) return evalCfg[k]
+      if (cfg[k] !== undefined) return cfg[k]
+    }
+    return undefined
+  }
+
+  const gamification = computed(() => {
+    const enabled =
+      readCfgField('gamificationEnabled', 'gamification_enabled') === true
+    const first = readCfgField(
+      'gamificationFirstMilestone',
+      'gamification_first_milestone'
+    )
+    const recurring = readCfgField(
+      'gamificationRecurringMilestone',
+      'gamification_recurring_milestone'
+    )
+    return {
+      enabled,
+      first: Number.isFinite(Number(first)) ? Number(first) : 10,
+      recurring: Number.isFinite(Number(recurring)) ? Number(recurring) : 5
+    }
+  })
+
+  // Items remaining until the next milestone fires — drives the
+  // motivation badge in ComparisonInterface header. Returns null when
+  // gamification is off or no further milestone is reachable.
+  const itemsUntilNextMilestone = computed(() => {
+    const g = gamification.value
+    if (!g.enabled) return null
+    const completed = items.value.filter(it => it.evaluated).length
+    const { first, recurring } = g
+    if (completed < first) return first - completed
+    if (recurring <= 0) return null
+    const since = completed - first
+    const into = since % recurring
+    return into === 0 ? recurring : recurring - into
+  })
+
+  // True for the *next* unevaluated card whenever submitting it would hit a
+  // milestone — used to apply the .milestone-frame highlight before the click.
+  const isMilestoneCard = computed(() => {
+    if (!gamification.value.enabled) return false
+    const completed = items.value.filter(item => item.evaluated).length
+    const next = completed + 1
+    const { first, recurring } = gamification.value
+    if (!first || first < 1) return false
+    if (next === first) return true
+    if (next > first && recurring > 0 && (next - first) % recurring === 0) return true
+    return false
+  })
+
+  function clearMilestone() {
+    milestoneEvent.value = null
+  }
 
   // Computed: Navigation
   const hasNext = computed(() => currentItemIndex.value < items.value.length - 1)
@@ -147,28 +234,77 @@ export function useComparisonEvaluation(scenarioId) {
       subject: data.subject
     }
 
-    // For comparison scenarios, features represent the two options
+    // Start the per-case timer when the item becomes visible.
+    itemShownAt.value = Date.now()
+
+    // For comparison scenarios, features represent the two options.
+    // Fallback: TEXT_PAIR imports store the two options as messages.
     const features = data.features || []
+    const messages = data.messages || []
+
+    // Reset context — only populated for "context + 2 candidates" layout below
+    contextMessages.value = []
+    contextSubject.value = data.subject || ''
+    currentItemMeta.value = data.metadata_json || {}
+
     if (features.length >= 2) {
+      // Two layouts share this branch:
+      // (a) Turing-Test layout: messages = dialogue context up to now,
+      //     features[0/1] = candidate next-turn replies (rendered above A/B)
+      // (b) Standalone layout: only features, no surrounding dialogue
+      // We always treat features[0/1] as A/B and surface messages — if any —
+      // as conversation context to the UI.
+      contextMessages.value = messages
+      optionA.value = {
+        messages: [],
+        content: features[0]?.content || '',
+        model: features[0]?.model_name || features[0]?.model_id || 'Option A'
+      }
+      optionB.value = {
+        messages: [],
+        content: features[1]?.content || '',
+        model: features[1]?.model_name || features[1]?.model_id || 'Option B'
+      }
+    } else if (messages.length >= 2) {
+      // Fallback: messages represent comparison options (wizard TEXT_PAIR import)
+      // Split messages evenly between Option A and Option B
+      const midpoint = Math.ceil(messages.length / 2)
+      optionA.value = {
+        messages: messages.slice(0, midpoint),
+        content: ''
+      }
+      optionB.value = {
+        messages: messages.slice(midpoint),
+        content: ''
+      }
+    } else if (features.length === 1) {
+      // Single feature as Option A, messages as context for Option B
       optionA.value = {
         messages: [],
         content: features[0]?.content || '',
         model: features[0]?.model_name || 'Option A'
       }
       optionB.value = {
-        messages: [],
-        content: features[1]?.content || '',
-        model: features[1]?.model_name || 'Option B'
+        messages: messages,
+        content: ''
       }
     } else {
-      // Fallback: use messages as content
-      optionA.value = { messages: data.messages || [], content: '' }
+      // Last resort: whatever content is available goes to Option A
+      optionA.value = { messages: messages, content: '' }
       optionB.value = { messages: [], content: '' }
     }
 
-    existingComparison.value = null
-    selectedOption.value = null
-    notes.value = ''
+    // Restore existing comparison evaluation if available
+    const existing = data.existing_comparison
+    if (existing && existing.choice) {
+      existingComparison.value = existing
+      selectedOption.value = existing.choice
+      notes.value = existing.notes || ''
+    } else {
+      existingComparison.value = null
+      selectedOption.value = null
+      notes.value = ''
+    }
 
     const index = items.value.findIndex(item =>
       (item.thread_id || item.id || item.item_id) === itemId
@@ -215,7 +351,8 @@ export function useComparisonEvaluation(scenarioId) {
         {
           function_type: 'comparison',
           choice: option,
-          notes: notes.value || null
+          notes: notes.value || null,
+          time_on_item_ms: itemShownAt.value ? Date.now() - itemShownAt.value : null
         }
       )
 
@@ -227,8 +364,23 @@ export function useComparisonEvaluation(scenarioId) {
       const itemIndex = items.value.findIndex(item =>
         (item.thread_id || item.id || item.item_id) === itemId
       )
+      const wasEvaluated = itemIndex >= 0 ? items.value[itemIndex].evaluated : false
       if (itemIndex >= 0) {
         items.value[itemIndex].evaluated = true
+      }
+
+      // Fire a milestone event only on the *first* time this item is
+      // evaluated — re-saving an existing choice should not retrigger the
+      // popup. The threshold is checked against the new completed count.
+      if (gamification.value.enabled && !wasEvaluated) {
+        const completed = items.value.filter(it => it.evaluated).length
+        const { first, recurring } = gamification.value
+        const isFirst = completed === first
+        const isRecurring =
+          completed > first && recurring > 0 && (completed - first) % recurring === 0
+        if (isFirst || isRecurring) {
+          milestoneEvent.value = { count: completed, isFirst }
+        }
       }
 
       return { success: true, choice: option }
@@ -241,11 +393,36 @@ export function useComparisonEvaluation(scenarioId) {
     }
   }
 
-  // Save metadata (notes) - debounced
-  // Note: No separate metadata endpoint; notes are saved with the comparison
+  /**
+   * Persist the rater's free-text note.
+   *
+   * This used to be an empty stub whose comment claimed "notes are saved with
+   * the option selection". That is only true for a note typed BEFORE choosing:
+   * selectOption() sends the current text along. A note added or edited AFTER
+   * the choice reached nothing — the dialog closed, the call chain ran, and the
+   * text was silently dropped.
+   *
+   * There is no notes-only endpoint because ItemComparisonEvaluation.choice is
+   * NOT NULL: a note without a decision cannot be represented. So this re-sends
+   * the EXISTING choice together with the new text. Without a choice yet the
+   * text stays in memory and rides along with the upcoming selectOption().
+   */
   const saveMetadata = debounce(async () => {
-    if (!currentItem.value || !selectedOption.value) return
-    // Notes are saved with the option selection
+    const itemId = getItemId()
+    if (!itemId || !selectedOption.value) return
+    try {
+      await axios.post(
+        `/api/evaluation/session/${scenarioId.value}/items/${itemId}/evaluate`,
+        {
+          function_type: 'comparison',
+          choice: selectedOption.value,
+          notes: notes.value || null
+        }
+      )
+      updateCache()
+    } catch (e) {
+      error.value = e.response?.data?.error || 'Failed to save note'
+    }
   }, 800)
 
   // Navigation
@@ -276,11 +453,15 @@ export function useComparisonEvaluation(scenarioId) {
     currentItemIndex.value = 0
     optionA.value = { messages: [], content: '' }
     optionB.value = { messages: [], content: '' }
+    contextMessages.value = []
+    contextSubject.value = ''
+    currentItemMeta.value = {}
     config.value = null
     selectedOption.value = null
     notes.value = ''
     existingComparison.value = null
     error.value = null
+    milestoneEvent.value = null
   }
 
   watch(scenarioId, (newId, oldId) => {
@@ -296,6 +477,9 @@ export function useComparisonEvaluation(scenarioId) {
     currentItemIndex,
     optionA,
     optionB,
+    contextMessages,
+    contextSubject,
+    currentItemMeta,
     config,
     selectedOption,
     notes,
@@ -308,6 +492,11 @@ export function useComparisonEvaluation(scenarioId) {
     hasNext,
     hasPrev,
     currentItemStatus,
+    gamification,
+    isMilestoneCard,
+    itemsUntilNextMilestone,
+    milestoneEvent,
+    clearMilestone,
     loadItems,
     loadItem,
     selectOption,

@@ -1,12 +1,12 @@
 /**
  * Git Status Composable
  *
- * Shared state management for Git operations in LaTeX/Markdown Collab workspaces
+ * Shared state management for Git operations in Markdown Collab workspaces
  * and single-entity mode for Prompt Engineering.
  * Used by GitStatusWidget and GitDetailDialog for consistent state.
  *
  * Supports two modes:
- * - 'workspace': Multiple documents in a workspace (LaTeX/Markdown Collab)
+ * - 'workspace': Multiple documents in a workspace (Markdown Collab)
  * - 'single': Single entity with version history (Prompt Engineering)
  */
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
@@ -21,7 +21,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 /**
  * @param {import('vue').Ref<number>} entityIdRef - Reactive entity ID (workspace or prompt)
  * @param {Object} options - Configuration options
- * @param {string} options.apiPrefix - API prefix (default: '/api/latex-collab')
+ * @param {string} options.apiPrefix - API prefix (default: '/api/markdown-collab')
  * @param {string} options.entityMode - 'workspace' (default) or 'single'
  * @param {boolean} options.autoSetup - Automatically setup socket and load data on mount
  * @param {Object} options.summary - For single mode: reactive summary object with hasChanges, insertions, deletions
@@ -29,7 +29,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
  */
 export function useGitStatus(entityIdRef, options = {}) {
   const {
-    apiPrefix = '/api/latex-collab',
+    apiPrefix = '/api/markdown-collab',
     entityMode = 'workspace',
     autoSetup = true,
     summary = null,
@@ -130,10 +130,10 @@ export function useGitStatus(entityIdRef, options = {}) {
   function getFileIcon(path) {
     const ext = path.split('.').pop()?.toLowerCase()
     switch (ext) {
-      case 'tex': return 'mdi-file-document'
-      case 'bib': return 'zotero'
-      case 'sty': return 'mdi-file-cog'
-      case 'cls': return 'mdi-file-settings'
+      case 'md':
+      case 'markdown': return 'mdi-language-markdown'
+      case 'json': return 'mdi-code-json'
+      case 'txt': return 'mdi-file-document'
       default: return 'mdi-file-document-outline'
     }
   }
@@ -141,10 +141,9 @@ export function useGitStatus(entityIdRef, options = {}) {
   function getFileIconColor(path) {
     const ext = path.split('.').pop()?.toLowerCase()
     switch (ext) {
-      case 'tex': return 'green'
-      case 'bib': return undefined
-      case 'sty': return 'orange'
-      case 'cls': return 'purple'
+      case 'md':
+      case 'markdown': return 'primary'
+      case 'json': return 'orange'
       default: return 'grey'
     }
   }
@@ -211,9 +210,9 @@ export function useGitStatus(entityIdRef, options = {}) {
       const newChangedFiles = res.data.changed_files || []
       const newDeletedFiles = res.data.deleted_files || []
 
-      // Smart merge: only update if different
-      const changedFilesChanged = JSON.stringify(newChangedFiles.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions }))) !==
-                                  JSON.stringify(changedFiles.value.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions })))
+      // Smart merge: only update if different (include diff_status in comparison)
+      const changedFilesChanged = JSON.stringify(newChangedFiles.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions, diff_status: f.diff_status }))) !==
+                                  JSON.stringify(changedFiles.value.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions, diff_status: f.diff_status })))
       const deletedFilesChanged = JSON.stringify(newDeletedFiles.map(f => f.id)) !==
                                   JSON.stringify(deletedFiles.value.map(f => f.id))
 
@@ -229,6 +228,11 @@ export function useGitStatus(entityIdRef, options = {}) {
 
       if (deletedFilesChanged) {
         deletedFiles.value = newDeletedFiles
+      }
+
+      // If diffs are still being computed in the backend, poll again after 2s
+      if (res.data.all_diffs_ready === false) {
+        setTimeout(() => checkForChanges({ silent: true }), 2000)
       }
     } catch (e) {
       if (!silent) {
@@ -510,13 +514,21 @@ export function useGitStatus(entityIdRef, options = {}) {
         socket.emit('prompt:subscribe', { prompt_id: entityIdRef.value })
       }
     } else {
-      // Workspace mode
-      socket.on('latex_collab:commit_created', handleCommitCreated)
+      // Workspace mode (Markdown Collab).
+      //
+      // Das Markdown-Collab-Backend kennt nur Document-Rooms, keinen
+      // Workspace-Room fuer Commits (siehe
+      // app/socketio_handlers/events_markdown_collab.py). Wir hoeren daher nur
+      // auf das Commit-Event; der Room-Beitritt passiert dokument-bezogen in
+      // MarkdownWorkspaceGitPanel bzw. useWorkspaceSocket. Alles Weitere deckt
+      // der REST-Refresh (checkForChanges/loadRecentCommits) ab.
+      socket.on('markdown_collab:commit_created', handleCommitCreated)
 
-      onSocketConnect = () => {
-        socket.emit('latex_collab:subscribe_workspace', { workspace_id: entityIdRef.value })
-      }
+      onSocketConnect = null
     }
+
+    // Workspace mode braucht keinen Room-Beitritt -> kein connect-Handler
+    if (!onSocketConnect) return
 
     if (socket.connected) {
       onSocketConnect()
@@ -534,11 +546,8 @@ export function useGitStatus(entityIdRef, options = {}) {
         socket.emit('prompt:unsubscribe', { prompt_id: entityIdRef.value })
       }
     } else {
-      socket.off('latex_collab:commit_created', handleCommitCreated)
+      socket.off('markdown_collab:commit_created', handleCommitCreated)
       if (onSocketConnect) socket.off('connect', onSocketConnect)
-      if (entityIdRef.value) {
-        socket.emit('latex_collab:unsubscribe_workspace', { workspace_id: entityIdRef.value })
-      }
     }
     onSocketConnect = null
   }

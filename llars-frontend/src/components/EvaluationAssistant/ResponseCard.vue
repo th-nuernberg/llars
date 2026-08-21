@@ -240,7 +240,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 import ResultBadge from './ResultBadge.vue'
 
 const props = defineProps({
@@ -256,6 +256,8 @@ const props = defineProps({
 
 defineEmits(['toggle', 'view-details'])
 
+const { formatModelName: registryFormatModelName } = useModelRegistry()
+
 const evaluatorClass = computed(() => {
   return props.result.is_llm_evaluation ? 'evaluator-llm' : 'evaluator-human'
 })
@@ -263,8 +265,7 @@ const evaluatorClass = computed(() => {
 const displayEvaluatorName = computed(() => {
   if (props.result.evaluator_name) return props.result.evaluator_name
   if (!props.result.is_llm_evaluation) return `User #${props.result.user_id}`
-  const parsed = parseUserProviderModelId(props.result.model_id)
-  return parsed?.displayName || props.result.model_id || 'LLM'
+  return registryFormatModelName(props.result.model_id)
 })
 
 function formatTime(timestamp) {

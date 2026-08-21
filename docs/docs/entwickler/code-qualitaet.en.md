@@ -4,7 +4,7 @@ This page documents the current code quality, docstring coverage, and refactorin
 
 ## Docstring coverage statistics
 
-!!! info "As of January 2026"
+!!! info "As of March 2026"
     The statistics are updated regularly.
     Source: `docs/metrics/*.json`, update via `scripts/metrics/update_docs.py`.
 
@@ -44,7 +44,6 @@ This page documents the current code quality, docstring coverage, and refactorin
 | `useAnalyticsMetrics.js` | 415 | No JSDoc header |
 | `useFieldGenerationService.js` | 388 | No JSDoc header |
 | `ChatbotEditor.vue` | 1966 | Only minimal inline comments |
-| `LatexEditorPane.vue` | 1883 | Only minimal inline comments |
 
 ---
 
@@ -84,10 +83,8 @@ This page documents the current code quality, docstring coverage, and refactorin
 |------|------|--------|-------|---------|
 | 01.01. | `ChatWithBots.vue` | 3299 | 774 | 6 components + CSS |
 | 01.01. | `chat_service.py` | 1657 | 590 | 4 modules |
-| 01.01. | `latex_collab_routes.py` | 1514 | 56 | 7 modules |
 | 01.01. | `agent_chat_service.py` | 1263 | 301 | 7 modules |
 | 01.01. | `JudgeSession.vue` | 2174 | 579 | CSS extracted |
-| 02.01. | `LatexCollabWorkspace.vue` | 3085 | 1259 | 5 composables + 5 components |
 | 02.01. | `chatbot_routes.py` | 1273 | 35 | 6 modules |
 | 02.01. | `markdown_collab_routes.py` | 798 | 24 | 4 modules |
 | 02.01. | `anonymize_service.py` | 1275 | 445 | 6 modules |
@@ -105,7 +102,6 @@ This page documents the current code quality, docstring coverage, and refactorin
 | `crawler_core.py` | 924 | HIGH |
 | `playwright_crawler.py` | 782 | MEDIUM |
 | `permission_service.py` | 739 | LOW (well documented) |
-| `zotero_routes.py` | 736 | MEDIUM |
 | `content_extractor.py` | 728 | MEDIUM |
 | `oncoco_service.py` | 719 | MEDIUM |
 
@@ -114,7 +110,6 @@ This page documents the current code quality, docstring coverage, and refactorin
 | File | Lines | Priority |
 |------|-------|----------|
 | `ChatbotEditor.vue` | 1966 | CRITICAL |
-| `LatexEditorPane.vue` | 1883 | CRITICAL |
 | `ChatbotBuilderWizard.vue` | 1623 | HIGH |
 | `AuthenticityStatsDialog.vue` | 1510 | HIGH |
 | `AdminDockerMonitorSection.vue` | 1419 | HIGH |
@@ -227,3 +222,22 @@ The GitLab CI/CD pipeline runs the following quality checks:
 |-------|-----|-------------|
 | lint | `lint:backend` | flake8 check |
 | lint | `lint:frontend` | eslint check |
+| test | `test:unit:backend` | pytest with coverage |
+| test | `test:unit:frontend` | vitest with coverage |
+| security | `security:scan` | Security scan |
+
+---
+
+## Next steps
+
+1. **This week**
+   - [ ] Split `ChatbotEditor.vue` into tab components
+   - [ ] Add JSDoc to `useAuth.js`
+
+2. **Next week**
+   - [ ] Extract composables from `ChatbotBuilderWizard.vue`
+   - [ ] Modularize `crawler_core.py`
+
+3. **This month**
+   - [ ] Test coverage > 35%
+   - [ ] Docstring coverage > 75%

@@ -127,7 +127,7 @@ class SchemaAdapter:
             ],
             'features': [
                 {
-                    'model_name': feature.llm.name if feature.llm else 'Unknown',
+                    'model_name': feature.model_id or 'Unknown',
                     'type': feature.feature_type.name if feature.feature_type else 'Summary',
                     'content': feature.content,
                     'feature_id': feature.feature_id
@@ -208,7 +208,7 @@ class SchemaAdapter:
             ],
             'features': [
                 {
-                    'model_name': feature.llm.name if feature.llm else 'Unknown',
+                    'model_name': feature.model_id or 'Unknown',
                     'type': feature.feature_type.name if feature.feature_type else 'Summary',
                     'content': feature.content,
                     'feature_id': feature.feature_id

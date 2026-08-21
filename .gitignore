@@ -10,6 +10,10 @@
 *.swo
 *~
 
+# Claude Code runtime state — per-machine lock files / plan drafts
+.claude/scheduled_tasks.lock
+.claude/plans/
+
 # Environment & Secrets
 .env
 .env.local
@@ -134,3 +138,12 @@ GITLAB_CICD_VARIABLES.txt
 
 # Large dataset files (too big for GitHub)
 app/db/seeders/datasets/german_sentiment.zip
+data/combine_generations.py
+data/test_detection.py
+
+exports/*
+
+notizen.mdPaper/submission/copyright-signed.pdf
+
+# Recruiting recipient list (PII — real e-mail addresses, never commit)
+data/human_study/v15/recruiting_recipients.csv

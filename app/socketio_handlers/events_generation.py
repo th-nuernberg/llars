@@ -18,6 +18,8 @@ from services.generation.socket_rooms import (
     GENERATION_OVERVIEW_ROOM,
     generation_job_room,
 )
+from socketio_handlers.socket_auth import socket_user, socket_authorize
+from auth.access_control import require_generation_job_access
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,14 @@ def register_generation_events(socketio):
             emit("generation:error", {"message": "job_id erforderlich"})
             return
 
+        # AuthN + AuthZ: only the job owner / shared users / admin may stream a
+        # generation job's live progress. Same check as the HTTP routes.
+        user = socket_user("generation:error")
+        if user is None:
+            return
+        if not socket_authorize(require_generation_job_access, job_id, user, error_event="generation:error"):
+            return
+
         room = generation_job_room(job_id)
         join_room(room)
         logger.info("[Generation Socket] Client %s joined room %s", request.sid, room)
@@ -58,6 +68,7 @@ def register_generation_events(socketio):
                     "status": job_data.get("status"),
                     "progress": job_data.get("progress"),
                     "currently_processing": job_data.get("currently_processing"),
+                    "active_streams": job_data.get("active_streams", []),
                 },
             )
         except Exception as e:
@@ -77,6 +88,9 @@ def register_generation_events(socketio):
 
     @socketio.on("generation:join_overview")
     def handle_join_overview():
+        # Require an authenticated account (cross-job broadcast room).
+        if socket_user("generation:error") is None:
+            return
         join_room(GENERATION_OVERVIEW_ROOM)
         logger.info("[Generation Socket] Client %s joined overview room", request.sid)
         emit("generation:overview_joined", {"room": GENERATION_OVERVIEW_ROOM})

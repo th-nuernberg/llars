@@ -183,18 +183,6 @@ Dieses Dokument beschreibt alle Tests für Socket.IO Real-Time Events in LLARS.
 | MD-S04 | markdown_collab:workspace_shared | Sharing Event | Integration |
 | MD-S05 | markdown_collab:commit_created | Commit Event | Integration |
 
-### LaTeX Collab
-
-**Datei:** `app/routes/socketio/events_latex_collab.py`
-
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| LTX-S01 | latex_collab:subscribe | Subscribed Event | Integration |
-| LTX-S02 | latex_collab:unsubscribe | Room verlassen | Integration |
-| LTX-S03 | latex_collab:subscribe_document | Document Room | Integration |
-| LTX-S04 | latex_collab:workspace_shared | Sharing Event | Integration |
-| LTX-S05 | latex_collab:commit_created | Commit Event | Integration |
-
 ---
 
 ## 9. Prompts Events
@@ -431,8 +419,6 @@ class TestAdminEvents:
 | `prompt_{id}` | `prompt_10` | Prompt Collab |
 | `markdown_collab_user_{id}` | `markdown_collab_user_5` | MD User |
 | `markdown_collab_doc_{id}` | `markdown_collab_doc_3` | MD Document |
-| `latex_collab_user_{id}` | `latex_collab_user_5` | LaTeX User |
-| `latex_collab_doc_{id}` | `latex_collab_doc_3` | LaTeX Document |
 | `wizard_{chatbot_id}` | `wizard_10` | Wizard Session |
 | `comparison_{session_id}` | `comparison_5` | Comparison |
 | `oncoco_analysis_{id}` | `oncoco_analysis_2` | OnCoCo Analysis |

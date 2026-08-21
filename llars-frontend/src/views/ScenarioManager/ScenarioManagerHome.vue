@@ -92,17 +92,22 @@
     </div>
 
     <!-- New Scenario Wizard -->
-    <v-dialog v-model="showWizard" max-width="900" persistent>
+    <v-dialog
+      v-model="showWizard"
+      max-width="1200"
+      :fullscreen="isMobileViewport"
+      persistent
+      content-class="wizard-dialog"
+    >
       <ScenarioWizard
         v-if="showWizard"
-        :generation-job-id="generationJobId"
         @close="closeWizard"
         @created="onScenarioCreated"
       />
     </v-dialog>
 
     <!-- Delete Confirmation -->
-    <v-dialog v-model="showDeleteDialog" max-width="400">
+    <v-dialog v-model="showDeleteDialog" max-width="400" content-class="delete-dialog">
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon color="error" class="mr-2">mdi-alert-circle-outline</LIcon>
@@ -214,8 +219,14 @@ const showDeleteDialog = ref(false)
 const scenarioToDelete = ref(null)
 const deleting = ref(false)
 
-// Generation job ID for pre-loading data in wizard
-const generationJobId = ref(null)
+// Drives the wizard dialog into Vuetify fullscreen mode on phones (<600px) so it
+// fills the viewport instead of overflowing a fixed max-width card. Kept reactive
+// via a resize listener (registered in onMounted) so rotation/resize is handled.
+const isMobileViewport = ref(false)
+function updateMobileViewport() {
+  if (typeof window === 'undefined') return
+  isMobileViewport.value = window.innerWidth < 600
+}
 
 // Tabs
 const tabs = computed(() => [
@@ -237,14 +248,16 @@ const tabs = computed(() => [
 
 // Filtered Lists
 const ownScenarios = computed(() => {
+  // Anyone with a management role (owner, manager, viewer) — uses backend-resolved manager_role
   return scenarios.value
-    .filter(s => s.is_owner)
+    .filter(s => s.manager_role && s.manager_role !== 'none')
     .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
 })
 
 const invitedScenarios = computed(() => {
+  // Pure evaluators/eval-viewers without management access
   return scenarios.value
-    .filter(s => !s.is_owner)
+    .filter(s => !s.manager_role || s.manager_role === 'none')
     .sort((a, b) => {
       // Pending first, then by date
       if (a.invitation?.status === 'pending' && b.invitation?.status !== 'pending') return -1
@@ -705,25 +718,17 @@ function onScenarioCreated(scenario) {
 
 function closeWizard() {
   showWizard.value = false
-  generationJobId.value = null
-  // Clear query param from URL
-  if (route.query.fromGeneration) {
-    router.replace({ query: {} })
-  }
 }
 
 onMounted(async () => {
+  updateMobileViewport()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateMobileViewport)
+  }
   await refreshScenarios()
   await nextTick()
   setupScenarioCardObserver()
   queueInitialVisibleScenarioStatsLoad()
-
-  // Check if we should open wizard with data from a generation job
-  const fromGeneration = route.query.fromGeneration
-  if (fromGeneration) {
-    generationJobId.value = Number(fromGeneration)
-    showWizard.value = true
-  }
 })
 
 watch(
@@ -736,6 +741,9 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateMobileViewport)
+  }
   if (scenarioCardObserver) {
     scenarioCardObserver.disconnect()
     scenarioCardObserver = null
@@ -921,5 +929,33 @@ onBeforeUnmount(() => {
   align-items: center;
   font-size: 13px;
   color: rgba(var(--v-theme-on-surface), 0.7);
+}
+</style>
+
+<!--
+  Dialog overlay content is teleported outside this component, so the
+  content-class targets below must live in an UNSCOPED block to reach it.
+  Desktop sizing (max-width 1200 / 400) is untouched; rules only apply on phones.
+-->
+<style>
+/* Wizard: full viewport width on phones, height-constrained + scrollable
+   so a long wizard never overflows the screen. Vuetify :fullscreen handles
+   most of this, but we enforce the scroll/height contract explicitly. */
+@media (max-width: 600px) {
+  .wizard-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+}
+
+/* Delete dialog (max-width 400) can still touch screen edges on very small
+   phones — clamp it to the viewport minus a 16px gutter on each side. */
+@media (max-width: 480px) {
+  .delete-dialog {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
 }
 </style>

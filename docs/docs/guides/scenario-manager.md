@@ -242,11 +242,28 @@ Verwalten Sie die Evaluatoren:
 
 #### Rollen
 
-| Rolle | Beschreibung |
-|-------|--------------|
+Szenario-Rollen haben **zwei unabhängige Achsen** auf `ScenarioUsers`
+(`app/db/models/scenario.py`):
+
+- **Manager-Rolle** (`manager_role`) — Zugriff auf den Scenario Manager:
+  `owner` (volle Kontrolle, löschen) · `editor` (Settings + Team, kein Löschen) ·
+  `viewer` (read-only Analyse/IRR, **kein** Bearbeiten) · `none`.
+- **Evaluations-Rolle** (`evaluation_role`) — Teilnahme an der Bewertung:
+  `assessor` (bewertet Items) · `viewer` (sieht Items read-only) · `none`.
+
+Eine Person kann beide Achsen kombinieren — z. B. der **read-only Manager-Viewer**
+(`manager_role='viewer'`), der die live aggregierte Analyse sieht, aber nichts
+bearbeitet oder umkonfiguriert. Genau diese Kombination vergibt der
+[IJCAI-Demo-Link](../human_studies/ijcai-demo.md) (Assessor **und** Manager-Viewer
+auf denselben Szenarien).
+
+| Rolle (Anzeige) | Bedeutung |
+|-----------------|-----------|
 | **Owner** | Szenario-Ersteller, volle Rechte |
-| **Evaluator** | Bewertet Items und kann interagieren |
-| **Viewer** | Nur lesend, keine Bewertungen |
+| **Editor** | Settings + Team verwalten, kein Löschen |
+| **Viewer** | Read-only Manager: sieht Analyse/IRR + Roh-Export, bearbeitet nichts |
+| **Assessor** | Bewertet Items |
+| **Eval. Viewer** | Sieht Items read-only, gibt keine Bewertung ab |
 
 #### LLM-Evaluation
 
@@ -332,7 +349,20 @@ Verwalten Sie die zu bewertenden Items:
 | Team sehen | ❌ |
 | Ergebnisse sehen | ❌ |
 
-### Viewer (Eingeladen, read-only)
+### Viewer (read-only Manager)
+
+Der Manager-Viewer (`manager_role='viewer'`) sieht die Analyse, darf aber nichts
+ändern:
+
+| Aktion | Erlaubt |
+|--------|---------|
+| Workspace / Analyse + IRR sehen | ✅ |
+| Roh-Ergebnisse exportieren | ✅ |
+| Einstellungen ändern | ❌ |
+| Team verwalten | ❌ |
+| Szenario löschen | ❌ |
+
+### Eval. Viewer (Eingeladen, read-only)
 
 | Aktion | Erlaubt |
 |--------|---------|
@@ -340,6 +370,16 @@ Verwalten Sie die zu bewertenden Items:
 | Bewertungen abgeben | ❌ |
 | Eigenen Fortschritt sehen | ✅ |
 | Workspace öffnen | ❌ |
+
+!!! warning "Autorisierungs-Härtung"
+    - **Roh-Export** (`GET /api/scenarios/:id/export`) ist auf
+      **Owner / Editor / Viewer / Admin** beschränkt. Reine Assessor:innen
+      können **nicht** die per-User-Rohbewertungen aller anderen lesen
+      (Rater-Blinding bleibt gewahrt).
+    - **Entfernte / abgelehnte Mitglieder verlieren den Zugriff:**
+      `membership_status=ARCHIVED` (soft-entfernt) und
+      `invitation_status=REJECTED` gelten nicht mehr als Mitglieder
+      (`require_scenario_membership` in `app/auth/access_control.py`).
 
 ---
 

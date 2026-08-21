@@ -3,7 +3,20 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" href="/favicon.ico" />
+  <!-- Favicons + app icons. Transparent background (design decision): the mark
+       sits directly on the host UI (e.g. Safari iOS shows it inside its own
+       light tab chip without an extra coloured box). The icons are regenerated
+       from the 512px master with the transparent padding TRIMMED so the mark
+       fills the frame — the original transparent favicon read as a faint smudge
+       at 16/32 px only because the mark was tiny inside a large empty square.
+       Note: a transparent apple-touch icon is backed black on the iOS home
+       screen ("Add to Home Screen"); acceptable here as the app is used in the
+       browser, not installed. ?v= busts the browser/OS favicon cache. -->
+  <link rel="icon" href="/favicon.ico?v=4" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=4" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=4" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=4" />
+  <link rel="manifest" href="/site.webmanifest" />
   <!-- Mobile viewport settings -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
   <!-- iOS Safari specific -->
@@ -14,11 +27,96 @@
   <meta name="theme-color" content="#b0ca97" />
   <!-- Disable telephone number detection on iOS -->
   <meta name="format-detection" content="telephone=no" />
-  <title>LLars</title>
+
+  <!-- ============================================================
+       SEO / Social — statische Basis (Standardsprache Deutsch). Das ist,
+       was Crawler VOR dem JS-Rendering sehen; einzelne Routen aktualisieren
+       Titel/Description zur Laufzeit (src/composables/useDocumentSeo.js).
+       Bei Textänderungen hier UND dort nachziehen.
+       Acronym in plain caps: der Small-Caps-Schriftzug ist HTML/CSS-only,
+       ein Tab-Titel kann kein Small-Caps — daher "LLARS".
+       ============================================================ -->
+  <title>LLARS – Open-Source-Plattform für LLM-Evaluation & Labeling</title>
+  <meta name="description" content="LLARS ist eine kostenlose Open-Source-Plattform zur kollaborativen Evaluation und zum Labeling von LLM-Ausgaben: menschliche Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität (Krippendorff's Alpha). Für Forschungsteams." />
+  <meta name="keywords" content="LLM-Evaluation, LLM evaluation software, Labeling-Software, label software, Annotation, Inter-Rater-Reliabilität, Krippendorff's Alpha, LLM-as-a-judge, Prompt Engineering, RAG, Open Source, Forschungsplattform, LLARS" />
+  <meta name="author" content="Institut für E-Beratung, Technische Hochschule Nürnberg" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://llars.e-beratungsinstitut.de/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="LLARS" />
+  <meta property="og:title" content="LLARS – Open-Source-Plattform für LLM-Evaluation & Labeling" />
+  <meta property="og:description" content="Kostenlose Open-Source-Plattform zur Evaluation und zum Labeling von LLM-Ausgaben — menschliche Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität. Für Forschende." />
+  <meta property="og:url" content="https://llars.e-beratungsinstitut.de/" />
+  <meta property="og:image" content="https://llars.e-beratungsinstitut.de/android-chrome-512x512.png" />
+  <meta property="og:locale" content="de_DE" />
+  <meta property="og:locale:alternate" content="en_US" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="LLARS – LLM-Evaluation & Labeling (Open Source)" />
+  <meta name="twitter:description" content="Kostenlose Open-Source-Plattform zur Evaluation und zum Labeling von LLM-Ausgaben. Für Forschungsteams." />
+  <meta name="twitter:image" content="https://llars.e-beratungsinstitut.de/android-chrome-512x512.png" />
+
+  <!-- Structured data: Software + Organisation (Rich Results) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "LLARS",
+    "alternateName": "LLM Assisted Research System",
+    "description": "Open-Source-Plattform zur kollaborativen Evaluation und zum Labeling von LLM-Ausgaben mit menschlichen Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität.",
+    "applicationCategory": "ResearchApplication",
+    "operatingSystem": "Web",
+    "url": "https://llars.e-beratungsinstitut.de/",
+    "isAccessibleForFree": true,
+    "license": "https://opensource.org/licenses/MIT",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "author": {
+      "@type": "Organization",
+      "name": "Institut für E-Beratung, Technische Hochschule Nürnberg",
+      "url": "https://www.e-beratungsinstitut.de"
+    },
+    "keywords": "LLM evaluation, labeling, annotation, inter-rater reliability, Krippendorff's Alpha, LLM-as-a-judge, prompt engineering, RAG"
+  }
+  </script>
 </head>
 
 <body>
   <div id="app"></div>
+  <!--
+    Crawler-/No-JS-Fallback: echter Textinhalt für Suchmaschinen und
+    Nutzer ohne JavaScript. Wird ignoriert, sobald die SPA in #app mountet.
+    Ersetzt kein SSR-Prerendering, liefert aber den wichtigsten Inhalt
+    risikofrei. Bei Landing-Textänderungen hier grob nachziehen.
+  -->
+  <noscript>
+    <main style="max-width:820px;margin:0 auto;padding:32px 24px;font-family:system-ui,Arial,sans-serif;line-height:1.6;color:#2c3e2d;">
+      <h1>LLARS – Open-Source-Plattform für LLM-Evaluation &amp; Labeling</h1>
+      <p>
+        LLARS (LLM Assisted Research System) ist eine kostenlose, quelloffene
+        Plattform (MIT-Lizenz) zur kollaborativen Evaluation und zum Labeling
+        von LLM-Ausgaben. Sie verbindet menschliche Bewertungen mit
+        LLM-Assessoren und misst die Inter-Rater-Reliabilität (u. a. ordinales
+        Krippendorff's Alpha). Entwickelt für Forschungsteams.
+      </p>
+      <h2>Funktionen</h2>
+      <ul>
+        <li>Sieben Evaluationstypen: Rating, Ranking, Vergleich, Labeling, Authentizität, Mail-Rating, Kommunikationsvergleich</li>
+        <li>Labeling Co-Pilot: LLM-Vorschläge mit Begründung und Textbeleg – klar gekennzeichnet, nie vorausgewählt</li>
+        <li>Kollaboratives Prompt Engineering und Batch-Generierung</li>
+        <li>RAG-Pipeline (ChromaDB), LLM-Evaluatoren, Übereinstimmungs-Metriken</li>
+        <li>Self-Hosting per Docker, Authentik-SSO, rollenbasierte Rechte</li>
+      </ul>
+      <p>
+        <a href="/register">Konto erstellen</a> ·
+        <a href="/mkdocs/">Dokumentation</a> ·
+        <a href="https://github.com/th-nuernberg/llars">Quellcode auf GitHub</a>
+      </p>
+      <p><strong>Hinweis:</strong> Für die interaktive Nutzung von LLARS wird JavaScript benötigt.</p>
+    </main>
+  </noscript>
   <script type="module" src="/src/main.js"></script>
 </body>
 

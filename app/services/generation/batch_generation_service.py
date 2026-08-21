@@ -448,8 +448,18 @@ class BatchGenerationService:
             source_sources = source_config.get("sources", {})
             original_type = source_sources.get("type")
 
+            # Walk up from_job chain to find the original source (max 10 hops)
+            hops = 0
+            while original_type == "from_job" and hops < 10:
+                chained_job = GenerationJob.query.get(source_sources["job_id"])
+                if not chained_job:
+                    raise ValidationError(f"Chained source job {source_sources['job_id']} not found")
+                source_config = chained_job.config_json or {}
+                source_sources = source_config.get("sources", {})
+                original_type = source_sources.get("type")
+                hops += 1
             if original_type == "from_job":
-                raise ValidationError("Cannot chain from_job sources. Reference the original job instead.")
+                raise ValidationError("from_job chain too deep (max 10 hops)")
 
             if original_type == "scenario":
                 scenario_id = source_sources["scenario_id"]
@@ -926,40 +936,35 @@ class BatchGenerationService:
         job = cls._reconcile_terminal_job_status(job)
         result = job.to_dict(include_outputs=True)
 
-        # Include currently processing output for reconnection support
-        processing_output = GeneratedOutput.query.filter_by(
+        # Include all currently processing outputs for reconnection support
+        processing_outputs = GeneratedOutput.query.filter_by(
             job_id=job_id,
             status=GeneratedOutputStatus.PROCESSING
-        ).first()
+        ).all()
 
-        if processing_output:
-            model_color = None
-            if processing_output.llm_model and getattr(processing_output.llm_model, "color", None):
-                model_color = processing_output.llm_model.color
-            else:
-                try:
-                    from db.models.llm_model import LLMModel
-                    model_color = LLMModel.generate_color(processing_output.llm_model_name)
-                except Exception:
-                    model_color = None
-            partial_content = processing_output.generated_content or ""
-            live_partial = get_partial_content(processing_output.id)
+        active_streams = []
+        for proc_output in processing_outputs:
+            model_color = proc_output._resolve_model_color()
+            partial_content = proc_output.generated_content or ""
+            live_partial = get_partial_content(proc_output.id)
             if live_partial and len(live_partial) > len(partial_content):
                 partial_content = live_partial
-            result["currently_processing"] = {
-                "output_id": processing_output.id,
-                "model_name": processing_output.llm_model_name,
+            stream_info = {
+                "output_id": proc_output.id,
+                "model_name": proc_output.llm_model_name,
                 "model_color": model_color,
-                "source_item_id": processing_output.source_item_id,
-                "prompt_variant": processing_output.prompt_variant_name,
-                "item_name": f"{processing_output.prompt_variant_name} (Item #{processing_output.source_item_id or processing_output.id})"
-                    if processing_output.prompt_variant_name
-                    else f"Item #{processing_output.source_item_id or processing_output.id}",
-                # Include partial content for reconnection support
+                "source_item_id": proc_output.source_item_id,
+                "prompt_variant": proc_output.prompt_variant_name,
+                "item_name": f"{proc_output.prompt_variant_name} (Item #{proc_output.source_item_id or proc_output.id})"
+                    if proc_output.prompt_variant_name
+                    else f"Item #{proc_output.source_item_id or proc_output.id}",
                 "partial_content": partial_content
             }
-        else:
-            result["currently_processing"] = None
+            active_streams.append(stream_info)
+
+        # Backward compatibility: currently_processing = first active stream
+        result["currently_processing"] = active_streams[0] if active_streams else None
+        result["active_streams"] = active_streams
 
         return result
 
@@ -986,6 +991,39 @@ class BatchGenerationService:
         for job in jobs:
             cls._reconcile_terminal_job_status(job)
         return [job.to_summary_dict() for job in jobs]
+
+    @classmethod
+    def get_shared_jobs_for_user(
+        cls,
+        user_id: int,
+        *,
+        status: Optional[GenerationJobStatus] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        Get jobs shared with a user via GenerationJobShare.
+
+        Returns summary dicts with 'is_shared: True' marker so the
+        frontend can distinguish own jobs from shared ones.
+        """
+        from db.models import GenerationJobShare
+
+        query = (
+            GenerationJob.query
+            .join(GenerationJobShare, GenerationJobShare.job_id == GenerationJob.id)
+            .filter(GenerationJobShare.shared_with_user_id == user_id)
+        )
+        if status:
+            query = query.filter(GenerationJob.status == status)
+        jobs = query.order_by(GenerationJob.created_at.desc()).limit(limit).all()
+
+        result = []
+        for job in jobs:
+            cls._reconcile_terminal_job_status(job)
+            summary = job.to_summary_dict()
+            summary['is_shared'] = True
+            result.append(summary)
+        return result
 
     @classmethod
     def get_job_outputs(
@@ -1096,8 +1134,18 @@ class BatchGenerationService:
         source_sources = source_config.get("sources", {})
         original_type = source_sources.get("type")
 
+        # Walk up from_job chain to find the original source (max 10 hops)
+        hops = 0
+        while original_type == "from_job" and hops < 10:
+            chained_job = GenerationJob.query.get(source_sources["job_id"])
+            if not chained_job:
+                raise ValidationError(f"Chained source job {source_sources['job_id']} not found")
+            source_config = chained_job.config_json or {}
+            source_sources = source_config.get("sources", {})
+            original_type = source_sources.get("type")
+            hops += 1
         if original_type == "from_job":
-            raise ValidationError("Cannot chain from_job sources. Reference the original job instead.")
+            raise ValidationError("from_job chain too deep (max 10 hops)")
         if original_type == "scenario":
             scenario_id = source_sources["scenario_id"]
             return ScenarioItems.query.filter_by(scenario_id=scenario_id).count()

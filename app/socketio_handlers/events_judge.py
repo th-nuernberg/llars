@@ -11,6 +11,9 @@ import logging
 from flask_socketio import emit, join_room, leave_room
 from flask import request
 
+from socketio_handlers.socket_auth import socket_user, socket_authorize
+from auth.access_control import require_judge_session_owner
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,6 +40,19 @@ def register_judge_events(socketio):
         session_id = data.get('session_id')
         if not session_id:
             emit('judge:error', {'message': 'session_id erforderlich'})
+            return
+
+        # AuthN + AuthZ: only the session owner (or admin) may stream a judge
+        # session's live comparisons/results. Same check as the HTTP routes.
+        user = socket_user('judge:error')
+        if user is None:
+            return
+        try:
+            sid_int = int(session_id)
+        except (TypeError, ValueError):
+            emit('judge:error', {'message': 'Ungültige session_id'})
+            return
+        if not socket_authorize(require_judge_session_owner, sid_int, user, error_event='judge:error'):
             return
 
         room = f"judge_session_{session_id}"
@@ -78,6 +94,10 @@ def register_judge_events(socketio):
         Handle client joining the Judge overview room.
         This room receives updates for ALL sessions (for the overview page).
         """
+        # Require an authenticated account (this room broadcasts cross-session
+        # updates; anonymous clients must not be able to subscribe).
+        if socket_user('judge:error') is None:
+            return
         room = "judge_overview"
         join_room(room)
         logger.info(f"[Judge Socket] Client {request.sid} joined overview room")
@@ -108,6 +128,17 @@ def register_judge_events(socketio):
         session_id = data.get('session_id')
         if not session_id:
             emit('judge:error', {'message': 'session_id erforderlich'})
+            return
+
+        user = socket_user('judge:error')
+        if user is None:
+            return
+        try:
+            session_id = int(session_id)
+        except (TypeError, ValueError):
+            emit('judge:error', {'message': 'Ungültige session_id'})
+            return
+        if not socket_authorize(require_judge_session_owner, session_id, user, error_event='judge:error'):
             return
 
         session = JudgeSession.query.get(session_id)

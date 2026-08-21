@@ -4,7 +4,7 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 
 ## Docstring-Coverage Statistik
 
-!!! info "Stand: Januar 2026"
+!!! info "Stand: März 2026"
     Die Statistiken werden regelmäßig aktualisiert.
     Quelle: `docs/metrics/*.json`, aktualisieren mit `scripts/metrics/update_docs.py`.
 
@@ -44,7 +44,6 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 | `useAnalyticsMetrics.js` | 415 | Kein JSDoc-Header |
 | `useFieldGenerationService.js` | 388 | Kein JSDoc-Header |
 | `ChatbotEditor.vue` | 1966 | Nur minimale Inline-Kommentare |
-| `LatexEditorPane.vue` | 1883 | Nur minimale Inline-Kommentare |
 
 ---
 
@@ -84,10 +83,8 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 |-------|-------|--------|---------|--------|
 | 01.01. | `ChatWithBots.vue` | 3299 | 774 | 6 Komponenten + CSS |
 | 01.01. | `chat_service.py` | 1657 | 590 | 4 Module |
-| 01.01. | `latex_collab_routes.py` | 1514 | 56 | 7 Module |
 | 01.01. | `agent_chat_service.py` | 1263 | 301 | 7 Module |
 | 01.01. | `JudgeSession.vue` | 2174 | 579 | CSS extrahiert |
-| 02.01. | `LatexCollabWorkspace.vue` | 3085 | 1259 | 5 Composables + 5 Components |
 | 02.01. | `chatbot_routes.py` | 1273 | 35 | 6 Module |
 | 02.01. | `markdown_collab_routes.py` | 798 | 24 | 4 Module |
 | 02.01. | `anonymize_service.py` | 1275 | 445 | 6 Module |
@@ -105,7 +102,6 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 | `crawler_core.py` | 924 | HOCH |
 | `playwright_crawler.py` | 782 | MITTEL |
 | `permission_service.py` | 739 | NIEDRIG (gut dokumentiert) |
-| `zotero_routes.py` | 736 | MITTEL |
 | `content_extractor.py` | 728 | MITTEL |
 | `oncoco_service.py` | 719 | MITTEL |
 
@@ -114,7 +110,6 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 | Datei | Zeilen | Priorität |
 |-------|--------|-----------|
 | `ChatbotEditor.vue` | 1966 | KRITISCH |
-| `LatexEditorPane.vue` | 1883 | KRITISCH |
 | `ChatbotBuilderWizard.vue` | 1623 | HOCH |
 | `AuthenticityStatsDialog.vue` | 1510 | HOCH |
 | `AdminDockerMonitorSection.vue` | 1419 | HOCH |
@@ -240,7 +235,7 @@ Die GitLab CI/CD Pipeline führt folgende Qualitätsprüfungen durch:
    - [ ] JSDoc zu `useAuth.js` hinzufügen
 
 2. **Nächste Woche**
-   - [ ] `LatexEditorPane.vue` Composables extrahieren
+   - [ ] `ChatbotBuilderWizard.vue` Composables extrahieren
    - [ ] `crawler_core.py` modularisieren
 
 3. **Diesen Monat**

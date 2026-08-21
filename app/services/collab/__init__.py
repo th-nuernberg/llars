@@ -1,7 +1,7 @@
 """
 Collaboration Services Module
 
-Provides shared services for LaTeX and Markdown collaboration features.
+Provides shared services for collaborative document workspaces (Markdown Collab).
 """
 
 from .collab_access_service import CollabAccessService

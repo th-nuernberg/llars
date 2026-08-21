@@ -70,7 +70,8 @@
     "uploadAvatarFailed": "Konnte Avatar nicht hochladen:",
     "regenerateAvatarFailed": "Konnte Avatar nicht neu generieren:",
     "resetAvatarFailed": "Konnte Avatar nicht zuruecksetzen:",
-    "loginError": "Login-Fehler:"
+    "loginError": "Login-Fehler:",
+    "refreshFailed": "[useAuth] Token-Erneuerung fehlgeschlagen:"
   },
   "chat": {
     "loadMessagesFailed": "Fehler beim Laden der Nachrichten aus localStorage:",
@@ -322,7 +323,6 @@
     },
     "systemSettings": {
       "saveSectionFailed": "Fehler beim Speichern der Einstellungen ({section}):",
-      "saveZoteroOauthFailed": "Fehler beim Speichern der Zotero-OAuth-Einstellungen:",
       "loadSettingsFailed": "Fehler beim Laden der Systemeinstellungen:"
     },
     "users": {
@@ -334,7 +334,10 @@
       "toggleUserLockFailed": "Fehler beim Sperren/Entsperren des Benutzers:",
       "deleteUserFailed": "Fehler beim Loeschen des Benutzers:",
       "assignRoleFailed": "Fehler beim Zuweisen der Rolle:",
-      "unassignRoleFailed": "Fehler beim Entfernen der Rolle:"
+      "unassignRoleFailed": "Fehler beim Entfernen der Rolle:",
+      "toggleConsoleLogsFailed": "Fehler beim Umschalten der Console-Logs:",
+      "sendPasswordResetFailed": "Fehler beim Senden der Passwort-Reset-E-Mail:",
+      "generateResetLinkFailed": "Fehler beim Erzeugen des Reset-Links:"
     }
   },
   "judge": {
@@ -454,9 +457,5 @@
       "alreadyAtMax": "[Progress] Bereits am Maximum: {completed}/{total}",
       "trackingReset": "[Progress] Tracking zurueckgesetzt"
     }
-  },
-  "latexCollabAi": {
-    "completionFailed": "Completion fehlgeschlagen:",
-    "collectionsLoadFailed": "Fehler beim Laden der Collections:"
   }
 }

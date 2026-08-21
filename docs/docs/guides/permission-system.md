@@ -14,6 +14,7 @@ RBAC mit „deny by default“ über Frontend und Backend:
 - Explizites Deny schlägt Grant
 - Vollständiges Audit-Log aller Änderungen
 - System Admin API Key (`X-API-Key`) kann Permission-Checks für Integrationen umgehen
+- Persönliche User-API-Keys (siehe [v1 Scenario API](api-v1-scenarios.md)) tragen eine **Scope-Liste** (`scenario:read`, `scenario:write`, `admin:*`); Scopes mappen über `_API_SCOPE_PERMISSION_MAP` (in `app/auth/decorators.py`) auf das normale RBAC-Modell. OAuth-Bearer-Tokens haben keine Scopes und durchlaufen weiterhin den vollen Permission-Check.
 
 ---
 
@@ -25,8 +26,8 @@ RBAC mit „deny by default“ über Frontend und Backend:
 - `permission_audit_log` (Änderungsverlauf)
 
 **Seed-Daten:**
-- 53 Permissions (41 feature, 8 admin, 4 data)
-- 5 Rollen: `admin` (53), `researcher` (31), `chatbot_manager` (21), `evaluator` (20), `ijcai_reviewer` (20)
+- 50 Permissions (38 feature, 8 admin, 4 data)
+- 5 Rollen: `admin` (50), `researcher` (27), `chatbot_manager` (17), `evaluator` (20), `ijcai_reviewer` (20)
 - Optional: Legacy-Rolle `viewer` wird bei Bedarf automatisch mit `evaluator` synchronisiert
 
 ---
@@ -53,9 +54,9 @@ RBAC mit „deny by default“ über Frontend und Backend:
 
 ---
 
-## Verfügbare Permissions (53)
+## Verfügbare Permissions (50)
 
-**Feature (41):**
+**Feature (38):**
 ```
 feature:mail_rating:view
 feature:mail_rating:edit
@@ -72,10 +73,6 @@ feature:prompt_engineering:edit
 feature:markdown_collab:view
 feature:markdown_collab:edit
 feature:markdown_collab:share
-feature:latex_collab:view
-feature:latex_collab:edit
-feature:latex_collab:share
-feature:latex_collab:ai
 feature:rag:view
 feature:rag:edit
 feature:rag:delete
@@ -86,6 +83,7 @@ feature:chatbots:delete
 feature:chatbots:advanced
 feature:chatbots:share
 feature:llm:view
+feature:llm:edit
 feature:anonymize:view
 feature:judge:view
 feature:judge:edit
@@ -124,9 +122,9 @@ data:delete
 
 ## Rollen
 
-- **admin:** alle Permissions (aktuell 53) – Plattform- und Benutzerverwaltung  
-- **researcher:** 31 Permissions – Evaluierung, Prompt Engineering, Batch Generation, Markdown/LaTeX Collab, Anonymisierung, KAIMO, Szenarien-Import  
-- **chatbot_manager:** 21 Permissions – Chatbots, RAG, Prompt Engineering, Batch Generation (view/create), Markdown/LaTeX Collab  
+- **admin:** alle Permissions (aktuell 50) – Plattform- und Benutzerverwaltung  
+- **researcher:** 27 Permissions – Evaluierung, Prompt Engineering, Batch Generation, Markdown Collab, Anonymisierung, KAIMO, Szenarien-Import  
+- **chatbot_manager:** 17 Permissions – Chatbots, RAG, Prompt Engineering, Batch Generation (view/create), Markdown Collab  
 - **evaluator:** 20 Permissions – Evaluierung, Lesen, ausgewählte Edit-Rechte, RAG/Chatbots read-only, KAIMO bearbeiten  
 - **ijcai_reviewer:** 20 Permissions – IJCAI-Demo: Prompting, Batch Generation, Szenarien, Evaluation
 - **viewer (legacy):** wird bei Existenz automatisch mit `evaluator` synchronisiert
@@ -135,7 +133,7 @@ data:delete
 
 ## Tests ✅
 
-- 53 Permissions und 5 Rollen in der DB vorhanden (plus optional `viewer`)
+- 50 Permissions und 5 Rollen in der DB vorhanden (plus optional `viewer`)
 - API-Routen registriert; 401 ohne Token, 403 ohne Berechtigung
 - Frontend-Guards aktiv; Admin-Dashboard nur für Admins sichtbar
 

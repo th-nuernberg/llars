@@ -3,5 +3,11 @@
 # Import routes to attach them to data_bp
 from routes.admin import system_settings_routes
 from routes.admin import field_prompts_routes
+from routes.admin import debug_log_routes
+from routes.admin import communication_admin_routes
+from routes.admin import mail_admin_routes
 
-__all__ = ['system_settings_routes', 'field_prompts_routes']
+__all__ = [
+    'system_settings_routes', 'field_prompts_routes', 'debug_log_routes',
+    'communication_admin_routes', 'mail_admin_routes',
+]

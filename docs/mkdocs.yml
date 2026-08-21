@@ -1,21 +1,31 @@
 site_name: LLARS Dokumentation
 site_description: Dokumentation für das LLARS (LLM Assisted Research System)
 site_author: LLARS Team
+# Die Doku wird unter dem Unterpfad /mkdocs/ ausgeliefert. Ohne site_url erzeugt
+# das mkdocs-static-i18n-Plugin die Sprachwechsel-Links root-relativ (z.B. "/"
+# bzw. "/en/") und wirft den Nutzer aus der Doku auf die App-Landingpage. Mit
+# dem korrekten Basispfad bekommen die alternate-/hreflang-Links den
+# /mkdocs/-Präfix. WICHTIG: Dev-nginx darf den /mkdocs/-Präfix dann NICHT mehr
+# strippen (proxy_pass ohne Trailing-Slash), da `mkdocs serve` mit gesetztem
+# site_url-Pfad die Seite unter /mkdocs/ ausliefert.
+site_url: https://llars.e-beratungsinstitut.de/mkdocs/
 dev_addr: 0.0.0.0:8000
 use_directory_urls: true
 
 theme:
   name: material
+  # LLARS-Logo im Header + als Favicon (aus dem Frontend übernommen).
+  logo: assets/llars-logo.png
+  favicon: assets/llars-logo.png
+  # LLARS-Farben werden per extra_css (stylesheets/llars.css) über die
+  # Material-CSS-Variablen gesetzt; die Palette liefert nur den Light/Dark-
+  # Umschalter (primary/accent bleiben unbenannt, damit das CSS gewinnt).
   palette:
     - scheme: default
-      primary: indigo
-      accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
-      primary: indigo
-      accent: indigo
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -23,12 +33,17 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.expand
+    - navigation.top
     - search.highlight
     - search.share
     - content.code.copy
 
+extra_css:
+  - stylesheets/llars.css
+
 nav:
   - Startseite: index.md
+  - Changelog: changelog.md
   - Einstieg:
       - Übersicht: getting-started/overview.md
       - Installation: getting-started/installation.md
@@ -38,12 +53,16 @@ nav:
       - Szenario Wizard: guides/scenario-wizard.md
       - Szenario Manager: guides/scenario-manager.md
       - Evaluation: guides/evaluation.md
+      - Konversationslabeling: guides/conversation-labeling.md
       - Prompt Engineering: guides/prompt-engineering.md
       - Batch Generation: guides/batch-generation.md
       - Chatbot Wizard: guides/chatbot-wizard.md
-      - LaTeX Collaboration: guides/latex-collaboration.md
       - Admin Dashboard: guides/admin-dashboard.md
+      - Referral & Einladungen: guides/referral-invitations.md
       - LLM Provider Settings: guides/llm-provider-settings.md
+      - v1 Scenario API: guides/api-v1-scenarios.md
+      - v1 Chatbot API: guides/api-v1-chatbots.md
+      - Nightly Test Activities: guides/nightly-test-activities.md
       - Schnellstart: guides/quick-start.md
       - Authentik Setup: guides/authentik-setup.md
       - Login Anleitung: guides/login-anleitung.md
@@ -90,7 +109,42 @@ nav:
       - ACT: agentic-ai/act.md
       - ReACT: agentic-ai/react.md
       - ReflAct: agentic-ai/reflact.md
+  - Testing & QA:
+      - Übersicht: testing/README.md
+      - Leitfaden: testing/leitfaden/LLARS_TEST_LEITFADEN.md
+      - Testkonzept: testing/leitfaden/TESTKONZEPT.md
+      - CI/CD Pipeline: testing/CICD_SETUP.md
+      - Nightly Tests: testing/nightly/NIGHTLY_TILE_MATRIX.md
+      - Anforderungen:
+          - Übersicht: testing/anforderungen/00_UEBERSICHT.md
+          - Frontend:
+              - Seiten & Navigation: testing/anforderungen/frontend/01_SEITEN_NAVIGATION.md
+              - Evaluation Features: testing/anforderungen/frontend/02_EVALUATION_FEATURES.md
+              - Collab Editoren: testing/anforderungen/frontend/03_COLLAB_EDITOREN.md
+              - Chat & Chatbots: testing/anforderungen/frontend/04_CHAT_CHATBOTS.md
+              - Admin Dashboard: testing/anforderungen/frontend/05_ADMIN_DASHBOARD.md
+              - UI Komponenten: testing/anforderungen/frontend/06_UI_KOMPONENTEN.md
+              - Dialoge & Modals: testing/anforderungen/frontend/07_DIALOGE_MODALS.md
+              - Tooltips & Quicklinks: testing/anforderungen/frontend/08_TOOLTIPS_QUICKLINKS.md
+              - Accessibility: testing/anforderungen/frontend/09_ACCESSIBILITY.md
+              - Edge Cases: testing/anforderungen/frontend/10_EDGE_CASES_ERRORS.md
+              - Visual & Responsive: testing/anforderungen/frontend/11_VISUAL_RESPONSIVE.md
+          - Backend:
+              - Auth & Routes: testing/anforderungen/backend/01_AUTH_ROUTES.md
+              - Socket.IO Events: testing/anforderungen/backend/02_SOCKETIO_EVENTS.md
+          - Features:
+              - RAG Pipeline: testing/anforderungen/features/01_RAG_PIPELINE.md
+              - LLM Integration: testing/anforderungen/features/02_LLM_INTEGRATION.md
+              - Anonymisierung: testing/anforderungen/features/04_ANONYMISIERUNG.md
+          - Security:
+              - Berechtigungen: testing/anforderungen/security/01_BERECHTIGUNGEN.md
+              - Rollen-Matrix: testing/anforderungen/security/02_ROLLEN_MATRIX.md
+      - Checklisten:
+          - Smoke Test: testing/checklisten/SMOKE_TEST.md
+          - Regression Tests: testing/checklisten/REGRESSION_TESTS.md
+          - Release Checklist: testing/checklisten/RELEASE_CHECKLIST.md
   - Entwickler:
+      - Docker-Architektur: entwickler/docker-architektur.md
       - Rating/Ranking Checklist: entwickler/rating-ranking-checklist.md
       - Rating/Ranking Übersicht: entwickler/rating-ranking-overview.md
       - API-Referenz: entwickler/api-referenz.md
@@ -102,6 +156,16 @@ nav:
       - Admin-Panel: entwickler/admin-panel.md
       - Code-Qualität: entwickler/code-qualitaet.md
       - Production Deployment: entwickler/production-deployment.md
+      - Mail-Service: entwickler/mail-service.md
+  - Human Studies:
+      - Übersicht: human_studies/index.md
+      - Playbook: human_studies/playbook.md
+      - IJCAI 2026 Demo: human_studies/ijcai-demo.md
+      - "Kann KI Beratung?":
+          - Übersicht: human_studies/KannKIBeratung/index.md
+          - Setup: human_studies/KannKIBeratung/setup.md
+          - Recruiting: human_studies/KannKIBeratung/recruiting.md
+          - Annotations-Audit: human_studies/KannKIBeratung/annotations-audit.md
   - Archiv:
       - Übersicht: archive/index.md
       - Legacy-Konzepte:
@@ -109,7 +173,6 @@ nav:
           - LLM Evaluator: archive/legacy-concepts/LLMEvaluatorKonzept.md
           - Ranking Redesign: archive/legacy-concepts/ranking-redesign-concept.md
           - Scenario Wizard (Legacy): archive/legacy-concepts/scenario-wizard.md
-      - AI Writing Assistant: archive/AI_WRITING_ASSISTANT_KONZEPT.md
       - Refactoring (Complete): archive/refactoring-complete.md
       - Refactoring (Scenarios): archive/refactoring-scenarios.md
       - Session 2025-11-20: archive/session-2025-11-20.md
@@ -161,6 +224,8 @@ plugins:
           Installation: Installation
           Übersicht: Overview
           LLM Provider Settings: LLM Provider Settings
+          Referral & Einladungen: Referral & Invitations
+          Nightly Test Activities: Nightly Test Activities
           Projektstatus: Project State
           Berechtigungssystem: Permission System
           Szenario Wizard: Scenario Wizard
@@ -181,6 +246,35 @@ plugins:
           Admin-Panel: Admin Panel
           Code-Qualität: Code Quality
           Production Deployment: Production Deployment
+          Docker-Architektur: Docker Architecture
+          Testing & QA: Testing & QA
+          Leitfaden: Guide
+          Testkonzept: Test Concept
+          CI/CD Pipeline: CI/CD Pipeline
+          Nightly Tests: Nightly Tests
+          Anforderungen: Requirements
+          Seiten & Navigation: Pages & Navigation
+          Evaluation Features: Evaluation Features
+          Collab Editoren: Collab Editors
+          Chat & Chatbots: Chat & Chatbots
+          Admin Dashboard: Admin Dashboard
+          UI Komponenten: UI Components
+          Dialoge & Modals: Dialogs & Modals
+          Tooltips & Quicklinks: Tooltips & Quicklinks
+          Accessibility: Accessibility
+          Edge Cases: Edge Cases
+          Visual & Responsive: Visual & Responsive
+          Auth & Routes: Auth & Routes
+          Socket.IO Events: Socket.IO Events
+          RAG Pipeline: RAG Pipeline
+          LLM Integration: LLM Integration
+          Anonymisierung: Anonymization
+          Berechtigungen: Permissions
+          Rollen-Matrix: Roles Matrix
+          Checklisten: Checklists
+          Smoke Test: Smoke Test
+          Regression Tests: Regression Tests
+          Release Checklist: Release Checklist
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js

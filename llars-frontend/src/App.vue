@@ -1,11 +1,14 @@
 <template>
   <v-app>
-    <!-- Unified AppBar -->
-    <v-app-bar app class="llars-appbar" :class="{ 'is-mobile': isMobile }">
+    <!-- Unified AppBar (hidden on Landing Page) -->
+    <v-app-bar v-if="!isLandingPage" app class="llars-appbar" :class="{ 'is-mobile': isMobile }">
       <v-toolbar-title @click="goHome" class="toolbar-title" :class="{ 'flex-shrink-1': isMobile }">
         <div class="logo-wrapper">
           <img src="./assets/logo/llars-logo.png" alt="Logo" :height="isMobile ? 24 : 28" class="logo-image">
-          <span class="toolbar-text" :class="{ 'mobile-text': isMobile }">{{ isMobile ? 'LLars' : 'LLars Plattform' }}</span>
+          <span class="toolbar-text" :class="{ 'mobile-text': isMobile }"><LlarsBrand /></span>
+          <LTag v-if="isDev" variant="accent" size="md" class="ml-2" style="font-size: 0.65rem; letter-spacing: 0.05em;">DEV</LTag>
+          <LTag v-if="isDev && appVersion.version" variant="info" size="md" class="ml-1" style="font-size: 0.6rem; letter-spacing: 0.03em; opacity: 0.85; cursor: pointer;" :title="$t('footer.changelog')" @click="openChangelog">v{{ appVersion.version }} · {{ appVersion.branch }}@{{ appVersion.commitHash }}</LTag>
+          <LTag v-if="isAuthenticated && consoleLogsEnabled" variant="danger" size="md" class="ml-2" style="font-size: 0.65rem; letter-spacing: 0.05em;" prepend-icon="mdi-console">LOGGING</LTag>
         </div>
       </v-toolbar-title>
       <v-spacer></v-spacer>
@@ -24,6 +27,28 @@
           as="div"
           class="auth-section-wrapper"
         >
+          <!-- Messaging Badge (only when communication is globally enabled + user has access) -->
+          <template v-if="communicationEnabled && hasPermission('feature:communication:access')">
+            <v-badge
+              v-if="messagingUnread > 0"
+              :content="messagingUnread > 99 ? '99+' : messagingUnread"
+              color="error"
+              offset-x="-4"
+              offset-y="4"
+              class="mr-2"
+            >
+              <LIconBtn icon="mdi-message" size="small" @click="goToMessaging" style="color: white;" />
+            </v-badge>
+            <LIconBtn
+              v-else
+              icon="mdi-message-outline"
+              size="small"
+              @click="goToMessaging"
+              style="color: white; opacity: 0.7;"
+              class="mr-2"
+            />
+          </template>
+
           <v-menu offset-y :close-on-content-click="true">
             <template v-slot:activator="{ props }">
               <div v-bind="props" class="user-menu-trigger" :class="{ 'mobile-trigger': isMobile }">
@@ -101,6 +126,13 @@
     <!-- User Settings Dialog -->
     <UserSettingsDialog v-model="settingsDialogOpen" />
 
+    <!-- One-time Demographic Survey (referral signups, first login) -->
+    <DemographicSurveyDialog
+      v-model="demographicSurveyOpen"
+      :referral-link-id="demographicReferralLinkId"
+      @completed="onDemographicSurveyCompleted"
+    />
+
     <!-- Global Snackbar -->
     <v-snackbar
       v-model="snackbarModel.show"
@@ -120,11 +152,26 @@
       </template>
     </v-snackbar>
 
-    <v-footer app :height="isMobile ? 24 : 30" class="llars-footer" :class="{ 'is-mobile': isMobile, 'px-2': isMobile, 'px-4': !isMobile }">
+    <!-- Footer height MUST match the rendered size: Vuetify reserves v-main
+         padding from the `:height` prop, not from CSS. The mobile footer is
+         visually 24px (.llars-footer.is-mobile { max-height: 24px }), so it
+         must register as 24 too — otherwise v-main reserves 30px while pages
+         that budget the chrome as 64+24=88px (e.g. the mobile evaluation
+         shell, calc(100dvh - 88px)) overflow by 6px → a faint page scroll. -->
+    <v-footer v-if="!isLandingPage" app :height="isMobile ? 24 : 30" class="llars-footer" :class="{ 'is-mobile': isMobile, 'px-2': isMobile, 'px-4': !isMobile }">
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
           <span class="copyright">
-            © {{ new Date().getFullYear() }} {{ isMobile ? 'LLars' : 'LLars Plattform' }}
+            © {{ new Date().getFullYear() }} <LlarsBrand /><template v-if="!isMobile"> {{ $t('appbar.platformSuffix') }}</template>
+            <span
+              v-if="!isDev && appVersion.version"
+              class="version-info version-link"
+              role="link"
+              tabindex="0"
+              :title="$t('footer.changelog')"
+              @click="openChangelog"
+              @keydown.enter="openChangelog"
+            >v{{ appVersion.version }}</span>
           </span>
         </v-col>
 
@@ -137,6 +184,27 @@
           >
             {{ $t(`footer.${link.key}`) }}
           </span>
+        </v-col>
+
+        <!-- Mobile: legal/links are reachable via a compact popover so the slim
+             footer bar is not overcrowded (Impressum etc. were hidden before). -->
+        <v-col v-else cols="auto">
+          <v-menu location="top end" offset="6">
+            <template #activator="{ props }">
+              <button v-bind="props" type="button" class="footer-legal-trigger" :aria-label="$t('footer.legal')">
+                {{ $t('footer.legal') }}
+                <v-icon size="13" icon="mdi-chevron-up" />
+              </button>
+            </template>
+            <v-list density="compact" min-width="160">
+              <v-list-item
+                v-for="link in footerLinks"
+                :key="link.key"
+                :title="$t(`footer.${link.key}`)"
+                @click="navigateTo(link)"
+              />
+            </v-list>
+          </v-menu>
         </v-col>
       </v-row>
     </v-footer>
@@ -156,17 +224,29 @@ import { useSnackbar } from '@/composables/useSnackbar';
 import { usePresenceHeartbeat } from '@/composables/usePresenceHeartbeat';
 import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
+import DemographicSurveyDialog from './components/Onboarding/DemographicSurveyDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
 import { useReferralSystem } from '@/composables/useReferralSystem';
+import { useCommunicationAdmin } from '@/composables/useCommunicationAdmin';
 import { logI18n } from '@/utils/logI18n';
+import { docsUrlForLocale } from '@/utils/docsUrl';
+import axios from 'axios';
 
 const { t, locale } = useI18n();
+
+// Hide AppBar + Footer on routes with own chrome (Landing Page inkl.
+// Admin-Preview) — meta-basiert, damit alle Landing-Routen erfasst sind
+// und der 100vh-Hero nicht um die AppBar-Höhe überläuft.
+const isLandingPage = computed(() => Boolean(route.meta.hideAppChrome))
 
 // Global Snackbar
 const { snackbarModel } = useSnackbar();
 
 // Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
 const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren
+
+const isDev = import.meta.env.DEV;
+const appVersion = __APP_VERSION__;
 
 const router = useRouter();
 const route = useRoute();
@@ -175,18 +255,32 @@ const permissions = usePermissions();
 const { applyTheme } = useAppTheme();
 const { isMobile } = useMobile();
 const { registrationEnabled, checkRegistrationStatus } = useReferralSystem();
+const { communicationEnabled, fetchCommunicationStatus, refreshCommunicationStatus, attachSocketListeners: attachCommListeners } = useCommunicationAdmin();
+const { hasPermission, fetchPermissions } = permissions;
 const { start: startPresence, stop: stopPresence } = usePresenceHeartbeat();
+
+// Messaging unread badge (only fetch when communication is enabled AND user has access)
+const messagingUnread = ref(0);
+const fetchMessagingUnread = async () => {
+  if (!isAuthenticated.value || !communicationEnabled.value || !hasPermission('feature:communication:access')) return;
+  try {
+    const { data } = await axios.get('/api/messaging/unread');
+    messagingUnread.value = data.total || 0;
+  } catch {
+    // Silently ignore if messaging not available
+  }
+};
 
 /**
  * Smart router-view key that prevents full remount on document switches.
- * For collab workspaces (LaTeX, Markdown), use workspace-level key so switching
+ * For collab workspaces (Markdown), use workspace-level key so switching
  * documents only updates editor content, not the entire workspace component.
  */
 const routerViewKey = computed(() => {
   const path = route.path
-  // Match LaTeX/Markdown collab workspace routes with document IDs
-  // Pattern: /LatexCollab/workspace/:id/document/:docId or /LatexCollabAI/workspace/:id/document/:docId
-  const collabMatch = path.match(/^\/(LatexCollab|LatexCollabAI|MarkdownCollab)\/workspace\/(\d+)/)
+  // Match Markdown collab workspace routes with document IDs
+  // Pattern: /MarkdownCollab/workspace/:id/document/:docId
+  const collabMatch = path.match(/^\/(MarkdownCollab)\/workspace\/(\d+)/)
   if (collabMatch) {
     // Return workspace-level key, ignoring document ID changes
     return `${collabMatch[1]}-workspace-${collabMatch[2]}`
@@ -196,6 +290,7 @@ const routerViewKey = computed(() => {
 })
 
 const isAuthenticated = computed(() => auth.isAuthenticated.value);
+const consoleLogsEnabled = computed(() => auth.consoleLogsEnabled.value);
 const username = computed(() => {
   const fromToken =
     auth.tokenParsed.value?.preferred_username ||
@@ -210,29 +305,73 @@ const username = computed(() => {
   }
 });
 
+// Clear messaging badge when communication gets disabled
+watch(communicationEnabled, (enabled) => {
+  if (!enabled) {
+    messagingUnread.value = 0;
+  }
+});
+
+// Demographic survey overlay (one-time, primarily for referral signups).
+// Declared before the isAuthenticated watcher because that watcher runs
+// `immediate: true` during setup and references these refs synchronously.
+const demographicSurveyOpen = ref(false);
+const demographicReferralLinkId = ref(null);
+const demographicChecked = ref(false);
+
 watch(
   isAuthenticated,
   (value) => {
     if (value) {
       startPresence();
+      checkDemographicSurvey();
     } else {
       stopPresence();
+      // Reset so a fresh login re-checks (e.g. user logs out then in again)
+      demographicChecked.value = false;
+      demographicSurveyOpen.value = false;
     }
   },
   { immediate: true }
 );
 const isAdminUser = computed(() => auth.isAdmin.value);
-const mkdocsUrl = computed(() => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  return `${origin}/mkdocs/en/`;
-});
+// Doku in der aktuellen UI-Sprache öffnen (DE -> /mkdocs/, EN -> /mkdocs/en/).
+const mkdocsUrl = computed(() => docsUrlForLocale(locale.value));
+// Changelog lebt in MkDocs (docs/docs/changelog.md → /mkdocs/changelog/). Der
+// Versions-Text im Footer verlinkt dorthin, damit man direkt nachlesen kann,
+// was sich zwischen den Releases geändert hat. Locale-aware wie die übrige Doku.
+const changelogUrl = computed(() => docsUrlForLocale(locale.value, 'changelog/'));
+function openChangelog() {
+  window.open(changelogUrl.value, '_blank', 'noopener');
+}
 const footerLinks = computed(() => [
   { key: 'documentation', route: mkdocsUrl.value, external: true },
   { key: 'imprint', route: '/impressum' },
   { key: 'privacy', route: '/datenschutz' },
+  { key: 'terms', route: '/nutzungsbedingungen' },
   { key: 'contact', route: '/kontakt' }
 ]);
 const settingsDialogOpen = ref(false);
+
+async function checkDemographicSurvey() {
+  if (!isAuthenticated.value || demographicChecked.value) return;
+  demographicChecked.value = true;
+  try {
+    const { data } = await axios.get('/api/user/demographics');
+    if (data && data.should_show_survey) {
+      demographicReferralLinkId.value = data.referral_link_id || null;
+      // Small delay so the dashboard renders first; the survey then
+      // appears as a deliberate overlay rather than a hard interrupt.
+      setTimeout(() => { demographicSurveyOpen.value = true; }, 600);
+    }
+  } catch {
+    // Silent — survey is non-critical and shouldn't block the app
+  }
+}
+
+function onDemographicSurveyCompleted() {
+  demographicSurveyOpen.value = false;
+}
 
 // Avatar seed from auth composable
 const userAvatarSeed = computed(() => auth.avatarSeed.value);
@@ -264,10 +403,35 @@ const cleanupOldChatMessages = () => {
   }
 };
 
-onMounted(() => {
+// Poll communication status + permissions (reliable fallback for Socket.IO in dev mode)
+let _commPollTimer = null;
+
+onMounted(async () => {
   cleanupOldChatMessages();
   applyTheme(); // Apply theme on app mount
   checkRegistrationStatus(); // Check if self-registration is enabled
+  await fetchCommunicationStatus(); // Check if communication is enabled
+  fetchMessagingUnread(); // Fetch messaging unread count (gated by communicationEnabled)
+
+  // Listen for Socket.IO events
+  try {
+    const { socketService } = require('@/services/socketService');
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.on('messaging:unread_update', (data) => {
+        messagingUnread.value = data.total || 0;
+      });
+      // Attach communication real-time listeners
+      attachCommListeners(socket);
+    }
+  } catch { /* Socket not ready yet */ }
+
+  // Poll every 10s to catch permission changes (Socket.IO fallback for dev mode)
+  _commPollTimer = setInterval(() => {
+    if (!isAuthenticated.value) return;
+    refreshCommunicationStatus();
+    fetchPermissions(true);
+  }, 10_000);
 });
 
 function logout() {
@@ -281,7 +445,13 @@ function logout() {
     }
   }
 
-  // Logout via useAuth (löscht sessionStorage: auth_token, auth_refreshToken, auth_idToken)
+  // Navigate to login FIRST to prevent flash of intermediate pages.
+  // router.replace is synchronous for the Vue render cycle, so the login
+  // component will render instead of the current page re-rendering with
+  // cleared auth state.
+  router.replace('/login');
+
+  // Now clear auth state (Vue is already rendering /login)
   auth.logout();
   permissions.clearPermissions();
 
@@ -308,9 +478,6 @@ function logout() {
   } catch (e) {
     // ignore (e.g., Safari private mode / blocked storage)
   }
-
-  // Use full page navigation so browser password managers re-run autofill heuristics.
-  window.location.replace('/login');
 }
 
 function containsLocalStorageItemWithString(string) {
@@ -329,8 +496,14 @@ function containsLocalStorageItemWithString(string) {
 
 
 
+function goToMessaging() {
+  router.push('/messaging');
+}
+
 function goHome() {
-  router.push('/home');
+  // Logo-Klick in der App-Bar: eingeloggte Nutzer auf /Home, nicht
+  // eingeloggte (z.B. auf /login) auf die öffentliche Landing Page.
+  router.push(isAuthenticated.value ? '/home' : '/');
 }
 
 function goToLogin() {
@@ -553,6 +726,27 @@ function openSettings() {
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
+.version-info {
+  opacity: 0.5;
+  font-size: 0.65rem;
+  margin-left: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+/* Version-Text ist ein Link auf den Changelog (MkDocs). Dezente Hover-/Fokus-
+   Affordanz, damit die Klickbarkeit erkennbar ist, ohne den Footer zu stören. */
+.version-link {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.version-link:hover,
+.version-link:focus-visible {
+  opacity: 0.9;
+  text-decoration: underline;
+  outline: none;
+}
+
 .footer-link {
   color: #fff;
   cursor: pointer;
@@ -562,6 +756,29 @@ function openSettings() {
 }
 
 .footer-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* Mobile-only compact legal popover trigger (keeps the slim footer uncluttered). */
+.footer-legal-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #fff;
+  opacity: 0.9;
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  /* LLARS signature asymmetric radius. */
+  border-radius: 6px 2px 6px 2px;
+}
+
+.footer-legal-trigger:hover,
+.footer-legal-trigger:focus-visible {
   opacity: 1;
   text-decoration: underline;
 }
@@ -620,4 +837,5 @@ function openSettings() {
   flex-wrap: nowrap;
   min-height: auto;
 }
+
 </style>

@@ -8,6 +8,13 @@
         <h3>{{ $t('evaluation.rating.content') }}</h3>
       </div>
 
+      <!-- Per-item header: markdown template from config with {{variable}}
+           substitution from the item's metadata_json. Rendered above the
+           content being rated. Same mechanism as ComparisonInterface. -->
+      <div v-if="resolvedItemHeader" class="item-header-block">
+        <LMarkdownContent :markdown="resolvedItemHeader" compact />
+      </div>
+
       <!-- Content Panel Component -->
       <ContentPanel
         :item="currentItem"
@@ -47,7 +54,7 @@
         <!-- Dimension Cards -->
         <div class="dimension-list">
           <DimensionRatingCard
-            v-for="dim in dimensions"
+            v-for="dim in normalizedDimensions"
             :key="dim.id"
             :dimension="dim"
             :model-value="dimensionRatings[dim.id]"
@@ -152,9 +159,11 @@
  * feature-based rating with a text-based multi-dimensional approach.
  */
 import { ref, computed, watch, onMounted, toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePanelResize } from '@/composables/usePanelResize'
 import { useDimensionalRating } from '@/composables/useDimensionalRating'
 import { DimensionRatingCard, ContentPanel, OverallScoreDisplay } from '@/components/Evaluation/rating'
+import LMarkdownContent from '@/components/common/LMarkdownContent.vue'
 
 const props = defineProps({
   scenarioId: {
@@ -211,11 +220,11 @@ const {
   saving,
   error,
 
-  dimensions,
-  scaleMin,
-  scaleMax,
-  scaleStep,
-  scaleLabels,
+  dimensions: composableDimensions,
+  scaleMin: composableScaleMin,
+  scaleMax: composableScaleMax,
+  scaleStep: composableScaleStep,
+  scaleLabels: composableScaleLabels,
   overallScore,
   ratedDimensionCount,
   canSubmit,
@@ -231,6 +240,91 @@ const {
   goNext,
   goPrev
 } = useDimensionalRating(scenarioIdRef)
+
+// Unwrap the (possibly nested) rating config. api_v1 scenarios store the
+// canonical shape `{type, config: {scale, dimensions}}`; the composable's
+// `config` ref holds that raw object, while the backend's normalization only
+// fills TOP-LEVEL dimensions/min/max/step/labels (with English defaults when
+// the real config is nested). We therefore read the nested `config` first and
+// fall back to the composable's normalized values for legacy scenarios.
+const inner = computed(() =>
+  config.value?.config || config.value?.eval_config?.config || config.value || {}
+)
+
+// Dimensions: schema items expose `label` ({de,en}); legacy items expose
+// `name`. Prefer the canonical nested list; fall back to the composable's.
+const dimensions = computed(() => {
+  const dims = inner.value?.dimensions
+  if (Array.isArray(dims) && dims.length > 0) return dims
+  return composableDimensions.value || []
+})
+
+// Scale settings: prefer the canonical nested `scale` block, else the
+// composable's normalized flat values.
+const scale = computed(() => inner.value?.scale || {})
+const scaleMin = computed(() => scale.value.min ?? composableScaleMin.value)
+const scaleMax = computed(() => scale.value.max ?? composableScaleMax.value)
+const scaleStep = computed(() => scale.value.step ?? composableScaleStep.value)
+const scaleLabels = computed(() => {
+  const labels = scale.value.labels
+  if (labels && Object.keys(labels).length > 0) return labels
+  return composableScaleLabels.value || {}
+})
+
+// DimensionRatingCard reads `dimension.name` (not the schema field `label`).
+// Project schema dimensions onto a `name`/`description` the card understands,
+// preserving the original `id`/`weight`/`scale` and keeping `dim.id` as the
+// submitted key. Idempotent for legacy dimensions that already carry `name`.
+const normalizedDimensions = computed(() =>
+  dimensions.value.map(dim => ({
+    ...dim,
+    name: dim.name ?? dim.label ?? dim.id,
+    description: dim.description ?? dim.help ?? null
+  }))
+)
+
+const { locale } = useI18n()
+
+// Pick the current-locale string from a LocalizedString ({de, en}) with a
+// stable fallback chain (current locale → DE (LLARS default) → EN). Returns
+// '' for empty/missing so callers can treat it as falsy.
+function _pickLocalized(v) {
+  if (v == null) return ''
+  if (typeof v !== 'object') return String(v)
+  const lang = locale.value || 'de'
+  return v[lang] ?? v.de ?? v.en ?? ''
+}
+
+// Substitute {{variable}} placeholders in a template with per-item
+// metadata_json values. LocalizedString metadata values resolve to the
+// current locale; unknown keys are left verbatim so misconfiguration is
+// visible rather than silently blank. Mirrors ComparisonInterface.
+function _resolveVariables(template, meta) {
+  if (!template || !meta) return template
+  return String(template).replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const v = meta[key]
+    if (v === undefined || v === null) return `{{${key}}}`
+    if (typeof v === 'object' && !Array.isArray(v)) {
+      const lang = locale.value || 'de'
+      return String(v[lang] ?? v.de ?? v.en ?? JSON.stringify(v))
+    }
+    return String(v)
+  })
+}
+
+// Per-item header: markdown template read from the (possibly nested) rating
+// config, with {{variable}} substitution from the current item's
+// metadata_json. Supports both camelCase (frontend) and snake_case (v1 API /
+// backend) key spellings. Returns null when not configured.
+const resolvedItemHeader = computed(() => {
+  const ec = inner.value || {}
+  const template = _pickLocalized(
+    ec.itemHeaderTemplate ?? ec.item_header_template
+  )
+  if (!template) return null
+  const meta = currentItem.value?.metadata_json || {}
+  return _resolveVariables(template, meta)
+})
 
 // Local feedback state (synced with composable)
 const localFeedback = ref('')
@@ -374,6 +468,18 @@ watch(() => props.initialItemId, async (newItemId) => {
   font-size: 0.95rem;
   font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
+}
+
+/* Per-item header block (item_header_template rendering) — matches the
+   ComparisonInterface treatment: subtle primary-tinted band above the
+   content being rated. */
+.item-header-block {
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-primary), 0.04);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  flex-shrink: 0;
 }
 
 /* Resize Handle */
@@ -525,7 +631,9 @@ watch(() => props.initialItemId, async (newItemId) => {
   }
 
   .left-panel {
-    max-height: 40vh;
+    /* clamp keeps multi-turn conversations from clipping on short viewports
+       while still capping the content panel on taller phones/tablets */
+    max-height: clamp(200px, 40vh, 50vh);
     border-right: none;
     border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   }

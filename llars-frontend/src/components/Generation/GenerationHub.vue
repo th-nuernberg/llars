@@ -45,7 +45,11 @@
         </v-menu>
 
         <!-- New Job Button -->
-        <LBtn variant="primary" @click="showWizard = true">
+        <LBtn
+          variant="primary"
+          data-testid="generation-new-job-button"
+          @click="showWizard = true"
+        >
           <LIcon start>mdi-plus</LIcon>
           {{ $t('generation.hub.newJob') }}
         </LBtn>
@@ -69,6 +73,7 @@
             @click="navigateToJob(job)"
             @pause="pauseJob(job.id)"
             @cancel="cancelJob(job.id)"
+            @share="openShareDialog(job)"
           />
         </div>
       </div>
@@ -98,6 +103,7 @@
             @pause="pauseJob(job.id)"
             @cancel="cancelJob(job.id)"
             @delete="confirmDelete(job)"
+            @share="openShareDialog(job)"
           />
         </div>
 
@@ -117,6 +123,24 @@
               {{ $t('generation.hub.createFirst') }}
             </LBtn>
           </div>
+        </div>
+      </div>
+
+      <!-- Shared With Me Section -->
+      <div v-if="sharedJobs.length > 0" class="jobs-section">
+        <h3 class="section-title">
+          <LIcon color="accent" class="mr-2">mdi-share-variant-outline</LIcon>
+          {{ $t('generation.hub.sharedWithMe') }}
+          <LTag variant="accent" size="small" class="ml-2">{{ sharedJobs.length }}</LTag>
+        </h3>
+        <div class="jobs-grid">
+          <GenerationJobCard
+            v-for="job in sharedJobs"
+            :key="'shared-' + job.id"
+            :job="job"
+            :is-shared="true"
+            @click="navigateToJob(job)"
+          />
         </div>
       </div>
     </div>
@@ -156,6 +180,19 @@
         </v-card-actions>
       </LCard>
     </v-dialog>
+
+    <!-- Share Dialog -->
+    <LShareDialog
+      v-model="showShareDialog"
+      :title="$t('generation.share.title')"
+      :shared-users="shareJobDetail?.shared_with || []"
+      :loading="isLoadingShareData"
+      :is-sharing="isSharing"
+      :removing-username="removingUsername"
+      :additional-exclude-usernames="jobToShare?.created_by ? [jobToShare.created_by] : []"
+      @share="handleShareFromHub"
+      @unshare="handleUnshareFromHub"
+    />
   </div>
 </template>
 
@@ -165,6 +202,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useMobile } from '@/composables/useMobile'
 import { useGeneration, JOB_STATUS } from '@/composables/useGeneration'
+import { generationApi } from '@/services/generationApi'
 import GenerationJobCard from './GenerationJobCard.vue'
 import GenerationWizard from './GenerationWizard.vue'
 
@@ -175,13 +213,16 @@ const { isMobile } = useMobile()
 // Generation composable
 const {
   jobs,
+  sharedJobs,
   activeJobs,
   isLoading,
   loadJobs,
   startJob,
   pauseJob,
   cancelJob,
-  deleteJob
+  deleteJob,
+  shareJob,
+  unshareJob
 } = useGeneration({ autoLoadJobs: true })
 
 // Local state
@@ -189,6 +230,14 @@ const activeFilter = ref(null)
 const showWizard = ref(false)
 const showDeleteDialog = ref(false)
 const jobToDelete = ref(null)
+
+// Share dialog state
+const showShareDialog = ref(false)
+const jobToShare = ref(null)
+const shareJobDetail = ref(null)
+const isSharing = ref(false)
+const isLoadingShareData = ref(false)
+const removingUsername = ref(null)
 
 // Status filter options
 const STATUS_OPTIONS = [
@@ -232,6 +281,48 @@ async function executeDelete() {
     showDeleteDialog.value = false
     jobToDelete.value = null
   }
+}
+
+// Share dialog: load job details (with shared_with) and open dialog
+async function openShareDialog(job) {
+  jobToShare.value = job
+  shareJobDetail.value = null
+  isLoadingShareData.value = true
+  showShareDialog.value = true
+  try {
+    const res = await generationApi.getJob(job.id)
+    shareJobDetail.value = res.data.job
+  } catch {
+    shareJobDetail.value = { shared_with: [] }
+  }
+  isLoadingShareData.value = false
+}
+
+async function handleShareFromHub(user) {
+  if (!user?.username || !jobToShare.value) return
+  isSharing.value = true
+  const success = await shareJob(jobToShare.value.id, user.username)
+  if (success) {
+    // Refresh job detail to update shared_with list
+    try {
+      const res = await generationApi.getJob(jobToShare.value.id)
+      shareJobDetail.value = res.data.job
+    } catch { /* ignore */ }
+  }
+  isSharing.value = false
+}
+
+async function handleUnshareFromHub(username) {
+  if (!jobToShare.value) return
+  removingUsername.value = username
+  const success = await unshareJob(jobToShare.value.id, username)
+  if (success) {
+    try {
+      const res = await generationApi.getJob(jobToShare.value.id)
+      shareJobDetail.value = res.data.job
+    } catch { /* ignore */ }
+  }
+  removingUsername.value = null
 }
 
 function goHome() {

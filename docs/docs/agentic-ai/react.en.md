@@ -299,3 +299,11 @@ yield {"done": True, "full_response": "...", "sources": [...]}
 | THOUGHT step | No | Yes (streaming) |
 | Adaptive iteration | Yes | Yes |
 | Typical iterations | 1-3 | 2-5 |
+
+---
+
+## See Also
+
+- [ReflAct - Reflection-Grounded Agent Reasoning](reflact.md)
+- [RAG - Retrieval Augmented Generation](rag.md)
+- [Agentic AI Overview](index.md)

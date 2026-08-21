@@ -5,14 +5,20 @@ Ensures every chatbot has an associated ChatbotPromptSettings row.
 This keeps the DB as the single source of truth for RAG prompt behavior.
 """
 
+# NOTE: Bewusst KEINE Anweisung, Links/URLs auszugeben.
+# Die alte Variante ("gib den Dokumentationslink an", "Format: [Thema](URL)",
+# "Weiterfuehrende Links") zwang das Modell, Links zu schreiben - und wenn eine
+# Quelle keinen Link hatte (z.B. die alte general-Collection mit source_url=NULL),
+# ERFAND es plausible Pfade wie /mkdocs/en/faq/ (404). Die [n]-Marker werden im
+# Frontend automatisch in anklickbare Quellen umgewandelt; das Modell soll daher
+# nie selbst URLs schreiben und nur zitieren, wenn es wirklich relevant ist.
 STANDARD_LLARS_CITATION_INSTRUCTIONS = """
-WICHTIG - Quellen und Dokumentationslinks:
+Quellen und Belege:
 - Nutze den Kontext fuer inhaltliche Aussagen, wenn er relevant ist.
-- Zitiere verwendete Quellen direkt im Text als [1], [2], ...
-- Wenn eine Quelle einen Dokumentationslink enthaelt, gib diesen Link in deiner Antwort an.
-- Format fuer Dokumentationslinks: [Thema](URL)
-- Wenn keine passende Quelle vorhanden ist, beantworte Fragen zu LLARS trotzdem kurz aus deinem Systemwissen.
-- Bei mehreren relevanten Seiten, liste sie am Ende unter "Weiterfuehrende Links".
+- Zitiere genutzte Quellen sparsam und nur, wenn sie wirklich wichtig oder relevant sind, direkt im Text als [1], [2], ... - nicht erzwungen bei jedem Satz.
+- Bei Smalltalk, Rueckfragen oder allgemeinem Gespraech antworte einfach natuerlich, ganz ohne Quellenangabe.
+- Gib NIEMALS selbst URLs, Links oder Pfade aus und erfinde keine. Die Marker [1], [2], ... werden vom System automatisch in anklickbare Quellen umgewandelt.
+- Wenn keine passende Quelle vorhanden ist, beantworte Fragen zu LLARS kurz aus deinem Systemwissen - ohne eine Quelle zu erfinden.
 """.strip()
 
 RECHTSASSISTENT_CITATION_INSTRUCTIONS = """

@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from db.models.scenario import EvaluationItem, RatingScenarios
     from db.models.prompt_template import PromptTemplate
     from db.models.llm_model import LLMModel
+    from db.models.user import User
 
 
 # =============================================================================
@@ -298,6 +299,17 @@ class GenerationJob(db.Model):
         cascade="all, delete-orphan",
         lazy="dynamic",
         order_by="GeneratedOutput.id"
+    )
+
+    # Explicit shares relationship with cascade + passive_deletes so SQLAlchemy
+    # lets the DB-level ON DELETE CASCADE handle cleanup. Without passive_deletes,
+    # SQLAlchemy emits an UPDATE setting job_id=NULL before the parent DELETE,
+    # which fails because job_id is NOT NULL → IntegrityError on every job delete.
+    shares: Mapped[List["GenerationJobShare"]] = relationship(
+        "GenerationJobShare",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
 
     source_scenario: Mapped[Optional["RatingScenarios"]] = relationship(
@@ -759,6 +771,51 @@ class GeneratedOutput(db.Model):
     # Methods
     # -------------------------------------------------------------------------
 
+    def _resolve_user_provider_name(self) -> Optional[str]:
+        """Resolve the human-readable provider name for user-provider models."""
+        if not self.llm_model_name or not self.llm_model_name.startswith('user-provider:'):
+            return None
+        try:
+            parts = self.llm_model_name.split(':')
+            if len(parts) >= 2 and parts[1].isdigit():
+                from db.models.user_llm_provider import UserLLMProvider
+                provider = db.session.get(UserLLMProvider, int(parts[1]))
+                return provider.name if provider else None
+        except Exception:
+            return None
+
+    def _resolve_model_color(self) -> str | None:
+        """
+        Resolve model color: DB model → user-provider config → fallback.
+
+        Single source of truth: colors stored in llm_models.color (global)
+        or user_llm_providers.config_json.model_colors (user providers).
+        """
+        # 1. Global model with stored color
+        if self.llm_model and getattr(self.llm_model, "color", None):
+            return self.llm_model.color
+        # 2. User-provider model: look up stored color from provider config
+        model_name = self.llm_model_name or ''
+        if model_name.startswith('user-provider:'):
+            try:
+                parts = model_name.split(':')
+                if len(parts) >= 2 and parts[1].isdigit():
+                    from db.models.user_llm_provider import UserLLMProvider
+                    provider = db.session.get(UserLLMProvider, int(parts[1]))
+                    if provider:
+                        raw_model = ':'.join(parts[3:]) if len(parts) > 3 else parts[-1]
+                        model_colors = (provider.config_json or {}).get('model_colors', {})
+                        if isinstance(model_colors, dict) and raw_model in model_colors:
+                            return model_colors[raw_model]
+            except Exception:
+                pass
+        # 3. Fallback: generate (should rarely happen with backfill)
+        try:
+            from db.models.llm_model import LLMModel
+            return LLMModel.generate_color(model_name)
+        except Exception:
+            return None
+
     def to_dict(self, include_prompts: bool = False) -> Dict[str, Any]:
         """
         Convert to dictionary for API responses.
@@ -769,15 +826,7 @@ class GeneratedOutput(db.Model):
         Returns:
             Dictionary representation
         """
-        llm_model_color = None
-        if self.llm_model and getattr(self.llm_model, "color", None):
-            llm_model_color = self.llm_model.color
-        else:
-            try:
-                from db.models.llm_model import LLMModel
-                llm_model_color = LLMModel.generate_color(self.llm_model_name)
-            except Exception:
-                llm_model_color = None
+        llm_model_color = self._resolve_model_color()
 
         result = {
             'id': self.id,
@@ -787,6 +836,7 @@ class GeneratedOutput(db.Model):
             'llm_model_id': self.llm_model_id,
             'llm_model_name': self.llm_model_name,
             'llm_model_color': llm_model_color,
+            'user_provider_name': self._resolve_user_provider_name(),
             'prompt_variant_name': self.prompt_variant_name,
             'prompt_variables': self.prompt_variables_json,
             'generated_content': self.generated_content,
@@ -831,15 +881,7 @@ class GeneratedOutput(db.Model):
 
     def to_summary_dict(self) -> Dict[str, Any]:
         """Convert to lightweight summary for list views."""
-        llm_model_color = None
-        if self.llm_model and getattr(self.llm_model, "color", None):
-            llm_model_color = self.llm_model.color
-        else:
-            try:
-                from db.models.llm_model import LLMModel
-                llm_model_color = LLMModel.generate_color(self.llm_model_name)
-            except Exception:
-                llm_model_color = None
+        llm_model_color = self._resolve_model_color()
         source_item_label = None
         source_group_key = None
         if self.source_item and self.source_item.subject:
@@ -863,6 +905,7 @@ class GeneratedOutput(db.Model):
             'source_group_key': source_group_key,
             'llm_model_name': self.llm_model_name,
             'llm_model_color': llm_model_color,
+            'user_provider_name': self._resolve_user_provider_name(),
             'prompt_variant_name': self.prompt_variant_name,
             'status': self.status.value if self.status else None,
             'content_preview': self.content_preview,
@@ -927,6 +970,73 @@ class GeneratedOutput(db.Model):
 
     def __repr__(self) -> str:
         return f"<GeneratedOutput {self.id}: job={self.job_id} model={self.llm_model_name} status={self.status.value}>"
+
+
+# =============================================================================
+# GENERATION JOB SHARE MODEL
+# =============================================================================
+
+
+class GenerationJobShare(db.Model):
+    """
+    Sharing record that grants a user read-only access to a GenerationJob.
+
+    Follows the same pattern as UserPromptShare. Shared users can view
+    the job, browse outputs, and export — but cannot start/pause/delete.
+
+    Unique constraint prevents duplicate shares for the same user+job.
+    CASCADE delete ensures shares are cleaned up when the job is deleted.
+    """
+
+    __tablename__ = 'generation_job_shares'
+
+    id: Mapped[int] = mapped_column(
+        db.Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    job_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('generation_jobs.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+        comment="Shared generation job"
+    )
+
+    shared_with_user_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+        comment="User who received the share"
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        comment="When the share was created"
+    )
+
+    # Relationships — back_populates instead of backref so the parent side can
+    # configure cascade + passive_deletes properly (see GenerationJob.shares).
+    job: Mapped["GenerationJob"] = relationship(
+        "GenerationJob",
+        back_populates="shares"
+    )
+
+    shared_with_user: Mapped["User"] = relationship(
+        "User",
+        backref="shared_generation_jobs"
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('job_id', 'shared_with_user_id', name='uq_generation_job_share'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<GenerationJobShare job={self.job_id} user={self.shared_with_user_id}>"
 
 
 # =============================================================================

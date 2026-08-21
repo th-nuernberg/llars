@@ -13,6 +13,7 @@ import { ref, computed, onMounted, onUnmounted, watch, readonly } from 'vue'
 import axios from 'axios'
 import { getSocket } from '@/services/socketService'
 import { useAuth } from '@/composables/useAuth'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 
 // Module-level subscription generation counter.
 // Prevents race condition where old composable's onUnmounted fires AFTER
@@ -27,6 +28,7 @@ let subscriptionGeneration = 0
  */
 export function useScenarioStats(scenarioIdRef) {
   const { getToken } = useAuth()
+  const { updateRegistry } = useModelRegistry()
 
   // ===== State =====
   const stats = ref(null)
@@ -98,14 +100,16 @@ export function useScenarioStats(scenarioIdRef) {
    */
   const llmProgress = computed(() => {
     const llm = evaluatorStats.value.filter(e => e.is_llm)
-    if (llm.length === 0) return { done: 0, total: 0, percent: 0 }
+    if (llm.length === 0) return { done: 0, total: 0, errors: 0, percent: 0 }
 
     const done = llm.reduce((sum, s) => sum + (s.done_threads || s.voted_count || 0), 0)
     const total = llm.reduce((sum, s) => sum + (s.total_threads || 0), 0)
+    const errors = llm.reduce((sum, s) => sum + (s.error_threads || 0), 0)
 
     return {
       done,
       total,
+      errors,
       percent: total > 0 ? Math.round((done / total) * 100) : 0
     }
   })
@@ -202,6 +206,8 @@ export function useScenarioStats(scenarioIdRef) {
         total: llm.total_threads || 0,
         inProgress: 0,
         notStarted: llm.not_started_threads || llm.pending_count || 0,
+        errorCount: llm.error_threads || 0,
+        recentErrors: llm.recent_errors || [],
         accuracy: llm.accuracy_percent,
         f1Score: llm.f1_score_percent,
         progress: llm.progress_percent ?? (llm.total_threads > 0
@@ -311,6 +317,11 @@ export function useScenarioStats(scenarioIdRef) {
       ...raterStats.value,
       ...evaluatorStats.value.filter(e => !e.is_llm)
     ]
+
+    // Feed model registry from backend stats
+    if (data.stats?.model_registry) {
+      updateRegistry(data.stats.model_registry)
+    }
 
     console.log('[ScenarioStats] After processing - LLM stats:', llmStats.value.map(s => ({
       model_id: s.model_id,
@@ -513,10 +524,17 @@ export function useScenarioStats(scenarioIdRef) {
           // Unified pairwise agreement - prefer pairwise_agreement, fallback to ranking_agreement
           pairwise_agreement: statsData.pairwise_agreement || data.pairwise_agreement ||
                               statsData.ranking_agreement || data.ranking_agreement,
+          // Rating provenance stats
+          rating_provenance_analysis: statsData.rating_provenance_analysis || data.rating_provenance_analysis,
+          conversation_provenance: statsData.conversation_provenance || data.conversation_provenance,
+          authenticity_provenance: statsData.authenticity_provenance || data.authenticity_provenance,
+          rating_alpha: statsData.rating_alpha || data.rating_alpha,
           // Include ranking stats
           bucket_distribution: statsData.bucket_distribution || data.bucket_distribution,
           provenance_analysis: statsData.provenance_analysis || data.provenance_analysis,
-          ranking_agreement: statsData.ranking_agreement || data.ranking_agreement  // Deprecated
+          ranking_agreement: statsData.ranking_agreement || data.ranking_agreement,  // Deprecated
+          // Model registry for consistent LLM display names
+          model_registry: statsData.model_registry || data.model_registry
         }
       })
 

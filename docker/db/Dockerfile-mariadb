@@ -1,5 +1,5 @@
 # Basis-Image auswählen
-FROM public.ecr.aws/docker/library/mariadb:11.2.2
+FROM public.ecr.aws/docker/library/mariadb:11.2.6
 LABEL authors="philippsteigerwald"
 
 # Umgebungsvariablen setzen

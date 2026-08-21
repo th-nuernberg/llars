@@ -17,10 +17,34 @@ Used by: judge_worker_pool.py (PooledJudgeWorker class)
 
 from __future__ import annotations
 
+import sys
 import logging
 from typing import Dict, Optional, Any
 
+import flask
+
 logger = logging.getLogger(__name__)
+
+# Keep both import paths pointing to the same module instance for test patching.
+sys.modules.setdefault("workers.pool.worker_pool_events", sys.modules[__name__])
+sys.modules.setdefault("app.workers.pool.worker_pool_events", sys.modules[__name__])
+
+
+class _CurrentAppAccessor:
+    """Patch-friendly accessor for Flask current_app."""
+
+    def _get_current_object(self):
+        return flask.current_app._get_current_object()
+
+    @property
+    def extensions(self):
+        try:
+            return flask.current_app.extensions
+        except Exception:
+            return {}
+
+
+current_app = _CurrentAppAccessor()
 
 
 # =============================================================================
@@ -73,7 +97,6 @@ def get_socketio(session_id: int, worker_id: int):
             )
 
         # Try Flask extensions
-        from flask import current_app
         if hasattr(current_app, 'extensions') and 'socketio' in current_app.extensions:
             logger.debug(
                 f"[JudgeWorker:{session_id}:{worker_id}] Got socketio from extensions"

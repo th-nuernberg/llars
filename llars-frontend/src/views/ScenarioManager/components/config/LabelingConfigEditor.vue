@@ -154,6 +154,214 @@
       </v-row>
     </div>
 
+    <!-- Co-Pilot: LLM pre-annotation suggestions during labeling -->
+    <div class="copilot-section mt-4">
+      <div class="section-header">
+        <h5 class="subsection-title">
+          <LIcon size="16" class="mr-1">mdi-robot-outline</LIcon>
+          {{ $t('scenarioManager.evalConfig.labeling.copilot.title') }}
+        </h5>
+        <LSwitch
+          v-model="copilotConfig.enabled"
+          :label="$t('scenarioManager.evalConfig.labeling.copilot.enable')"
+          @update:modelValue="handleCopilotToggle"
+        />
+      </div>
+      <p class="hint-text">{{ $t('scenarioManager.evalConfig.labeling.copilot.description') }}</p>
+
+      <template v-if="copilotConfig.enabled">
+        <LlmModelSelect
+          v-model="copilotConfig.model_id"
+          :label="$t('scenarioManager.evalConfig.labeling.copilot.model')"
+          class="mt-3"
+          @update:modelValue="emitUpdate"
+        />
+
+        <v-select
+          v-model="copilotConfig.top_k"
+          :items="topKOptions"
+          :label="$t('scenarioManager.evalConfig.labeling.copilot.topK')"
+          variant="outlined"
+          density="compact"
+          class="mt-2"
+          @update:modelValue="emitUpdate"
+        />
+
+        <div class="d-flex align-center justify-space-between mt-2 mb-1">
+          <span class="field-label">{{ $t('scenarioManager.evalConfig.labeling.copilot.prompt') }}</span>
+          <div class="placeholder-chips">
+            <LTag
+              v-for="ph in promptPlaceholders"
+              :key="ph"
+              size="small"
+              variant="info"
+              class="placeholder-chip"
+              @click="insertPlaceholder(ph)"
+            >
+              {{ ph }}
+            </LTag>
+          </div>
+        </div>
+        <v-textarea
+          v-model="copilotConfig.prompt"
+          :placeholder="$t('scenarioManager.evalConfig.labeling.copilot.promptPlaceholder')"
+          variant="outlined"
+          density="compact"
+          rows="8"
+          auto-grow
+          class="prompt-textarea"
+          @update:modelValue="emitUpdate"
+        />
+        <p class="hint-text">{{ $t('scenarioManager.evalConfig.labeling.copilot.promptHint') }}</p>
+
+        <v-textarea
+          v-model="copilotConfig.codebook"
+          :label="$t('scenarioManager.evalConfig.labeling.copilot.codebook')"
+          :placeholder="$t('scenarioManager.evalConfig.labeling.copilot.codebookPlaceholder')"
+          variant="outlined"
+          density="compact"
+          rows="4"
+          auto-grow
+          class="mt-2"
+          @update:modelValue="emitUpdate"
+        />
+
+        <div class="mt-2">
+          <span class="field-label">
+            {{ $t('scenarioManager.evalConfig.labeling.copilot.hiddenControl') }}:
+            {{ Math.round((copilotConfig.hidden_control_ratio || 0) * 100) }}%
+          </span>
+          <v-slider
+            v-model="copilotConfig.hidden_control_ratio"
+            :min="0"
+            :max="0.3"
+            :step="0.05"
+            density="compact"
+            hide-details
+            color="primary"
+            @update:modelValue="emitUpdate"
+          />
+          <p class="hint-text">{{ $t('scenarioManager.evalConfig.labeling.copilot.hiddenControlHint') }}</p>
+        </div>
+      </template>
+    </div>
+
+    <!-- Parts / Phases: optional partitioning for calibration studies.
+         The wizard emits size boundary specs; the SERVER resolves them into
+         item_ids on import and keeps the partition invisible to assessors. -->
+    <div class="parts-section mt-4">
+      <div class="section-header">
+        <h5 class="subsection-title">
+          <LIcon size="16" class="mr-1">mdi-format-list-group</LIcon>
+          {{ $t('scenarioManager.evalConfig.labeling.parts.title') }}
+        </h5>
+        <LSwitch
+          v-model="partsConfig.enabled"
+          :label="$t('scenarioManager.evalConfig.labeling.parts.enable')"
+          @update:modelValue="handlePartsToggle"
+        />
+      </div>
+      <p class="hint-text">{{ $t('scenarioManager.evalConfig.labeling.parts.description') }}</p>
+
+      <template v-if="partsConfig.enabled">
+        <div
+          v-for="(part, index) in partsConfig.list"
+          :key="index"
+          class="part-row"
+        >
+          <div class="part-row-head">
+            <LTag size="small" variant="info">{{ index + 1 }}</LTag>
+            <v-text-field
+              v-model="part.name"
+              :placeholder="$t('scenarioManager.evalConfig.labeling.parts.partName', { n: index + 1 })"
+              variant="outlined"
+              density="compact"
+              hide-details
+              class="flex-grow-1"
+              @update:modelValue="emitUpdate"
+            />
+            <v-text-field
+              v-if="index < partsConfig.list.length - 1"
+              v-model.number="part.size"
+              :label="$t('scenarioManager.evalConfig.labeling.parts.partSize')"
+              type="number"
+              variant="outlined"
+              density="compact"
+              hide-details
+              :min="1"
+              class="part-size-field"
+              @update:modelValue="emitUpdate"
+            />
+            <v-text-field
+              v-else
+              :model-value="$t('scenarioManager.evalConfig.labeling.parts.rest')"
+              variant="outlined"
+              density="compact"
+              hide-details
+              disabled
+              class="part-size-field"
+            />
+            <v-btn
+              icon
+              size="x-small"
+              variant="text"
+              color="error"
+              :disabled="partsConfig.list.length <= 2"
+              @click="removePart(index)"
+            >
+              <LIcon size="18">mdi-delete-outline</LIcon>
+            </v-btn>
+          </div>
+          <div class="part-row-options">
+            <v-select
+              v-model="part.order"
+              :items="partOrderOptions"
+              :label="$t('scenarioManager.evalConfig.labeling.parts.order')"
+              variant="outlined"
+              density="compact"
+              hide-details
+              class="part-order-select"
+              @update:modelValue="emitUpdate"
+            />
+            <LSwitch
+              v-if="copilotConfig.enabled"
+              v-model="part.copilot"
+              :label="$t('scenarioManager.evalConfig.labeling.parts.copilotSwitch')"
+              @update:modelValue="emitUpdate"
+            />
+            <LSwitch
+              v-model="part.locked"
+              :label="$t('scenarioManager.evalConfig.labeling.parts.startLocked')"
+              @update:modelValue="emitUpdate"
+            />
+          </div>
+        </div>
+
+        <v-btn
+          size="small"
+          variant="text"
+          color="primary"
+          prepend-icon="mdi-plus"
+          class="mt-2"
+          @click="addPart"
+        >
+          {{ $t('scenarioManager.evalConfig.labeling.parts.addPart') }}
+        </v-btn>
+
+        <p v-if="itemCount > 0" class="hint-text">
+          {{ $t('scenarioManager.evalConfig.labeling.parts.itemsInfo', {
+            total: itemCount,
+            assigned: assignedSizeSum,
+            rest: Math.max(0, itemCount - assignedSizeSum)
+          }) }}
+        </p>
+        <p v-if="partsSizeError" class="parts-error-text">
+          <LIcon size="14" class="mr-1">mdi-alert-circle-outline</LIcon>
+          {{ partsSizeError }}
+        </p>
+      </template>
+    </div>
+
     <!-- Color picker dialog -->
     <v-dialog v-model="colorPickerOpen" max-width="300">
       <v-card>
@@ -185,11 +393,18 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
+import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
 
 const props = defineProps({
   modelValue: {
     type: Object,
     required: true
+  },
+  // Number of uploaded items (from the wizard's analysis step) — only used
+  // for the parts-section assignment hint; 0 = unknown.
+  itemCount: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -234,6 +449,154 @@ const localConfig = ref({
   minLabels: 1,
   maxLabels: null
 })
+
+// Co-Pilot (LLM pre-annotation): lives inside the labeling config as
+// `copilot`. Prompt versioning + hidden-control salt are stamped SERVER-side
+// on save (LabelingCopilotService.normalize_config_on_write) — the editor
+// only manages the user-facing fields.
+const defaultCopilot = () => ({
+  enabled: false,
+  model_id: null,
+  prompt: '',
+  codebook: '',
+  top_k: 1,
+  hidden_control_ratio: 0.15
+})
+const copilotConfig = ref(defaultCopilot())
+
+const promptPlaceholders = ['{item}', '{context}', '{labels}', '{codebook}']
+
+// Kept as a JS constant (NOT i18n): the literal {item}/{labels} braces would
+// be parsed as interpolation slots by the vue-i18n message compiler.
+// Mirrors DEFAULT_COPILOT_PROMPT in app/services/evaluation/labeling_copilot_service.py.
+const DEFAULT_COPILOT_PROMPT = [
+  'Du bist ein sorgfältiger Annotations-Assistent für kategorisches Labeling.',
+  'Deine Aufgabe: Ordne das folgende Item einer der erlaubten Kategorien zu und begründe deinen Vorschlag knapp mit Textbelegen.',
+  '',
+  'Erlaubte Kategorien:',
+  '{labels}',
+  '',
+  'Kodierregeln / Codebook:',
+  '{codebook}',
+  '',
+  'Kontext:',
+  '{context}',
+  '',
+  'Zu labelndes Item:',
+  '{item}',
+  '',
+  'Stütze dich ausschließlich auf den Text. Wenn die Evidenz dünn ist, wähle konservativ und benenne die Unsicherheit in der Begründung.'
+].join('\n')
+
+const topKOptions = computed(() => [
+  { title: t('scenarioManager.evalConfig.labeling.copilot.topKOptions.one'), value: 1 },
+  { title: t('scenarioManager.evalConfig.labeling.copilot.topKOptions.two'), value: 2 }
+])
+
+function handleCopilotToggle(enabled) {
+  if (enabled && !copilotConfig.value.prompt) {
+    copilotConfig.value.prompt = DEFAULT_COPILOT_PROMPT
+  }
+  emitUpdate()
+}
+
+// Parts / Phases (calibration studies): the editor manages size boundary
+// specs ("part 1: next N items, last part: rest"); the server resolves them
+// into internal item_ids on import (ScenarioPartsService) and never exposes
+// the partition to assessors.
+const defaultParts = () => ({ enabled: false, list: [] })
+const partsConfig = ref(defaultParts())
+
+const partOrderOptions = computed(() => [
+  { title: t('scenarioManager.evalConfig.labeling.parts.orderSequential'), value: 'sequential' },
+  { title: t('scenarioManager.evalConfig.labeling.parts.orderRandom'), value: 'random' }
+])
+
+// Sum of the explicit sizes (all parts except the trailing "rest" part)
+const assignedSizeSum = computed(() =>
+  partsConfig.value.list
+    .slice(0, -1)
+    .reduce((sum, p) => sum + (Number(p.size) || 0), 0)
+)
+
+const partsSizeError = computed(() => {
+  if (!partsConfig.value.enabled) return ''
+  const sizedParts = partsConfig.value.list.slice(0, -1)
+  if (sizedParts.some(p => !Number(p.size) || Number(p.size) < 1)) {
+    return t('scenarioManager.evalConfig.labeling.parts.sizeMissing')
+  }
+  if (props.itemCount > 0 && assignedSizeSum.value >= props.itemCount) {
+    return t('scenarioManager.evalConfig.labeling.parts.sizeExceeds', { total: props.itemCount })
+  }
+  return ''
+})
+
+function makePart(index) {
+  return {
+    name: t('scenarioManager.evalConfig.labeling.parts.partName', { n: index + 1 }),
+    size: null,
+    order: 'sequential',
+    copilot: false,
+    locked: index > 0
+  }
+}
+
+function handlePartsToggle(enabled) {
+  if (enabled && partsConfig.value.list.length === 0) {
+    // Seed a sensible two-phase default: a sized first part, the rest after.
+    const first = makePart(0)
+    first.size = props.itemCount > 1 ? Math.ceil(props.itemCount / 2) : 1
+    partsConfig.value.list = [first, makePart(1)]
+  }
+  emitUpdate()
+}
+
+function addPart() {
+  // Insert BEFORE the trailing rest part so the invariant "last part = rest"
+  // holds without re-shuffling sizes.
+  const list = partsConfig.value.list
+  const insertAt = Math.max(0, list.length - 1)
+  const part = makePart(list.length)
+  part.size = 1
+  list.splice(insertAt, 0, part)
+  emitUpdate()
+}
+
+function removePart(index) {
+  if (partsConfig.value.list.length > 2) {
+    partsConfig.value.list.splice(index, 1)
+    emitUpdate()
+  }
+}
+
+function buildPartsPayload() {
+  const list = partsConfig.value.list
+  return {
+    enabled: true,
+    list: list.map((part, index) => {
+      const out = {
+        id: part.id || `p${index + 1}`,
+        name: (part.name || '').trim() || `Teil ${index + 1}`,
+        order: part.order === 'random' ? 'random' : 'sequential',
+        copilot: Boolean(copilotConfig.value.enabled && part.copilot),
+        locked: Boolean(part.locked)
+      }
+      // Server-resolved assignments (existing scenarios) win over size specs
+      if (Array.isArray(part.item_ids) && part.item_ids.length) {
+        out.item_ids = [...part.item_ids]
+      } else if (index < list.length - 1) {
+        out.size = Math.max(1, Number(part.size) || 1)
+      }
+      return out
+    })
+  }
+}
+
+function insertPlaceholder(placeholder) {
+  const current = copilotConfig.value.prompt || ''
+  copilotConfig.value.prompt = current + (current.endsWith('\n') || !current ? '' : '\n') + placeholder
+  emitUpdate()
+}
 
 const unsureLabel = ref('')
 const colorPickerOpen = ref(false)
@@ -321,7 +684,15 @@ function applyColor() {
 }
 
 function emitUpdate() {
-  emit('update:modelValue', { ...localConfig.value })
+  const payload = { ...localConfig.value, copilot: { ...copilotConfig.value } }
+  // Opt-in contract: toggle off → NO parts field in the payload at all
+  // (a scenario without parts must be byte-identical to today's configs).
+  if (partsConfig.value.enabled && partsConfig.value.list.length) {
+    payload.parts = buildPartsPayload()
+  } else {
+    delete payload.parts
+  }
+  emit('update:modelValue', payload)
 }
 
 function initFromProps() {
@@ -330,6 +701,17 @@ function initFromProps() {
       ...localConfig.value,
       ...props.modelValue,
       categories: props.modelValue.categories ? [...props.modelValue.categories] : []
+    }
+    if (props.modelValue.copilot) {
+      copilotConfig.value = { ...defaultCopilot(), ...props.modelValue.copilot }
+    }
+    if (props.modelValue.parts) {
+      partsConfig.value = {
+        enabled: Boolean(props.modelValue.parts.enabled),
+        list: Array.isArray(props.modelValue.parts.list)
+          ? props.modelValue.parts.list.map(p => ({ ...p }))
+          : []
+      }
     }
     if (localConfig.value.unsureOption?.name) {
       unsureLabel.value = localConfig.value.unsureOption.name.de || localConfig.value.unsureOption.name.en || ''
@@ -437,5 +819,81 @@ onMounted(initFromProps)
   background-color: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 8px;
   padding: 12px;
+}
+
+/* Co-Pilot */
+.copilot-section {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+/* Parts / Phases */
+.parts-section {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.part-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background-color: rgba(var(--v-theme-surface), 1);
+  border-radius: 6px;
+}
+
+.part-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.part-row-options {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.part-size-field {
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.part-order-select {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.parts-error-text {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-error));
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.field-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.placeholder-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.placeholder-chip {
+  cursor: pointer;
+  font-family: monospace;
+}
+
+.prompt-textarea :deep(textarea) {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
 }
 </style>

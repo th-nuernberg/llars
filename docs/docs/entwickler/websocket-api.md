@@ -53,7 +53,7 @@ LLARS verwendet verschiedene Namespaces für unterschiedliche Funktionen:
 | `/` | Default (Health Check) | ❌ |
 | `/chat` | Chat-Streaming | ✅ |
 | `/rag` | RAG-Dokument-Updates | ✅ |
-| `/collab` | LaTeX/Markdown Collaboration (separater Socket-Server) | ✅ |
+| `/collab` | Markdown Collaboration (separater Socket-Server) | ✅ |
 | `/judge` | LLM Evaluator Updates | ✅ |
 | `/admin` | Docker Monitor, DB Explorer | ✅ (Admin) |
 | `/oncoco` | OnCoCo Analyse | ✅ |
@@ -207,7 +207,7 @@ socket.on('collection:updated', (data) => {
 
 ## Collab Namespace (`/collab`)
 
-Für LaTeX und Markdown Echtzeit-Kollaboration (YJS).
+Für Markdown-Echtzeit-Kollaboration (YJS).
 
 ### Events (Client → Server)
 
@@ -219,7 +219,7 @@ Workspace beitreten.
 socket.emit('collab:join', {
   workspace_id: 1,
   document_id: 5,
-  type: 'latex'  // 'latex' | 'markdown'
+  type: 'markdown'
 })
 ```
 

@@ -1,6 +1,6 @@
 # Collaboration System
 
-Diese Seite dokumentiert das Echtzeit-Kollaborationssystem für LaTeX und Markdown Editoren.
+Diese Seite dokumentiert das Echtzeit-Kollaborationssystem für den Markdown Editor.
 
 !!! info "Technologie-Stack"
     - **YJS** - CRDT-basierte Konfliktlösung
@@ -15,21 +15,19 @@ Diese Seite dokumentiert das Echtzeit-Kollaborationssystem für LaTeX und Markdo
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           Frontend                                   │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐  │
-│  │ LatexEditor  │    │MarkdownEditor│    │  WorkspaceGitPanel   │  │
-│  │    Pane      │    │    Pane      │    │                      │  │
-│  └──────┬───────┘    └──────┬───────┘    └──────────┬───────────┘  │
-│         │                   │                        │              │
-│         └─────────┬─────────┘                        │              │
-│                   │                                  │              │
-│         ┌─────────▼─────────┐              ┌────────▼────────┐     │
-│         │useYjsCollaboration│              │  checkForChanges │     │
-│         │   (Composable)    │◄─────────────│    (API Call)    │     │
-│         └─────────┬─────────┘              └─────────────────┘     │
-│                   │ document_saved                                  │
-└───────────────────┼─────────────────────────────────────────────────┘
-                    │ Socket.IO (/collab)
-                    ▼
+│         ┌──────────────┐            ┌──────────────────────┐        │
+│         │MarkdownEditor│            │  WorkspaceGitPanel   │        │
+│         │    Pane      │            │                      │        │
+│         └──────┬───────┘            └──────────┬───────────┘        │
+│                │                                │                    │
+│      ┌─────────▼─────────┐              ┌──────▼──────────┐         │
+│      │useYjsCollaboration│              │  checkForChanges │         │
+│      │   (Composable)    │◄─────────────│    (API Call)    │         │
+│      └─────────┬─────────┘              └─────────────────┘         │
+│                │ document_saved                                      │
+└────────────────┼─────────────────────────────────────────────────────┘
+                 │ Socket.IO (/collab)
+                 ▼
 ┌───────────────────────────────────────────────────────────────────┐
 │                        YJS Server (:8082)                          │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐   │
@@ -48,11 +46,11 @@ Diese Seite dokumentiert das Echtzeit-Kollaborationssystem für LaTeX und Markdo
                            ▼
 ┌───────────────────────────────────────────────────────────────────┐
 │                      MariaDB                                       │
-│  ┌─────────────────┐  ┌─────────────────┐                        │
-│  │ latex_documents │  │markdown_documents│                        │
-│  │ - content (YJS) │  │ - content (YJS)  │                        │
-│  │ - content_text  │  │ - content_text   │                        │
-│  └─────────────────┘  └─────────────────┘                        │
+│                 ┌──────────────────┐                              │
+│                 │markdown_documents│                              │
+│                 │ - content (YJS)  │                              │
+│                 │ - content_text   │                              │
+│                 └──────────────────┘                              │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -112,11 +110,9 @@ Der YJS Server läuft auf Port 8082 und kommuniziert über Socket.IO.
 
 ```javascript
 // Dokument-Rooms (für Sync)
-"latex_{document_id}"      // z.B. "latex_42"
 "markdown_{document_id}"   // z.B. "markdown_15"
 
 // Workspace-Rooms (für document_saved Events)
-"workspace_latex_{workspace_id}"      // z.B. "workspace_latex_2"
 "workspace_markdown_{workspace_id}"   // z.B. "workspace_markdown_1"
 ```
 
@@ -128,13 +124,13 @@ Tritt einem Dokument-Room bei und automatisch dem zugehörigen Workspace-Room.
 
 ```javascript
 socket.emit('join_room', {
-  room: 'latex_42',    // Dokument-Room
+  room: 'markdown_15',    // Dokument-Room
   username: 'admin'
 })
 
 // Server führt automatisch aus:
-// 1. socket.join('latex_42')
-// 2. socket.join('workspace_latex_{workspace_id}')
+// 1. socket.join('markdown_15')
+// 2. socket.join('workspace_markdown_{workspace_id}')
 ```
 
 #### `sync_update`
@@ -143,7 +139,7 @@ Sendet YJS-Änderungen an andere Clients.
 
 ```javascript
 socket.emit('sync_update', {
-  room: 'latex_42',
+  room: 'markdown_15',
   update: Array.from(Y.encodeStateAsUpdate(ydoc))
 })
 ```
@@ -154,7 +150,7 @@ Verlässt einen Room.
 
 ```javascript
 socket.emit('leave_room', {
-  room: 'latex_42'
+  room: 'markdown_15'
 })
 ```
 
@@ -163,7 +159,7 @@ socket.emit('leave_room', {
 Erzwingt Neuladen aus der Datenbank (nach Rollback).
 
 ```javascript
-socket.emit('reload_room', { room: 'latex_42' }, (response) => {
+socket.emit('reload_room', { room: 'markdown_15' }, (response) => {
   // response = { success: true }
 })
 ```
@@ -190,16 +186,16 @@ socket.on('sync_update', ({ update }) => {
 })
 ```
 
-#### `document_saved` ⭐ NEU
+#### `document_saved`
 
 Wird an alle Clients im Workspace-Room gesendet, nachdem ein Dokument in der DB gespeichert wurde.
 
 ```javascript
 socket.on('document_saved', (data) => {
   // data = {
-  //   documentId: 42,
-  //   workspaceId: 2,
-  //   kind: 'latex',        // 'latex' | 'markdown'
+  //   documentId: 15,
+  //   workspaceId: 1,
+  //   kind: 'markdown',
   //   contentLength: 1500,
   //   savedAt: '2025-01-03T12:00:00.000Z'
   // }
@@ -252,7 +248,7 @@ Das Composable verwaltet die Socket.IO-Verbindung und YJS-Dokument-Synchronisati
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
 
 const collaboration = useYjsCollaboration(
-  roomId,           // Ref<string> - z.B. 'latex_42'
+  roomId,           // Ref<string> - z.B. 'markdown_15'
   username,         // string
   processYDoc,      // Callback für Dokument-Updates
   onUpdateCursor,   // Callback für Cursor-Updates
@@ -278,13 +274,13 @@ const {
 } = collaboration
 ```
 
-### Editor-Integration (LatexEditorPane)
+### Editor-Integration (MarkdownEditorPane)
 
 ```vue
 <script setup>
 const emit = defineEmits([
   'content-change',
-  'document-saved'  // NEU: Für Git Panel Updates
+  'document-saved'  // Für Git Panel Updates
 ])
 
 const collaboration = useYjsCollaboration(roomId, username, processYDoc, onUpdateCursor, {
@@ -296,17 +292,17 @@ const collaboration = useYjsCollaboration(roomId, username, processYDoc, onUpdat
 </script>
 ```
 
-### Parent-Component (LatexCollabWorkspace)
+### Parent-Component (MarkdownCollabWorkspace)
 
 ```vue
 <template>
-  <LatexEditorPane
+  <MarkdownEditorPane
     ref="editorRef"
     :document="selectedNode"
     @document-saved="handleDocumentSaved"
   />
 
-  <LatexWorkspaceGitPanel
+  <WorkspaceGitPanel
     ref="gitPanelRef"
     :workspace-id="workspaceId"
   />
@@ -328,10 +324,10 @@ function handleDocumentSaved(data) {
 
 ## Datenbank-Schema
 
-### latex_documents
+### markdown_documents
 
 ```sql
-CREATE TABLE latex_documents (
+CREATE TABLE markdown_documents (
   id INT PRIMARY KEY AUTO_INCREMENT,
   workspace_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -345,15 +341,11 @@ CREATE TABLE latex_documents (
   updated_at DATETIME,
   deleted_at DATETIME,        -- Soft Delete
 
-  FOREIGN KEY (workspace_id) REFERENCES latex_workspaces(id),
+  FOREIGN KEY (workspace_id) REFERENCES markdown_workspaces(id),
   INDEX idx_workspace (workspace_id),
   INDEX idx_parent (parent_id)
 );
 ```
-
-### markdown_documents
-
-Identische Struktur wie `latex_documents`.
 
 ### Dual-Content-Speicherung
 
@@ -378,9 +370,9 @@ Das Git Panel zeigt Änderungen für **alle Dokumente** im Workspace an.
 ┌─────────────────────────────────────┐
 │ Git-Änderungen (3 Dateien)          │
 ├─────────────────────────────────────┤
-│ ☑ main.tex          +15 -3    [M]  │
-│ ☑ chapter1.tex      +42 -0    [M]  │
-│ ☐ references.bib    +5  -2    [M]  │
+│ ☑ README.md         +15 -3    [M]  │
+│ ☑ kapitel1.md       +42 -0    [M]  │
+│ ☐ notizen.md        +5  -2    [M]  │
 ├─────────────────────────────────────┤
 │ Commit-Nachricht:                   │
 │ ┌─────────────────────────────────┐ │
@@ -392,19 +384,19 @@ Das Git Panel zeigt Änderungen für **alle Dokumente** im Workspace an.
 
 ### API-Endpunkte
 
-#### GET `/api/{latex,markdown}-collab/workspaces/{id}/changes`
+#### GET `/api/markdown-collab/workspaces/{id}/changes`
 
 Gibt alle uncommitted Änderungen zurück.
 
 ```json
 {
   "success": true,
-  "workspace_id": 2,
+  "workspace_id": 1,
   "changed_files": [
     {
-      "id": 42,
-      "title": "main.tex",
-      "path": "main.tex",
+      "id": 15,
+      "title": "README.md",
+      "path": "README.md",
       "status": "M",
       "insertions": 15,
       "deletions": 3,
@@ -416,7 +408,7 @@ Gibt alle uncommitted Änderungen zurück.
 }
 ```
 
-#### POST `/api/{latex,markdown}-collab/workspaces/{id}/commit`
+#### POST `/api/markdown-collab/workspaces/{id}/commit`
 
 Committet mehrere Dateien gleichzeitig.
 
@@ -424,15 +416,15 @@ Committet mehrere Dateien gleichzeitig.
 // Request
 {
   "message": "Kapitel 1 erweitert",
-  "document_ids": [42, 43, 44]
+  "document_ids": [15, 16, 17]
 }
 
 // Response
 {
   "success": true,
   "commits": [
-    { "id": 100, "document_id": 42, "message": "..." },
-    { "id": 101, "document_id": 43, "message": "..." }
+    { "id": 100, "document_id": 15, "message": "..." },
+    { "id": 101, "document_id": 16, "message": "..." }
   ],
   "total_committed": 2
 }
@@ -479,7 +471,7 @@ Beim Rollback muss der YJS-Server seinen Cache invalidieren, da er sonst veralte
 // Frontend nach Rollback
 async function handleRollback(payload) {
   const documentId = payload.documentId
-  const roomName = `latex_${documentId}`
+  const roomName = `markdown_${documentId}`
 
   if (selectedDocumentId === documentId) {
     // Dokument ist offen: Kompletter Reload
@@ -530,7 +522,7 @@ Wenn `content` nicht geparst werden kann, wird `content_text` als Fallback verwe
 ```javascript
 async function loadYdocFromDB(roomName) {
   const [rows] = await pool.query(
-    'SELECT content, content_text FROM latex_documents WHERE id = ?',
+    'SELECT content, content_text FROM markdown_documents WHERE id = ?',
     [roomId]
   )
 
@@ -599,7 +591,7 @@ saveTimers.set(room, setTimeout(async () => {
 `document_saved` Events gehen nur an Clients im selben Workspace, nicht an alle:
 
 ```javascript
-const workspaceRoom = `workspace_latex_${workspaceId}`
+const workspaceRoom = `workspace_markdown_${workspaceId}`
 io.to(workspaceRoom).emit('document_saved', data)
 ```
 
@@ -628,10 +620,10 @@ docker logs -f llars_yjs_service
 Relevante Log-Nachrichten:
 
 ```
-[join_room] Also joined workspace room: workspace_latex_2
-[saveYdocToDB] Room: latex_42, docId: 42, contentLength: 1500
-[document_saved] Emitted to workspace_latex_2 for latex doc 42
-[reload_room] START - Reloading room "latex_42" from database
+[join_room] Also joined workspace room: workspace_markdown_1
+[saveYdocToDB] Room: markdown_15, docId: 15, contentLength: 1500
+[document_saved] Emitted to workspace_markdown_1 for markdown doc 15
+[reload_room] START - Reloading room "markdown_15" from database
 ```
 
 ### Frontend Console
@@ -644,7 +636,7 @@ socket.on('document_saved', (data) => {
 
 // In Parent Component
 function handleDocumentSaved(data) {
-  console.log('[LatexCollabWorkspace] document_saved received:', data)
+  console.log('[MarkdownCollabWorkspace] document_saved received:', data)
 }
 ```
 
@@ -685,9 +677,6 @@ yjs-server/
 ```
 llars-frontend/src/
 ├── components/
-│   ├── LatexCollab/
-│   │   ├── LatexEditorPane.vue
-│   │   └── LatexWorkspaceGitPanel.vue
 │   ├── MarkdownCollab/
 │   │   ├── MarkdownEditorPane.vue
 │   │   └── MarkdownGitPanel.vue (deprecated)
@@ -695,8 +684,6 @@ llars-frontend/src/
 │       └── composables/
 │           └── useYjsCollaboration.js
 └── views/
-    ├── LatexCollab/
-    │   └── LatexCollabWorkspace.vue
     └── MarkdownCollab/
         └── MarkdownCollabWorkspace.vue
 ```

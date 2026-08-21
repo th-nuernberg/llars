@@ -510,6 +510,166 @@ const evaluationTypes = [
       { name: 'min_labels', type: 'number', description: 'Minimum Labels (nur bei multi)' },
       { name: 'max_labels', type: 'number', description: 'Maximum Labels (nur bei multi)' }
     ]
+  },
+  {
+    id: EvaluationType.CONVERSATION_LABELING,
+    name: 'Konversationslabeling',
+    icon: 'mdi-forum-outline',
+    color: '#88c4c8',
+    description: 'Spans INNERHALB eines Gesprächs einzeln labeln. Ein Item ist ein ganzer Verlauf und enthält viele Entscheidungen — die Analyse-Einheit ist der Span, nicht das Item. Die Segmentierung kommt fertig aus dem Import.',
+    layout: 'Links: Gespräch als Sprechblasen (turn für turn) | Rechts: Zielspan + Kategorien',
+    minimalExample: {
+      schema_version: '1.0',
+      type: 'conversation_labeling',
+      items: [
+        {
+          id: 'item_1',
+          label: 'Verlauf A',
+          content: {
+            type: 'conversation_labeling',
+            messages: [
+              { role: 'Ratsuchende', content: 'Unser Sohn ist sehr gereizt.', labelable: false },
+              {
+                role: 'Beratende',
+                message_id: 2,
+                labelable: true,
+                content: 'Vielen Dank fuer Ihre Nachricht. Was ist passiert?',
+                spans: [
+                  { span_id: 'm2/s001', start: 0, end: 34 },
+                  { span_id: 'm2/s002', start: 35, end: 51 }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      config: {
+        labels: [
+          { id: 'K', label: { de: 'Acknowledgement', en: 'Acknowledgement' } },
+          { id: 'Q', label: { de: 'Question', en: 'Question' } }
+        ]
+      }
+    },
+    completeExample: {
+      schema_version: '1.0',
+      type: 'conversation_labeling',
+      items: [
+        {
+          id: 'item_1',
+          label: 'Beratungsverlauf A',
+          source: { type: 'human' },
+          content: {
+            type: 'conversation_labeling',
+            messages: [
+              { role: 'Ratsuchende', content: 'Unser Sohn ist 12 und seit Wochen sehr gereizt.', labelable: false },
+              {
+                role: 'Beratende',
+                message_id: 2,
+                labelable: true,
+                content: 'Vielen Dank fuer Ihre Nachricht. Haben Sie einen Ausloeser bemerkt?',
+                spans: [
+                  { span_id: 'gemco_A/1/m2/s001', start: 0, end: 34, text: 'Vielen Dank fuer Ihre Nachricht.' },
+                  { span_id: 'gemco_A/1/m2/s002', start: 35, end: 68 }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      config: {
+        labels: [
+          {
+            id: 'K',
+            label: { de: 'Acknowledgement', en: 'Acknowledgement' },
+            description: { de: 'Signalisiert blossen Empfang — Grussformeln, Anrede.', en: 'Conveys mere receipt — salutations, terms of address.' },
+            color: '#c4a0d4'
+          },
+          {
+            id: 'Q',
+            label: { de: 'Question', en: 'Question' },
+            description: { de: 'Erbittet Information oder Orientierung.', en: 'Requests information or guidance.' },
+            color: '#D1BC8A'
+          },
+          { id: 'FLAG', label: { de: 'Span-Grenze falsch', en: 'Wrong span boundary' }, color: '#e8a087' }
+        ],
+        context_window: 3,
+        future_spans: 'dimmed',
+        no_future_messages: true
+      }
+    },
+    configFields: [
+      { name: 'labels', type: 'Label[]', description: 'Kategorien; description erscheint unter dem Button' },
+      { name: 'context_window', type: 'number', description: 'Wie viele vorangehende Nachrichten voll sichtbar sind (Standard 3)' },
+      { name: 'future_spans', type: '"dimmed" | "hidden"', description: 'Darstellung noch nicht erreichter Spans' },
+      { name: 'no_future_messages', type: 'boolean', description: 'Spätere Nachrichten verbergen (Standard true) — Bewertende sollen den Ausgang nicht kennen' },
+      { name: 'span_id', type: 'string', description: 'STABIL aus dem Import, keine DB-ID — sonst ist ein Re-Import nicht idempotent' },
+      { name: 'start / end', type: 'number', description: 'Zeichen-Offsets in den Nachrichtentext; der Text wird nur einmal gespeichert' }
+    ]
+  },
+  {
+    id: 'batch_generation',
+    name: 'Batch Generation',
+    icon: 'mdi-creation',
+    color: '#b0ca97',
+    description: 'Export aus der Batch-Generation. Wird automatisch erkannt beim Upload (JSON/CSV). Alternativ: Direkt-Link aus der Generation-Ansicht.',
+    layout: 'Automatisch: Wizard erkennt Format und schlägt passenden Evaluationstyp vor',
+    minimalExample: [
+      {
+        id: 1,
+        source_item_id: 100,
+        llm_model_name: 'Global/Mistral/Mistral-Small-3.2',
+        prompt_variant_name: 'default',
+        generated_content: 'Erste generierte Zusammenfassung...',
+        prompt_variables: { input: 'Originaltext hier...' }
+      },
+      {
+        id: 2,
+        source_item_id: 100,
+        llm_model_name: 'Global/OpenAI/gpt-5-mini',
+        prompt_variant_name: 'default',
+        generated_content: 'Zweite generierte Zusammenfassung...',
+        prompt_variables: { input: 'Originaltext hier...' }
+      }
+    ],
+    completeExample: {
+      job: {
+        id: 42,
+        name: 'Summarization Comparison',
+        status: 'completed'
+      },
+      outputs: [
+        {
+          id: 1,
+          source_item_id: 100,
+          llm_model_name: 'Global/Mistral/Mistral-Small-3.2',
+          prompt_variant_name: 'default',
+          generated_content: 'Erste generierte Zusammenfassung...',
+          rendered_user_prompt: 'Fasse folgenden Text zusammen: ...',
+          prompt_variables: { input: 'Originaltext', source_index: 0 }
+        },
+        {
+          id: 2,
+          source_item_id: 100,
+          llm_model_name: 'Global/OpenAI/gpt-5-mini',
+          prompt_variant_name: 'default',
+          generated_content: 'Zweite generierte Zusammenfassung...',
+          rendered_user_prompt: 'Fasse folgenden Text zusammen: ...',
+          prompt_variables: { input: 'Originaltext', source_index: 0 }
+        }
+      ],
+      metadata: {
+        _llars_generation_export: true,
+        schema_version: '1.0',
+        total_outputs: 2
+      }
+    },
+    configFields: [
+      { name: 'source_item_id', type: 'number', description: 'Gruppierung: gleiche ID = gleicher Quelltext' },
+      { name: 'llm_model_name', type: 'string', description: 'Modell-ID (z.B. Global/OpenAI/gpt-5-mini)' },
+      { name: 'prompt_variant_name', type: 'string', description: 'Prompt-Variante (optional)' },
+      { name: 'generated_content', type: 'string', description: 'Der generierte Text' },
+      { name: 'metadata._llars_generation_export', type: 'boolean', description: 'Marker für automatische Erkennung' }
+    ]
   }
 ]
 

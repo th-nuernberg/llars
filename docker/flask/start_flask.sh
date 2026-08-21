@@ -1,10 +1,43 @@
 #!/bin/sh
 
+set -eu
+
+prepare_storage() {
+  mkdir -p \
+    /app/storage \
+    /app/storage/rag_images \
+    /app/storage/screenshots \
+    /app/storage/models \
+    /app/storage/vectorstore \
+    /app/data/rag/crawls \
+    /app/data/rag/screenshots
+}
+
+if [ "$(id -u)" = "0" ] && [ "${LLARS_FLASK_PRIVDROP_DONE:-0}" != "1" ]; then
+  echo "Preparing writable storage directories for flaskuser..."
+  prepare_storage
+  chown -R flaskuser:flaskuser /app/storage
+  chmod -R u+rwX,g+rwX /app/storage || true
+  # /app/data may carry stale ownership from older images (uid drift —
+  # see Dockerfile-flask comment). Re-chown unconditionally; ignore the
+  # bind-mounted read-only sub-dirs (e.g. /app/data/anonymize).
+  chown -R flaskuser:flaskuser /app/data 2>/dev/null || true
+  chmod -R u+rwX,g+rwX /app/data 2>/dev/null || true
+
+  export LLARS_FLASK_PRIVDROP_DONE=1
+  exec gosu flaskuser /usr/local/bin/start_flask.sh "$@"
+fi
+
 echo "Waiting for 2 seconds before starting the Flask app..."
 sleep 2
 
+# Ensure storage directories exist and are writable even when the container
+# was started without the root setup branch above.
+prepare_storage 2>/dev/null || true
+
 export PYTHONPATH="/app${PYTHONPATH:+:$PYTHONPATH}"
 export FLASK_APP="main"
+export LLARS_RUNTIME_ROLE="${LLARS_RUNTIME_ROLE:-web}"
 # Add local pip bin to PATH for gunicorn
 export PATH="$PATH:/home/flaskuser/.local/bin"
 
@@ -47,10 +80,11 @@ fi
 # Determine environment: development or production
 # PROJECT_STATE is set in docker-compose.yml from .env
 PROJECT_STATE="${PROJECT_STATE:-development}"
+FLASK_ENV_MODE="${FLASK_ENV:-}"
 
-echo "Starting Flask app on port 8081 (mode: $PROJECT_STATE)..."
+echo "Starting Flask app on port 8081 (PROJECT_STATE: $PROJECT_STATE, FLASK_ENV: $FLASK_ENV_MODE)..."
 
-if [ "$PROJECT_STATE" = "production" ]; then
+if [ "$PROJECT_STATE" = "production" ] || [ "$FLASK_ENV_MODE" = "production" ]; then
     # Production: Use Gunicorn with gevent-websocket for real WebSocket support
     # - No auto-reload (code changes require restart)
     # - Gevent worker for async/WebSocket handling (better Docker DNS than eventlet)

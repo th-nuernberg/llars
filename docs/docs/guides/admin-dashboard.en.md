@@ -23,7 +23,7 @@ The Admin Dashboard is the central management interface for LLARS. Administrator
 │  📋 Scenarios│  Recent Activity                                             │
 │  🤖 Chatbots │  Quick Actions                                               │
 │  📄 RAG      │  Active Scenarios                                            │
-│  🔐 Permissions                                                         │
+│  🔐 Permissions│                                                              │
 │  🔧 LLM      │  System Health                                               │
 │  ⚙️ Settings │                                                              │
 │  …           │  (more tabs: Presence, Chatbot Activity, Docker, DB, …)      │
@@ -176,11 +176,16 @@ Provider and model management:
 
 ### Referrals
 
-Referral system for invitations:
+Referral system for tracked invite links (`/join/<slug>`):
 
-- Manage campaigns and links
+- Manage campaigns and links (status: active, archived, deactivated)
+- Show a per-link **QR code** (modal) and download it as **PNG / SVG / PDF** —
+  direct artwork for posters / conference booths
+- Set per-link signup mode (`full` / `email` / `instant`) and auto-enroll targets
+- **Funnel analytics:** clicks vs. registrations ⇒ conversion rate
 - Review registrations
-- Status: active, archived, deactivated
+
+Full docs: [Referral & invitation system](referral-invitations.md).
 
 ---
 
@@ -244,7 +249,6 @@ Global configuration:
 - **LLM logging** (prompts/responses, tasks, max chars)
 - **Referral system** (enable, self-registration, default role)
 - **AI assistant** (enable, username, color)
-- **Zotero OAuth** (env vs DB fallback)
 
 ---
 

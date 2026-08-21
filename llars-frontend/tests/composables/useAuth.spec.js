@@ -2,7 +2,7 @@
  * useAuth Composable Tests
  *
  * Tests for the LLARS authentication composable.
- * Test IDs: AUTH_001 - AUTH_060
+ * Test IDs: AUTH_001 - AUTH_070
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -1139,6 +1139,149 @@ describe('useAuth Composable', () => {
       expect(consoleSpy).toHaveBeenCalled()
 
       consoleSpy.mockRestore()
+    })
+  })
+
+  // ==================== Silent token refresh ====================
+  //
+  // INCIDENT 2026-07-29: Authentik issues 60-minute access tokens and every
+  // login response carried a refresh_token — but nothing ever used it. There
+  // was no backend endpoint and no client call, so after exactly one hour the
+  // next request 401'd and the interceptor logged the user straight out. Raters
+  // working through a few hundred labeling items were ejected mid-study, every
+  // hour. These tests lock in that a refresh is actually attempted, that it is
+  // single-flight, and that it stops cleanly when the session is really over.
+
+  describe('Token refresh', () => {
+    const refreshedBundle = {
+      data: {
+        access_token: 'valid_token',
+        refresh_token: 'new_refresh',
+        id_token: 'new_id',
+        llars_roles: ['evaluator']
+      }
+    }
+
+    beforeEach(() => {
+      mockStorage['llars_refresh_token'] = 'stored_refresh'
+      axios.get.mockResolvedValue({ data: {} })
+    })
+
+    it('AUTH_061: posts the stored refresh token to the refresh endpoint', async () => {
+      axios.post.mockResolvedValueOnce(refreshedBundle)
+      const auth = useAuth()
+
+      const result = await auth.refreshAccessToken()
+
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/authentik/refresh'),
+        { refresh_token: 'stored_refresh' },
+        expect.objectContaining({ _skipAuthRefresh: true })
+      )
+      expect(result).toBe('valid_token')
+    })
+
+    it('AUTH_062: stores the renewed tokens', async () => {
+      axios.post.mockResolvedValueOnce(refreshedBundle)
+      const auth = useAuth()
+
+      await auth.refreshAccessToken()
+
+      expect(setAuthStorageItem).toHaveBeenCalledWith('llars_token', 'valid_token')
+      expect(setAuthStorageItem).toHaveBeenCalledWith('llars_refresh_token', 'new_refresh')
+      expect(auth.getToken()).toBe('valid_token')
+    })
+
+    it('AUTH_063: marks the request so the 401 interceptor cannot recurse', async () => {
+      axios.post.mockResolvedValueOnce(refreshedBundle)
+      const auth = useAuth()
+
+      await auth.refreshAccessToken()
+
+      const config = axios.post.mock.calls[0][2]
+      expect(config._skipAuthRefresh).toBe(true)
+    })
+
+    it('AUTH_064: is single-flight — parallel callers share one HTTP call', async () => {
+      // A burst of requests all 401'ing at once must not fire N refreshes:
+      // with refresh-token rotation the losers would invalidate the winner.
+      let resolvePost
+      axios.post.mockReturnValueOnce(new Promise((r) => { resolvePost = r }))
+      const auth = useAuth()
+
+      const a = auth.refreshAccessToken()
+      const b = auth.refreshAccessToken()
+      const c = auth.refreshAccessToken()
+      resolvePost(refreshedBundle)
+      const results = await Promise.all([a, b, c])
+
+      expect(axios.post).toHaveBeenCalledTimes(1)
+      expect(results).toEqual(['valid_token', 'valid_token', 'valid_token'])
+    })
+
+    it('AUTH_065: returns null when there is no stored refresh token', async () => {
+      delete mockStorage['llars_refresh_token']
+      const auth = useAuth()
+
+      const result = await auth.refreshAccessToken()
+
+      expect(result).toBeNull()
+      expect(axios.post).not.toHaveBeenCalled()
+    })
+
+    it('AUTH_066: returns null when the refresh is rejected', async () => {
+      // Revoked / expired refresh token -> the session really is over and the
+      // caller must fall through to logout.
+      axios.post.mockRejectedValueOnce({ response: { status: 401 } })
+      const auth = useAuth()
+
+      const result = await auth.refreshAccessToken()
+
+      expect(result).toBeNull()
+    })
+
+    it('AUTH_067: a later refresh works again after a failed one', async () => {
+      axios.post.mockRejectedValueOnce({ response: { status: 500 } })
+      const auth = useAuth()
+      await auth.refreshAccessToken()
+
+      // The in-flight guard must be released in `finally`, otherwise one
+      // transient failure would wedge refreshing for the rest of the session.
+      axios.post.mockResolvedValueOnce(refreshedBundle)
+      const result = await auth.refreshAccessToken()
+
+      expect(result).toBe('valid_token')
+    })
+
+    it('AUTH_068: logout cancels a scheduled refresh', async () => {
+      vi.useFakeTimers()
+      try {
+        axios.post.mockResolvedValueOnce(refreshedBundle)
+        const auth = useAuth()
+        await auth.refreshAccessToken()
+        axios.post.mockClear()
+
+        auth.logout()
+        // Far past any scheduled renewal — a timer surviving logout would mint
+        // a fresh token for a user who just signed out.
+        vi.advanceTimersByTime(60 * 60 * 1000)
+
+        expect(axios.post).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('AUTH_069: scheduleTokenRefresh does nothing without a parsed token', () => {
+      const auth = useAuth()
+      // No token loaded -> no exp -> nothing to schedule, and no crash.
+      expect(() => auth.scheduleTokenRefresh()).not.toThrow()
+    })
+
+    it('AUTH_070: exposes the refresh API', () => {
+      const auth = useAuth()
+      expect(typeof auth.refreshAccessToken).toBe('function')
+      expect(typeof auth.scheduleTokenRefresh).toBe('function')
     })
   })
 })

@@ -78,18 +78,97 @@
               class="progress-fill llm"
               :style="{ width: llmProgressPercent + '%' }"
             ></div>
+            <div
+              v-if="llmErrors > 0"
+              class="progress-fill error"
+              :style="{ width: llmErrorPercent + '%' }"
+            ></div>
           </div>
           <div class="progress-details">
             <span>{{ llmDone }} / {{ llmTotal }}</span>
+            <span v-if="llmErrors > 0" class="progress-errors">
+              <LIcon size="14" color="#e8a087">mdi-alert-circle</LIcon>
+              {{ llmErrors }} {{ $t('scenarioManager.overview.failed') }}
+            </span>
             <span class="progress-percent">{{ llmProgressPercent }}%</span>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Parts / Phases (labeling, manager view only): read-only structure +
+         per-part progress. The endpoint enforces management access, so this
+         section can never render for assessors (invisibility invariant);
+         lock/unlock lives in the settings tab. -->
+    <div class="section" v-if="partsStatus?.enabled && partsStatus.parts?.length">
+      <div class="section-header">
+        <h3 class="section-title">
+          {{ $t('scenarioManager.evalConfig.labeling.parts.title') }}
+        </h3>
+        <LTooltip :text="$t('scenarioManager.evalConfig.labeling.parts.settingsTooltip')" location="left">
+          <LIcon size="16" class="section-help-icon">mdi-help-circle-outline</LIcon>
+        </LTooltip>
+      </div>
+      <div class="parts-overview-list">
+        <div
+          v-for="(part, index) in partsStatus.parts"
+          :key="part.id"
+          class="parts-overview-row"
+        >
+          <LTag size="small" variant="info">{{ index + 1 }}</LTag>
+          <span class="parts-overview-name">{{ part.name }}</span>
+          <LTag size="small" variant="default">
+            {{ part.item_count }} {{ $t('scenarioManager.evalConfig.labeling.parts.items') }}
+          </LTag>
+          <LTag v-if="part.order === 'random'" size="small" variant="info">
+            {{ $t('scenarioManager.evalConfig.labeling.parts.orderRandom') }}
+          </LTag>
+          <LTag v-if="part.copilot" size="small" variant="info">
+            <LIcon size="12" class="mr-1">mdi-robot-outline</LIcon>
+            {{ $t('scenarioManager.evalConfig.labeling.copilot.title') }}
+          </LTag>
+          <LTag :variant="part.locked ? 'warning' : 'success'" size="small">
+            <LIcon size="12" class="mr-1">
+              {{ part.locked ? 'mdi-lock-outline' : 'mdi-lock-open-variant-outline' }}
+            </LIcon>
+            {{ part.locked
+              ? $t('scenarioManager.evalConfig.labeling.parts.locked')
+              : $t('scenarioManager.evalConfig.labeling.parts.open') }}
+          </LTag>
+          <div class="parts-overview-progress">
+            <div class="progress-bar-large">
+              <div class="progress-fill" :style="{ width: partProgressPercent(part) + '%' }"></div>
+            </div>
+            <span class="parts-overview-count">{{ partProgressLabel(part) }}</span>
+          </div>
+          <!-- Lock/unlock the phase directly here (study gate between phases).
+               Same management-gated PUT as the settings tab; the section only
+               renders for managers, so no extra role check is needed. -->
+          <LBtn
+            class="parts-overview-action"
+            size="small"
+            :variant="part.locked ? 'primary' : 'secondary'"
+            :loading="partsUpdating === part.id"
+            @click="updatePartLocked(part)"
+          >
+            <LIcon size="16" class="mr-1">
+              {{ part.locked ? 'mdi-lock-open-variant-outline' : 'mdi-lock-outline' }}
+            </LIcon>
+            {{ part.locked
+              ? $t('scenarioManager.evalConfig.labeling.parts.unlock')
+              : $t('scenarioManager.evalConfig.labeling.parts.lock') }}
+          </LBtn>
+        </div>
+      </div>
+    </div>
+
     <!-- Evaluator Progress Details -->
     <div class="section" v-if="userStatsList.length > 0">
-      <h3 class="section-title">{{ $t('scenarioManager.overview.evaluatorProgress') || 'Evaluator Progress' }}</h3>
+      <div class="section-title-row" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <h3 class="section-title">{{ $t('scenarioManager.overview.evaluatorProgress') || 'Evaluator Progress' }}</h3>
+        <!-- Origin legend: referral-link color -> source label -->
+        <LOriginLegend :origins="humanOrigins" />
+      </div>
       <div class="evaluators-list">
         <div
           v-for="user in userStatsList"
@@ -103,6 +182,8 @@
             <div class="evaluator-name">
               <span class="name">{{ user.name }}</span>
               <span class="role-badge" :class="user.role.toLowerCase()">{{ user.role }}</span>
+              <!-- Where this human evaluator came from (LLMs have no origin) -->
+              <LUserOrigin v-if="!user.isLLM" :origin="originFor(user.name)" size="sm" />
             </div>
           </div>
           <div class="evaluator-stats">
@@ -117,6 +198,10 @@
             <div class="stat">
               <span class="stat-value pending">{{ user.notStarted }}</span>
               <span class="stat-label">{{ $t('scenarioManager.overview.pending') || 'Pending' }}</span>
+            </div>
+            <div class="stat" v-if="user.isLLM && user.errorCount > 0">
+              <span class="stat-value failed">{{ user.errorCount }}</span>
+              <span class="stat-label">{{ $t('scenarioManager.overview.failed') || 'Failed' }}</span>
             </div>
             <div class="stat" v-if="user.accuracy !== null && user.accuracy !== undefined">
               <span class="stat-value accuracy" :class="getAccuracyClass(user.accuracy)">{{ user.accuracy }}%</span>
@@ -156,7 +241,28 @@
         </div>
         <div class="detail-row" v-if="scenario?.description">
           <span class="detail-label">{{ $t('scenarioManager.overview.description') }}</span>
-          <span class="detail-value">{{ scenario.description }}</span>
+          <div class="detail-value detail-value--markdown">
+            <LMarkdownContent :markdown="scenario.description" compact />
+          </div>
+        </div>
+        <div class="detail-row" v-if="scenarioTaskDescription">
+          <span class="detail-label">{{ $t('scenarioManager.overview.taskDescription') }}</span>
+          <span class="detail-value">{{ scenarioTaskDescription }}</span>
+        </div>
+        <div class="detail-row" v-if="scenarioEvaluationCriteria.length > 0">
+          <span class="detail-label">{{ $t('scenarioManager.overview.evaluationCriteria') }}</span>
+          <span class="detail-value">
+            <div class="d-flex flex-wrap gap-1 justify-end">
+              <v-chip
+                v-for="criterion in scenarioEvaluationCriteria"
+                :key="criterion"
+                size="x-small"
+                variant="tonal"
+              >
+                {{ criterion }}
+              </v-chip>
+            </div>
+          </span>
         </div>
         <div class="detail-row">
           <span class="detail-label">{{ $t('scenarioManager.overview.created') }}</span>
@@ -215,8 +321,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import axios from 'axios'
 
 const props = defineProps({
   scenario: {
@@ -233,13 +340,77 @@ defineEmits(['import-data', 'start-evaluation', 'view-results'])
 
 const { t } = useI18n()
 
+// Parts / Phases (labeling): read-only structure for the overview. The
+// owner-only endpoint 403/404s for assessors -> partsStatus stays null and
+// the section never renders (fail closed, invisibility invariant).
+const partsStatus = ref(null)
+
+async function loadPartsStatus(scenarioId) {
+  partsStatus.value = null
+  if (!scenarioId) return
+  const typeId = Number(props.scenario?.function_type_id)
+  const typeName = String(props.scenario?.function_type_name || '').toLowerCase()
+  if (typeId !== 7 && typeName !== 'labeling') return
+  try {
+    const response = await axios.get(`/api/scenarios/${scenarioId}/parts`)
+    partsStatus.value = response.data
+  } catch {
+    partsStatus.value = null
+  }
+}
+
+watch(() => props.scenario?.id, id => loadPartsStatus(id), { immediate: true })
+
+// Owner action: unlock/lock a phase straight from the overview (the study gate
+// between calibration phases). Uses the same management-gated endpoint as the
+// settings tab; the PUT re-checks access server-side. partsUpdating holds the
+// part id being written so only that button shows a spinner.
+const partsUpdating = ref(null)
+async function updatePartLocked(part) {
+  const sid = props.scenario?.id
+  if (!sid || partsUpdating.value) return
+  partsUpdating.value = part.id
+  try {
+    await axios.put(`/api/scenarios/${sid}/parts/${part.id}`, { locked: !part.locked })
+    await loadPartsStatus(sid)
+  } finally {
+    partsUpdating.value = null
+  }
+}
+
+function partProgressPercent(part) {
+  const assessors = part.assessors || []
+  const total = assessors.reduce((sum, a) => sum + (a.total || 0), 0)
+  const labeled = assessors.reduce((sum, a) => sum + (a.labeled || 0), 0)
+  return total ? Math.round((labeled / total) * 100) : 0
+}
+
+function partProgressLabel(part) {
+  const assessors = part.assessors || []
+  const total = assessors.reduce((sum, a) => sum + (a.total || 0), 0)
+  const labeled = assessors.reduce((sum, a) => sum + (a.labeled || 0), 0)
+  return `${labeled}/${total}`
+}
+
+// Origin map (username/display_name -> origin) provided by ScenarioWorkspace.
+// userStatsList carries names, not the full team payload, so look origins up.
+const scenarioOrigins = inject('scenarioOrigins', ref({}))
+const originFor = (name) => (name ? (scenarioOrigins.value || {})[name] : null)
+const humanOrigins = computed(() =>
+  userStatsList.value.filter(u => !u.isLLM).map(u => originFor(u.name)).filter(Boolean)
+)
+
 // Type mapping
 const typeConfig = {
   1: { name: 'ranking' },
   2: { name: 'rating' },
   3: { name: 'mailRating' },
   4: { name: 'comparison' },
-  5: { name: 'authenticity' }
+  5: { name: 'authenticity' },
+  7: { name: 'labeling' },
+  8: { name: 'communicationComparison' },
+  // 9 = conversation_labeling: item is a conversation, the vote is a span in it
+  9: { name: 'conversationLabeling' }
 }
 
 const hasHumans = computed(() => props.liveStats?.hasHumans !== false)
@@ -299,12 +470,53 @@ const llmProgressPercent = computed(() => {
   return Math.round((llm_completed / llm_total) * 100)
 })
 
+const llmErrors = computed(() => {
+  return props.liveStats?.llmProgress?.errors || 0
+})
+
+const llmErrorPercent = computed(() => {
+  const total = llmTotal.value
+  if (total === 0) return 0
+  return Math.round((llmErrors.value / total) * 100)
+})
+
 const userStatsList = computed(() => {
   return props.liveStats?.userStatsList || []
 })
 
 const agreementMetrics = computed(() => {
   return props.liveStats?.agreementMetrics || null
+})
+
+const scenarioConfig = computed(() => {
+  const raw = props.scenario?.config_json || {}
+  if (!raw) return {}
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw)
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+  return typeof raw === 'object' ? raw : {}
+})
+
+const scenarioTaskDescription = computed(() => {
+  return scenarioConfig.value.task_description || ''
+})
+
+const scenarioEvaluationCriteria = computed(() => {
+  const value = scenarioConfig.value.evaluation_criteria
+  if (Array.isArray(value)) {
+    return value
+      .map(item => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter(Boolean)
+  }
+  if (typeof value === 'string') {
+    return value.split(/[,\n;]/).map(item => item.trim()).filter(Boolean)
+  }
+  return []
 })
 
 function formatDate(dateStr) {
@@ -337,7 +549,11 @@ function getF1Class(f1) {
 
 <style scoped>
 .overview-tab {
-  max-width: 1200px;
+  /* Fills the full tab-content width — the wrapping .tab-content
+     in ScenarioWorkspace.vue already provides horizontal padding,
+     so capping the width here just wastes screen real estate on
+     wider displays. */
+  width: 100%;
 }
 
 .section {
@@ -486,6 +702,10 @@ function getF1Class(f1) {
   background-color: rgb(var(--v-theme-accent));
 }
 
+.progress-fill.error {
+  background-color: #e8a087;
+}
+
 .progress-details {
   display: flex;
   justify-content: space-between;
@@ -604,6 +824,19 @@ function getF1Class(f1) {
   color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
+.stat-value.failed {
+  color: #e8a087;
+}
+
+.progress-errors {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #e8a087;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
 .stat-value.accuracy,
 .stat-value.f1 {
   font-size: 0.85rem;
@@ -674,6 +907,10 @@ function getF1Class(f1) {
   max-width: 60%;
 }
 
+.detail-value--markdown {
+  text-align: left;
+}
+
 /* Metrics Grid */
 .metrics-grid {
   display: grid;
@@ -728,5 +965,141 @@ function getF1Class(f1) {
   margin-top: 12px;
   color: rgba(var(--v-theme-on-surface), 0.5);
   font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   Responsive / mobile fixes (additive, desktop unaffected)
+   - <=960px: the .evaluator-row's three rigid columns (info 180px +
+     evaluator-stats with several min-width:50px stats + progress 120px)
+     add up to ~670-732px and force horizontal scroll. Stack the row
+     vertically and let the stats wrap so they fit narrow viewports.
+   - <=600px: collapse the auto-fit grids (which keep a 280-300px minimum
+     track that overflows on phones) to a single column, and bump tiny
+     secondary text up to >=0.75rem for legibility.
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  /* Stack the evaluator row so the rigid 180px/stats/120px columns no
+     longer sum past the viewport width and trigger horizontal scroll. */
+  .evaluator-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .evaluator-info {
+    /* Drop the 180px floor so the info block can shrink with the row. */
+    min-width: 0;
+  }
+
+  .evaluator-stats {
+    /* Allow the stat cells to wrap instead of pushing the row wider. */
+    flex-wrap: wrap;
+    gap: 12px 16px;
+  }
+
+  .stat {
+    /* Remove the 50px floor so wrapped stats pack tightly. */
+    min-width: 0;
+  }
+
+  .evaluator-progress {
+    /* Full-width progress bar under the stacked content. */
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Single-column grids: the auto-fit minmax tracks (280/300/180px)
+     overflow narrow phones, so force one column. */
+  .actions-grid,
+  .progress-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  /* Tighter stat spacing once stacked/wrapped on phones. */
+  .evaluator-stats {
+    gap: 10px 14px;
+  }
+
+  /* Raise tiny secondary text to remain legible (>=0.75rem). */
+  .stat-label,
+  .role-badge {
+    font-size: 0.75rem;
+  }
+
+  /* Stack detail rows: label above value, full-width value (no 60% cap). */
+  .detail-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .detail-value {
+    text-align: left;
+    max-width: 100%;
+  }
+
+  /* Chips inside a value align left once the row is stacked. */
+  .detail-value .justify-end {
+    justify-content: flex-start !important;
+  }
+}
+
+/* Parts / Phases overview */
+.parts-overview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parts-overview-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+}
+
+.parts-overview-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.parts-overview-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 160px;
+  margin-left: auto;
+}
+
+.parts-overview-progress .progress-bar-large {
+  flex: 1;
+  margin: 0;
+}
+
+.parts-overview-action {
+  flex-shrink: 0;
+}
+
+.parts-overview-count {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.parts-overview-hint {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  font-style: italic;
+  margin: 8px 0 0;
 }
 </style>

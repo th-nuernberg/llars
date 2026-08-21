@@ -49,7 +49,7 @@
           </div>
         </div>
 
-        <!-- Icon Animations Section -->
+        <!-- Icon Hover Animations (grouped by hoverClass) -->
         <div class="showcase-section">
           <div class="section-header">
             <LIcon size="18" class="mr-2">{{ allAnimations.icons.icon }}</LIcon>
@@ -57,60 +57,49 @@
             <LTag variant="accent" size="sm" class="ml-2">Hover zum Aktivieren</LTag>
             <LTag variant="gray" size="sm" class="ml-auto">{{ allAnimations.icons.items.length }}</LTag>
           </div>
-          <div class="section-content icon-demos">
-            <div v-for="icon in allAnimations.icons.items" :key="icon.id" class="icon-demo">
-              <LTooltip :text="icon.description">
-                <div class="icon-wrapper">
-                  <LIcon size="32">{{ icon.id }}</LIcon>
+          <div class="section-content hover-classes-section">
+            <div v-for="hc in hoverClasses" :key="hc.id" class="hover-class-category">
+              <div class="category-header">
+                <span class="hover-class-dot" :style="{ background: hc.color }"></span>
+                <span class="category-title">{{ hc.name }}</span>
+                <LTooltip :text="`CSS: .l-its-hover--{name} → ${hc.description}`">
+                  <LTag size="sm" class="hover-class-tag" :style="{ background: hc.color + '18', color: hc.color }">
+                    <LIcon size="11" class="mr-1">mdi-information-outline</LIcon>
+                    {{ hc.description }}
+                  </LTag>
+                </LTooltip>
+                <LTag variant="gray" size="sm" class="ml-auto">{{ iconsByHoverClass[hc.id].length }}</LTag>
+              </div>
+              <div class="icon-demos">
+                <div v-for="icon in iconsByHoverClass[hc.id]" :key="icon.id" class="icon-demo">
+                  <LTooltip :text="`${icon.name} — ${icon.description} (${hc.name})`">
+                    <div class="icon-wrapper" :style="{ '--hover-accent': hc.color }">
+                      <LIcon size="32">{{ icon.id }}</LIcon>
+                    </div>
+                  </LTooltip>
+                  <span class="icon-label">{{ icon.name }}</span>
                 </div>
-              </LTooltip>
-              <span class="icon-label">{{ icon.name }}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Static Icons Section -->
+        <!-- Static Brand Icons -->
         <div class="showcase-section">
           <div class="section-header">
             <LIcon size="18" class="mr-2">{{ allAnimations.staticIcons.icon }}</LIcon>
             <span class="section-title">{{ allAnimations.staticIcons.title }}</span>
             <LTag variant="gray" size="sm" class="ml-auto">{{ allAnimations.staticIcons.items.length }}</LTag>
           </div>
-          <div class="section-content static-icons-section">
-            <!-- Brand Icons -->
-            <div class="static-icons-category">
-              <div class="category-header">
-                <LIcon size="14" class="mr-1">mdi-domain</LIcon>
-                <span class="category-title">Brand Icons</span>
-                <LTag variant="info" size="sm" class="ml-2">{{ brandIcons.length }}</LTag>
-              </div>
-              <div class="icon-demos">
-                <div v-for="icon in brandIcons" :key="icon.id" class="icon-demo">
-                  <LTooltip :text="icon.description">
-                    <div class="icon-wrapper icon-wrapper--brand" :style="icon.color ? `--brand-color: ${icon.color}` : ''">
-                      <LIcon size="32" :style="icon.color ? `color: ${icon.color}` : ''">{{ icon.id }}</LIcon>
-                    </div>
-                  </LTooltip>
-                  <span class="icon-label">{{ icon.name }}</span>
-                </div>
-              </div>
-            </div>
-            <!-- UI Icons -->
-            <div class="static-icons-category">
-              <div class="category-header">
-                <LIcon size="14" class="mr-1">mdi-vector-square</LIcon>
-                <span class="category-title">UI Icons</span>
-                <LTag variant="info" size="sm" class="ml-2">{{ uiIcons.length }}</LTag>
-              </div>
-              <div class="icon-demos">
-                <div v-for="icon in uiIcons" :key="icon.id" class="icon-demo">
-                  <LTooltip :text="icon.description">
-                    <div class="icon-wrapper">
-                      <LIcon size="32">{{ icon.id }}</LIcon>
-                    </div>
-                  </LTooltip>
-                  <span class="icon-label">{{ icon.name }}</span>
-                </div>
+          <div class="section-content">
+            <div class="icon-demos">
+              <div v-for="icon in brandIcons" :key="icon.id" class="icon-demo">
+                <LTooltip :text="icon.description">
+                  <div class="icon-wrapper icon-wrapper--brand" :style="icon.color ? `--brand-color: ${icon.color}` : ''">
+                    <LIcon size="32" :style="icon.color ? `color: ${icon.color}` : ''">{{ icon.id }}</LIcon>
+                  </div>
+                </LTooltip>
+                <span class="icon-label">{{ icon.name }}</span>
               </div>
             </div>
           </div>
@@ -234,14 +223,23 @@
             <v-alert type="info" variant="tonal" density="compact" class="mb-3">
               <template #title>Neue Animation hinzufügen</template>
               <ol class="registry-steps">
-                <li>CSS @keyframes erstellen mit Präfix <code>llars-</code></li>
-                <li>In <code>src/config/animationRegistry.js</code> registrieren</li>
+                <li>SVG-Icon erstellen in <code>src/icons/itshover/</code></li>
+                <li>Hover-Klasse in <code>src/icons/itshover/hover-animations.css</code> zuweisen</li>
+                <li>In <code>src/config/animationRegistry.js</code> mit <code>hoverClass</code> registrieren</li>
                 <li>Animation erscheint automatisch hier</li>
               </ol>
             </v-alert>
-            <div class="registry-path">
-              <LIcon size="14" class="mr-1">mdi-file-document</LIcon>
-              <code>src/config/animationRegistry.js</code>
+            <div class="registry-paths">
+              <div class="registry-path">
+                <LIcon size="14" class="mr-1">mdi-file-document</LIcon>
+                <code>src/config/animationRegistry.js</code>
+                <span class="registry-path-desc">— Icon-Registry</span>
+              </div>
+              <div class="registry-path">
+                <LIcon size="14" class="mr-1">mdi-language-css3</LIcon>
+                <code>src/icons/itshover/hover-animations.css</code>
+                <span class="registry-path-desc">— Hover-Animationen</span>
+              </div>
             </div>
           </div>
         </div>
@@ -263,16 +261,24 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { allAnimations, getAnimationCount, getIconCount, getBrandIcons, getUIIcons, getTotalCount } from '@/config/animationRegistry'
+import { allAnimations, getBrandIcons, getIconsByHoverClass, hoverClasses, getTotalCount } from '@/config/animationRegistry'
 
 const dialogOpen = defineModel({ type: Boolean, default: false })
 
 // Total count from registry (animations + icons)
 const animationCount = computed(() => getTotalCount())
 
-// Separate brand and UI icons
+// Brand icons
 const brandIcons = computed(() => getBrandIcons())
-const uiIcons = computed(() => getUIIcons())
+
+// Pre-compute icons by hover class for template
+const iconsByHoverClass = computed(() => {
+  const result = {}
+  for (const hc of hoverClasses) {
+    result[hc.id] = getIconsByHoverClass(hc.id)
+  }
+  return result
+})
 
 // Transition toggle
 const showTransition = ref(true)
@@ -403,7 +409,7 @@ onUnmounted(() => {
 }
 
 .icon-wrapper:hover {
-  background: rgba(var(--v-theme-primary), 0.15);
+  background: color-mix(in srgb, var(--hover-accent, var(--llars-primary)) 15%, transparent);
   transform: scale(1.08);
 }
 
@@ -415,16 +421,20 @@ onUnmounted(() => {
   font-size: 0.65rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   text-align: center;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Static icons section */
-.static-icons-section {
+/* Hover class categories */
+.hover-classes-section {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.static-icons-category {
+.hover-class-category {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -433,14 +443,28 @@ onUnmounted(() => {
 .category-header {
   display: flex;
   align-items: center;
+  gap: 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
+.hover-class-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
 .category-title {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.hover-class-tag {
+  font-size: 0.68rem;
+  border: 1px solid currentColor;
+  opacity: 0.85;
 }
 
 /* Spinner demos */
@@ -700,6 +724,12 @@ onUnmounted(() => {
   background: rgba(var(--v-theme-on-surface), 0.1);
 }
 
+.registry-paths {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .registry-path {
   display: flex;
   align-items: center;
@@ -712,6 +742,12 @@ onUnmounted(() => {
   padding: 2px 6px;
   border-radius: 4px;
   background: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.registry-path-desc {
+  margin-left: 6px;
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {

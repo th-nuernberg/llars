@@ -4,8 +4,8 @@
     This project is in the **concept phase**.
     The design is still being worked out.
 
-**Created:** YYYY-MM-DD  
-**Author:** [Name]  
+**Created:** YYYY-MM-DD
+**Author:** [Name]
 **Version:** 1.0
 
 ---
@@ -118,10 +118,41 @@ erDiagram
 
 **Errors:**
 
-| Code | Error | Description |
-|------|-------|-------------|
-| 400 | `INVALID_INPUT` | Invalid input data |
-| 403 | `FORBIDDEN` | No permission |
+| Code | Description |
+|------|-------------|
+| 400 | Invalid input |
+| 403 | No permission |
+| 404 | Not found |
+
+---
+
+## WebSocket Design
+
+### Namespace
+
+`/resource` or default namespace with prefix
+
+### Events
+
+#### Client → Server
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `resource:join` | `{ resource_id: int }` | Join a room |
+| `resource:action` | `{ data: any }` | Execute an action |
+
+#### Server → Client
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `resource:update` | `{ resource_id, data }` | Data has changed |
+| `resource:error` | `{ message: string }` | An error occurred |
+
+### Rooms
+
+| Room name | Format | Description |
+|-----------|--------|-------------|
+| resource-{id} | `resource-123` | Room for a single resource |
 
 ---
 
@@ -129,17 +160,102 @@ erDiagram
 
 ### New components
 
-- `[ComponentName].vue` - [Description]
-- `[ComponentName].vue` - [Description]
+#### `ResourceOverview.vue`
 
-### UI Flow
+**Path:** `llars-frontend/src/components/Resource/ResourceOverview.vue`
 
-```mermaid
-flowchart LR
-    A[User action] --> B[Step 1]
-    B --> C[Step 2]
-    C --> D[Result]
+**Description:** Overview page listing all resources
+
+**Layout:**
 ```
+┌─────────────────────────────────────────────────┐
+│ Header with title and "Create new" button       │
+├─────────────────────────────────────────────────┤
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │
+│ │Stats 1  │ │Stats 2  │ │Stats 3  │ │Stats 4  │ │
+│ └─────────┘ └─────────┘ └─────────┘ └─────────┘ │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  Data table with filters and pagination         │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+**Props:** None
+
+**Emits:** None
+
+---
+
+#### `ResourceDetail.vue`
+
+**Path:** `llars-frontend/src/components/Resource/ResourceDetail.vue`
+
+**Description:** Detail view of a single resource
+
+**Props:**
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| resourceId | Number | Yes | ID of the resource |
+
+---
+
+### Routing
+
+| Route | Component | Permission |
+|-------|-----------|------------|
+| `/resource` | ResourceOverview | `feature:resource:view` |
+| `/resource/:id` | ResourceDetail | `feature:resource:view` |
+
+---
+
+## Styling & UX
+
+### Color scheme
+
+| Element | Light Mode | Dark Mode |
+|---------|------------|-----------|
+| Primary Action | `#b0ca97` | `#5d7a4a` |
+| Background | Vuetify Default | Vuetify Default |
+| Status: Active | `success` | `success` |
+| Status: Error | `error` | `error` |
+
+### Skeleton Loading
+
+| Area | Skeleton type |
+|------|---------------|
+| Stats Cards | `type="card" height="100"` |
+| Table | `type="table-heading, table-thead, table-tbody"` |
+| Detail Card | `type="article"` |
+
+### Interactions
+
+| Action | Feedback |
+|--------|----------|
+| Save | Snackbar "Successfully saved" |
+| Delete | Confirmation dialog before execution |
+| Error | Snackbar with error message (red) |
+| Loading | Skeleton Loader |
+
+---
+
+## Security
+
+### Permissions
+
+| Permission | Description |
+|------------|-------------|
+| `feature:resource:view` | View resources |
+| `feature:resource:edit` | Create/edit resources |
+| `feature:resource:delete` | Delete resources |
+
+### Validation
+
+| Field | Validation |
+|-------|------------|
+| name | Required, max 255 characters |
+| config | JSON format |
 
 ---
 
@@ -155,6 +271,14 @@ flowchart LR
 
 - [Question 1]
 - [Question 2]
+
+---
+
+## Approval
+
+| Reviewer | Date | Status |
+|----------|------|--------|
+| [Name] | YYYY-MM-DD | Pending/Approved |
 
 ---
 

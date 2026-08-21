@@ -16,10 +16,67 @@ Used by: judge_worker_pool.py (PooledJudgeWorker class)
 from __future__ import annotations
 
 import logging
+import sys
 from datetime import datetime
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# Keep both import paths pointing to the same module instance for test patching.
+sys.modules.setdefault("workers.pool.worker_pool_statistics", sys.modules[__name__])
+sys.modules.setdefault("app.workers.pool.worker_pool_statistics", sys.modules[__name__])
+
+# Lazy bindings support both patch styles:
+# - patching source modules (db.database/db.tables)
+# - patching this module directly (worker_pool_statistics.db, JudgeSession, ...)
+db = None
+PillarStatistics = None
+JudgeSession = None
+JudgeSessionStatus = None
+JudgeComparison = None
+JudgeComparisonStatus = None
+
+
+def _get_db():
+    if db is not None:
+        return db
+    from db.database import db as _db
+    return _db
+
+
+def _get_pillar_statistics_model():
+    if PillarStatistics is not None:
+        return PillarStatistics
+    from db.tables import PillarStatistics as _pillar_statistics
+    return _pillar_statistics
+
+
+def _get_judge_session_models():
+    judge_session = JudgeSession
+    judge_session_status = JudgeSessionStatus
+    judge_comparison = JudgeComparison
+    judge_comparison_status = JudgeComparisonStatus
+
+    if judge_session is None:
+        from db.tables import JudgeSession as _judge_session
+        judge_session = _judge_session
+    if judge_session_status is None:
+        from db.tables import JudgeSessionStatus as _judge_session_status
+        judge_session_status = _judge_session_status
+    if judge_comparison is None:
+        from db.tables import JudgeComparison as _judge_comparison
+        judge_comparison = _judge_comparison
+    if judge_comparison_status is None:
+        from db.tables import JudgeComparisonStatus as _judge_comparison_status
+        judge_comparison_status = _judge_comparison_status
+    return judge_session, judge_session_status, judge_comparison, judge_comparison_status
+
+
+def _get_judge_session_model():
+    if JudgeSession is not None:
+        return JudgeSession
+    from db.tables import JudgeSession as _judge_session
+    return _judge_session
 
 
 # =============================================================================
@@ -58,16 +115,16 @@ def update_pillar_statistics(
         - Updates avg_confidence using running average
         - Commits changes (or rolls back on error)
     """
-    from db.database import db
-    from db.tables import PillarStatistics
     from sqlalchemy.exc import IntegrityError
+    db_obj = _get_db()
+    pillar_statistics = _get_pillar_statistics_model()
 
     max_retries = 3
 
     for attempt in range(max_retries):
         try:
             # Re-query in case another worker created it
-            stat = PillarStatistics.query.filter_by(
+            stat = pillar_statistics.query.filter_by(
                 session_id=session_id,
                 pillar_a=pillar_a,
                 pillar_b=pillar_b
@@ -75,7 +132,7 @@ def update_pillar_statistics(
 
             if not stat:
                 # Create new statistics record
-                stat = PillarStatistics(
+                stat = pillar_statistics(
                     session_id=session_id,
                     pillar_a=pillar_a,
                     pillar_b=pillar_b,
@@ -83,9 +140,9 @@ def update_pillar_statistics(
                     wins_b=0,
                     ties=0
                 )
-                db.session.add(stat)
+                db_obj.session.add(stat)
                 # Flush to catch duplicate key early
-                db.session.flush()
+                db_obj.session.flush()
 
             # Update win/tie counts
             if winner == 'A':
@@ -106,13 +163,13 @@ def update_pillar_statistics(
                 )
 
             stat.updated_at = datetime.now()
-            db.session.commit()
+            db_obj.session.commit()
 
             return True
 
         except IntegrityError:
             # Duplicate key - another worker created it first
-            db.session.rollback()
+            db_obj.session.rollback()
 
             if attempt < max_retries - 1:
                 logger.debug(
@@ -154,12 +211,12 @@ def atomic_increment_progress(session_id: int, worker_id: int) -> int:
         MariaDB doesn't support RETURNING clause, so we execute
         a separate SELECT after the UPDATE.
     """
-    from db.database import db
     from sqlalchemy import text
+    db_obj = _get_db()
 
     try:
         # Atomic increment
-        db.session.execute(
+        db_obj.session.execute(
             text("""
                 UPDATE judge_sessions
                 SET completed_comparisons = completed_comparisons + 1
@@ -167,10 +224,10 @@ def atomic_increment_progress(session_id: int, worker_id: int) -> int:
             """),
             {'session_id': session_id}
         )
-        db.session.commit()
+        db_obj.session.commit()
 
         # Fetch the new value (MariaDB doesn't support RETURNING)
-        new_value = db.session.execute(
+        new_value = db_obj.session.execute(
             text("""
                 SELECT completed_comparisons
                 FROM judge_sessions
@@ -191,7 +248,7 @@ def atomic_increment_progress(session_id: int, worker_id: int) -> int:
             f"[JudgeWorker:{session_id}:{worker_id}] "
             f"Error in atomic increment: {e}"
         )
-        db.session.rollback()
+        db_obj.session.rollback()
         return 0
 
 
@@ -223,14 +280,13 @@ def try_complete_session(
         - Clears current_comparison_id
         - Commits changes
     """
-    from db.database import db
-    from db.tables import (
-        JudgeSession, JudgeSessionStatus,
-        JudgeComparison, JudgeComparisonStatus
+    db_obj = _get_db()
+    JudgeSessionModel, JudgeSessionStatusModel, JudgeComparisonModel, JudgeComparisonStatusModel = (
+        _get_judge_session_models()
     )
 
     # Get session
-    session = db.session.get(JudgeSession, session_id)
+    session = db_obj.session.get(JudgeSessionModel, session_id)
     if not session:
         logger.error(
             f"[JudgeWorker:{session_id}:{worker_id}] "
@@ -239,7 +295,7 @@ def try_complete_session(
         return False
 
     # Check if already completed
-    if session.status != JudgeSessionStatus.RUNNING:
+    if session.status != JudgeSessionStatusModel.RUNNING:
         logger.debug(
             f"[JudgeWorker:{session_id}:{worker_id}] "
             f"Session already in status {session.status.value}"
@@ -248,14 +304,14 @@ def try_complete_session(
 
     # CRITICAL: Re-check that there are truly no pending or running comparisons
     # This prevents race conditions where another worker reset a comparison
-    pending_count = JudgeComparison.query.filter_by(
+    pending_count = JudgeComparisonModel.query.filter_by(
         session_id=session_id,
-        status=JudgeComparisonStatus.PENDING
+        status=JudgeComparisonStatusModel.PENDING
     ).count()
 
-    running_count = JudgeComparison.query.filter_by(
+    running_count = JudgeComparisonModel.query.filter_by(
         session_id=session_id,
-        status=JudgeComparisonStatus.RUNNING
+        status=JudgeComparisonStatusModel.RUNNING
     ).count()
 
     if pending_count > 0 or running_count > 0:
@@ -267,10 +323,10 @@ def try_complete_session(
         return False
 
     # All comparisons done - mark session complete
-    session.status = JudgeSessionStatus.COMPLETED
+    session.status = JudgeSessionStatusModel.COMPLETED
     session.completed_at = datetime.now()
     session.current_comparison_id = None
-    db.session.commit()
+    db_obj.session.commit()
 
     logger.info(
         f"[JudgeWorker:{session_id}:{worker_id}] "
@@ -290,7 +346,6 @@ def get_session_total(session_id: int) -> int:
     Returns:
         Total comparison count, or 0 if session not found
     """
-    from db.tables import JudgeSession
-
-    session = JudgeSession.query.get(session_id)
+    judge_session = _get_judge_session_model()
+    session = judge_session.query.get(session_id)
     return session.total_comparisons if session else 0

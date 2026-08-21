@@ -90,17 +90,23 @@ defineEmits(['accept', 'reject', 'evaluate', 'leave'])
 const { t } = useI18n()
 
 // Type configuration
-const typeConfigs = {
-  1: { icon: 'mdi-podium', color: '#b0ca97', bgColor: 'rgba(176, 202, 151, 0.15)', label: 'Ranking' },
-  2: { icon: 'mdi-star-outline', color: '#D1BC8A', bgColor: 'rgba(209, 188, 138, 0.15)', label: 'Rating' },
-  3: { icon: 'mdi-email-outline', color: '#e8a087', bgColor: 'rgba(232, 160, 135, 0.15)', label: 'Mail Rating' },
-  4: { icon: 'mdi-compare-horizontal', color: '#88c4c8', bgColor: 'rgba(136, 196, 200, 0.15)', label: 'Comparison' },
-  5: { icon: 'mdi-shield-search', color: '#c4a0d4', bgColor: 'rgba(196, 160, 212, 0.15)', label: 'Authenticity' },
-  7: { icon: 'mdi-tag-outline', color: '#98d4bb', bgColor: 'rgba(152, 212, 187, 0.15)', label: 'Labeling' }
-}
+const typeConfigs = computed(() => ({
+  1: { icon: 'mdi-podium', color: '#b0ca97', bgColor: 'rgba(176, 202, 151, 0.15)', label: t('scenarioManager.types.ranking') },
+  2: { icon: 'mdi-star-outline', color: '#D1BC8A', bgColor: 'rgba(209, 188, 138, 0.15)', label: t('scenarioManager.types.rating') },
+  3: { icon: 'mdi-email-outline', color: '#e8a087', bgColor: 'rgba(232, 160, 135, 0.15)', label: t('scenarioManager.types.mailRating') },
+  4: { icon: 'mdi-compare-horizontal', color: '#88c4c8', bgColor: 'rgba(136, 196, 200, 0.15)', label: t('scenarioManager.types.comparison') },
+  5: { icon: 'mdi-shield-search', color: '#c4a0d4', bgColor: 'rgba(196, 160, 212, 0.15)', label: t('scenarioManager.types.authenticity') },
+  7: { icon: 'mdi-tag-outline', color: '#98d4bb', bgColor: 'rgba(152, 212, 187, 0.15)', label: t('scenarioManager.types.labeling') },
+  8: { icon: 'mdi-forum-outline', color: '#88c4c8', bgColor: 'rgba(136, 196, 200, 0.15)', label: t('scenarioManager.types.communicationComparison') },
+  // 9 = conversation_labeling: item is a conversation, the vote is a span in it
+  9: { icon: 'mdi-tag-multiple-outline', color: '#6FA8A0', bgColor: 'rgba(111, 168, 160, 0.15)', label: t('scenarioManager.types.conversationLabeling') }
+}))
 
 const typeConfig = computed(() => {
-  return typeConfigs[props.scenario.function_type_id] || typeConfigs[1]
+  return typeConfigs.value[props.scenario.function_type_id] || {
+    icon: 'mdi-clipboard-outline', color: '#888', bgColor: 'rgba(136, 136, 136, 0.15)',
+    label: t('scenarioManager.types.unknown')
+  }
 })
 
 // Invitation status
@@ -279,5 +285,20 @@ function formatDate(dateStr) {
 .date {
   font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* Phones: stack action buttons full-width in a column so each is a clean
+   44px+ touch target instead of wrapping raggedly when two buttons can't
+   fit side-by-side. */
+@media (max-width: 480px) {
+  .card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .card-actions > :deep(*) {
+    width: 100%;
+    min-height: 44px;
+  }
 }
 </style>

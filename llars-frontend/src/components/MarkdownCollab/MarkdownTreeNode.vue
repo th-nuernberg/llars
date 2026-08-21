@@ -1,10 +1,7 @@
 <template>
   <div
     class="tree-node"
-    :class="{
-      'node-new': isRecentlyAdded,
-      'node-zotero': node.is_zotero_managed
-    }"
+    :class="{ 'node-new': isRecentlyAdded }"
   >
     <!-- Main Row with integrated drop detection -->
     <div
@@ -12,14 +9,13 @@
       class="tree-row"
       :class="{
         selected: selectedId === node.id,
-        'zotero-managed': node.is_zotero_managed,
         folder: node.type === 'folder',
         dragging: isDragging,
         'drop-above': dropPosition === 'above',
         'drop-below': dropPosition === 'below',
         'drop-inside': dropPosition === 'inside'
       }"
-      :draggable="dragEnabled && !node.is_zotero_managed"
+      :draggable="dragEnabled"
       :style="{ paddingLeft: `${8 + level * 16}px` }"
       @click="handleRowClick"
       @dragstart="onDragStart"
@@ -60,11 +56,6 @@
       <!-- Title -->
       <span class="tree-title">{{ node.title }}</span>
 
-      <!-- Zotero badge -->
-      <span v-if="node.is_zotero_managed" class="zotero-badge">
-        <LIcon size="10">zotero</LIcon>
-      </span>
-
       <!-- Main document indicator -->
       <LIcon v-if="node.is_main" size="14" color="warning" class="main-badge" title="Hauptdokument">
         mdi-star
@@ -73,7 +64,7 @@
       <span class="flex-spacer" />
 
       <!-- Actions -->
-      <div v-if="canEdit && !node.is_zotero_managed" class="tree-actions">
+      <div v-if="canEdit" class="tree-actions">
         <button
           v-if="node.type === 'folder'"
           class="action-btn"
@@ -177,18 +168,12 @@ const nodeIcon = computed(() => {
   if (props.node.type === 'folder') {
     return isExpanded.value ? props.folderOpenIcon : props.folderIcon
   }
-  if (props.node.is_zotero_managed) {
-    return 'mdi-bookshelf'
-  }
   return props.fileIcon
 })
 
 const nodeIconColor = computed(() => {
   if (props.node.type === 'folder') {
     return 'primary'
-  }
-  if (props.node.is_zotero_managed) {
-    return 'teal'
   }
   return props.fileIconColor
 })
@@ -202,7 +187,7 @@ function handleRowClick() {
 
 // Drag handlers
 function onDragStart(e) {
-  if (!props.dragEnabled || props.node.is_zotero_managed) {
+  if (!props.dragEnabled) {
     e.preventDefault()
     return
   }
@@ -240,7 +225,7 @@ function calculateDropPosition(e) {
 }
 
 function onRowDragOver(e) {
-  if (!props.dragEnabled || props.node.is_zotero_managed) return
+  if (!props.dragEnabled) return
 
   e.preventDefault()
   e.stopPropagation()
@@ -511,18 +496,6 @@ function onEndZoneDrop(e) {
 }
 
 /* Badges */
-.zotero-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-left: 4px;
-  border-radius: 3px;
-  background: rgba(0, 150, 136, 0.15);
-  color: #009688;
-}
-
 .main-badge {
   margin-left: 4px;
 }
@@ -606,19 +579,6 @@ function onEndZoneDrop(e) {
   100% {
     background: transparent;
   }
-}
-
-/* Zotero-managed styles */
-.node-zotero > .tree-row {
-  border-left: 2px solid #009688;
-}
-
-.tree-row.zotero-managed {
-  background: rgba(0, 150, 136, 0.04);
-}
-
-.tree-row.zotero-managed:hover {
-  background: rgba(0, 150, 136, 0.08);
 }
 
 /* Dragging cursor */

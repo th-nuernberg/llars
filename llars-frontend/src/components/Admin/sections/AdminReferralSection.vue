@@ -36,8 +36,20 @@
           </v-col>
           <v-col cols="6" sm="3">
             <div class="stat-card">
+              <div class="stat-value text-info">{{ overview.total_clicks || 0 }}</div>
+              <div class="stat-label">{{ $t('admin.referral.stats.clicks') }}</div>
+            </div>
+          </v-col>
+          <v-col cols="6" sm="3">
+            <div class="stat-card">
               <div class="stat-value text-primary">{{ overview.total_registrations }}</div>
               <div class="stat-label">{{ $t('admin.referral.stats.registrations') }}</div>
+            </div>
+          </v-col>
+          <v-col cols="6" sm="3">
+            <div class="stat-card">
+              <div class="stat-value">{{ formatConversion(overview.conversion_rate) }}</div>
+              <div class="stat-label">{{ $t('admin.referral.stats.conversion') }}</div>
             </div>
           </v-col>
         </v-row>
@@ -186,7 +198,34 @@
       >
         <!-- Code/Slug Column -->
         <template #item.identifier="{ item }">
-          <div>
+          <div class="d-flex align-center">
+            <!-- Inline color editor: swatch shows the link's resolved badge
+                 color and opens a preset menu (or "Auto" to clear the override). -->
+            <v-menu :close-on-content-click="true" location="bottom start">
+              <template #activator="{ props }">
+                <button
+                  v-bind="props"
+                  type="button"
+                  class="ref-color-swatch mr-2"
+                  :style="{ backgroundColor: item.color }"
+                  :title="$t('admin.referral.table.color')"
+                />
+              </template>
+              <div class="ref-color-menu">
+                <button
+                  v-for="c in colorPresets"
+                  :key="c"
+                  type="button"
+                  class="ref-color-swatch ref-color-swatch--option"
+                  :class="{ 'is-selected': (item.color_custom || '').toLowerCase() === c.toLowerCase() }"
+                  :style="{ backgroundColor: c }"
+                  @click="setLinkColor(item, c)"
+                />
+                <button type="button" class="ref-color-auto" @click="setLinkColor(item, '')">
+                  {{ $t('admin.referral.table.colorAuto') }}
+                </button>
+              </div>
+            </v-menu>
             <code class="text-primary">{{ item.slug || item.code }}</code>
             <v-btn
               icon
@@ -206,12 +245,24 @@
           <LTag variant="info" size="sm">{{ item.role_name }}</LTag>
         </template>
 
-        <!-- Stats Column -->
+        <!-- Stats Column: funnel Aufrufe (clicks) -> Registrierungen -->
         <template #item.stats="{ item }">
-          <span>{{ item.registrations || 0 }}</span>
-          <span v-if="item.max_uses" class="text-medium-emphasis">
-            / {{ item.max_uses }}
-          </span>
+          <div class="d-flex align-center" style="gap: 6px;">
+            <span :title="$t('admin.referral.table.headers.clicks')">
+              <v-icon size="x-small" class="mr-1">mdi-eye-outline</v-icon>{{ item.click_count || 0 }}
+            </span>
+            <v-icon size="x-small" class="text-medium-emphasis">mdi-arrow-right</v-icon>
+            <span :title="$t('admin.referral.table.headers.registrations')">
+              <v-icon size="x-small" class="mr-1">mdi-account-check-outline</v-icon>{{ item.registrations || 0 }}<span
+                v-if="item.max_uses"
+                class="text-medium-emphasis"
+              > / {{ item.max_uses }}</span>
+            </span>
+            <span
+              v-if="item.click_count"
+              class="text-caption text-medium-emphasis"
+            >({{ formatConversion(item.conversion_rate) }})</span>
+          </div>
         </template>
 
         <!-- Active Column -->
@@ -225,8 +276,45 @@
           />
         </template>
 
+        <!-- Invitations funnel (invited / accepted / pending) -->
+        <template #item.invitations="{ item }">
+          <div class="text-caption">
+            <span>{{ $t('admin.referral.invitations.invited') }}: {{ linkStats[item.id]?.invited ?? '–' }}</span>
+            <span class="ml-2 text-success">{{ $t('admin.referral.invitations.accepted') }}: {{ linkStats[item.id]?.accepted ?? '–' }}</span>
+            <span class="ml-2 text-warning">{{ $t('admin.referral.invitations.pending') }}: {{ linkStats[item.id]?.pending ?? '–' }}</span>
+          </div>
+          <div v-if="linkStats[item.id]?.registered_unmatched" class="text-caption text-medium-emphasis">
+            +{{ linkStats[item.id].registered_unmatched }} {{ $t('admin.referral.invitations.unmatched') }}
+          </div>
+        </template>
+
         <!-- Actions Column -->
         <template #item.actions="{ item }">
+          <LIconBtn
+            icon="mdi-qrcode"
+            variant="primary"
+            size="small"
+            class="mr-1"
+            :tooltip="$t('admin.referral.qr.showTooltip')"
+            @click="openQrDialog(item)"
+          />
+          <LBtn
+            variant="secondary"
+            size="x-small"
+            prepend-icon="mdi-email-fast-outline"
+            class="mr-1"
+            @click="openInviteDialog(item)"
+          >
+            {{ $t('admin.referral.invitations.inviteBtn') }}
+          </LBtn>
+          <LIconBtn
+            icon="mdi-email-edit-outline"
+            variant="default"
+            size="small"
+            class="mr-1"
+            :tooltip="$t('admin.referral.welcomeMail.editTooltip')"
+            @click="openWelcomeDialog(item)"
+          />
           <v-btn
             icon
             size="small"
@@ -239,6 +327,51 @@
         </template>
       </v-data-table>
     </LCard>
+
+    <!-- Invite Dialog (per link) -->
+    <v-dialog v-model="showInviteDialog" max-width="520">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-email-fast-outline</v-icon>
+          {{ $t('admin.referral.invitations.dialogTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <p class="text-caption text-medium-emphasis mb-3">
+            {{ $t('admin.referral.invitations.dialogHelp', { link: inviteLink ? (inviteLink.slug || inviteLink.code) : '' }) }}
+          </p>
+          <v-textarea
+            v-model="inviteRecipients"
+            :label="$t('admin.referral.invitations.recipients')"
+            :hint="$t('admin.referral.invitations.recipientsHint')"
+            variant="outlined"
+            density="comfortable"
+            rows="3"
+            class="mb-3"
+          />
+          <v-textarea
+            v-model="inviteIntro"
+            :label="$t('admin.referral.invitations.intro')"
+            variant="outlined"
+            density="comfortable"
+            rows="2"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="showInviteDialog = false">{{ $t('admin.referral.deleteDialog.cancel') }}</LBtn>
+          <LBtn variant="primary" :loading="inviting" :disabled="!inviteRecipients.trim()" @click="sendInvites">
+            {{ $t('admin.referral.invitations.sendBtn') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- QR Code Dialog (per link) -->
+    <LQrCodeDialog
+      v-model="showQrDialog"
+      :url="qrUrl"
+      :filename-base="qrFilenameBase"
+    />
 
     <!-- Recent Registrations -->
     <LCard :title="$t('admin.referral.recentRegistrations.title')" icon="mdi-account-check" class="mb-4">
@@ -410,6 +543,29 @@
               density="comfortable"
               class="mb-3"
             />
+            <!-- Badge color for this link (Auto = deterministic backend color) -->
+            <div class="mb-3">
+              <div class="ref-color-caption">{{ $t('admin.referral.createLinkDialog.color') }}</div>
+              <div class="ref-color-row">
+                <button
+                  v-for="c in colorPresets"
+                  :key="c"
+                  type="button"
+                  class="ref-color-swatch ref-color-swatch--option"
+                  :class="{ 'is-selected': (newLink.color || '').toLowerCase() === c.toLowerCase() }"
+                  :style="{ backgroundColor: c }"
+                  @click="newLink.color = c"
+                />
+                <button
+                  type="button"
+                  class="ref-color-auto"
+                  :class="{ 'is-selected': !newLink.color }"
+                  @click="newLink.color = ''"
+                >
+                  {{ $t('admin.referral.createLinkDialog.colorAuto') }}
+                </button>
+              </div>
+            </div>
             <v-select
               v-model="newLink.role_name"
               :items="availableRoles"
@@ -418,6 +574,38 @@
               density="comfortable"
               class="mb-3"
             />
+            <!-- Welcome mail routing: standard (generic, auto-filled) is the
+                 default; 'custom' opens subject/body with {placeholders}. -->
+            <v-select
+              v-model="newLink.welcome_template"
+              :items="welcomeTemplateOptions"
+              item-title="title"
+              item-value="value"
+              :label="$t('admin.referral.welcomeMail.templateLabel')"
+              variant="outlined"
+              density="comfortable"
+              class="mb-3"
+            />
+            <template v-if="newLink.welcome_template === 'custom'">
+              <v-text-field
+                v-model="newLink.welcome_subject"
+                :label="$t('admin.referral.welcomeMail.subject')"
+                variant="outlined"
+                density="comfortable"
+                class="mb-3"
+              />
+              <v-textarea
+                v-model="newLink.welcome_body"
+                :label="$t('admin.referral.welcomeMail.body')"
+                variant="outlined"
+                density="comfortable"
+                rows="5"
+                auto-grow
+                :hint="$t('admin.referral.welcomeMail.placeholdersHint')"
+                persistent-hint
+                class="mb-3"
+              />
+            </template>
             <v-text-field
               v-model.number="newLink.max_uses"
               :label="$t('admin.referral.createLinkDialog.maxUses')"
@@ -451,6 +639,54 @@
       </v-card>
     </v-dialog>
 
+    <!-- Welcome-Mail Dialog (per link) -->
+    <v-dialog v-model="showWelcomeDialog" max-width="560">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-email-edit-outline</v-icon>
+          {{ $t('admin.referral.welcomeMail.title') }}
+        </v-card-title>
+        <v-card-text>
+          <v-select
+            v-model="welcomeForm.welcome_template"
+            :items="welcomeTemplateOptions"
+            item-title="title"
+            item-value="value"
+            :label="$t('admin.referral.welcomeMail.templateLabel')"
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+          />
+          <template v-if="welcomeForm.welcome_template === 'custom'">
+            <v-text-field
+              v-model="welcomeForm.welcome_subject"
+              :label="$t('admin.referral.welcomeMail.subject')"
+              variant="outlined"
+              density="comfortable"
+              class="mb-3"
+            />
+            <v-textarea
+              v-model="welcomeForm.welcome_body"
+              :label="$t('admin.referral.welcomeMail.body')"
+              variant="outlined"
+              density="comfortable"
+              rows="6"
+              auto-grow
+              :hint="$t('admin.referral.welcomeMail.placeholdersHint')"
+              persistent-hint
+            />
+          </template>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="showWelcomeDialog = false">{{ $t('admin.referral.deleteDialog.cancel') }}</LBtn>
+          <LBtn variant="primary" :loading="savingWelcome" @click="saveWelcomeMail">
+            {{ $t('common.save') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="400">
       <v-card>
@@ -473,12 +709,41 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useReferralSystem } from '@/composables/useReferralSystem'
+import { useMailCenter } from '@/composables/useMailCenter'
 import { useSnackbar } from '@/composables/useSnackbar'
 import LAvatar from '@/components/common/LAvatar.vue'
+import LIconBtn from '@/components/common/LIconBtn.vue'
+import LQrCodeDialog from '@/components/common/LQrCodeDialog.vue'
+import { COLLAB_COLOR_PRESETS } from '@/constants/colors'
 
-const { t } = useI18n()
+// Preset swatches offered for a referral link's badge color (same palette the
+// backend auto-assigns from, so manual + auto colors stay visually coherent).
+const colorPresets = COLLAB_COLOR_PRESETS
+
+const { t, locale } = useI18n()
 const referral = useReferralSystem()
-const { showSnackbar } = useSnackbar()
+const mail = useMailCenter()
+const { showSuccess, showError, showInfo, showWarning, showMessage } = useSnackbar()
+
+function showSnackbar(message, color = 'success') {
+  switch (color) {
+    case 'success':
+      showSuccess(message)
+      break
+    case 'error':
+      showError(message)
+      break
+    case 'info':
+      showInfo(message)
+      break
+    case 'warning':
+      showWarning(message)
+      break
+    default:
+      showMessage(message, { color })
+      break
+  }
+}
 
 // State
 const loading = ref(false)
@@ -497,6 +762,20 @@ const showArchived = ref(false)
 const showCreateCampaignDialog = ref(false)
 const showCreateLinkDialog = ref(false)
 const showDeleteDialog = ref(false)
+
+// Invitation funnel stats per link id, and the per-link invite dialog state.
+const linkStats = ref({})
+const showInviteDialog = ref(false)
+const inviteLink = ref(null)
+const inviteRecipients = ref('')
+const inviteIntro = ref('')
+const inviting = ref(false)
+// Per-link QR-code dialog state. We derive the public join URL via the
+// composable's getLinkUrl() so the QR matches the copy/clipboard URL exactly.
+const showQrDialog = ref(false)
+const qrUrl = ref('')
+const qrFilenameBase = ref('llars-join')
+
 const deleteDialogTitle = ref('')
 const deleteDialogText = ref('')
 const deleteTarget = ref(null)
@@ -521,7 +800,11 @@ const newLink = ref({
   label: '',
   role_name: 'evaluator',
   max_uses: null,
-  expires_at: ''
+  expires_at: '',
+  color: '',  // '' = let the backend auto-assign a deterministic color
+  welcome_template: 'standard',
+  welcome_subject: '',
+  welcome_body: ''
 })
 
 const availableRoles = ['admin', 'researcher', 'evaluator', 'chatbot_manager']
@@ -551,7 +834,8 @@ const campaignHeaders = computed(() => [
 const linkHeaders = computed(() => [
   { title: t('admin.referral.table.headers.codeSlug'), key: 'identifier', sortable: false },
   { title: t('admin.referral.table.headers.role'), key: 'role_name', sortable: true },
-  { title: t('admin.referral.table.headers.registrations'), key: 'stats', sortable: false },
+  { title: t('admin.referral.table.headers.funnel'), key: 'stats', sortable: false },
+  { title: t('admin.referral.invitations.column'), key: 'invitations', sortable: false },
   { title: t('admin.referral.table.headers.active'), key: 'is_active', sortable: true },
   { title: '', key: 'actions', sortable: false, align: 'end' }
 ])
@@ -604,10 +888,59 @@ async function loadCampaignLinks(campaignId) {
   linksLoading.value = true
   try {
     campaignLinks.value = await referral.listCampaignLinks(campaignId)
+    // Best-effort: fetch the invited/accepted/pending funnel for each link.
+    for (const link of campaignLinks.value) {
+      loadLinkStats(link.id)
+    }
   } catch (e) {
     showSnackbar(e.message, 'error')
   } finally {
     linksLoading.value = false
+  }
+}
+
+async function loadLinkStats(linkId) {
+  try {
+    linkStats.value = { ...linkStats.value, [linkId]: await mail.fetchLinkInvitations(linkId) }
+  } catch (e) {
+    // Non-fatal — the table still renders without the funnel.
+  }
+}
+
+// Open the QR dialog for a link: build the public /join/<slug|code> URL and a
+// matching download filename (llars-join-<slug|code>).
+function openQrDialog(link) {
+  qrUrl.value = referral.getLinkUrl(link)
+  qrFilenameBase.value = `llars-join-${link.slug || link.code}`
+  showQrDialog.value = true
+}
+
+function openInviteDialog(link) {
+  inviteLink.value = link
+  inviteRecipients.value = ''
+  inviteIntro.value = ''
+  showInviteDialog.value = true
+}
+
+async function sendInvites() {
+  if (!inviteLink.value || !inviteRecipients.value.trim()) return
+  inviting.value = true
+  try {
+    const res = await mail.sendInvite({
+      referralLinkId: inviteLink.value.id,
+      listText: inviteRecipients.value,
+      intro: inviteIntro.value,
+    })
+    const r = res.result || {}
+    showSnackbar(t('admin.referral.invitations.sentResult', {
+      sent: r.sent || 0, failed: r.failed || 0, skipped: r.skipped || 0,
+    }), 'success')
+    showInviteDialog.value = false
+    loadLinkStats(inviteLink.value.id)
+  } catch (e) {
+    showSnackbar(e.message, 'error')
+  } finally {
+    inviting.value = false
   }
 }
 
@@ -648,10 +981,18 @@ function loadMoreRegistrations() {
   loadRegistrations(true)
 }
 
+// Format a backend conversion_rate (fraction in [0,1], or null when there
+// were no clicks yet) as a percentage string for the funnel display.
+function formatConversion(rate) {
+  if (rate === null || rate === undefined) return '–'
+  return `${Math.round(rate * 100)}%`
+}
+
 function formatDateTime(isoString) {
   if (!isoString) return '-'
   const date = new Date(isoString)
-  return date.toLocaleString('de-DE', {
+  const loc = locale.value === 'de' ? 'de-DE' : 'en-US'
+  return date.toLocaleString(loc, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -679,7 +1020,8 @@ function getStatusLabel(status) {
 // Date formatting
 function formatDateRange(start, end) {
   if (!start && !end) return t('admin.referral.dateRange.noPeriod')
-  const formatDate = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  const loc = locale.value === 'de' ? 'de-DE' : 'en-US'
+  const formatDate = (d) => new Date(d).toLocaleDateString(loc, { day: '2-digit', month: '2-digit', year: '2-digit' })
   if (start && end) return `${formatDate(start)} - ${formatDate(end)}`
   if (start) return t('admin.referral.dateRange.from', { date: formatDate(start) })
   return t('admin.referral.dateRange.until', { date: formatDate(end) })
@@ -767,6 +1109,9 @@ async function createLink() {
     if (!data.label) data.label = null
     if (!data.max_uses) data.max_uses = null
     if (!data.expires_at) data.expires_at = null
+    if (!data.color) data.color = null  // null -> backend auto-color
+    if (!data.welcome_subject) data.welcome_subject = null
+    if (!data.welcome_body) data.welcome_body = null
 
     const link = await referral.createLink(selectedCampaign.value.id, data)
     showSnackbar(t('admin.referral.messages.linkCreated', { url: link.url }), 'success')
@@ -782,13 +1127,71 @@ async function createLink() {
   }
 }
 
+// --- Welcome-Mail-Dialog (pro Link) ---
+const showWelcomeDialog = ref(false)
+const savingWelcome = ref(false)
+const welcomeLink = ref(null)
+const welcomeForm = ref({ welcome_template: 'standard', welcome_subject: '', welcome_body: '' })
+
+const welcomeTemplateOptions = computed(() => [
+  { title: t('admin.referral.welcomeMail.templates.standard'), value: 'standard' },
+  { title: t('admin.referral.welcomeMail.templates.kkb'), value: 'kkb' },
+  { title: t('admin.referral.welcomeMail.templates.custom'), value: 'custom' }
+])
+
+function openWelcomeDialog(link) {
+  welcomeLink.value = link
+  welcomeForm.value = {
+    welcome_template: link.welcome_template || 'standard',
+    welcome_subject: link.welcome_subject || '',
+    welcome_body: link.welcome_body || ''
+  }
+  showWelcomeDialog.value = true
+}
+
+async function saveWelcomeMail() {
+  if (!welcomeLink.value) return
+  savingWelcome.value = true
+  try {
+    const updated = await referral.updateLink(welcomeLink.value.id, { ...welcomeForm.value })
+    Object.assign(welcomeLink.value, {
+      welcome_template: updated?.welcome_template ?? welcomeForm.value.welcome_template,
+      welcome_subject: updated?.welcome_subject ?? welcomeForm.value.welcome_subject,
+      welcome_body: updated?.welcome_body ?? welcomeForm.value.welcome_body
+    })
+    showSnackbar(t('admin.referral.welcomeMail.saved'), 'success')
+    showWelcomeDialog.value = false
+  } catch (e) {
+    showSnackbar(e.message, 'error')
+  } finally {
+    savingWelcome.value = false
+  }
+}
+
 function resetLinkForm() {
   newLink.value = {
     slug: '',
     label: '',
     role_name: 'evaluator',
     max_uses: null,
-    expires_at: ''
+    expires_at: '',
+    color: '',
+    welcome_template: 'standard',
+    welcome_subject: '',
+    welcome_body: ''
+  }
+}
+
+// Change a link's badge color inline from the table. Empty string clears the
+// override so the link reverts to its deterministic auto-color.
+async function setLinkColor(link, color) {
+  try {
+    const updated = await referral.updateLink(link.id, { color: color || '' })
+    link.color = updated?.color ?? color ?? null
+    link.color_custom = updated?.color_custom ?? (color || null)
+    showSnackbar(t('admin.referral.messages.linkColorUpdated'), 'success')
+  } catch (e) {
+    showSnackbar(e.message, 'error')
   }
 }
 
@@ -887,5 +1290,68 @@ async function executeDelete() {
   color: rgba(var(--v-theme-on-surface), 0.6);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* Referral-link color editing (table swatch + create-dialog picker) */
+.ref-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.18);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.ref-color-swatch:hover {
+  transform: scale(1.12);
+}
+
+.ref-color-swatch--option.is-selected {
+  border-color: rgb(var(--v-theme-on-surface));
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.ref-color-caption {
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  margin-bottom: 6px;
+}
+
+.ref-color-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ref-color-menu {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 200px;
+  padding: 10px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.ref-color-auto {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
+  border-radius: 6px 2px 6px 2px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.ref-color-auto.is-selected {
+  border-color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-primary));
 }
 </style>

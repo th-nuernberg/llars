@@ -2,10 +2,26 @@
   <div class="authenticity-interface" ref="containerRef">
     <!-- Left Panel: Content to Evaluate -->
     <div class="left-panel" :style="leftPanelStyle()">
-      <!-- Panel Header (hidden when embedded in EvaluationSession) -->
-      <div v-if="!hideNavigation" class="panel-header">
-        <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
-        <h3>{{ $t('authenticity.detail.messagePanelTitle') }}</h3>
+      <!-- Panel Header. Shown with the title when standalone; when embedded
+           in EvaluationSession the title row is hidden but we still render a
+           slim header on mobile so the fullscreen-read trigger has a home. -->
+      <div v-if="!hideNavigation || isMobile" class="panel-header content-panel-header">
+        <template v-if="!hideNavigation">
+          <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
+          <h3>{{ $t('authenticity.detail.messagePanelTitle') }}</h3>
+        </template>
+        <v-spacer />
+        <!-- Mobile-only fullscreen read button: the left panel is capped at
+             ~40vh on phones, so long histories are unreadable. This opens the
+             same content in a fullscreen overlay. Hidden on desktop. -->
+        <LIconBtn
+          v-if="isMobile"
+          icon="mdi-fullscreen"
+          variant="text"
+          size="small"
+          :tooltip="$t('authenticity.detail.readFullscreen')"
+          @click="openFullscreen"
+        />
       </div>
 
       <!-- Content Panel -->
@@ -59,7 +75,7 @@
               :disabled="saving"
             >
               <LIcon size="28">mdi-account-check</LIcon>
-              <span class="vote-label">{{ $t('authenticity.detail.voteReal') }}</span>
+              <span class="vote-label">{{ realLabel }}</span>
               <span class="vote-hint">{{ $t('authenticity.detail.voteRealHint') }}</span>
             </button>
             <button
@@ -69,38 +85,54 @@
               :disabled="saving"
             >
               <LIcon size="28">mdi-robot</LIcon>
-              <span class="vote-label">{{ $t('authenticity.detail.voteFake') }}</span>
+              <span class="vote-label">{{ fakeLabel }}</span>
               <span class="vote-hint">{{ $t('authenticity.detail.voteFakeHint') }}</span>
             </button>
           </div>
         </div>
 
-        <!-- Confidence Slider -->
-        <div class="metadata-section">
-          <span class="section-label">{{ $t('authenticity.detail.confidenceLabel') }}</span>
-          <LSlider
-            v-model="confidence"
-            :min="0"
-            :max="100"
-            :step="5"
-            density="compact"
-            @update:model-value="onConfidenceChange"
-          />
-        </div>
+        <!-- Confidence + notes: collapsed by default behind a chevron toggle
+             so the secondary metadata stops crowding the vote buttons on
+             mobile. Auto-expands when an existing note is loaded (see
+             metaExpanded watcher). -->
+        <div class="metadata-group" :class="{ expanded: metaExpanded }">
+          <button class="metadata-toggle" type="button" @click="metaExpanded = !metaExpanded">
+            <LIcon size="14" class="mr-1">
+              {{ metaExpanded ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
+            </LIcon>
+            <span>{{ $t('authenticity.detail.detailsLabel') }}</span>
+            <span v-if="notes && !metaExpanded" class="metadata-hint">({{ notes.length }})</span>
+          </button>
 
-        <!-- Notes -->
-        <div class="metadata-section">
-          <span class="section-label">{{ $t('authenticity.detail.notesLabel') }}</span>
-          <v-textarea
-            v-model="notes"
-            variant="outlined"
-            density="compact"
-            auto-grow
-            rows="2"
-            hide-details
-            :placeholder="$t('authenticity.detail.notesPlaceholder')"
-            @blur="saveMetadata"
-          />
+          <template v-if="metaExpanded">
+            <!-- Confidence Slider -->
+            <div class="metadata-section">
+              <span class="section-label">{{ $t('authenticity.detail.confidenceLabel') }}</span>
+              <LSlider
+                v-model="confidence"
+                :min="0"
+                :max="100"
+                :step="5"
+                density="compact"
+                @update:model-value="onConfidenceChange"
+              />
+            </div>
+
+            <!-- Notes -->
+            <div class="metadata-section">
+              <span class="section-label">{{ $t('authenticity.detail.notesLabel') }}</span>
+              <v-textarea
+                v-model="notes"
+                variant="outlined"
+                density="compact"
+                auto-grow
+                rows="2"
+                hide-details
+                :placeholder="$t('authenticity.detail.notesPlaceholder')"
+                @blur="saveMetadata"
+              />
+            </div>
+          </template>
         </div>
       </div>
 
@@ -135,6 +167,38 @@
         </LBtn>
       </div>
     </div>
+
+    <!-- Mobile-only fullscreen read overlay for the message content. The left
+         panel is capped at ~40vh on phones (≈150px), so long histories are
+         unreadable inline. This renders the SAME content (LMessageList / text)
+         fullscreen with a top bar + close button. Read-only — no vote button
+         needed here (votes live in the right panel). Mirrors the proven
+         ComparisonInterface pattern. -->
+    <v-dialog
+      v-model="fullscreenOpen"
+      fullscreen
+      :scrim="false"
+      transition="dialog-bottom-transition"
+    >
+      <div class="content-fullscreen">
+        <div class="content-fullscreen-bar">
+          <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
+          <span class="content-fullscreen-title">{{ $t('authenticity.detail.messagePanelTitle') }}</span>
+          <v-spacer />
+          <LBtn variant="text" size="small" prepend-icon="mdi-close" @click="fullscreenOpen = false">
+            {{ $t('common.close') }}
+          </LBtn>
+        </div>
+        <div class="content-fullscreen-content">
+          <LMessageList v-if="messages.length > 0" :messages="messages" />
+          <div v-else-if="content" class="content-text">{{ content }}</div>
+          <div v-else class="empty-state">
+            <LIcon size="48" color="grey-lighten-1">mdi-text-box-off-outline</LIcon>
+            <p>{{ $t('authenticity.detail.noContent') }}</p>
+          </div>
+        </div>
+      </div>
+    </v-dialog>
   </div>
 </template>
 
@@ -146,8 +210,21 @@
  * whether content is real (human-written) or fake (AI-generated).
  */
 import { ref, computed, watch, onMounted, toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePanelResize } from '@/composables/usePanelResize'
 import { useAuthenticityEvaluation } from '@/composables/useAuthenticityEvaluation'
+import { useMobile } from '@/composables/useMobile'
+
+const { t, locale } = useI18n()
+
+// Localize a value that may be a plain string or a localized object {de, en}.
+// api_v1-created scenarios store option labels as localized objects (canonical
+// evaluation_data_schemas shape).
+function localize(v) {
+  if (v == null) return ''
+  if (typeof v === 'string') return v
+  return v[locale.value] || v.de || v.en || ''
+}
 
 const props = defineProps({
   scenarioId: {
@@ -177,6 +254,10 @@ const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 's
 // Computed prop for hideNavigation to use in template
 const hideNavigation = computed(() => props.hideNavigation)
 const canEvaluate = computed(() => props.scenario?.can_evaluate !== false)
+
+// <600px — gates the mobile-only fullscreen-read button + the collapsed
+// metadata defaults. Desktop keeps the full inline layout untouched.
+const { isMobile } = useMobile()
 
 // Panel resize composable
 const { containerRef, leftPanelStyle, rightPanelStyle, startResize } = usePanelResize({
@@ -213,6 +294,37 @@ const {
   goPrev
 } = useAuthenticityEvaluation(scenarioIdRef)
 
+// Unwrap the (possibly nested) config_json. api_v1 scenarios store the
+// canonical shape `{type, config: {options}}`; wizard scenarios nest under
+// eval_config; manual scenarios pass the inner config directly.
+const inner = computed(() =>
+  props.config?.config || props.config?.eval_config?.config || props.config || {}
+)
+
+// The authenticity vote is binary (backend contract: 'real' | 'fake'). The
+// canonical config exposes presentational `options` ([{id, label}]) where
+// `human` maps to the "real" vote and `ai`/`llm` to the "fake" vote. We use
+// those localized labels for the two buttons when present, falling back to the
+// existing i18n strings — the submitted vote value is unchanged.
+const authOptions = computed(() => inner.value?.options || [])
+
+function findOptionLabel(...ids) {
+  const opt = authOptions.value.find(o =>
+    ids.includes(String(o.id || '').toLowerCase())
+  )
+  return opt ? localize(opt.label) || localize(opt.name) : ''
+}
+
+// "Real" button = human-written option.
+const realLabel = computed(() =>
+  findOptionLabel('human', 'real') || t('authenticity.detail.voteReal')
+)
+
+// "Fake" button = AI/LLM-generated option.
+const fakeLabel = computed(() =>
+  findOptionLabel('ai', 'llm', 'fake') || t('authenticity.detail.voteFake')
+)
+
 // Emit status changes to parent
 watch(currentItemStatus, (newStatus) => {
   emit('status-change', newStatus)
@@ -228,7 +340,11 @@ async function submitVote(voteValue) {
   if (!canEvaluate.value) return
   const result = await doSubmitVote(voteValue)
   if (result.success) {
-    emit('item-completed', currentItem.value?.item_id)
+    // The authenticity composable populates currentItem with `thread_id`
+    // (not item_id). Emit the real id so EvaluationSession.markItemCompleted —
+    // which matches on item.thread_id === id — can find the item and bump
+    // progress.completed (otherwise the universal thank-you never fires).
+    emit('item-completed', currentItem.value?.thread_id ?? currentItem.value?.item_id)
     if (progress.value.completed === progress.value.total) {
       emit('all-completed')
     }
@@ -244,6 +360,35 @@ function onConfidenceChange() {
 function saveMetadata() {
   doSaveMetadata()
 }
+
+// -----------------------------------------------------------------------------
+// Collapsible confidence + notes
+// -----------------------------------------------------------------------------
+// Collapsed by default so the secondary metadata doesn't crowd the vote
+// buttons on mobile. Auto-expands when a previously-saved note exists for the
+// loaded item so raters can see their reasoning without hunting for the toggle.
+const metaExpanded = ref(false)
+watch(notes, (val) => {
+  if (val && !metaExpanded.value) metaExpanded.value = true
+}, { immediate: true })
+
+// -----------------------------------------------------------------------------
+// Mobile fullscreen read mode (message content)
+// -----------------------------------------------------------------------------
+// On phones the left content panel is capped at ~40vh (≈150px), making long
+// histories unreadable. The fullscreen overlay renders the same content
+// (LMessageList / plain text) full-height. Read-only — desktop never shows the
+// trigger (v-if="isMobile"). Closes automatically when the item changes so a
+// stale history isn't shown after navigation.
+const fullscreenOpen = ref(false)
+
+function openFullscreen() {
+  fullscreenOpen.value = true
+}
+
+watch(currentItem, () => {
+  fullscreenOpen.value = false
+})
 
 // Initialize on mount
 onMounted(async () => {
@@ -465,6 +610,38 @@ watch(() => props.initialItemId, async (newItemId) => {
   box-shadow: 0 0 0 3px rgba(232, 160, 135, 0.25);
 }
 
+/* Collapsible metadata group (confidence + notes) */
+.metadata-group {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  padding-top: 8px;
+}
+
+.metadata-toggle {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  min-height: 38px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  transition: color 0.15s ease;
+}
+
+.metadata-toggle:hover {
+  color: rgba(var(--v-theme-on-surface), 0.95);
+}
+
+.metadata-hint {
+  margin-left: 6px;
+  font-size: 0.78rem;
+  font-weight: 400;
+  font-style: italic;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
 /* Metadata Sections */
 .metadata-section {
   margin-bottom: 16px;
@@ -498,6 +675,44 @@ watch(() => props.initialItemId, async (newItemId) => {
   text-align: center;
 }
 
+/* Mobile fullscreen read overlay — mirrors ComparisonInterface's
+   .option-fullscreen pattern (top bar + scrollable content). Only the
+   message history is shown; voting stays in the right panel. */
+.content-fullscreen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: rgb(var(--v-theme-surface));
+}
+
+.content-fullscreen-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  flex-shrink: 0;
+}
+
+.content-fullscreen-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.content-fullscreen-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 14px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Slim mobile fullscreen trigger row over the content panel. */
+.content-panel-header {
+  min-height: 44px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .authenticity-interface {
@@ -515,12 +730,63 @@ watch(() => props.initialItemId, async (newItemId) => {
     border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   }
 
+  /* Bound the right panel so an auto-growing notes textarea can't push the
+     vote buttons off-screen. The .panel-content inside already scrolls. */
+  .right-panel {
+    max-height: 60vh;
+  }
+
   .resize-handle {
     display: none;
   }
 
   .vote-buttons {
     flex-direction: column;
+  }
+}
+
+/* Phones: shrink secondary chrome so the vote buttons + content get the room.
+   (Steigerwald 2026-06-05) Panel headers shrink, padding compresses, the info
+   box slims down, and the vote hint grows to stay ≥12px legible. */
+@media (max-width: 600px) {
+  .panel-header {
+    padding: 6px 10px;
+  }
+
+  .panel-header h3 {
+    font-size: 0.85rem;
+  }
+
+  .panel-content {
+    padding: 8px;
+  }
+
+  .info-box {
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    font-size: 0.82rem;
+  }
+
+  .vote-section {
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+
+  .vote-btn {
+    padding: 14px 12px;
+  }
+
+  /* ≥12px so the hint stays legible on small screens. */
+  .vote-hint {
+    font-size: 0.85rem;
+  }
+
+  .nav-footer {
+    padding: 8px 10px;
   }
 }
 </style>

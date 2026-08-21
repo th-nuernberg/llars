@@ -5,39 +5,45 @@
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    stroke-width="var(--llars-icon-stroke, 1.5)"
+    stroke-width="var(--llars-icon-stroke, 1.35)"
     stroke-linecap="round"
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <!-- Folder back -->
+    <!-- Folder body with LLARS asymmetric corners -->
     <path
-      class="l-its-hover__folder-plus-back"
-      d="M3 7a2 2 0 0 1 2 -2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2z"
+      class="l-its-hover__folder-plus-body"
+      d="M4 7.5Q4 6 5.5 6H9L11 8H18.5Q20 8 20 9.5V18Q20 19.5 18.5 19.5H5.5Q4 19.5 4 18Z"
     />
-    <!-- Folder tab highlight -->
+
+    <!-- Folder tab (subtle fill) -->
     <path
       class="l-its-hover__folder-plus-tab"
-      d="M3 7h6l2 -2h-4a2 2 0 0 0 -2 2z"
+      d="M4 7.5Q4 6 5.5 6H9L11 8H4Z"
       fill="currentColor"
       stroke="none"
-      opacity="0.15"
+      opacity="0.12"
     />
+
+    <!-- Folder lid — lifts on hover -->
+    <path
+      class="l-its-hover__folder-plus-lid"
+      d="M4 9.5H20"
+      stroke-width="1.2"
+      opacity="0.2"
+    />
+
     <!-- Plus sign -->
     <g class="l-its-hover__folder-plus-icon">
-      <path d="M12 10v6" />
-      <path d="M9 13h6" />
+      <path d="M12 11v5" stroke-width="1.8" />
+      <path d="M9.5 13.5h5" stroke-width="1.8" />
     </g>
   </svg>
 </template>
 
 <style>
-/* Folder Plus icon - hover animation */
-.l-its-hover--folder-plus {
-  --plus-color: var(--llars-success, #98d4bb);
-}
-
-.l-its-hover__folder-plus-back {
+/* Folder Plus — LLARS style with lid-lift animation */
+.l-its-hover__folder-plus-body {
   transition: all 0.25s ease;
 }
 
@@ -45,24 +51,37 @@
   transition: opacity 0.25s ease;
 }
 
+.l-its-hover__folder-plus-lid {
+  transition: all 0.3s ease;
+  transform-origin: 4px 9.5px;
+}
+
 .l-its-hover__folder-plus-icon {
-  stroke: var(--plus-color);
-  stroke-width: 2;
-  transform-origin: 12px 13px;
+  stroke: currentColor;
+  transform-origin: 12px 13.5px;
   transition: all 0.25s ease;
 }
 
-/* Hover effects - folder opens slightly, plus pops */
-:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon) .l-its-hover--folder-plus .l-its-hover__folder-plus-back {
+/* Hover: lid lifts, tab brightens, plus pops */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--folder-plus .l-its-hover__folder-plus-body {
   transform: translateY(-1px);
 }
 
-:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon) .l-its-hover--folder-plus .l-its-hover__folder-plus-tab {
-  opacity: 0.25;
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--folder-plus .l-its-hover__folder-plus-tab {
+  opacity: 0.22;
 }
 
-:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon) .l-its-hover--folder-plus .l-its-hover__folder-plus-icon {
-  transform: scale(1.15);
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--folder-plus .l-its-hover__folder-plus-lid {
+  transform: translateY(-1.5px);
+  opacity: 0.35;
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--folder-plus .l-its-hover__folder-plus-icon {
+  transform: scale(1.12);
   stroke: var(--llars-primary, #b0ca97);
 }
 </style>

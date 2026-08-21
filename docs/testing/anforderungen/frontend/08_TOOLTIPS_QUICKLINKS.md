@@ -73,41 +73,7 @@ test('TT-CB02: collapse button tooltip changes', async ({ authenticatedPage }) =
 
 ---
 
-## 3. LaTeX AI Tooltips (mit Shortcuts)
-
-**Datei:** `src/components/LatexCollabAI/ai/AISelectionMenu.vue`
-
-| ID | Element | Tooltip-Text | Shortcut | Test |
-|----|---------|--------------|----------|------|
-| TT-AI01 | Umformulieren | "Umformulieren (Ctrl+Shift+R)" | Ctrl+Shift+R | E2E |
-| TT-AI02 | Erweitern | "Erweitern (Ctrl+Shift+E)" | Ctrl+Shift+E | E2E |
-| TT-AI03 | Kürzen | "Kürzen (Ctrl+Shift+K)" | Ctrl+Shift+K | E2E |
-| TT-AI04 | Zitat finden | "Zitat finden (Ctrl+Shift+C)" | Ctrl+Shift+C | E2E |
-| TT-AI05 | In Chat fragen | "In Chat fragen (Ctrl+Shift+?)" | Ctrl+Shift+? | E2E |
-| TT-AI06 | LaTeX prüfen | "LaTeX prüfen (Ctrl+Shift+L)" | Ctrl+Shift+L | E2E |
-
-### Shortcut-Tests
-
-```typescript
-// e2e/shortcuts/latex-ai-shortcuts.spec.ts
-test('TT-AI01: Ctrl+Shift+R triggers reformulate', async ({ authenticatedPage }) => {
-  await authenticatedPage.goto('/LatexCollabAI/workspace/1')
-
-  // Select text
-  await authenticatedPage.locator('.monaco-editor').click()
-  await authenticatedPage.keyboard.press('Control+a')
-
-  // Trigger shortcut
-  await authenticatedPage.keyboard.press('Control+Shift+R')
-
-  // AI action should trigger
-  await expect(authenticatedPage.locator('.ai-action-indicator')).toBeVisible()
-})
-```
-
----
-
-## 4. Admin Tooltips
+## 3. Admin Tooltips
 
 **Datei:** `src/components/Admin/ChatbotAdmin/*.vue`
 
@@ -121,9 +87,9 @@ test('TT-AI01: Ctrl+Shift+R triggers reformulate', async ({ authenticatedPage })
 
 ---
 
-## 5. Markdown/LaTeX Collab Tooltips
+## 4. Markdown Collab Tooltips
 
-**Dateien:** `src/components/MarkdownCollab/*.vue`, `src/components/LatexCollab/*.vue`
+**Dateien:** `src/components/MarkdownCollab/*.vue`
 
 ### Workspace-Toolbar
 
@@ -134,16 +100,6 @@ test('TT-AI01: Ctrl+Shift+R triggers reformulate', async ({ authenticatedPage })
 | TT-WS03 | Speichern | "Speichern" | bottom | E2E |
 | TT-WS04 | Undo | "Rückgängig" | bottom | E2E |
 | TT-WS05 | Redo | "Wiederholen" | bottom | E2E |
-| TT-WS06 | Kompilieren (LaTeX) | "Kompilieren" | bottom | E2E |
-| TT-WS07 | Download PDF | "PDF herunterladen" | bottom | E2E |
-
-### PDF Viewer
-
-| ID | Element | Tooltip-Text | Position | Test |
-|----|---------|--------------|----------|------|
-| TT-PDF01 | Zoom Out | "Zoom out" | bottom | E2E |
-| TT-PDF02 | Zoom In | "Zoom in" | bottom | E2E |
-| TT-PDF03 | Fit Width | "Fit width" | bottom | E2E |
 
 ### Git Panel
 
@@ -157,7 +113,7 @@ test('TT-AI01: Ctrl+Shift+R triggers reformulate', async ({ authenticatedPage })
 
 ---
 
-## 6. Evaluation Tooltips
+## 5. Evaluation Tooltips
 
 **Datei:** `src/components/Rater/RaterDetail.vue`
 
@@ -173,7 +129,7 @@ test('TT-AI01: Ctrl+Shift+R triggers reformulate', async ({ authenticatedPage })
 
 ---
 
-## 7. Anonymize Tooltips
+## 6. Anonymize Tooltips
 
 **Datei:** `src/components/Anonymize/AnonymizeTool.vue`
 
@@ -185,7 +141,7 @@ test('TT-AI01: Ctrl+Shift+R triggers reformulate', async ({ authenticatedPage })
 
 ---
 
-## 8. Quicklinks
+## 7. Quicklinks
 
 ### Home Dashboard
 
@@ -195,7 +151,6 @@ test('TT-AI01: Ctrl+Shift+R triggers reformulate', async ({ authenticatedPage })
 | QL-02 | Rating-Kachel | /Rater | E2E |
 | QL-03 | Chat-Kachel | /chat | E2E |
 | QL-04 | Markdown-Kachel | /MarkdownCollab | E2E |
-| QL-05 | LaTeX-Kachel | /LatexCollab | E2E |
 | QL-06 | Judge-Kachel | /Judge | E2E |
 | QL-07 | OnCoCo-Kachel | /OnCoCo | E2E |
 | QL-08 | KAIMO-Kachel | /Kaimo | E2E |
@@ -246,28 +201,15 @@ test('QL-15: logout navigates to /login', async ({ authenticatedPage }) => {
 
 ---
 
-## 9. Keyboard Shortcuts (Global)
+## 8. Keyboard Shortcuts (Global)
 
 ### Editor Shortcuts
 
 | ID | Shortcut | Aktion | Kontext | Test |
 |----|----------|--------|---------|------|
-| KS-01 | Ctrl+S | Speichern | Markdown/LaTeX Editor | E2E |
+| KS-01 | Ctrl+S | Speichern | Markdown Editor | E2E |
 | KS-02 | Ctrl+Z | Undo | Alle Editoren | E2E |
 | KS-03 | Ctrl+Y | Redo | Alle Editoren | E2E |
-| KS-04 | Ctrl+Shift+S | Speichern als... | LaTeX | E2E |
-| KS-05 | Ctrl+B | Kompilieren | LaTeX | E2E |
-
-### AI Shortcuts (LaTeX AI)
-
-| ID | Shortcut | Aktion | Test |
-|----|----------|--------|------|
-| KS-06 | Ctrl+Shift+R | Umformulieren | E2E |
-| KS-07 | Ctrl+Shift+E | Erweitern | E2E |
-| KS-08 | Ctrl+Shift+K | Kürzen | E2E |
-| KS-09 | Ctrl+Shift+C | Zitat finden | E2E |
-| KS-10 | Ctrl+Shift+? | In Chat fragen | E2E |
-| KS-11 | Ctrl+Shift+L | LaTeX prüfen | E2E |
 
 ### Chat Shortcuts
 
@@ -285,7 +227,7 @@ test('QL-15: logout navigates to /login', async ({ authenticatedPage }) => {
 
 ---
 
-## 10. Tooltip Timing Tests
+## 9. Tooltip Timing Tests
 
 | ID | Test | Erwartung | Art |
 |----|------|-----------|-----|
@@ -327,7 +269,7 @@ test('TT-TM05: quick hover shows no tooltip', async ({ page }) => {
 
 ---
 
-## 11. Tooltip Content Tests
+## 10. Tooltip Content Tests
 
 | ID | Test | Erwartung | Art |
 |----|------|-----------|-----|
@@ -339,7 +281,7 @@ test('TT-TM05: quick hover shows no tooltip', async ({ page }) => {
 
 ---
 
-## 12. Checkliste für manuelle Tests
+## 11. Checkliste für manuelle Tests
 
 ### Tooltips prüfen
 - [ ] Alle Chat-Tooltips erscheinen
@@ -360,7 +302,6 @@ test('TT-TM05: quick hover shows no tooltip', async ({ page }) => {
 - [ ] Ctrl+Z macht rückgängig
 - [ ] Enter sendet Chat
 - [ ] Shift+Enter neue Zeile
-- [ ] AI-Shortcuts funktionieren
 
 ---
 

@@ -35,14 +35,11 @@ logger = logging.getLogger(__name__)
 
 
 def _emit_scenario_stats_updates(thread_id: int) -> None:
-    """Emit scenario stats updates via SocketIO."""
-    socketio = current_app.extensions.get('socketio')
-    if not socketio:
-        return
+    """Mark stats dirty for all scenarios containing this thread."""
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        from services.scenario_stats_cache_service import mark_dirty
         for scenario_id in get_scenario_ids_for_thread(thread_id):
-            emit_scenario_stats_updated(socketio, scenario_id)
+            mark_dirty(scenario_id)
     except Exception:
         pass
 
@@ -285,6 +282,27 @@ def save_authenticity_vote(thread_id: int):
         db.session.add(row)
 
     db.session.commit()
+
+    # Per-case timing. Authenticity is thread-scoped (no scenario in URL); the
+    # interface sends time_on_item_ms + scenario_id in the body. Best-effort so a
+    # timing hiccup never fails the vote.
+    try:
+        from services.evaluation.item_timing_service import ItemTimingService
+        ms = data.get("time_on_item_ms")
+        if ms is not None:
+            ItemTimingService.record_for_thread(
+                thread_id, user.id, ms,
+                preferred_scenario_id=data.get("scenario_id"),
+                function_type="authenticity",
+            )
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        import logging
+        logging.getLogger("authenticity").warning(
+            "Timing record failed for authenticity thread %s", thread_id, exc_info=True
+        )
+
     _emit_scenario_stats_updates(thread_id)
 
     return jsonify({"ok": True, "thread_id": thread_id, "vote": vote_value, "confidence": confidence}), 200

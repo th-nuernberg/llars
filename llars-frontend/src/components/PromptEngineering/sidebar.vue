@@ -37,7 +37,14 @@
           {{ $t('promptEngineering.sidebar.actions') }}
         </div>
         <div class="actions-grid">
-          <LBtn variant="accent" block prepend-icon="mdi-plus" size="small" @click="$emit('showAddBlockDialog')">
+          <LBtn
+            variant="accent"
+            block
+            prepend-icon="mdi-plus"
+            size="small"
+            data-testid="prompt-add-block-button"
+            @click="$emit('showAddBlockDialog')"
+          >
             {{ $t('promptEngineering.sidebar.newBlock') }}
           </LBtn>
           <LBtn variant="secondary" block prepend-icon="mdi-code-braces" size="small" @click="$emit('openVariableManager')">
@@ -46,7 +53,14 @@
           <LBtn variant="primary" block prepend-icon="mdi-eye" size="small" @click="showPreview = true">
             {{ $t('promptEngineering.sidebar.preview') }}
           </LBtn>
-          <LBtn variant="accent" block prepend-icon="mdi-rocket" size="small" @click="$emit('triggerTestPrompt')">
+          <LBtn
+            variant="accent"
+            block
+            prepend-icon="mdi-rocket"
+            size="small"
+            data-testid="prompt-test-button"
+            @click="$emit('triggerTestPrompt')"
+          >
             {{ $t('promptEngineering.sidebar.test') }}
           </LBtn>
         </div>
@@ -68,7 +82,14 @@
           {{ $t('promptEngineering.sidebar.importExport') }}
         </div>
         <div class="actions-grid">
-          <LBtn variant="secondary" block prepend-icon="mdi-download" size="small" @click="downloadPrompt">
+          <LBtn
+            variant="secondary"
+            block
+            prepend-icon="mdi-download"
+            size="small"
+            data-testid="prompt-download-button"
+            @click="downloadPrompt"
+          >
             {{ $t('promptEngineering.sidebar.download') }}
           </LBtn>
           <LBtn variant="secondary" block prepend-icon="mdi-content-copy" size="small" @click="copyPrompt">
@@ -78,7 +99,14 @@
             {{ $t('promptEngineering.sidebar.import') }}
           </LBtn>
         </div>
-        <input ref="jsonFileInput" type="file" accept=".json" style="display: none" @change="handleJsonFileUpload" />
+        <input
+          ref="jsonFileInput"
+          type="file"
+          accept=".json"
+          data-testid="prompt-json-file-input"
+          style="display: none"
+          @change="handleJsonFileUpload"
+        />
       </div>
 
       <!-- Version Control: Block Changes -->
@@ -196,7 +224,12 @@
 
         <!-- Shared Users List -->
         <div v-if="sharedWith.length > 0" class="shared-list mb-3">
-          <div v-for="user in sharedWith" :key="user.username || user" class="shared-item">
+          <div
+            v-for="user in sharedWith"
+            :key="user.username || user"
+            class="shared-item"
+            :data-testid="`prompt-shared-item-${user.username || user}`"
+          >
             <LAvatar :username="user.username || user" :seed="user.avatar_seed" :src="user.avatar_url" size="sm" class="shared-avatar" />
             <span class="shared-name text-truncate">{{ user.username || user }}</span>
             <v-btn
@@ -217,7 +250,7 @@
         </div>
 
         <!-- Share Input (Owner only) -->
-        <div v-if="isOwner" class="share-input-section">
+        <div v-if="isOwner" class="share-input-section" data-testid="prompt-share-section">
           <LUserSearch
             ref="userSearchRef"
             :exclude-usernames="[...sharedWith.map(u => u.username || u), owner]"

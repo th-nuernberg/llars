@@ -29,14 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 def _emit_scenario_stats_updates(thread_id: int) -> None:
-    """Emit scenario stats updates via SocketIO."""
-    socketio = current_app.extensions.get('socketio')
-    if not socketio:
-        return
+    """Mark stats dirty for all scenarios containing this thread."""
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        from services.scenario_stats_cache_service import mark_dirty
         for scenario_id in get_scenario_ids_for_thread(thread_id):
-            emit_scenario_stats_updated(socketio, scenario_id)
+            mark_dirty(scenario_id)
     except Exception:
         pass
 
@@ -251,7 +248,7 @@ def get_email_thread_for_rankings(thread_id):
         ],
         'features': [
             {
-                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'model_name': feature.model_id or 'Unknown',
                 'type': feature.feature_type.name if feature.feature_type else 'Summary',
                 'content': feature.content,
                 'feature_id': feature.feature_id
@@ -321,46 +318,78 @@ def save_ranking(thread_id):
                 content = detail['content']
                 position = detail['position']
                 bucket = detail['bucket']
+                detail_feature_id = detail.get('feature_id')
 
                 # Use FeatureService to find the FeatureType
                 feature_type_entry = FeatureService.get_feature_type_by_name(type_name)
                 if not feature_type_entry:
                     raise NotFoundError(f'Feature type {type_name} not found')
 
-                # Use FeatureService to find the LLM
-                llm_entry = FeatureService.get_llm_by_name(model_name)
-                if not llm_entry:
-                    raise NotFoundError(f'LLM {model_name} not found')
+                # Prefer direct feature_id lookup (reliable), fall back to
+                # attribute-based search (fragile — content mismatch drops ranking silently)
+                feature = None
+                if detail_feature_id and str(detail_feature_id).isdigit():
+                    feature = FeatureService.get_feature_by_id(int(detail_feature_id))
+                    # Verify the feature belongs to this thread
+                    if feature and feature.item_id != thread_id:
+                        logger.warning(
+                            "Feature %s belongs to item %s, not thread %s — ignoring",
+                            detail_feature_id, feature.item_id, thread_id
+                        )
+                        feature = None
 
-                # Use FeatureService to find the feature
-                feature = FeatureService.get_feature_by_attributes(
-                    thread_id=thread_id,
-                    type_id=feature_type_entry.type_id,
-                    llm_id=llm_entry.llm_id,
-                    content=content
-                )
-
-                if feature:
-                    # Use RankingService to save the ranking
-                    success, error_msg = RankingService.save_ranking(
-                        user_id=user.id,
+                if not feature:
+                    feature = FeatureService.get_feature_by_attributes(
                         thread_id=thread_id,
-                        feature_id=feature.feature_id,
                         type_id=feature_type_entry.type_id,
-                        llm_id=llm_entry.llm_id,
-                        position=position,
-                        bucket=bucket,
-                        commit=False
+                        model_id=model_name,
+                        content=content
                     )
 
-                    if not success:
-                        raise ValidationError(error_msg)
+                if not feature:
+                    logger.warning(
+                        "Feature not found for thread %s (type=%s, model=%s, feature_id=%s) — ranking dropped",
+                        thread_id, type_name, model_name, detail_feature_id
+                    )
+                    continue
+
+                # Use RankingService to save the ranking
+                success, error_msg = RankingService.save_ranking(
+                    user_id=user.id,
+                    thread_id=thread_id,
+                    feature_id=feature.feature_id,
+                    type_id=feature_type_entry.type_id,
+                    model_id=model_name,
+                    position=position,
+                    bucket=bucket,
+                    commit=False
+                )
+
+                if not success:
+                    raise ValidationError(error_msg)
 
         db.session.commit()
 
     except Exception:
         db.session.rollback()
         raise
+
+    # Per-case timing. The ranking payload is a list (feature buckets), so the
+    # interface passes timing + scenario as query params instead of body keys.
+    # Best-effort: never let a timing hiccup fail the ranking save.
+    try:
+        from services.evaluation.item_timing_service import ItemTimingService
+        ms = request.args.get('time_on_item_ms')
+        if ms is not None:
+            ItemTimingService.record_for_thread(
+                thread_id, user.id, ms,
+                preferred_scenario_id=request.args.get('scenario_id'),
+                function_type='ranking',
+            )
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.warning('Timing record failed for ranking thread %s', thread_id, exc_info=True)
 
     _emit_scenario_stats_updates(thread_id)
 

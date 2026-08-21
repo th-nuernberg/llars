@@ -397,4 +397,40 @@ onBeforeUnmount(() => {
 .l-tabs--pill::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--v-theme-on-surface), 0.25);
 }
+
+/* ═══════════════════════════════════════════
+   Responsive - Phones
+   Tighten tab padding/font so 3–6 tabs fit better
+   and reduce reliance on horizontal scroll. Existing
+   overflow-x scroll behavior on .l-tabs is preserved.
+   Touch target stays ≥38px (8px*2 + ~0.75rem line).
+   ═══════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .l-tab {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    gap: 6px;
+  }
+
+  /* Variant-specific paddings reduced to match base on phones */
+  .l-tabs--pill .l-tab,
+  .l-tabs--underlined .l-tab {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .l-tab {
+    padding: 7px 10px;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+  }
+
+  .l-tabs--pill .l-tab,
+  .l-tabs--underlined .l-tab {
+    padding: 7px 10px;
+    font-size: 0.72rem;
+  }
+}
 </style>

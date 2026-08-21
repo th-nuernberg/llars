@@ -70,7 +70,8 @@
     "uploadAvatarFailed": "Failed to upload avatar:",
     "regenerateAvatarFailed": "Failed to regenerate avatar:",
     "resetAvatarFailed": "Failed to reset avatar:",
-    "loginError": "Login error:"
+    "loginError": "Login error:",
+    "refreshFailed": "[useAuth] Token refresh failed:"
   },
   "chat": {
     "loadMessagesFailed": "Error loading messages from localStorage:",
@@ -322,7 +323,6 @@
     },
     "systemSettings": {
       "saveSectionFailed": "Failed to save {section} settings:",
-      "saveZoteroOauthFailed": "Failed to save Zotero OAuth settings:",
       "loadSettingsFailed": "Failed to load system settings:"
     },
     "users": {
@@ -334,7 +334,10 @@
       "toggleUserLockFailed": "Error toggling user lock:",
       "deleteUserFailed": "Error deleting user:",
       "assignRoleFailed": "Error assigning role:",
-      "unassignRoleFailed": "Error unassigning role:"
+      "unassignRoleFailed": "Error unassigning role:",
+      "toggleConsoleLogsFailed": "Error toggling console logs:",
+      "sendPasswordResetFailed": "Error sending password reset email:",
+      "generateResetLinkFailed": "Error generating reset link:"
     }
   },
   "judge": {
@@ -454,9 +457,5 @@
       "alreadyAtMax": "[Progress] Already at max: {completed}/{total}",
       "trackingReset": "[Progress] Tracking reset"
     }
-  },
-  "latexCollabAi": {
-    "completionFailed": "Completion failed:",
-    "collectionsLoadFailed": "Failed to load collections:"
   }
 }

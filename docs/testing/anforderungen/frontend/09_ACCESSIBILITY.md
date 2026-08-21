@@ -347,7 +347,6 @@ test('A11Y-RM01: respects prefers-reduced-motion', async ({ browser }) => {
 | A11Y-PG04 | /admin | Keine Violations | Audit |
 | A11Y-PG05 | /Ranker | Keine Violations | Audit |
 | A11Y-PG06 | /MarkdownCollab | Keine Violations | Audit |
-| A11Y-PG07 | /LatexCollab | Keine Violations | Audit |
 | A11Y-PG08 | /Anonymize | Keine Violations | Audit |
 
 ### Test-Code (Automated Audit)
@@ -364,7 +363,6 @@ const criticalPages = [
   '/Ranker',
   '/Rater',
   '/MarkdownCollab',
-  '/LatexCollab',
   '/Anonymize'
 ]
 

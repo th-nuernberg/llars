@@ -66,12 +66,18 @@ export const BASE_TYPE_MAP = {
   [EVAL_TYPES.LABELING]: EVAL_TYPES.LABELING,
   [EVAL_TYPES.COMPARISON]: EVAL_TYPES.COMPARISON,
   [EVAL_TYPES.MAIL_RATING]: EVAL_TYPES.RATING,      // mail_rating uses rating base
-  [EVAL_TYPES.AUTHENTICITY]: EVAL_TYPES.LABELING    // authenticity uses labeling base
+  [EVAL_TYPES.AUTHENTICITY]: EVAL_TYPES.LABELING,   // authenticity uses labeling base
+  [EVAL_TYPES.CONVERSATION_LABELING]: EVAL_TYPES.LABELING  // conversation_labeling uses labeling base
 }
 
 // Check if a type is LLARS domain-specific
 export function isLlarsDomainType(evalType) {
-  return [EVAL_TYPES.MAIL_RATING, EVAL_TYPES.AUTHENTICITY].includes(evalType)
+  return [
+    EVAL_TYPES.MAIL_RATING,
+    EVAL_TYPES.AUTHENTICITY,
+    EVAL_TYPES.COMMUNICATION_COMPARISON,
+    EVAL_TYPES.CONVERSATION_LABELING
+  ].includes(evalType)
 }
 
 // Get the base type for any evaluation type
@@ -687,6 +693,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'A vs B - welches ist besser?', en: 'A vs B - which is better?' },
     config: {
       type: 'pairwise',
+      question: { de: 'Welche Option ist besser?', en: 'Which option is better?' },
       itemsPerComparison: 2,
       allowTie: true,
       showConfidence: false,
@@ -701,6 +708,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'A vs B mit Konfidenzbewertung', en: 'A vs B with confidence rating' },
     config: {
       type: 'pairwise',
+      question: { de: 'Welche Option ist besser?', en: 'Which option is better?' },
       itemsPerComparison: 2,
       allowTie: true,
       showConfidence: true,
@@ -716,6 +724,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'Vergleich nach mehreren Kriterien', en: 'Compare by multiple criteria' },
     config: {
       type: 'pairwise',
+      question: { de: 'Welche Option ist insgesamt besser?', en: 'Which option is better overall?' },
       itemsPerComparison: 2,
       allowTie: true,
       showConfidence: false,
@@ -732,6 +741,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'Eliminierungs-Turnier Format', en: 'Single-elimination tournament format' },
     config: {
       type: 'tournament',
+      question: { de: 'Welche Option gewinnt diese Runde?', en: 'Which option wins this round?' },
       itemsPerComparison: 2,
       allowTie: false,
       rounds: 'auto',
@@ -746,6 +756,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'Eigene Vergleichskriterien definieren', en: 'Define your own comparison criteria' },
     config: {
       type: 'pairwise',
+      question: { de: 'Welche Option ist besser?', en: 'Which option is better?' },
       itemsPerComparison: 2,
       allowTie: true,
       showConfidence: false,
@@ -1012,7 +1023,14 @@ export const PRESETS_BY_TYPE = {
   [EVAL_TYPES.COMPARISON]: COMPARISON_PRESETS,
   // LLARS domain-specific types
   [EVAL_TYPES.MAIL_RATING]: MAIL_RATING_PRESETS,
-  [EVAL_TYPES.AUTHENTICITY]: AUTHENTICITY_PRESETS
+  [EVAL_TYPES.AUTHENTICITY]: AUTHENTICITY_PRESETS,
+  // Communication-Comparison reuses the comparison presets — same A/B
+  // mechanics, the type discriminator only switches the UI shell.
+  [EVAL_TYPES.COMMUNICATION_COMPARISON]: COMPARISON_PRESETS,
+  // Conversation-Labeling reuses the labeling presets — identical config
+  // shape (labels, mode, copilot, parts); only the unit of work differs
+  // (item = conversation, vote = single span).
+  [EVAL_TYPES.CONVERSATION_LABELING]: LABELING_PRESETS
 }
 
 // ===== Default Config by Type =====
@@ -1024,7 +1042,11 @@ export const DEFAULT_CONFIG_BY_TYPE = {
   [EVAL_TYPES.COMPARISON]: COMPARISON_PRESETS['pairwise'].config,
   // LLARS domain-specific types
   [EVAL_TYPES.MAIL_RATING]: MAIL_RATING_PRESETS['mail-verlauf-bewertung'].config,
-  [EVAL_TYPES.AUTHENTICITY]: AUTHENTICITY_PRESETS['nachricht-echtheit'].config
+  [EVAL_TYPES.AUTHENTICITY]: AUTHENTICITY_PRESETS['nachricht-echtheit'].config,
+  // Communication-Comparison shares the pairwise default with comparison.
+  [EVAL_TYPES.COMMUNICATION_COMPARISON]: COMPARISON_PRESETS['pairwise'].config,
+  // Conversation-Labeling shares the binary default with labeling.
+  [EVAL_TYPES.CONVERSATION_LABELING]: LABELING_PRESETS['binary-authentic'].config
 }
 
 // ===== Utility Functions =====
@@ -1153,6 +1175,35 @@ export const TYPE_INFO = {
     color: '#98d4bb',
     category: 'llars',
     baseType: EVAL_TYPES.LABELING
+  },
+  // Communication-Comparison: counselling-context specialisation of
+  // COMPARISON. Same A/B mechanics; the discriminator switches which
+  // interface gets mounted (send-style framing + rater-note textarea).
+  [EVAL_TYPES.COMMUNICATION_COMPARISON]: {
+    name: { de: 'Kommunikations-Vergleich', en: 'Communication Comparison' },
+    description: {
+      de: 'Welche Antwort würden Sie als Berater*in selbst abschicken?',
+      en: 'Which response would you send as a counsellor yourself?'
+    },
+    icon: 'mdi-message-arrow-right-outline',
+    color: '#7BAFC5',
+    category: 'llars',
+    baseType: EVAL_TYPES.COMPARISON
+  },
+  // Conversation-Labeling: counselling-context specialisation of LABELING.
+  // Same config shape (labels, mode, copilot, parts); what differs is the
+  // granularity — the item is a whole conversation, the decision is a single
+  // span inside it, rated with the conversation history still visible.
+  [EVAL_TYPES.CONVERSATION_LABELING]: {
+    name: { de: 'Konversationslabeling', en: 'Conversation Labeling' },
+    description: {
+      de: 'Ein Gespräch ist die Arbeitseinheit, ein einzelner Span die Entscheidung — mit sichtbarem Gesprächsverlauf.',
+      en: 'One conversation is the work unit, a single span is the decision — with the conversation history in view.'
+    },
+    icon: 'mdi-tag-multiple-outline',
+    color: '#6FA8A0',
+    category: 'llars',
+    baseType: EVAL_TYPES.LABELING
   }
 }
 
@@ -1162,7 +1213,12 @@ export const TYPE_INFO = {
 export function getTypesByCategory() {
   return {
     general: [EVAL_TYPES.RATING, EVAL_TYPES.RANKING, EVAL_TYPES.LABELING, EVAL_TYPES.COMPARISON],
-    llars: [EVAL_TYPES.MAIL_RATING, EVAL_TYPES.AUTHENTICITY]
+    llars: [
+      EVAL_TYPES.MAIL_RATING,
+      EVAL_TYPES.AUTHENTICITY,
+      EVAL_TYPES.COMMUNICATION_COMPARISON,
+      EVAL_TYPES.CONVERSATION_LABELING
+    ]
   }
 }
 
@@ -1177,5 +1233,10 @@ export function getGeneralTypes() {
  * Get all LLARS domain-specific types
  */
 export function getLlarsTypes() {
-  return [EVAL_TYPES.MAIL_RATING, EVAL_TYPES.AUTHENTICITY]
+  return [
+    EVAL_TYPES.MAIL_RATING,
+    EVAL_TYPES.AUTHENTICITY,
+    EVAL_TYPES.COMMUNICATION_COMPARISON,
+    EVAL_TYPES.CONVERSATION_LABELING
+  ]
 }

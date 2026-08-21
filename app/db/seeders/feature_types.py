@@ -38,6 +38,19 @@ def initialize_feature_function_types(db):
         # LLARS-specific types
         (3, 'mail_rating'),
         (5, 'authenticity'),
+        # Counselling-context A/B over comparison (commit ?, function_type_id=8).
+        # Reuses every comparison code path; the discriminator only changes
+        # which evaluation interface gets mounted and how A/B is framed.
+        (8, 'communication_comparison'),
+        # Conversation labeling (function_type_id=9): one item is a whole
+        # conversation, one VOTE is a single span inside it. Reuses the entire
+        # labeling stack (label set, co-pilot, parts) — the difference is the
+        # unit of decision, which is why the vote tables carry a span_id.
+        #
+        # Deliberately 9 and not the free gap at 6: that id used to be 'judge'
+        # and still shows up under that name in old comments and backups.
+        # Appending is cheaper than the ambiguity.
+        (9, 'conversation_labeling'),
     ]
 
     # Add missing function types

@@ -1,0 +1,9 @@
+# Heavy ML dependencies - separated for Docker layer caching
+# These packages are large (~4GB total) and change very rarely.
+# Keeping them in a separate layer means code/config changes
+# don't trigger a multi-GB reinstall.
+torch==2.5.1
+transformers==4.46.3
+sentence-transformers==3.3.1
+flair==0.15.1
+chromadb==0.5.20

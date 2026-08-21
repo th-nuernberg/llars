@@ -176,11 +176,17 @@ Provider‑ und Modellverwaltung:
 
 ### Referrals
 
-Referral‑System für Einladungen:
+Referral‑System für getrackte Einladungslinks (`/join/<slug>`):
 
-- Kampagnen und Links verwalten
+- Kampagnen und Links verwalten (Status: aktiv, archiviert, deaktiviert)
+- Pro Link einen **QR‑Code** anzeigen (Modal) und als **PNG / SVG / PDF**
+  herunterladen — direkte Vorlage für Plakate / Konferenz‑Stände
+- Pro Link Signup‑Modus (`full` / `email` / `instant`) und Auto‑Enroll‑Ziele
+  setzen
+- **Funnel‑Analytics:** Aufrufe (Clicks) vs. Registrierungen ⇒ Conversion‑Rate
 - Registrierungen auswerten
-- Status: aktiv, archiviert, deaktiviert
+
+Vollständige Doku: [Referral‑ & Einladungssystem](referral-invitations.md).
 
 ---
 
@@ -244,7 +250,6 @@ Globale Konfiguration:
 - **LLM Logging** (Prompts/Responses, Tasks, Max‑Chars)
 - **Referral System** (Enable, Self‑Registration, Default‑Role)
 - **AI Assistant** (Enable, Username, Farbe)
-- **Zotero OAuth** (Env vs DB Fallback)
 
 ---
 

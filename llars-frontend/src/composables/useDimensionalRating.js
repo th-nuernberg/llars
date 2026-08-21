@@ -33,6 +33,10 @@ export function useDimensionalRating(scenarioId) {
   // State
   const items = ref([])
   const currentItem = ref(null)
+  // Per-case timing: wall-clock ms from item display to first save, sent with
+  // the rating so exports carry time-on-case (backend is first-write-only, so
+  // the auto-save's value — time to first interaction — is the one that sticks).
+  const itemShownAt = ref(null)
   const currentItemIndex = ref(0)
   const messages = ref([])
   const content = ref('')
@@ -251,6 +255,14 @@ export function useDimensionalRating(scenarioId) {
     if (index >= 0) {
       currentItemIndex.value = index
     }
+
+    // Start the per-case timer when the item becomes visible.
+    itemShownAt.value = Date.now()
+  }
+
+  // Elapsed ms since the current item was shown (null if never shown).
+  function timeOnItemMs() {
+    return itemShownAt.value ? Date.now() - itemShownAt.value : null
   }
 
   // Update cache with current ratings
@@ -279,7 +291,8 @@ export function useDimensionalRating(scenarioId) {
         {
           dimension_ratings: dimensionRatings.value,
           feedback: feedback.value || null,
-          auto_complete: false // Don't auto-complete on partial saves
+          auto_complete: false, // Don't auto-complete on partial saves
+          time_on_item_ms: timeOnItemMs()
         }
       )
 
@@ -327,7 +340,8 @@ export function useDimensionalRating(scenarioId) {
         {
           dimension_ratings: dimensionRatings.value,
           feedback: feedback.value || null,
-          auto_complete: true
+          auto_complete: true,
+          time_on_item_ms: timeOnItemMs()
         }
       )
 

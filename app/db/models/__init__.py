@@ -85,19 +85,6 @@ from db.models.markdown_collab import (
     MarkdownCommit,
 )
 
-# LaTeX Collab models
-from db.models.latex_collab import (
-    LatexWorkspaceVisibility,
-    LatexNodeType,
-    LatexWorkspace,
-    LatexWorkspaceMember,
-    LatexDocument,
-    LatexAsset,
-    LatexCommit,
-    LatexCompileJob,
-    LatexComment,
-)
-
 # LLM Model configuration
 from db.models.llm_model import (
     LLMModel,
@@ -107,6 +94,9 @@ from db.models.llm_model import (
 from db.models.llm_model_permission import LLMModelPermission
 from db.models.llm_provider import LLMProvider
 from db.models.llm_task_result import LLMTaskResult
+from db.models.llm_eval_run import LLMEvalRun
+from db.models.labeling_copilot_log import LabelingCopilotLog
+from db.models.evaluation_item_timing import EvaluationItemTiming
 
 # Prompt Templates and LLM Usage Tracking
 from db.models.prompt_template import PromptTemplate
@@ -130,7 +120,10 @@ from db.models.kaimo import (
 
 # Scenario and Rating models
 from db.models.scenario import (
+    ManagerRole,
+    EvaluationRole,
     ScenarioRoles,
+    AccessLevel,
     InvitationStatus,
     ProgressionStatus,
     FeatureFunctionType,
@@ -145,7 +138,6 @@ from db.models.scenario import (
     ScenarioThreadDistribution,
     # Other models
     Message,
-    LLM,
     FeatureType,
     ConsultingCategoryType,
     UserConsultingCategorySelection,
@@ -157,6 +149,7 @@ from db.models.scenario import (
     UserMailHistoryRating,
     ItemDimensionRating,  # New multi-dimensional rating model
     ItemLabelingEvaluation,  # Labeling/classification evaluation model
+    ItemComparisonEvaluation,  # A/B comparison evaluation model
     UserMessageRating,
     UserPrompt,
     UserPromptShare,
@@ -172,14 +165,6 @@ from db.models.authenticity import (
     UserAuthenticityVote,
 )
 
-# Zotero Integration models
-from db.models.zotero import (
-    ZoteroLibraryType,
-    ZoteroConnection,
-    WorkspaceZoteroLibrary,
-    ZoteroSyncLog,
-)
-
 # Referral/Invitation models
 from db.models.referral import (
     ReferralCampaignStatus,
@@ -188,11 +173,25 @@ from db.models.referral import (
     ReferralRegistration,
 )
 
+# Password-reset tokens (self-service "forgot password" flow)
+from db.models.password_reset import PasswordResetToken
+
+# Mail-Center: central email log + referral invitation tracking
+from db.models.email_log import (
+    EmailLog,
+    ReferralInvitation,
+    MailType,
+    MailStatus,
+)
+
 # User LLM Provider models
 from db.models.user_llm_provider import (
     UserLLMProvider,
     UserLLMProviderShare,
 )
+
+# User Demographics (one-time survey)
+from db.models.user_demographics import UserDemographics
 
 # Batch Generation models
 from db.models.generation import (
@@ -200,9 +199,63 @@ from db.models.generation import (
     GeneratedOutputStatus,
     GenerationJob,
     GeneratedOutput,
+    GenerationJobShare,
     get_pending_outputs_for_job,
     get_failed_outputs_for_job,
 )
+
+# Pipeline models
+from db.models.pipeline import (
+    PipelineStatus,
+    PipelineIterationPhase,
+    PipelineIterationStatus,
+    PipelineRun,
+    PipelineIteration,
+)
+
+# Anonymization Pipeline models
+from db.models.anonymization import (
+    AnonymizationConversation,
+    AnonymizationMessage,
+    AnonymizationEntity,
+    AnonymizationMessageVersion,
+)
+
+# Conference Manager models
+from db.models.conference import (
+    CoreRanking,
+    PaperStatus,
+    SubmissionStatus,
+    ResearchGroupRole,
+    ResearchGroupRequestStatus,
+    ResearchGroup,
+    ResearchGroupMember,
+    ResearchGroupAccessRequest,
+    ConferenceSeries,
+    Conference,
+    Paper,
+    PaperAuthor,
+    PaperSubmission,
+)
+
+# Messaging models
+from db.models.messaging import (
+    MessagingConversation,
+    MessagingParticipant,
+    MessagingMessage,
+    MessagingAttachment,
+    MessagingReaction,
+    MessagingReadReceipt,
+    MessagingEncryptionKey,
+    MessagingLinkPreview,
+)
+
+# Scenario Stats Cache
+from db.models.scenario_stats_cache import ScenarioStatsCache
+from db.models.scenario_stats_job import ScenarioStatsJob
+
+# DB Price Agent
+from db.models.db_agent import DbPriceScan, DbPriceEntry, DbTripSearch
 
 __all__ = [
     # User
@@ -265,16 +318,6 @@ __all__ = [
     'MarkdownWorkspaceMember',
     'MarkdownDocument',
     'MarkdownCommit',
-    # LaTeX Collab
-    'LatexWorkspaceVisibility',
-    'LatexNodeType',
-    'LatexWorkspace',
-    'LatexWorkspaceMember',
-    'LatexDocument',
-    'LatexAsset',
-    'LatexCommit',
-    'LatexCompileJob',
-    'LatexComment',
     # LLM Model
     'LLMModel',
     'DEFAULT_LLM_MODELS',
@@ -282,6 +325,9 @@ __all__ = [
     'LLMModelPermission',
     'LLMProvider',
     'LLMTaskResult',
+    'LabelingCopilotLog',
+    'EvaluationItemTiming',
+    'LLMEvalRun',
     # Prompt Templates and Usage Tracking
     'PromptTemplate',
     'FieldPromptTemplate',
@@ -300,7 +346,10 @@ __all__ = [
     'KaimoCasePermission',
     'KaimoCaseShare',
     # Scenario
+    'ManagerRole',
+    'EvaluationRole',
     'ScenarioRoles',
+    'AccessLevel',
     'InvitationStatus',
     'ProgressionStatus',
     'FeatureFunctionType',
@@ -315,7 +364,6 @@ __all__ = [
     'ScenarioThreadDistribution',
     # Other models
     'Message',
-    'LLM',
     'FeatureType',
     'ConsultingCategoryType',
     'UserConsultingCategorySelection',
@@ -327,34 +375,81 @@ __all__ = [
     'UserMailHistoryRating',
     'ItemDimensionRating',
     'ItemLabelingEvaluation',
+    'ItemComparisonEvaluation',
     'UserMessageRating',
     # Authenticity
     'AuthenticityConversation',
     'UserAuthenticityVote',
+    # Anonymization Pipeline
+    'AnonymizationConversation',
+    'AnonymizationMessage',
+    'AnonymizationEntity',
+    'AnonymizationMessageVersion',
     'UserPrompt',
     'UserPromptShare',
     'PromptCommit',
     'ComparisonSession',
     'ComparisonMessage',
     'ComparisonEvaluation',
-    # Zotero
-    'ZoteroLibraryType',
-    'ZoteroConnection',
-    'WorkspaceZoteroLibrary',
-    'ZoteroSyncLog',
     # Referral
     'ReferralCampaignStatus',
     'ReferralCampaign',
     'ReferralLink',
     'ReferralRegistration',
+    # Password reset
+    'PasswordResetToken',
+    # Mail-Center
+    'EmailLog',
+    'ReferralInvitation',
+    'MailType',
+    'MailStatus',
     # User LLM Provider
     'UserLLMProvider',
     'UserLLMProviderShare',
+    # User Demographics
+    'UserDemographics',
     # Batch Generation
     'GenerationJobStatus',
     'GeneratedOutputStatus',
     'GenerationJob',
     'GeneratedOutput',
+    'GenerationJobShare',
     'get_pending_outputs_for_job',
     'get_failed_outputs_for_job',
+    # Pipeline
+    'PipelineStatus',
+    'PipelineIterationPhase',
+    'PipelineIterationStatus',
+    'PipelineRun',
+    'PipelineIteration',
+    # Conference Manager
+    'CoreRanking',
+    'PaperStatus',
+    'SubmissionStatus',
+    'ResearchGroupRole',
+    'ResearchGroupRequestStatus',
+    'ResearchGroup',
+    'ResearchGroupMember',
+    'ResearchGroupAccessRequest',
+    'ConferenceSeries',
+    'Conference',
+    'Paper',
+    'PaperAuthor',
+    'PaperSubmission',
+    # Messaging
+    'MessagingConversation',
+    'MessagingParticipant',
+    'MessagingMessage',
+    'MessagingAttachment',
+    'MessagingReaction',
+    'MessagingReadReceipt',
+    'MessagingEncryptionKey',
+    'MessagingLinkPreview',
+    # Scenario Stats Cache
+    'ScenarioStatsCache',
+    'ScenarioStatsJob',
+    # DB Price Agent
+    'DbPriceScan',
+    'DbPriceEntry',
+    'DbTripSearch',
 ]

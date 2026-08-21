@@ -1,6 +1,6 @@
 # LLARS Testdokumentation
 
-**Version:** 1.2 | **Stand:** 31. Dezember 2025
+**Version:** 1.3 | **Stand:** 18. März 2026
 
 **Implementierungsstatus:** 🟢 Backend komplett, Frontend in Arbeit
 
@@ -15,7 +15,36 @@ Diese Dokumentation enthält alle Testanforderungen für das LLARS-System (LLM A
 - Welche Priorität jeder Test hat
 - Wer für welche Tests verantwortlich ist
 
+### Nightly Kachel-Governance (verbindlich)
+
+1. Home-Kacheln sind contract-basiert in `llars-frontend/src/config/home_tiles.contract.json`.
+2. Workflows sind in `llars-frontend/e2e/nightly/nightly_workflows.contract.json` definiert.
+3. Nightly-Aktivitäten sind in `llars-frontend/e2e/nightly/nightly_activities.contract.json` definiert.
+4. Nightly-Matrix und Aktivitäten stehen in `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md`.
+5. Nightly räumt alte ungenutzte Docker-Images und Build-Caches (>7 Tage) automatisch auf (`maintenance:docker-cleanup`).
+6. CI-Gate: `python3 scripts/testing/validate_nightly_coverage.py`.
+7. Änderung an `Home.vue` oder Tile-Contract ohne Test- und Doku-Update führt zu CI-Fehler.
+
 ### Quick Start: Tests ausführen
+
+### Vor jedem Push (Pflicht für Kachel-/Flow-Änderungen)
+
+```bash
+cd /path/to/llars
+
+# 1) Contract-/Doku-Gate
+python3 scripts/testing/validate_nightly_coverage.py
+
+# 2) Backend + Frontend Kernchecks
+pytest tests/unit/ tests/integration/
+cd llars-frontend
+npm run test:run
+
+# 3) Nightly-Specs zumindest auf Test-Discovery prüfen
+npx playwright test --list e2e/nightly/tile-regression.spec.js e2e/nightly/workflows.spec.js
+```
+
+Hinweis: Die vollständigen Nightly-E2E-Deploy-Gates laufen in der geplanten Pipeline (Mo-Fr 02:00) bzw. bei erzwungenem Deploy-Run.
 
 **Backend Tests (pytest):**
 ```bash
@@ -94,7 +123,7 @@ docs/testing/
 │   ├── frontend/                      # Frontend-Testanforderungen (✅ komplett)
 │   │   ├── 01_SEITEN_NAVIGATION.md   # Login, Home, Navigation Guards
 │   │   ├── 02_EVALUATION_FEATURES.md # Ranking, Rating, Judge, OnCoCo, KAIMO
-│   │   ├── 03_COLLAB_EDITOREN.md     # Markdown & LaTeX Collaboration + YJS
+│   │   ├── 03_COLLAB_EDITOREN.md     # Markdown Collaboration + YJS
 │   │   ├── 04_CHAT_CHATBOTS.md       # Chat-Interface & Chatbot-Wizard
 │   │   ├── 05_ADMIN_DASHBOARD.md     # Docker, DB, Health, Users, Scenarios
 │   │   ├── 06_UI_KOMPONENTEN.md      # LBtn, LTag, LSlider, LCard, etc.
@@ -111,7 +140,6 @@ docs/testing/
 │   ├── features/                      # Feature-spezifische Tests
 │   │   ├── 01_RAG_PIPELINE.md        # Upload, Chunking, Embedding, Retrieval
 │   │   ├── 02_LLM_INTEGRATION.md     # Models, Chat, Agent Modes, Judge
-│   │   ├── 03_LATEX_KOMPILIERUNG.md  # PDF-Generierung, BibTeX, Collab
 │   │   └── 04_ANONYMISIERUNG.md      # NER, Pseudonymisierung
 │   │
 │   └── security/                      # Sicherheits-Tests (✅ komplett)
@@ -122,6 +150,9 @@ docs/testing/
 │   ├── SMOKE_TEST.md                 # 15-20 min Schnelltest
 │   ├── RELEASE_CHECKLIST.md          # Pre/Post Release Schritte
 │   └── REGRESSION_TESTS.md           # Vollständige Funktionsprüfung
+│
+├── nightly/
+│   └── NIGHTLY_TILE_MATRIX.md        # Kachel-/Workflow-Matrix + Activity-Katalog
 │
 └── CICD_SETUP.md                      # GitLab CI/CD Pipeline Setup
 ```
@@ -144,6 +175,7 @@ docs/testing/
 1. Führe die [Release Checklist](checklisten/RELEASE_CHECKLIST.md) durch
 2. Stelle sicher, dass alle kritischen Tests grün sind
 3. Dokumentiere Testergebnisse
+4. Prüfe Nightly-Coverage mit `python3 scripts/testing/validate_nightly_coverage.py`
 
 ---
 
@@ -151,18 +183,18 @@ docs/testing/
 
 | Bereich | Tests | Status |
 |---------|-------|--------|
-| **Backend Unit Tests** | 768 | ✅ Implementiert |
+| **Backend Unit Tests** | 3.121 | ✅ Implementiert |
 | **Backend Integration Tests** | 342 | ✅ Implementiert |
-| **Frontend Component Tests** | 1.733 | ✅ Implementiert |
-| **E2E Tests (Playwright)** | 25 | ✅ Implementiert |
-| **Gesamt** | **2.868** | ~98% ✅ |
+| **Frontend Component Tests** | 4.519 | ✅ Implementiert |
+| **E2E Tests (Playwright)** | 13+ Spec-Dateien | ✅ Implementiert |
+| **Gesamt** | **7.982+** | ~98% ✅ |
 
 ### Implementierte Backend Test-Dateien
 
 ```
 tests/
 ├── conftest.py                                  # ✅ Fixtures & Setup
-├── unit/                                        # ✅ 768 Tests
+├── unit/                                        # ✅ 3.121 Tests
 │   ├── auth/
 │   │   └── test_decorators.py                   # Auth Decorators
 │   └── services/
@@ -170,7 +202,6 @@ tests/
 │       ├── comparison/test_comparison_service.py
 │       ├── crawler/test_crawler_service.py      # Web Crawler
 │       ├── judge/test_judge_service.py          # LLM-as-Judge
-│       ├── latex/test_latex_compile_service.py  # LaTeX Compilation
 │       ├── llm/test_llm_service.py              # LLM Integration
 │       ├── oncoco/test_oncoco_service.py        # OnCoCo
 │       ├── permission/test_permission_service.py
@@ -255,13 +286,13 @@ llars-frontend/tests/
 | 09_ACCESSIBILITY | WCAG 2.1 AA, Keyboard | ~75 | ⏳ 0 |
 | 10_EDGE_CASES_ERRORS | Empty States, Errors | ~40 | ⏳ 0 |
 | 11_VISUAL_RESPONSIVE | Breakpoints, Dark Mode | ~50 | ⏳ 0 |
-| Composables | useAuth, usePermissions, etc. | ~120 | ✅ 775 (13 Composables) |
+| Composables | useAuth, usePermissions, etc. | ~120 | ✅ 775+ (33 Composables) |
 
 **Implementierte Komponenten (22/22):** ✅ Alle Komponenten getestet - LBtn, LTag, LSlider, LCard, LTabs, LTooltip, LActionGroup, LIconBtn, LAvatar, LLoading, LMessage, LThemeToggle, LInfoTooltip, LMessageList, LUserSearch, LGauge, LChart, LEvaluationLayout, LEvaluationStatus, KatexFormula, AppSidebar, AnalyticsConsentBanner
 
 **Fehlende Komponenten:** Keine - alle Komponenten sind vollständig getestet!
 
-**Implementierte Composables (13/13):** ✅ Alle Composables getestet - useAuth, usePermissions, usePanelResize, useAppTheme, useMobile, useSkeletonLoading, useBuilderValidation, useBuilderState, useWizardSession, useKIAStatusCache, useAnalyticsMetrics, useFieldGenerationService, useSplitPaneResize
+**Implementierte Composables (33):** ✅ Alle Composables getestet - useAuth, usePermissions, usePanelResize, useAppTheme, useMobile, useSkeletonLoading, useBuilderValidation, useBuilderState, useWizardSession, useKIAStatusCache, useAnalyticsMetrics, useFieldGenerationService, useSplitPaneResize und 20 weitere
 
 **Fehlende Composables:** Keine - alle Composables sind vollständig getestet!
 
@@ -269,14 +300,12 @@ llars-frontend/tests/
 
 ```
 llars-frontend/e2e/
-└── login.spec.js                            # ✅ 25 Tests (E2E_LOGIN_001-025)
-    ├── Login Page (5 Tests)                 # Page load, form fields, focus, password type, visibility toggle
-    ├── Successful Login (6 Tests)           # All 4 user roles + token storage + loading state
-    ├── Failed Login (5 Tests)               # Wrong credentials, empty fields, error dismissal
-    ├── Logout (2 Tests)                     # Logout flow, token cleared
-    ├── Session & Redirects (4 Tests)        # Auth redirects, protected routes
-    ├── Keyboard Navigation (2 Tests)        # Enter submit, Tab navigation
-    └── Mobile Responsive (1 Test)           # Mobile viewport login
+├── login.spec.js                            # ✅ Login Flow Tests
+├── nightly/
+│   ├── tile-regression.spec.js              # ✅ Home Tile Regression
+│   ├── workflows.spec.js                    # ✅ Cross-Feature Workflows
+│   └── ...                                  # ✅ Weitere Nightly Specs
+└── ...                                      # ✅ 13+ Spec-Dateien insgesamt
 ```
 
 ---
@@ -311,7 +340,7 @@ Bei Fragen zur Testdokumentation wende dich an das Entwicklungsteam.
 
 ---
 
-**Letzte Aktualisierung:** 1. Januar 2026
+**Letzte Aktualisierung:** 18. März 2026
 
 ---
 

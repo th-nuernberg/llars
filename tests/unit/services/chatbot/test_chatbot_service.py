@@ -325,6 +325,75 @@ class TestHelperMethods:
 
         assert bot.rag_include_sources is True
 
+    def test_CBOT_015_tavily_api_key_encrypted_at_rest(self, app, db, app_context):
+        """
+        [CBOT-015] Tavily key is encrypted at rest, decrypts transparently.
+
+        ``_upsert_prompt_settings`` must encrypt ``tavily_api_key`` on
+        write so the raw secret never lands plain in the DB column,
+        and ``get_tavily_api_key`` must return the original plaintext
+        when read via the agent-config helper.
+        """
+        from services.chatbot.chatbot_service import ChatbotService
+        from services.chatbot.agent_modes.agent_config import get_tavily_api_key
+        from services.llm.secret_encryption import is_encrypted_secret
+        from db.tables import Chatbot, ChatbotPromptSettings
+
+        bot = Chatbot(
+            name='test_tavily_encrypt',
+            display_name='Test Bot',
+            system_prompt='Test prompt',
+            created_by='test_user',
+        )
+        db.session.add(bot)
+        db.session.flush()
+
+        plaintext = 'tvly-supersecret-1234567890ABCDEF'
+        ChatbotService._upsert_prompt_settings(
+            bot, {'prompt_settings': {'tavily_api_key': plaintext}}
+        )
+        db.session.commit()
+
+        stored = ChatbotPromptSettings.query.filter_by(chatbot_id=bot.id).first()
+        assert stored is not None
+        # Column holds the prefixed Fernet token, not the plaintext.
+        assert stored.tavily_api_key != plaintext
+        assert is_encrypted_secret(stored.tavily_api_key)
+        # Reader transparently decrypts.
+        assert get_tavily_api_key(stored) == plaintext
+
+    def test_CBOT_016_tavily_legacy_plain_value_still_readable(
+        self, app, db, app_context
+    ):
+        """
+        [CBOT-016] Pre-rollout plain rows keep working without migration.
+
+        Rows written before encryption was wired up have no ``enc:v1:``
+        prefix; ``get_tavily_api_key`` must return them untouched so
+        existing chatbots don't lose web-search after the deploy.
+        """
+        from services.chatbot.agent_modes.agent_config import get_tavily_api_key
+        from db.tables import Chatbot, ChatbotPromptSettings
+
+        bot = Chatbot(
+            name='test_tavily_legacy',
+            display_name='Test Bot',
+            system_prompt='Test prompt',
+            created_by='test_user',
+        )
+        db.session.add(bot)
+        db.session.flush()
+
+        # Simulate a row written by the old code path: plain text, no prefix.
+        legacy_settings = ChatbotPromptSettings(
+            chatbot_id=bot.id,
+            tavily_api_key='tvly-LEGACY-PLAIN-VALUE',
+        )
+        db.session.add(legacy_settings)
+        db.session.commit()
+
+        assert get_tavily_api_key(legacy_settings) == 'tvly-LEGACY-PLAIN-VALUE'
+
 
 class TestCRUDOperations:
     """
@@ -535,9 +604,13 @@ class TestCRUDOperations:
         db.session.add(model)
 
         coll = RAGCollection(
+            # SECURITY (F2): F2 fix gates collection-attach on RAG view
+            # permission. Setting `created_by` to match the chatbot
+            # creator's username makes the test scenario "user attaching
+            # their own collection" — same flow as a real wizard run.
             name='test_coll_for_chatbot',
             display_name='Test Collection',
-            created_by='test'
+            created_by='test_user'
         )
         db.session.add(coll)
         db.session.commit()
@@ -791,7 +864,7 @@ class TestCollectionManagement:
         coll = RAGCollection(
             name='coll_assign',
             display_name='Collection Assign',
-            created_by='test'
+            created_by='test_user'  # F2: align with the assigning user
         )
         db.session.add_all([bot, coll])
         db.session.commit()
@@ -846,7 +919,7 @@ class TestCollectionManagement:
         coll = RAGCollection(
             name='coll_assign_dup',
             display_name='Collection',
-            created_by='test'
+            created_by='test_user'  # F2: owner of the collection
         )
         db.session.add_all([bot, coll])
         db.session.flush()

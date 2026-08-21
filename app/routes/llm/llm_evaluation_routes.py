@@ -10,7 +10,9 @@ import logging
 from flask import Blueprint, jsonify, g, request
 
 from auth.decorators import authentik_required
+from db.database import db
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from services.llm_registry_service import resolve_model_registry
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +37,16 @@ def get_evaluation_progress(scenario_id):
         JSON with progress statistics
     """
     from db.models import RatingScenarios, LLMTaskResult, ScenarioThreads
+    from auth.access_control import require_scenario_membership
 
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # IDOR-Schutz: nur Szenario-Mitglieder (Owner/Manager/Evaluator/Viewer) bzw.
+    # Admins dürfen Fortschritt sehen. Ohne diese Prüfung kann jeder eingeloggte
+    # Nutzer über eine geratene scenario_id fremde Auswertungs-Statistiken lesen.
+    require_scenario_membership(scenario_id, g.authentik_user)
 
     # Get total threads
     total_threads = ScenarioThreads.query.filter_by(
@@ -84,11 +92,30 @@ def get_evaluation_progress(scenario_id):
             model_id=model_id,
         ).filter(LLMTaskResult.error.isnot(None)).count()
 
+        # Determine per-model status.
+        # Uses in-memory lock (LLMAITaskRunner._active_locks) to detect "running"
+        # even before the first item completes. This prevents the frontend from
+        # showing a "Start" button while the runner is already processing.
+        from services.llm.llm_ai_task_runner import LLMAITaskRunner
+        is_active = LLMAITaskRunner.is_running(scenario_id, model_id)
+
+        if completed >= total_threads:
+            model_status = 'completed'
+        elif errors > 0 and completed + errors >= total_threads:
+            model_status = 'failed'       # all items attempted, some/all failed
+        elif errors > 0 and completed + errors < total_threads:
+            model_status = 'stopped' if not is_active else 'running'
+        elif is_active or completed > 0:
+            model_status = 'running'       # lock held or partial results exist
+        else:
+            model_status = 'pending'       # no results yet, no runner active
+
         model_progress[model_id] = {
             'completed': completed,
             'errors': errors,
             'total': total_threads,
-            'progress_percent': (completed / total_threads * 100) if total_threads > 0 else 0
+            'progress_percent': (completed / total_threads * 100) if total_threads > 0 else 0,
+            'status': model_status,
         }
 
     # Calculate overall progress
@@ -101,7 +128,12 @@ def get_evaluation_progress(scenario_id):
         status = 'idle'
     elif total_completed >= total_tasks:
         status = 'completed'
-    elif total_completed > 0 or total_errors > 0:
+    elif total_errors > 0 and total_completed + total_errors >= total_tasks:
+        status = 'completed'  # All items attempted (some failed)
+    elif total_errors > 0 and total_completed + total_errors < total_tasks:
+        # Some items failed but not all attempted → likely stopped/aborted
+        status = 'stopped'
+    elif total_completed > 0:
         status = 'running'
     else:
         status = 'idle'
@@ -119,6 +151,7 @@ def get_evaluation_progress(scenario_id):
         'total_threads': total_threads,
         'llm_evaluators': llm_evaluators,
         'model_progress': model_progress,
+        'model_registry': resolve_model_registry(llm_evaluators) if llm_evaluators else {},
         'results': [],  # Full results require separate call
         'agreement_metrics': None,  # Calculated on demand
         'token_usage': {
@@ -143,10 +176,16 @@ def get_evaluation_result(result_id):
         JSON with evaluation result details
     """
     from db.models import LLMTaskResult
+    from auth.access_control import require_scenario_membership
 
     result = LLMTaskResult.query.get(result_id)
     if not result:
         raise NotFoundError(f'Result {result_id} not found')
+
+    # IDOR-Schutz: result_id ist global durchnummeriert. Zugriff nur, wenn der
+    # Nutzer Mitglied des zugehörigen Szenarios ist — sonst könnte jeder durch
+    # Hochzählen von result_id fremde Evaluations-Ergebnisse auslesen.
+    require_scenario_membership(result.scenario_id, g.authentik_user)
 
     return jsonify(result.to_dict(include_raw=False))
 
@@ -156,26 +195,30 @@ def get_evaluation_result(result_id):
 @handle_api_errors(logger_name='llm_evaluation')
 def start_evaluation(scenario_id):
     """
-    Start LLM evaluation for a scenario.
+    Manual Start/Retry for LLM evaluation (triggered by Assessors tab button).
 
-    This triggers the LLM evaluators to process all threads
-    in the scenario. Progress can be monitored via Socket.IO
-    or the progress endpoint.
+    This is the ONLY path that can retry models with permanent failures (401/403/auth).
+    It clears all error records for the model first, so the runner treats every item
+    as "pending" again. This is intentional: the user may have fixed the API key or
+    provider config since the last failure.
 
-    Args:
-        scenario_id: Scenario ID
+    Auto-start paths (server startup, scenario GET) will NOT retry permanent failures.
+    See LLMAITaskRunner docstring for the full anti-DDoS strategy.
 
     Body:
         model_id: Optional specific model to run (runs all if not specified)
-
-    Returns:
-        JSON with status
     """
     from db.models import RatingScenarios
+    from routes.scenarios.scenario_utils import check_scenario_management_access
 
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # IDOR-/Missbrauchs-Schutz: Start löscht Error-Records und triggert teure
+    # LLM-Runner. Nur Owner/Manager/Admin dürfen das — sonst kann ein fremder
+    # Nutzer Kosten verursachen und fremde Fehler-Historie löschen (DoS-Vektor).
+    check_scenario_management_access(scenario, g.authentik_user)
 
     data = request.get_json(silent=True) or {}
     model_id = data.get('model_id')
@@ -186,6 +229,21 @@ def start_evaluation(scenario_id):
         from services.llm.llm_access_service import LLMAccessService
         if not LLMAccessService.user_can_access_model(username, model_id):
             raise ValidationError(f'No access to LLM model: {model_id}')
+
+    # Clear previous error records so the runner retries ALL items fresh.
+    # This is the key difference from auto-start: auto-start skips permanent failures,
+    # but manual start assumes the user has fixed the issue (e.g. rotated API key).
+    from db.models import LLMTaskResult
+    error_filter = LLMTaskResult.query.filter(
+        LLMTaskResult.scenario_id == scenario_id,
+        LLMTaskResult.error.isnot(None),
+    )
+    if model_id:
+        error_filter = error_filter.filter(LLMTaskResult.model_id == model_id)
+    cleared = error_filter.delete(synchronize_session='fetch')
+    if cleared:
+        db.session.commit()
+        logger.info(f"Cleared {cleared} error records for scenario {scenario_id} model={model_id}")
 
     from services.llm.llm_ai_task_runner import LLMAITaskRunner
     LLMAITaskRunner.run_for_scenario_async(
@@ -203,6 +261,74 @@ def start_evaluation(scenario_id):
     })
 
 
+@llm_evaluation_bp.get('/<int:scenario_id>/errors')
+@authentik_required
+@handle_api_errors(logger_name='llm_evaluation')
+def get_evaluation_errors(scenario_id):
+    """
+    Get LLM evaluation error details for a scenario.
+
+    Returns error details for failed evaluations, optionally filtered
+    by model_id. Used on-demand when user opens the error dialog.
+
+    Args:
+        scenario_id: Scenario ID
+
+    Query params:
+        model_id: Optional model ID to filter errors
+
+    Returns:
+        JSON with error details list
+    """
+    from db.models import RatingScenarios, LLMTaskResult, EvaluationItem
+    from auth.access_control import require_scenario_membership
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # IDOR-Schutz: Fehlertexte enthalten item_label (potenziell PII aus
+    # Beratungs-Mails). Nur Szenario-Mitglieder dürfen sie sehen.
+    require_scenario_membership(scenario_id, g.authentik_user)
+
+    model_id = request.args.get('model_id')
+
+    query = LLMTaskResult.query.filter(
+        LLMTaskResult.scenario_id == scenario_id,
+        LLMTaskResult.error.isnot(None),
+    )
+    if model_id:
+        query = query.filter(LLMTaskResult.model_id == model_id)
+
+    error_results = query.order_by(LLMTaskResult.updated_at.desc()).all()
+
+    # Build item label lookup
+    thread_ids = [r.item_id for r in error_results]
+    items = {}
+    if thread_ids:
+        item_rows = EvaluationItem.query.filter(EvaluationItem.item_id.in_(thread_ids)).all()
+        items = {item.item_id: item for item in item_rows}
+
+    errors = []
+    for r in error_results:
+        item = items.get(r.item_id)
+        errors.append({
+            'id': r.id,
+            'model_id': r.model_id,
+            'thread_id': r.item_id,
+            'item_label': getattr(item, 'subject', None) or f'Item {r.item_id}',
+            'error': r.error,
+            'updated_at': r.updated_at.isoformat() if r.updated_at else None,
+        })
+
+    return jsonify({
+        'scenario_id': scenario_id,
+        'model_id': model_id,
+        'total_errors': len(errors),
+        'errors': errors,
+    })
+
+
 @llm_evaluation_bp.post('/<int:scenario_id>/stop')
 @authentik_required
 @handle_api_errors(logger_name='llm_evaluation')
@@ -217,10 +343,14 @@ def stop_evaluation(scenario_id):
         JSON with status
     """
     from db.models import RatingScenarios
+    from routes.scenarios.scenario_utils import check_scenario_management_access
 
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Mutierende Aktion: nur Owner/Manager/Admin dürfen einen Lauf stoppen.
+    check_scenario_management_access(scenario, g.authentik_user)
 
     # TODO: Implement evaluation stopping
     logger.info(f"LLM evaluation stop requested for scenario {scenario_id}")
@@ -230,3 +360,62 @@ def stop_evaluation(scenario_id):
         'scenario_id': scenario_id,
         'message': 'Evaluation stop requested'
     })
+
+
+@llm_evaluation_bp.post('/<int:scenario_id>/copilot/start')
+@authentik_required
+@handle_api_errors(logger_name='llm_evaluation')
+def start_copilot_generation(scenario_id):
+    """
+    Manual start/re-run of labeling co-pilot suggestion generation.
+
+    Clears error records first (like the evaluator retry flow) and enqueues
+    the durable batch run. Items already cached for the CURRENT prompt
+    version are skipped by the runner; stale items (older prompt version,
+    e.g. after a prompt edit) are regenerated in place.
+    """
+    from db.models import RatingScenarios
+    from routes.scenarios.scenario_utils import check_scenario_management_access
+    from services.evaluation.labeling_copilot_service import LabelingCopilotService
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Mutierende, kostenverursachende Aktion: nur Owner/Manager/Admin.
+    check_scenario_management_access(scenario, g.authentik_user)
+
+    copilot_cfg = LabelingCopilotService.get_copilot_config(scenario)
+    if not copilot_cfg:
+        raise ValidationError('Co-pilot is not enabled for this scenario')
+
+    model_id = copilot_cfg.get('model_id')
+    if model_id:
+        from services.llm.llm_access_service import LLMAccessService
+        username = getattr(g.authentik_user, 'username', str(g.authentik_user))
+        if not LLMAccessService.user_can_access_model(username, model_id):
+            raise ValidationError(f'No access to LLM model: {model_id}')
+
+    result = LabelingCopilotService.start_generation(scenario)
+    if not result.get('queued'):
+        raise ValidationError(f"Co-pilot generation not startable: {result.get('reason')}")
+
+    logger.info(f"Copilot generation start requested for scenario {scenario_id}")
+    return jsonify({'success': True, 'scenario_id': scenario_id, **result})
+
+
+@llm_evaluation_bp.get('/<int:scenario_id>/copilot/status')
+@authentik_required
+@handle_api_errors(logger_name='llm_evaluation')
+def get_copilot_status(scenario_id):
+    """Generation status of the labeling co-pilot (counts, freshness, running)."""
+    from db.models import RatingScenarios
+    from auth.access_control import require_scenario_membership
+    from services.evaluation.labeling_copilot_service import LabelingCopilotService
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    require_scenario_membership(scenario_id, g.authentik_user)
+    return jsonify(LabelingCopilotService.get_status(scenario))

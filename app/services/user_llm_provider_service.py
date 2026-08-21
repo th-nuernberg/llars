@@ -12,6 +12,7 @@ from datetime import datetime
 
 import requests
 
+from auth.url_validator import validate_url_not_internal
 from db.database import db
 from db.models.user_llm_provider import UserLLMProvider, UserLLMProviderShare
 from services.llm.secret_encryption import encrypt_api_key, decrypt_api_key
@@ -22,12 +23,52 @@ logger = logging.getLogger(__name__)
 class UserLLMProviderService:
     """Service for managing user-owned LLM providers."""
 
+    OPENAI_COMPATIBLE_PROVIDER_TYPES = {
+        "openai",
+        "ionos",
+        "openai_compatible",
+        "litellm",
+        "ollama",
+        "vllm",
+        "mistral",
+        "deepseek",
+        "custom",
+    }
+
     DEFAULT_BASE_URLS = {
         "openai": "https://api.openai.com/v1",
+        "ionos": "https://openai.inference.de-txl.ionos.com/v1",
+        "openai_compatible": "https://api.openai.com/v1",
         "ollama": "http://localhost:11434",
+        "vllm": "http://localhost:8000/v1",
         "anthropic": "https://api.anthropic.com",
         "gemini": "https://generativelanguage.googleapis.com",
+        "mistral": "https://api.mistral.ai/v1",
+        "deepseek": "https://api.deepseek.com",
     }
+
+    @staticmethod
+    def _validate_base_url(base_url: Optional[str]) -> None:
+        """
+        SSRF-Schutz für user-konfigurierbare Provider-Endpoints (CWE-918).
+
+        User-Provider werden auf einem Multi-User-Server bei Inferenz vom
+        Backend angefragt und die Antwort an den Nutzer zurückgegeben — eine
+        beliebige base_url wäre damit ein Read-SSRF-Primitive gegen interne
+        Dienste (DB, Redis, Cloud-Metadata 169.254.169.254). Wir validieren
+        deshalb bereits beim Anlegen/Bearbeiten (nicht erst bei test/fetch),
+        konsistent mit allow_private=False wie in test_provider/fetch_models.
+
+        Raises:
+            ValidationError: base_url zeigt auf ein internes/privates Ziel.
+        """
+        if not base_url:
+            return
+        from decorators.error_handler import ValidationError
+        try:
+            validate_url_not_internal(base_url, allow_private=False)
+        except (ValueError, TypeError) as exc:
+            raise ValidationError(f'Ungültige base_url: {exc}')
 
     @staticmethod
     def _encrypt_api_key(api_key: str) -> str:
@@ -52,6 +93,48 @@ class UserLLMProviderService:
         if not provider_type:
             return None
         return UserLLMProviderService.DEFAULT_BASE_URLS.get(provider_type.lower().strip())
+
+    # ==================== Color Assignment ====================
+
+    @staticmethod
+    def _assign_model_colors(config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Assign distinct colors to models in config, preserving existing assignments.
+
+        Stores colors in config['model_colors'] as single source of truth.
+        New models get colors that maximize visual distance from all existing
+        colors (global models + other user-provider models).
+        """
+        from db.models.llm_model import LLMModel
+
+        selected_models = config.get('selected_models', [])
+        single_model = config.get('model_id', '')
+        models = selected_models if selected_models else ([single_model] if single_model else [])
+        if not models:
+            return config
+
+        existing_colors = config.get('model_colors', {})
+        if not isinstance(existing_colors, dict):
+            existing_colors = {}
+
+        # Remove colors for models no longer selected
+        existing_colors = {m: c for m, c in existing_colors.items() if m in models}
+
+        # Collect all assigned colors globally for distance maximization
+        all_colors = LLMModel.get_all_assigned_colors()
+        # Include already-assigned colors from this provider
+        all_colors.extend(c for c in existing_colors.values() if c)
+
+        # Assign colors to new models
+        for model in models:
+            if model in existing_colors:
+                continue
+            color = LLMModel.generate_color(model, existing_colors=all_colors)
+            existing_colors[model] = color
+            all_colors.append(color)
+
+        config['model_colors'] = existing_colors
+        return config
 
     # ==================== Provider CRUD ====================
 
@@ -84,6 +167,11 @@ class UserLLMProviderService:
         """
         from decorators.error_handler import ConflictError
 
+        provider_type = (provider_type or "").strip().lower()
+
+        # SSRF-Schutz: base_url bereits beim Anlegen prüfen (siehe _validate_base_url)
+        UserLLMProviderService._validate_base_url(base_url)
+
         # Check for duplicate name
         existing = UserLLMProvider.query.filter_by(
             user_id=user_id, name=name
@@ -97,13 +185,17 @@ class UserLLMProviderService:
                 user_id=user_id, is_default=True
             ).update({'is_default': False})
 
+        # Assign distinct colors to models before storing
+        provider_config = config or {}
+        provider_config = UserLLMProviderService._assign_model_colors(provider_config)
+
         provider = UserLLMProvider(
             user_id=user_id,
             provider_type=provider_type,
             name=name,
             api_key_encrypted=UserLLMProviderService._encrypt_api_key(api_key) if api_key else None,
             base_url=base_url,
-            config_json=config or {},
+            config_json=provider_config,
             is_default=is_default,
             priority=priority
         )
@@ -194,6 +286,10 @@ class UserLLMProviderService:
         if not provider:
             return None
 
+        # SSRF-Schutz: geänderte base_url ebenfalls prüfen (siehe _validate_base_url)
+        if base_url is not None:
+            UserLLMProviderService._validate_base_url(base_url)
+
         if name is not None:
             provider.name = name
 
@@ -207,6 +303,8 @@ class UserLLMProviderService:
             provider.base_url = base_url if base_url else None
 
         if config is not None:
+            # Assign distinct colors to new models, preserve existing
+            config = UserLLMProviderService._assign_model_colors(config)
             provider.config_json = config
 
         if is_active is not None:
@@ -285,7 +383,11 @@ class UserLLMProviderService:
 
             base_url = provider.base_url or UserLLMProviderService._default_base_url(provider.provider_type)
 
-            # Test with a simple request
+            # SSRF-Schutz: User-Provider dürfen NICHT auf interne Netze zugreifen
+            if base_url:
+                validate_url_not_internal(base_url, allow_private=False)
+
+            # Test with a simple request (config ohne _admin_provider → strikt)
             test_result = LLMProviderService.test_connection(
                 provider_type=provider.provider_type,
                 api_key=api_key,
@@ -328,7 +430,7 @@ class UserLLMProviderService:
 
         config = config or {}
 
-        if provider_type not in {"openai", "litellm", "custom"}:
+        if provider_type not in UserLLMProviderService.OPENAI_COMPATIBLE_PROVIDER_TYPES:
             raise ValueError("Provider type not supported for model listing")
 
         if provider_type == "openai" and not api_key:
@@ -337,6 +439,9 @@ class UserLLMProviderService:
         resolved_base_url = (base_url or UserLLMProviderService._default_base_url(provider_type) or "").rstrip("/")
         if not resolved_base_url:
             raise ValueError("base_url ist erforderlich")
+
+        # SSRF-Schutz: User-Provider dürfen NICHT auf interne Netze zugreifen
+        validate_url_not_internal(resolved_base_url, allow_private=False)
 
         headers = {}
         if api_key:

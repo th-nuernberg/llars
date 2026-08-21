@@ -43,7 +43,6 @@ Tools for working together:
 
 | Guide | Description |
 |-------|-------------|
-| [LaTeX Collaboration](latex-collaboration.md) | Real-time collaboration for scientific documents |
 
 ---
 
@@ -57,6 +56,16 @@ Personal configuration:
 
 ---
 
+## Programmatic access
+
+REST APIs for external clients and automation:
+
+| Guide | Description |
+|-------|-------------|
+| [v1 Scenario API](api-v1-scenarios.md) | Programmatically manage scenarios, items, assessors, and referral links via `/api/v1/*` |
+
+---
+
 ## Administration
 
 System administration and configuration:
@@ -64,6 +73,7 @@ System administration and configuration:
 | Guide | Description |
 |-------|-------------|
 | [Admin Dashboard](admin-dashboard.md) | Manage users, LLMs, and system settings |
+| [Referral & Invitations](referral-invitations.md) | Invite links, QR codes, auto-enroll, funnel |
 | [Permission System](permission-system.md) | RBAC permission model |
 
 ---

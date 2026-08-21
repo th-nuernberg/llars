@@ -291,9 +291,100 @@
 
 /* ==================== Mobile Responsive ==================== */
 
+/* MOBILE APP SHELL
+   On mobile the page becomes a fixed, full-height messaging shell so it behaves
+   like a native chat app rather than a scrollable web page:
+   - 100dvh (dynamic viewport) so the shell tracks the visible viewport when the
+     browser chrome and the soft keyboard show/hide (no content hidden behind the
+     keyboard, no outer-page scroll).
+   - position: fixed pins the shell over the AppBar/Footer; the header and input
+     are flex-fixed children and ONLY .chat-messages scrolls.
+
+   z-index NOTE (root cause of the earlier "app-bar + footer still show, page
+   scrolls" bug): Vuetify's layout composable seeds its layers from ROOT_Z=1000
+   (v-app-bar lands at ~1004, v-footer at ~1002). The previous z-index:1000 on
+   this shell therefore rendered BELOW the global green app-bar and footer, so
+   they stayed visible over/around the shell. We raise it to 2000 so the fixed
+   shell genuinely covers the global chrome. The accompanying body-scroll lock
+   (see useMobileChatShell / onMounted in ChatWithBots.vue) kills the residual
+   document scroll that v-main's min-height left behind.
+
+   The desktop value (calc(100vh - 94px)) accounts for AppBar + Footer and is
+   left untouched. */
 .chat-page.is-mobile {
+  position: fixed;
+  inset: 0;
   height: 100vh;
   height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  /* Above Vuetify's layout layers (app-bar ~1004 / footer ~1002) so the shell
+     actually covers the global chrome instead of sitting behind it. */
+  z-index: 2000;
+  /* Prevent the chat from rubber-banding / chaining its scroll to the page. */
+  overscroll-behavior: contain;
+}
+
+.chat-page.is-mobile .chat-container,
+.chat-page.is-mobile .chat-main {
+  height: 100%;
+}
+
+/* Only the message list scrolls inside the fixed shell; contain its overscroll
+   so reaching the top/bottom doesn't bubble a scroll to the (locked) page. */
+.chat-page.is-mobile .chat-messages {
+  overscroll-behavior: contain;
+}
+
+/* Compact, app-style top bar (~50px content height) pinned to the top, clearing
+   the notch / Dynamic Island via the top safe-area inset. Slimmer than the bulky
+   desktop header. */
+.chat-page.is-mobile .chat-header {
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  padding-bottom: 8px;
+  padding-left: calc(8px + env(safe-area-inset-left, 0px));
+  padding-right: calc(8px + env(safe-area-inset-right, 0px));
+  min-height: calc(50px + env(safe-area-inset-top, 0px));
+  background: rgb(var(--v-theme-surface));
+  box-shadow: 0 1px 0 rgba(var(--v-theme-on-surface), 0.06);
+  z-index: 5;
+}
+
+.chat-page.is-mobile .header-left {
+  gap: 8px;
+}
+
+.chat-page.is-mobile .header-title {
+  font-size: 16px;
+}
+
+/* On phones the model-id is noise in a slim bar — keep just the bot name. */
+.chat-page.is-mobile .header-subtitle .model-name {
+  display: none;
+}
+
+/* The menu (hamburger) button must hit the 44px touch-target minimum. */
+.chat-page.is-mobile .header-menu-btn {
+  width: 44px;
+  height: 44px;
+  margin-right: 2px;
+}
+
+.chat-page.is-mobile .header-action {
+  width: 40px;
+  height: 40px;
+}
+
+/* Empty-state should also clear the notch on mobile. */
+.chat-page.is-mobile .empty-state {
+  padding-top: calc(48px + env(safe-area-inset-top, 0px));
+}
+
+@media (max-width: 600px) {
+  .chat-header {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
 }
 
 @media (max-width: 960px) {

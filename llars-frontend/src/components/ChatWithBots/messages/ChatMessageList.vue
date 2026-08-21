@@ -47,14 +47,22 @@
           </v-chip>
         </div>
 
+        <!-- Streaming with no content yet: show animated "typing" dots like
+             Claude/ChatGPT instead of an empty bubble. -->
+        <div v-if="message.sender === 'bot' && message.streaming && !message.content" class="typing-dots" :aria-label="$t('chat.typing')">
+          <span></span><span></span><span></span>
+        </div>
         <div
+          v-else
           class="message-content"
           v-html="formatMessage(message.content, message.sources)"
           @click="handleContentClick($event, message.sources)"
         ></div>
 
-        <!-- Sources Legend -->
-        <div v-if="message.sources && message.sources.length > 0" class="message-sources mt-2">
+        <!-- Sources Legend — only when the answer actually CITES a source with a
+             [n] bracket reference (otherwise retrieved-but-uncited docs are
+             hidden, per request). -->
+        <div v-if="messageHasCitations(message)" class="message-sources mt-2">
           <div class="sources-legend">
             <div class="sources-header text-caption d-flex align-center mb-1">
               <LIcon size="14" class="mr-1">mdi-text-box-multiple-outline</LIcon>
@@ -79,7 +87,7 @@
           </div>
         </div>
 
-        <div v-if="message.streaming" class="stream-indicator">
+        <div v-if="message.streaming && message.content" class="stream-indicator">
           <v-progress-circular indeterminate size="12" width="2" />
         </div>
         <div class="message-timestamp">{{ message.timestamp }}</div>
@@ -115,6 +123,21 @@ const containerRef = ref(null)
 function handleSourceClick(source) {
   logI18n('log', 'logs.chatMessageList.sourceClicked', source)
   emit('show-source', source)
+}
+
+/**
+ * Whether to show the sources legend for a message: only when the answer text
+ * actually CITES a retrieved source with a [n] bracket reference whose number
+ * maps to one of the message's sources. Retrieved-but-uncited docs stay hidden.
+ */
+function messageHasCitations(message) {
+  const sources = message?.sources
+  if (!sources || sources.length === 0) return false
+  const content = message?.content || ''
+  const ids = new Set(sources.map(s => Number(s.footnote_id)))
+  const matches = content.match(/\[(\d+)\]/g)
+  if (!matches) return false
+  return matches.some(m => ids.has(Number(m.replace(/\D/g, ''))))
 }
 
 /**
@@ -260,6 +283,11 @@ defineExpose({ scrollToBottom, containerRef })
 .message-content {
   line-height: 1.6;
   word-wrap: break-word;
+  /* Prevent long unbroken strings (URLs, tokens, inline code) from overflowing
+     the bubble on narrow screens. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .message-content :deep(p) {
@@ -283,6 +311,7 @@ defineExpose({ scrollToBottom, containerRef })
   border-radius: 8px;
   overflow-x: auto;
   margin: 8px 0;
+  max-width: 100%;
 }
 
 /* List styling with proper indentation */
@@ -372,6 +401,36 @@ defineExpose({ scrollToBottom, containerRef })
   right: 8px;
 }
 
+/* Animated "typing" dots shown in a bot bubble while the answer is still being
+   generated and no text has streamed in yet (Claude/ChatGPT style). */
+.typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.typing-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.4);
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
 .message-timestamp {
   font-size: 10px;
   color: rgba(var(--v-theme-on-surface), 0.4);
@@ -381,5 +440,83 @@ defineExpose({ scrollToBottom, containerRef })
 
 .message-container.user .message-timestamp {
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* ==================== Mobile ==================== */
+@media (max-width: 600px) {
+  /* App-like message stream: comfortable side padding, momentum scrolling and
+     generous spacing between turns. Only this region scrolls inside the fixed
+     mobile shell. */
+  .chat-messages {
+    padding: 14px 12px;
+    gap: 18px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-padding-bottom: 16px;
+  }
+
+  /* Hide the per-message bot avatar on mobile — Claude/ChatGPT style streams
+     assistant turns near full-width without a repeated avatar column. */
+  .message-container.bot .message-avatar {
+    display: none;
+  }
+
+  /* Assistant messages: near full-width, flat (no bubble) for readability with
+     comfortable line-height — like an AI app answer. */
+  .message-container.bot {
+    max-width: 100%;
+    gap: 0;
+  }
+
+  .message-container.bot .message {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .message-container.bot .message-content {
+    line-height: 1.65;
+    font-size: 15px;
+  }
+
+  /* User messages: a distinct, right-aligned bubble that never spans the full
+     width, with tight readable padding. */
+  .message-container.user {
+    max-width: 85%;
+    gap: 0;
+  }
+
+  .message-container.user .message {
+    padding: 10px 14px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* Long code blocks scroll horizontally inside themselves instead of widening
+     the bubble / page (no horizontal page scroll). */
+  .message-content :deep(pre) {
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  /* Sources chips: full-row tap targets that wrap nicely on narrow screens. */
+  .sources-legend {
+    padding: 10px;
+    border-radius: 12px 4px 12px 4px;
+  }
+
+  .source-chip {
+    height: 30px;
+  }
+
+  .source-chip :deep(.text-truncate) {
+    max-width: 60vw !important;
+  }
+
+  /* Bottom turn gets a little breathing room above the input bar so the last
+     answer is never flush against the composer. */
+  .message-container:last-child {
+    margin-bottom: 4px;
+  }
 }
 </style>

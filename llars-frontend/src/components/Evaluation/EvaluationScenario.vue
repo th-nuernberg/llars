@@ -118,7 +118,13 @@ const TYPE_CONFIG = {
   3: { key: 'mail_rating', icon: 'mdi-email-outline', color: '#d1bc8a', itemRoute: 'RaterDetail' },
   4: { key: 'comparison', icon: 'mdi-compare-horizontal', color: '#88c4c8', itemRoute: 'ComparisonDetail' },
   5: { key: 'authenticity', icon: 'mdi-shield-search', color: '#e8a087', itemRoute: 'AuthenticityDetail' },
-  7: { key: 'labeling', icon: 'mdi-label-outline', color: '#ce93d8', itemRoute: 'LabelingDetail' }
+  7: { key: 'labeling', icon: 'mdi-label-outline', color: '#ce93d8', itemRoute: 'LabelingDetail' },
+  // communication_comparison shares the A/B mechanics (and the detail view)
+  // of comparison(4); only the framing differs.
+  8: { key: 'communication_comparison', icon: 'mdi-message-arrow-right-outline', color: '#7BAFC5', itemRoute: 'ComparisonDetail' },
+  // conversation_labeling: item = a whole conversation, vote = a single span
+  // inside it — same labeling config/detail view as labeling(7).
+  9: { key: 'conversation_labeling', icon: 'mdi-tag-multiple-outline', color: '#6FA8A0', itemRoute: 'LabelingDetail' }
 }
 
 // Computed
@@ -377,6 +383,8 @@ watch(() => props.scenarioId, async () => {
   color: white;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .header-info p {

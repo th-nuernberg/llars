@@ -2,7 +2,7 @@
 
 **Version:** 1.0 | **Status:** Active
 
-This documentation describes the JSON schemas for all 6 evaluation types in LLARS. Use the **minimal examples** for a quick start and the **full examples** as reference.
+This documentation describes the JSON schemas for all 7 evaluation types in LLARS. Use the **minimal examples** for a quick start and the **full examples** as reference.
 
 ---
 
@@ -16,6 +16,8 @@ This documentation describes the JSON schemas for all 6 evaluation types in LLAR
 | **Comparison** | 4 | Pairwise A/B comparison |
 | **Authenticity** | 5 | Real/Fake classification |
 | **Labeling** | 7 | Assign categories |
+| **Communication Comparison** | 8 | Counselling-style A/B — picks the response the rater would "send" (same data shape as Comparison, distinct UI shell with send-animation) |
+| **Conversation Labeling** | 9 | Label each sense unit ("span") inside a conversation — one item = one conversation = many decisions |
 
 ---
 
@@ -109,7 +111,8 @@ All evaluation types follow this base structure:
 ```typescript
 interface EvaluationData {
   schema_version: "1.0";
-  type: "ranking" | "rating" | "mail_rating" | "comparison" | "authenticity" | "labeling";
+  type: "ranking" | "rating" | "mail_rating" | "comparison" | "authenticity" | "labeling"
+      | "communication_comparison" | "conversation_labeling";
 
   // Optional: context/reference (right side in UI)
   reference?: Reference;
@@ -489,6 +492,16 @@ For parallel ranking of multiple categories:
 
 ---
 
+## 8. Communication Comparison (function_type_id = 8)
+
+**Purpose:** A specialization of Comparison (type 4) for counselling contexts — the rater picks which response (A/B) they would "send".
+
+**Data format:** identical to Comparison (`type: "comparison"`, same `items`/`reference`/`config` structure). The only difference is the `function_type_id` (8) and the UI: the choice is framed as "send response" with a fly-out animation, an optional response prompt and a rater note.
+
+> Because the data format matches Comparison, the example in section 4 applies — just set the scenario's `function_type_id` to `8`.
+
+---
+
 ## 5. Authenticity (function_type_id = 5)
 
 **Purpose:** Binary real/fake classification (detect AI-generated content).
@@ -586,6 +599,129 @@ For parallel ranking of multiple categories:
   }
 }
 ```
+
+---
+
+## 9. Conversation Labeling (function_type_id = 9)
+
+**Purpose:** label every sense unit ("span") inside a conversation individually.
+
+The difference to type 7 is the **unit of analysis**. In classic labeling one
+item is one decision; here one item is a whole conversation and holds many
+decisions — roughly 92 per conversation in the VRM study. That runs through
+everything: IRR is computed over span cells, time-on-task is measured per span,
+and a conversation only counts as done once **every** span is decided.
+
+**Segmentation is input, not a task.** Spans arrive finished from the import;
+raters do not draw them. A wrong boundary is reported through a dedicated label
+card. Only as a deliberate exception can a span be cut with the quiet "split"
+affordance below it (see below).
+
+### Example
+
+```json
+{
+  "schema_version": "1.0",
+  "type": "conversation_labeling",
+  "items": [
+    {
+      "id": "item_1",
+      "label": "Counselling thread A",
+      "source": { "type": "human" },
+      "content": {
+        "type": "conversation_labeling",
+        "messages": [
+          {
+            "role": "Client",
+            "content": "Our son is 12 and has been irritable for weeks.",
+            "labelable": false
+          },
+          {
+            "role": "Counsellor",
+            "message_id": 2,
+            "labelable": true,
+            "content": "Thank you for your message. Did you notice a trigger?",
+            "spans": [
+              { "span_id": "gemco_A/1/m2/s001", "start": 0, "end": 29 },
+              { "span_id": "gemco_A/1/m2/s002", "start": 30, "end": 53 }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "config": {
+    "labels": [
+      { "id": "D", "label": { "de": "Disclosure", "en": "Disclosure" },
+        "description": { "de": "Offenbart eigene Gedanken, Gefuehle oder Absichten.",
+                         "en": "Reveals the speaker's own thoughts, feelings or intentions." } },
+      { "id": "K", "label": { "de": "Acknowledgement", "en": "Acknowledgement" },
+        "description": { "de": "Signalisiert blossen Empfang - Grussformeln, Anrede.",
+                         "en": "Conveys mere receipt - salutations, terms of address." } },
+      { "id": "FLAG", "label": { "de": "Span-Grenze falsch", "en": "Wrong span boundary" } }
+    ],
+    "context_window": 3,
+    "future_spans": "dimmed",
+    "no_future_messages": true
+  }
+}
+```
+
+### Span
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `span_id` | yes | **Stable string from the import** (max 64 chars), not a running DB id. This is what makes a re-import idempotent and lets exports from two points in time be joined. |
+| `start` / `end` | yes | Character offsets into the message `content`. They are the truth — the text is stored **once** and spans only reference it (across 8,307 spans that is the difference between ~1 MB and ~100 MB). |
+| `text` | no | Redundant convenience for debugging. Validated against the offsets; `content[start:end]` wins in case of doubt. |
+
+`labelable: false` means "context only" — such messages carry no spans and
+produce no decisions.
+
+The import rejects: duplicate `span_id` within an item, spans on non-labelable
+messages, offsets beyond the message text, `end <= start`, and items with no
+span at all.
+
+### Visibility
+
+| Field | Default | Effect |
+|-------|---------|--------|
+| `context_window` | `3` | How many preceding messages stay fully visible; older ones collapse. |
+| `future_spans` | `"dimmed"` | How not-yet-reached spans of the same message are rendered. |
+| `no_future_messages` | `true` | Later messages stay hidden — raters should not know how the conversation ends. |
+
+This visibility is **identical for human and co-pilot**: the server-built
+`{context}` in the prompt follows the same fields. Otherwise the two would decide
+on different information and would not be comparable.
+
+### Export
+
+Each row is **one span decision**. In addition to the shared columns:
+
+| Column | Meaning |
+|--------|---------|
+| `span_id` | Join key back to the imported segmentation |
+| `message_id` | Message the span belongs to |
+| `span_index` | Position within the message |
+
+The three columns sit at the **end** of the column list so consumers that index
+by position keep working. For every other type they stay empty.
+
+### Splitting a span
+
+When a span plainly carries two speech acts it can be cut at a character
+boundary through a deliberately understated link below it
+(`POST /api/evaluation/session/<sid>/items/<iid>/spans/split`). Three rules keep
+the data honest:
+
+- The cut must fall **strictly inside** — at the edge it would create a
+  zero-length unit.
+- New ids are **derived** (`x` → `x+a` / `x+b`), not renumbered. An older export
+  still joins, and untouched spans keep their ids.
+- The vote on the old span is **deleted for every rater**, along with its
+  co-pilot log row and timing. A decision about the whole span is not a decision
+  about either half, and those measurements describe a unit that no longer
+  exists.
 
 ---
 

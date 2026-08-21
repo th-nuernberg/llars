@@ -25,7 +25,34 @@ const permissions = ref([])
 const roles = ref([])
 const username = ref(null)
 const isLoading = ref(false)
+// True once a permission fetch has completed successfully at least once.
+// The router guard awaits this on hard reload so permission-gated routes
+// aren't bounced to /Home before the async fetch resolves (see router.js).
+const hasLoaded = ref(false)
+// True when the LAST fetch failed for a transient reason (429 rate limit, 5xx,
+// network blip) rather than a genuine 401. The router guard reads this to tell
+// "this user has no permissions" apart from "we could not find out yet".
+//
+// INCIDENT 2026-07-29: /api/permissions/my-permissions is polled every ~5s and
+// was not exempt from the 500/h-per-IP production rate limit. Once a rater
+// burned the budget the endpoint 429'd for the rest of the session; on a fresh
+// login the very first fetch then failed, `permissions` stayed [] and the guard
+// bounced every permission-gated route back to /login. Raters experienced it as
+// "I keep getting logged out" and finally "I can't log in at all". No 401 was
+// ever involved (230x 429, 0x 401 on the worst-hit IP).
+const loadFailedTransiently = ref(false)
 let inflightRequest = null
+
+// A transient failure is anything that is not an authoritative "you are not
+// allowed" answer from the backend. 403 is deliberately NOT in here: that is a
+// real answer. Everything else (no response at all, 408/425/429, any 5xx) means
+// we simply do not know the user's permissions right now.
+function _isTransientFailure(error) {
+  const status = Number(error?.response?.status || 0)
+  if (!status) return true // network error / timeout — no response at all
+  if (status === 401 || status === 403) return false
+  return status === 408 || status === 425 || status === 429 || status >= 500
+}
 
 export function usePermissions() {
   /**
@@ -51,13 +78,27 @@ export function usePermissions() {
           permissions.value = payload.permissions || []
           roles.value = payload.roles || []
           username.value = payload.username || null
+          hasLoaded.value = true
+          loadFailedTransiently.value = false
         }
       } catch (error) {
         logI18n('error', 'logs.permissions.fetchFailed', error)
-        if (error.response?.status === 401) {
+        if (_isTransientFailure(error)) {
+          // We do not know the permissions — say so instead of silently
+          // presenting an empty set as fact. Any previously loaded permissions
+          // are kept so an established session degrades to "stale" rather than
+          // "logged out"; the router guard uses this flag to stop bouncing
+          // users out of gated routes while the backend is unreachable.
+          // Server-side @require_permission still enforces access, so letting
+          // navigation through here loosens nothing that actually matters.
+          loadFailedTransiently.value = true
+        } else {
+          // 401/403 — an authoritative "no".
           permissions.value = []
           roles.value = []
           username.value = null
+          hasLoaded.value = false
+          loadFailedTransiently.value = false
         }
       } finally {
         inflightRequest = null
@@ -125,6 +166,7 @@ export function usePermissions() {
     permissions.value = []
     roles.value = []
     username.value = null
+    hasLoaded.value = false
     inflightRequest = null
   }
 
@@ -161,6 +203,8 @@ export function usePermissions() {
     roles,
     username,
     isLoading,
+    hasLoaded,
+    loadFailedTransiently,
 
     // Computed
     isAdmin,

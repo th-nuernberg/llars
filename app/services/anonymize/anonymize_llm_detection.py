@@ -17,14 +17,23 @@ from .anonymize_constants import (
     LLM_LABEL_ALIASES,
     LLM_DETECTION_PROMPT,
 )
-from services.llm.llm_provider_service import LLMProviderService
-from services.llm.llm_client_factory import LLMClientFactory
+# NOTE: services.llm.* (and transitively the openai SDK) are imported lazily
+# inside the functions below — NOT at module top. Importing them at import time
+# pulls the openai SDK into whatever process imports this module. When the
+# gunicorn master preloads the anonymize package (see docker/flask/gunicorn.conf.py
+# on_starting), that openai import would be inherited by forked gevent workers,
+# and gevent's monkey.patch_all() chokes on openai's lazy pandas/numpy proxies
+# (MissingDependencyError) → worker boot crash. Deferring keeps the master (and
+# thus the preload import chain) openai-free; workers import openai at call time,
+# after monkey-patching, exactly as before.
 
 logger = logging.getLogger(__name__)
 
 
 def llm_quick_status() -> dict[str, Any]:
     """Check if LLM is configured and ready."""
+    from services.llm.llm_provider_service import LLMProviderService  # lazy: see module-top note
+
     litellm_key = os.environ.get("LITELLM_API_KEY") or ""
     litellm_base_url = os.environ.get("LITELLM_BASE_URL") or ""
     openai_key = os.environ.get("OPENAI_API_KEY") or ""
@@ -116,6 +125,7 @@ def _resolve_llm_span(
 
 def find_llm_entities(text: str, model: Optional[str] = None, max_entities: int = 250) -> list[EntityOccurrence]:
     """Find entities using LLM-based detection."""
+    from services.llm.llm_client_factory import LLMClientFactory  # lazy: see module-top note
     from llm.openai_utils import extract_message_text
 
     status = llm_quick_status()

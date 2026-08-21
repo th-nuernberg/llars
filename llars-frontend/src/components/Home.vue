@@ -126,6 +126,7 @@
               v-for="item in filteredItems"
               :key="item.title"
               class="feature-card"
+              :data-testid="tileTestId(item)"
               @click="navigateTo(item.route)"
             >
               <div class="feature-icon">
@@ -256,8 +257,10 @@ const allItems = computed(() => ([
     description: t('home.features.scenarioManager.description'),
     route: '/scenarios',
     icon: 'mdi-clipboard-check-multiple-outline',
+    // Manager page is for owners/researchers/admins only. Evaluators have
+    // ranking:view / rating:view because they need them inside the
+    // Evaluation flow, but they should not land on the Manager.
     permission: 'data:manage_scenarios',
-    permissionsAny: ['data:manage_scenarios', 'feature:ranking:view', 'feature:rating:view'],
     category: 'rating',
     badge: t('home.badges.new'),
     badgeColor: 'success'
@@ -267,7 +270,9 @@ const allItems = computed(() => ([
     description: t('home.features.chatbot.description'),
     route: '/chat',
     icon: 'llars:chatbot',
-    permission: null,
+    // Gated on chatbot:view so Evaluators (who don't get that
+    // permission) don't see the tile.
+    permission: 'feature:chatbots:view',
     category: 'ai',
     badge: t('home.badges.alpha'),
     badgeColor: 'warning'
@@ -277,7 +282,11 @@ const allItems = computed(() => ([
     description: t('home.features.video.description'),
     route: '/video',
     icon: 'llars:play',
-    permission: null,
+    // Visible to researchers + admins (data:manage_scenarios is held by
+    // exactly those roles). The previous gate via feature:ranking:view /
+    // feature:rating:view also exposed the tile to evaluators, which we
+    // don't want.
+    permission: 'data:manage_scenarios',
     category: 'research',
     badge: t('home.badges.new'),
     badgeColor: 'success'
@@ -293,20 +302,10 @@ const allItems = computed(() => ([
     badgeColor: 'info'
   },
   {
-    title: t('home.features.latexCollab.title'),
-    description: t('home.features.latexCollab.description'),
-    route: '/LatexCollab',
-    icon: 'llars:latex-collab-ai',
-    permission: 'feature:latex_collab:view',
-    category: 'research',
-    badge: t('home.badges.beta'),
-    badgeColor: 'info'
-  },
-  {
     title: t('home.features.chatbotArena.title'),
     description: t('home.features.chatbotArena.description'),
     route: '/judge',
-    icon: 'mdi-sword-cross',
+    icon: 'llars:arena',
     permission: 'feature:judge:view',
     category: 'ai'
   },
@@ -319,6 +318,14 @@ const allItems = computed(() => ([
     category: 'ai',
     badge: t('home.badges.beta'),
     badgeColor: 'info'
+  },
+  {
+    title: 'Anonymisierungs-Pipeline',
+    description: 'Konversationen batch-anonymisieren, bearbeiten und exportieren',
+    route: '/anonymization',
+    icon: 'mdi-shield-check',
+    permission: 'feature:anonymization-pipeline:view',
+    category: 'research'
   },
   {
     title: t('home.features.kaimo.title'),
@@ -337,6 +344,16 @@ const allItems = computed(() => ([
     category: 'ai'
   },
   {
+    title: t('home.features.dbAgent.title'),
+    description: t('home.features.dbAgent.description'),
+    route: '/db-agent',
+    icon: 'llars:train',
+    permission: 'feature:db_agent:view',
+    category: 'ai',
+    badge: t('home.badges.alpha'),
+    badgeColor: 'warning'
+  },
+  {
     title: t('home.features.adminDashboard.title'),
     description: t('home.features.adminDashboard.description'),
     route: '/admin?tab=overview',
@@ -345,20 +362,51 @@ const allItems = computed(() => ([
     category: 'admin'
   },
   {
+    // Admin-only quick preview of the public landing page. Bypasses the
+    // hiddenWhenAuth guard via a separate /landing-preview route so admins
+    // can verify marketing copy without logging out.
+    title: t('home.features.landingPagePreview.title'),
+    description: t('home.features.landingPagePreview.description'),
+    route: '/landing-preview',
+    icon: 'mdi-home-search-outline',
+    permission: 'admin:permissions:manage',
+    category: 'admin'
+  },
+  {
     title: t('home.features.chatbotAdmin.title'),
     description: t('home.features.chatbotAdmin.description'),
-    route: '/admin?tab=chatbots',
+    route: '/chatbot-manager',
     icon: 'llars:chatbot-manage',
     permission: 'feature:chatbots:edit',
-    category: 'admin'
+    category: 'ai'
   },
   {
     title: t('home.features.ragAdmin.title'),
     description: t('home.features.ragAdmin.description'),
-    route: '/admin?tab=rag',
+    route: '/chatbot-manager?tab=rag',
     icon: 'llars:rag',
     permission: 'feature:rag:edit',
-    category: 'admin'
+    category: 'ai'
+  },
+  {
+    title: t('home.features.conferenceManager.title'),
+    description: t('home.features.conferenceManager.description'),
+    route: '/conferences',
+    icon: 'mdi-school-outline',
+    permission: 'feature:conference_manager:view',
+    category: 'research',
+    badge: t('home.badges.new'),
+    badgeColor: 'success'
+  },
+  {
+    title: t('home.features.pipeline.title'),
+    description: t('home.features.pipeline.description'),
+    route: '/pipeline',
+    icon: 'mdi-transit-connection-variant',
+    permission: 'feature:pipeline:view',
+    category: 'research',
+    badge: t('home.badges.alpha'),
+    badgeColor: 'warning'
   },
   {
     title: t('home.features.userSettings.title'),
@@ -413,6 +461,17 @@ function getCategoryCount(categoryId) {
 
 function navigateTo(route) {
   router.push(route)
+}
+
+function tileTestId(item) {
+  const normalized = String(item.route || '')
+    .trim()
+    .replace(/^\/+/, '')
+    .replace(/[/?=&]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+  return `home-tile-${normalized || 'unknown'}`
 }
 
 function getBadgeVariant(badgeColor) {

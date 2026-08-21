@@ -71,8 +71,8 @@
     <!-- Title & Description -->
     <div class="card-body">
       <h3 class="scenario-name">{{ scenario.scenario_name }}</h3>
-      <p class="scenario-description" v-if="scenario.description">
-        {{ scenario.description }}
+      <p class="scenario-description" v-if="scenarioDescription">
+        {{ scenarioDescription }}
       </p>
       <div class="scenario-type">
         <LTag :variant="typeVariant" size="sm">{{ typeName }}</LTag>
@@ -124,6 +124,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { stripMarkdown, truncateText } from '@/utils/scenarioBriefing'
 import { useScenarioManager } from '../composables/useScenarioManager'
 
 const props = defineProps({
@@ -139,6 +140,10 @@ const { t } = useI18n()
 const { respondToInvitation } = useScenarioManager()
 
 const responding = ref(false)
+
+const scenarioDescription = computed(() => {
+  return truncateText(stripMarkdown(props.scenario.description || ''), 160)
+})
 
 // Invitation status
 const isRejected = computed(() => {
@@ -192,7 +197,11 @@ const typeConfig = {
   2: { icon: 'mdi-star-outline', color: '#D1BC8A', name: 'rating', variant: 'warning' },
   3: { icon: 'mdi-email-outline', color: '#88c4c8', name: 'mailRating', variant: 'info' },
   4: { icon: 'mdi-compare-horizontal', color: '#c4a0d4', name: 'comparison', variant: 'primary' },
-  5: { icon: 'mdi-shield-search', color: '#e8a087', name: 'authenticity', variant: 'danger' }
+  5: { icon: 'mdi-shield-search', color: '#e8a087', name: 'authenticity', variant: 'danger' },
+  7: { icon: 'mdi-tag-multiple-outline', color: '#98d4bb', name: 'labeling', variant: 'success' },
+  8: { icon: 'mdi-forum-outline', color: '#88c4c8', name: 'communicationComparison', variant: 'info' },
+  // 9 = conversation_labeling: item is a conversation, the vote is a span in it
+  9: { icon: 'mdi-tag-multiple-outline', color: '#6FA8A0', name: 'conversationLabeling', variant: 'accent' }
 }
 
 const typeIcon = computed(() => {
@@ -408,7 +417,7 @@ const progressPercent = computed(() => {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 10px;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 500;
   text-transform: uppercase;
 }
@@ -468,5 +477,23 @@ const progressPercent = computed(() => {
   font-size: 0.85rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   margin-bottom: 4px;
+}
+
+/* Narrow cards (2-up grid at <=905px): tighten the footer gap and let the
+   owner name truncate instead of pushing the badge/stats into overflow. */
+@media (max-width: 905px) {
+  .card-footer {
+    gap: 12px;
+  }
+
+  .owner-info {
+    min-width: 0;
+  }
+
+  .owner-info span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 </style>

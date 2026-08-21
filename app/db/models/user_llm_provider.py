@@ -40,7 +40,7 @@ class UserLLMProvider(db.Model):
     provider_type: Mapped[str] = mapped_column(
         db.String(50),
         nullable=False,
-        comment="Provider type: openai, anthropic, gemini, ollama, litellm, custom"
+        comment="Provider type: openai, openai_compatible, anthropic, gemini, ollama, vllm, litellm, custom"
     )
     name: Mapped[str] = mapped_column(
         db.String(100),
@@ -152,17 +152,14 @@ class UserLLMProvider(db.Model):
 
     def to_dict(self, include_shares: bool = False) -> dict:
         """Convert to dictionary for API responses."""
+        from services.user_profile_service import build_avatar_url
         owner = self.user
         result = {
             "id": self.id,
             "user_id": self.user_id,
             "owner_username": owner.username if owner else None,
             "owner_avatar_seed": getattr(owner, 'avatar_seed', None) if owner else None,
-            "owner_avatar_url": (
-                f"/api/users/avatar/{owner.avatar_public_id}"
-                if owner and getattr(owner, 'avatar_public_id', None) and getattr(owner, 'avatar_file', None)
-                else None
-            ),
+            "owner_avatar_url": build_avatar_url(owner) if owner else None,
             "provider_type": self.provider_type,
             "name": self.name,
             "base_url": self.base_url,

@@ -337,7 +337,7 @@ ELEMENT_MAP = {
     "Output System Prompt": ".output-detail .prompt-section:contains('System'), .prompt-section:contains('System')",
     "Output User Prompt": ".output-detail .prompt-section:contains('User'), .prompt-section:contains('User')",
     "Output Content": ".output-detail .content-pre, .output-detail .output-full-content",
-    "Output Close": ".v-dialog .l-btn:contains('Close'), .v-dialog .v-btn:contains('Close'), .v-dialog button:contains('Close')",
+    "Output Close": ".v-dialog .v-card-actions .l-btn--cancel, .v-dialog .v-card-actions .l-btn:contains('Close'), .v-dialog .v-card-actions button:contains('Close'), .v-dialog .l-btn--cancel:contains('Close'), .v-dialog .l-btn:contains('Close'), .v-dialog .v-btn:contains('Close'), .v-dialog button:contains('Close')",
 
     # Job Cards
     "Job Card": ".job-card",
@@ -421,7 +421,9 @@ ELEMENT_MAP = {
     "New Scenario": ".v-btn:contains('New Scenario'), .header-actions .v-btn:contains('New')",
     "Scenario List": ".scenario-list, .scenarios-grid, .scenario-cards, .v-list",
     "Scenario Card": ".scenario-card, .v-card.scenario",
-    "Counselling Demo Scenario": ".scenario-card:contains('IJCAI Counselling Evaluation'):excludes('5 Buckets'), .v-card:contains('IJCAI Counselling Evaluation'):excludes('5 Buckets')",
+    # Match the inner h3 (most specific) — exact name "IJCAI Counselling Evaluation",
+    # exclude any card containing "Buckets" (which only the (5 Buckets) variant has in its name).
+    "Counselling Demo Scenario": ".scenario-card-observer-target .card-title h3:contains('IJCAI Counselling Evaluation'):excludes('Buckets'), .scenario-card .card-title h3:contains('IJCAI Counselling Evaluation'):excludes('Buckets'), .scenario-card h3.scenario-name:contains('IJCAI Counselling Evaluation'):excludes('Buckets'), .scenario-card h3:contains('IJCAI Counselling Evaluation'):excludes('Buckets'), h3.scenario-name:contains('IJCAI Counselling Evaluation'):excludes('Buckets'), h3:contains('IJCAI Counselling Evaluation'):excludes('Buckets'), .scenario-card:contains('IJCAI Counselling Evaluation'):excludes('Buckets'), .v-card:contains('IJCAI Counselling Evaluation'):excludes('Buckets')",
     "Completed Scenario": ".scenario-card:contains('Complete'), .scenario-card.completed",
     "Demo Scenario": ".scenario-card:contains('Counselling'), .scenario-card:contains('Situation')",
     "Scenario Stats": ".scenario-stats, .stats-card",
@@ -549,8 +551,12 @@ ELEMENT_MAP = {
     "Provider Share Option": ".v-overlay--active .v-list-item:contains('Share')",
     "Share User Search": ".v-dialog .l-user-search input, .l-user-search .v-field input, .v-dialog .v-autocomplete input",
     "Share User Suggestion": ".v-overlay-container .v-list-item:contains('ijcai_reviewer_2'), .v-overlay-container .v-list-item:contains('reviewer_2'), .v-overlay-container [role='option']:contains('ijcai_reviewer_2'), .v-overlay-container [role='option']:contains('reviewer_2'), .v-overlay--active .v-list-item:contains('ijcai_reviewer_2'), .v-overlay--active .v-list-item:contains('reviewer_2'), .v-autocomplete__content .v-list-item:contains('ijcai_reviewer_2'), .v-autocomplete__content .v-list-item:contains('reviewer_2'), .user-suggestion:contains('ijcai_reviewer_2'), .user-suggestion:contains('reviewer_2')",
-    "Share Add Button": ".l-user-search .l-btn--primary, .l-user-search .l-btn:contains('Share'), .v-dialog .l-btn:contains('Share')",
-    "Share Reviewer 2 Chip": ".v-dialog .v-chip:contains('ijcai_reviewer_2'), .v-card .v-chip:contains('ijcai_reviewer_2'), .v-chip:contains('ijcai_reviewer_2')",
+    # Two contexts share this selector:
+    # - New-Prompt dialog: NO Add button (auto-adds via @select). Selector silently fails → no-op.
+    # - LShareDialog (provider/post-create share): HAS LBtn inside .l-user-search → selector matches.
+    "Share Add Button": ".share-dialog .l-user-search .l-btn--primary, .v-dialog .l-user-search .l-btn--primary, .v-card .l-user-search .l-btn--primary",
+    # Two contexts: New-Prompt dialog uses LTag in .invited-users; LShareDialog uses .user-card in .members-list.
+    "Share Reviewer 2 Chip": ".v-dialog .v-chip:contains('ijcai_reviewer_2'), .v-dialog .invited-users .llars-tag:contains('ijcai_reviewer_2'), .invited-users .llars-tag:contains('ijcai_reviewer_2'), .share-dialog .members-list .user-card:contains('Ijcai Reviewer 2'), .v-dialog .members-list .user-card:contains('Ijcai Reviewer 2'), .members-list .user-card:contains('Ijcai Reviewer 2'), .share-dialog .members-list .user-card:contains('ijcai_reviewer_2'), .v-dialog .members-list .user-card:contains('ijcai_reviewer_2'), .members-list .user-card:contains('ijcai_reviewer_2'), .v-dialog .llars-tag:contains('ijcai_reviewer_2')",
     "Share Chip": ".v-dialog .v-chip, .v-card .v-chip",
     "Share Dialog Close": ".v-dialog .v-card-actions .l-btn--cancel, .v-dialog .v-card-actions .l-btn:contains('Close'), .v-dialog .v-card-actions .l-btn",
     "Model List": ".model-list, .v-list:has(.v-list-item)",
@@ -829,9 +835,16 @@ class Recorder:
     TARGET_WIDTH = 1920
     TARGET_HEIGHT = 1080
 
-    # Capture-Qualität
-    CAPTURE_FPS = 30
-    RAW_CRF = 12
+    # Capture-Qualität (Apple Silicon optimiert)
+    # Capture: H.264 CRF 0 ultrafast = mathematisch verlustfrei, ~0% CPU
+    # Final-Merge: stream-copy (-c:v copy) = preserves raw losslessness, only audio re-encoded
+    CAPTURE_FPS = 60
+    RAW_CRF = 0  # Lossless capture (0 = mathematisch verlustfrei)
+    RAW_PRESET = 'ultrafast'  # Schnellstes Encoding für Echtzeit-Capture
+    # Final-Encode wird nur als Fallback genutzt (wenn stream-copy scheitert).
+    # Bei aktivem -c:v copy bleibt das raw video bit-für-bit identisch erhalten.
+    FINAL_CRF = 0  # Lossless Fallback-Encode (0 = mathematisch verlustfrei)
+    FINAL_PRESET = 'veryslow'  # Max Kompressionseffizienz für Delivery
 
     # Audio-Verstärkung (1.0 = normal, 2.0 = doppelt so laut)
     AUDIO_VOLUME = 3.0
@@ -845,7 +858,53 @@ class Recorder:
         self.start_time = None
         self.timestamps = []  # [(relative_time, audio_file), ...]
         self.window_bounds = window_bounds  # (x, y, width, height) für Crop
+        self._jiggle_thread = None
+        self._jiggle_stop = None
         Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def park_mouse_offscreen():
+        """Bewegt den Cursor in die untere linke Ecke."""
+        try:
+            import pyautogui
+            pyautogui.FAILSAFE = False
+            screen_w, screen_h = pyautogui.size()
+            pyautogui.moveTo(0, screen_h - 1, duration=0.15)
+        except Exception as exc:
+            print(f"   ⚠️ Maus konnte nicht geparkt werden: {exc}")
+
+    def start_mouse_jiggle(self):
+        """Anti-Sleep: bewegt die Maus alle 25s minimal."""
+        try:
+            import pyautogui
+            pyautogui.FAILSAFE = False
+        except Exception:
+            return
+
+        import threading
+        self._jiggle_stop = threading.Event()
+
+        def _jiggle_loop():
+            import pyautogui
+            while not self._jiggle_stop.is_set():
+                if self._jiggle_stop.wait(timeout=25):
+                    break
+                try:
+                    pos = pyautogui.position()
+                    pyautogui.moveTo(pos.x + 1, pos.y, duration=0.05)
+                    pyautogui.moveTo(pos.x, pos.y, duration=0.05)
+                except Exception:
+                    pass
+
+        self._jiggle_thread = threading.Thread(target=_jiggle_loop, daemon=True)
+        self._jiggle_thread.start()
+        print("   🐭 Maus-Jiggle aktiviert (Anti-Sleep, 25s-Intervall)")
+
+    def stop_mouse_jiggle(self):
+        if self._jiggle_stop is not None:
+            self._jiggle_stop.set()
+            self._jiggle_stop = None
+        self._jiggle_thread = None
 
     @staticmethod
     def _find_screen_device() -> str:
@@ -920,11 +979,10 @@ class Recorder:
                 # Probe actual capture resolution
                 cap_w, cap_h = self._probe_capture_resolution(screen_device)
                 if cap_w and cap_h:
-                    # Calculate scale from capture vs logical screen
-                    # macOS always renders at 2x logical for Retina
-                    logical_screen_w = cap_w // 2
-                    logical_screen_h = cap_h // 2
-                    scale = 2  # Always 2x on Retina
+                    # Detect scale per display (Retina vs external non-Retina monitor)
+                    scale = Browser._detect_display_scale()
+                    logical_screen_w = cap_w // scale
+                    logical_screen_h = cap_h // scale
 
                     # Scale logical window bounds → physical
                     px, py = x * scale, y * scale
@@ -954,12 +1012,17 @@ class Recorder:
             ]
             if video_filter:
                 cmd.extend(['-vf', video_filter])
+
             cmd.extend([
                 '-c:v', 'libx264',
-                '-preset', 'veryfast',
-                '-tune', 'animation',
+                '-preset', self.RAW_PRESET,
                 '-crf', str(self.RAW_CRF),
-                '-pix_fmt', 'yuv420p',
+                '-pix_fmt', 'yuv444p',
+                # sRGB color metadata (sonst wirken Farben auf YouTube ausgewaschen)
+                '-colorspace', 'bt709',
+                '-color_primaries', 'bt709',
+                '-color_trc', 'bt709',
+                '-color_range', 'tv',
                 self.raw_video
             ])
         else:
@@ -976,10 +1039,13 @@ class Recorder:
                     '-video_size', f'{w}x{h}',
                     '-i', f':0.0+{x},{y}',  # x11grab mit Offset
                     '-c:v', 'libx264',
-                    '-preset', 'veryfast',
-                    '-tune', 'animation',
+                    '-preset', self.RAW_PRESET,
                     '-crf', str(self.RAW_CRF),
-                    '-pix_fmt', 'yuv420p',
+                    '-pix_fmt', 'yuv444p',
+                    '-colorspace', 'bt709',
+                    '-color_primaries', 'bt709',
+                    '-color_trc', 'bt709',
+                    '-color_range', 'tv',
                     self.raw_video
                 ]
             else:
@@ -990,10 +1056,13 @@ class Recorder:
                     '-video_size', f'{self.TARGET_WIDTH}x{self.TARGET_HEIGHT}',
                     '-i', ':0.0',
                     '-c:v', 'libx264',
-                    '-preset', 'veryfast',
-                    '-tune', 'animation',
+                    '-preset', self.RAW_PRESET,
                     '-crf', str(self.RAW_CRF),
-                    '-pix_fmt', 'yuv420p',
+                    '-pix_fmt', 'yuv444p',
+                    '-colorspace', 'bt709',
+                    '-color_primaries', 'bt709',
+                    '-color_trc', 'bt709',
+                    '-color_range', 'tv',
                     self.raw_video
                 ]
 
@@ -1009,6 +1078,10 @@ class Recorder:
         print(f"🎬 Aufnahme gestartet: {self.raw_video}")
         print(f"   📝 ffmpeg log: {self.ffmpeg_log}")
 
+        # Maus parken + Anti-Sleep Jiggle
+        self.park_mouse_offscreen()
+        self.start_mouse_jiggle()
+
     def mark_audio(self, audio_file: str):
         """Markiert Zeitpunkt für Audio-Einfügung"""
         if self.start_time:
@@ -1017,6 +1090,7 @@ class Recorder:
 
     def stop(self):
         """Stoppt Aufnahme"""
+        self.stop_mouse_jiggle()
         if self.process:
             import signal
             try:
@@ -1114,15 +1188,17 @@ class Recorder:
             os.rename(self.raw_video, self.final_output)
             return
 
-        # Schritt 2: Video + Audio zusammenfügen
-        print("   Füge Video und Audio zusammen...")
+        # Schritt 2: Video + Audio zusammenfügen — stream-copy bewahrt die
+        # mathematisch verlustfreie Raw-Aufnahme (kein zweiter Encode-Pass).
+        print("   Merge: -c:v copy (lossless passthrough) + AAC 384k")
         cmd_merge = [
             'ffmpeg', '-y',
             '-i', self.raw_video,
             '-i', combined_audio,
             '-c:v', 'copy',
             '-c:a', 'aac',
-            '-b:a', '256k',
+            '-b:a', '384k',
+            '-ar', '48000',
             '-map', '0:v:0',
             '-map', '1:a:0',
             '-shortest',
@@ -1132,17 +1208,24 @@ class Recorder:
 
         result = subprocess.run(cmd_merge, capture_output=True, text=True)
         if result.returncode != 0:
-            print("   ⚠️ Merge mit Video-Stream-Copy fehlgeschlagen, fallback auf Re-Encode")
+            # Fallback: voller lossless Re-Encode mit veryslow Preset
+            # (nur falls stream-copy scheitert, z.B. bei Container-Inkompatibilität)
+            print(f"   ⚠️ Stream-copy fehlgeschlagen, fallback auf libx264 lossless re-encode")
             cmd_merge_fallback = [
                 'ffmpeg', '-y',
                 '-i', self.raw_video,
                 '-i', combined_audio,
                 '-c:v', 'libx264',
-                '-preset', 'slow',
-                '-crf', '14',
-                '-pix_fmt', 'yuv420p',
+                '-preset', self.FINAL_PRESET,
+                '-crf', str(self.FINAL_CRF),
+                '-pix_fmt', 'yuv444p',
+                '-colorspace', 'bt709',
+                '-color_primaries', 'bt709',
+                '-color_trc', 'bt709',
+                '-color_range', 'tv',
                 '-c:a', 'aac',
-                '-b:a', '256k',
+                '-b:a', '384k',
+                '-ar', '48000',
                 '-map', '0:v:0',
                 '-map', '1:a:0',
                 '-shortest',
@@ -1202,13 +1285,24 @@ class Browser:
     # Highlight CSS
     HIGHLIGHT_CSS = """
     .llars-highlight {
-        outline: 3px solid #FF5722 !important;
-        outline-offset: 3px !important;
-        animation: llars-pulse 0.5s ease infinite alternate !important;
+        outline: 2px solid #88c4c8 !important;
+        outline-offset: 4px !important;
+        border-radius: 6px !important;
+        animation: llars-soft-glow 1.6s ease-in-out infinite alternate !important;
+        transition: outline-color 0.3s ease !important;
     }
-    @keyframes llars-pulse {
-        from { box-shadow: 0 0 10px #FF5722; }
-        to { box-shadow: 0 0 25px #FFC107; }
+    @keyframes llars-soft-glow {
+        from {
+            box-shadow:
+                0 0 0 1px rgba(136, 196, 200, 0.25),
+                0 0 12px rgba(136, 196, 200, 0.35);
+        }
+        to {
+            box-shadow:
+                0 0 0 1px rgba(176, 202, 151, 0.45),
+                0 0 22px rgba(176, 202, 151, 0.55),
+                0 0 6px rgba(136, 196, 200, 0.4);
+        }
     }
     .llars-overlay {
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -1593,19 +1687,41 @@ class Browser:
         self._recording_bg_applied = False
 
     @staticmethod
-    def _get_logical_screen_size() -> tuple:
-        """Get logical screen resolution.
-
-        On macOS Retina, the "Looks like" resolution determines the logical space.
-        Chrome windows should not exceed this, or they'll extend off-screen.
-        """
+    def _detect_display_scale() -> int:
+        """Detect main display scale factor (1 = non-Retina/external, 2 = Retina/HiDPI)."""
         try:
-            # Probe ffmpeg capture resolution (physical) → divide by 2 for logical
+            result = subprocess.run(
+                ['system_profiler', 'SPDisplaysDataType', '-json'],
+                capture_output=True, text=True, timeout=5
+            )
+            import json as _json
+            data = _json.loads(result.stdout)
+            for gpu in data.get('SPDisplaysDataType', []):
+                for disp in gpu.get('spdisplays_ndrvs', []):
+                    if disp.get('spdisplays_main') != 'spdisplays_yes':
+                        continue
+                    pixels = disp.get('_spdisplays_pixels', '')
+                    looks = disp.get('_spdisplays_resolution', '')
+                    pm = re.match(r'(\d+)\s*x\s*(\d+)', pixels)
+                    lm = re.match(r'(\d+)\s*x\s*(\d+)', looks)
+                    if pm and lm:
+                        pw, lw = int(pm.group(1)), int(lm.group(1))
+                        if pw > 0 and lw > 0:
+                            ratio = pw / lw
+                            return 2 if ratio >= 1.5 else 1
+        except Exception:
+            pass
+        return 2  # Retina fallback (Mac internal default)
+
+    @classmethod
+    def _get_logical_screen_size(cls) -> tuple:
+        """Get logical screen resolution. Auto-detects Retina vs non-Retina."""
+        scale = cls._detect_display_scale()
+        try:
             result = subprocess.run(
                 ['ffmpeg', '-f', 'avfoundation', '-list_devices', 'true', '-i', ''],
                 capture_output=True, text=True, timeout=5
             )
-            # Find screen device
             screen_idx = '3'
             for line in result.stderr.split('\n'):
                 if 'Capture screen 0' in line:
@@ -1622,19 +1738,22 @@ class Browser:
             match = re.search(r'(\d{3,5})x(\d{3,5})', result.stderr)
             if match:
                 cap_w, cap_h = int(match.group(1)), int(match.group(2))
-                # macOS Retina always renders at 2x logical
-                return cap_w // 2, cap_h // 2
+                return cap_w // scale, cap_h // scale
         except Exception:
             pass
         return 1920, 1080  # Fallback
 
     def open(self, username: str = "admin", password: str = "admin123", language: str = "en"):
-        """Öffnet Chrome mit exakter Fenstergröße, angepasst an die Bildschirmgröße"""
+        """Öffnet Chrome positioniert unter der Menubar und über dem Dock.
+
+        Browser ist absichtlich nicht vollständig auf Display-Höhe — die
+        Macbar oben (~39px logical) und das Dock unten bleiben sichtbar bzw.
+        überlagern den Browser nicht.
+        """
         options = Options()
-        # Starte mit kleinem Fenster, setzen die exakte Größe danach
+        # Startgröße klein — exakte Dimensionen via set_window_size unten.
         options.add_argument('--window-size=1280,800')
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
-        # Disable password save prompts and other infobars
         options.add_experimental_option('prefs', {
             'credentials_enable_service': False,
             'profile.password_manager_enabled': False,
@@ -1644,18 +1763,28 @@ class Browser:
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=options)
 
-        # Fenster an Position (0,0) setzen
         self.driver.set_window_position(0, 0)
 
-        # Detect logical screen size and use native available space
+        # Browser-Window auf exaktes 16:9 Aspect-Ratio bringen (YouTube-Standard).
+        # Breite = volle Display-Breite, Höhe = Breite × 9/16. So passt das
+        # Video direkt ins YouTube-Layout ohne Pillarbox/Letterbox.
+        # Voraussetzung: 16:9-Höhe muss in den Display passen — bei MBP 1800×1169
+        # ergibt 1800×1012 = passt locker, Macbar (39px) bleibt frei UND ein
+        # Dock-Bereich unten bleibt frei (1012 + 39 = 1051 < 1169).
         screen_w, screen_h = self._get_logical_screen_size()
         target_w = max(1, int(screen_w))
-        target_h = max(1, int(screen_h - 39))  # Reserve space for menu bar
+        target_h = (target_w * 9) // 16   # exact 16:9
+        # Sicherheits-Cap falls Display weniger Platz hat als 16:9 erfordert
+        max_avail_h = int(screen_h - 39)   # minus Menubar
+        if target_h > max_avail_h:
+            target_h = max_avail_h
+            target_w = (target_h * 16) // 9
         print(f"   🖥️ Logical screen: {screen_w}x{screen_h}")
-        print(f"   🖥️ Chrome target: {target_w}x{target_h}")
+        print(f"   🖥️ Chrome target (16:9): {target_w}x{target_h}")
 
-        # Chrome Fenster-Dekoration (~74px Toolbar oben)
-        self.driver.set_window_size(target_w, target_h + 100)
+        # Set window size exakt — macOS clippt sonst auf den maximal verfügbaren
+        # Bereich (bei verstecktem Dock zu großem Browser).
+        self.driver.set_window_size(target_w, target_h)
 
         # Warte kurz und hole exakte Position/Größe
         time.sleep(0.5)
@@ -1666,6 +1795,73 @@ class Browser:
         self.window_bounds = (pos['x'], pos['y'], size['width'], size['height'])
 
         print(f"🌐 Chrome geöffnet: {size['width']}x{size['height']} at ({pos['x']},{pos['y']})")
+
+    def prewarm_cache(self, username: str, password: str, paths=None):
+        """Vorwärmt den Browser-Cache durch Navigation zu wichtigen Demo-Pfaden.
+
+        Loggt sich ein, navigiert durch die Hauptseiten (JS/CSS/Fonts in den
+        Disk-Cache laden), löscht dann Cookies und Storage damit der eigentliche
+        Recording-Login-Flow normal abläuft. Cache überlebt das Cookie-Clearing.
+        """
+        if not self.driver:
+            return
+        if paths is None:
+            paths = [
+                "/promptengineering",
+                "/generation",
+                "/scenarios",
+                "/evaluation",
+                "/Home",
+            ]
+
+        print("   🔥 Pre-warming asset cache ...")
+        # Login einmal durchführen damit Auth-required Pages laden können
+        try:
+            self.driver.get(f"{self.base_url}/login")
+            time.sleep(1.0)
+            self._do_login_on_login_page(username, password)
+            time.sleep(1.5)
+        except Exception as exc:
+            print(f"      ⚠️ prewarm login: {exc}")
+            return
+
+        for path in paths:
+            try:
+                self.driver.get(f"{self.base_url}{path}")
+                time.sleep(1.2)
+            except Exception as exc:
+                print(f"      ⚠️ prewarm {path}: {exc}")
+
+        # Cookies + Storage löschen damit Recording-Login-Flow normal startet.
+        # HTTP-Cache (Disk) bleibt erhalten.
+        try:
+            self.driver.delete_all_cookies()
+            self.driver.execute_script(
+                "try { localStorage.clear(); sessionStorage.clear(); } catch(e) {}"
+            )
+            self.driver.get(f"{self.base_url}/login")
+            time.sleep(0.8)
+            self._prefill_login_credentials(username, password)
+        except Exception as exc:
+            print(f"      ⚠️ prewarm cleanup: {exc}")
+        print(f"   🔥 Pre-warm complete ({len(paths)} paths cached)")
+
+    def activate_fullscreen(self):
+        """Aktiviert macOS Native Fullscreen via Selenium.
+
+        Versteckt Menubar, Tab-Bar und Adressleiste damit kein Desktop-Wallpaper
+        im Crop sichtbar ist.
+        """
+        if not self.driver:
+            return
+        try:
+            self.driver.fullscreen_window()
+            time.sleep(1.5)  # macOS Fullscreen-Animation abwarten
+            pos = self.driver.get_window_position()
+            size = self.driver.get_window_size()
+            print(f"🌐 Chrome Fullscreen: {size['width']}x{size['height']} at ({pos['x']},{pos['y']})")
+        except Exception as exc:
+            print(f"   ⚠️ Fullscreen-Aktivierung fehlgeschlagen: {exc}")
 
     def get_window_bounds(self) -> tuple:
         """Gibt Fenster-Bounds zurück (x, y, width, height)"""
@@ -3929,17 +4125,17 @@ class Browser:
         except Exception:
             self._original_desktop_picture = None
 
-        # Soliden Hintergrund setzen (schwarz), damit kein Desktop-Inhalt sichtbar ist
-        solid_black = '/System/Library/Desktop Pictures/Solid Colors/Black.png'
+        # Warmer Beige-Hintergrund (LLARS-Look) statt Solid Black.
+        beige_png = str(BASE_DIR / "assets" / "recording_bg.png")
         try:
-            if os.path.exists(solid_black):
+            if os.path.exists(beige_png):
                 subprocess.run(['osascript', '-e', f'''
                     tell application "System Events"
-                        tell every desktop to set picture to POSIX file "{solid_black}"
+                        tell every desktop to set picture to POSIX file "{beige_png}"
                     end tell
                 '''], capture_output=True, timeout=8)
                 self._recording_bg_applied = True
-                print("   👥 Recording-Hintergrund gesetzt (Solid Black)")
+                print("   👥 Recording-Hintergrund gesetzt (warm beige)")
         except Exception as e:
             print(f"   ⚠️ Recording-Hintergrund konnte nicht gesetzt werden: {e}")
 
@@ -4704,12 +4900,24 @@ class Browser:
             self.collab_driver = None
             print("   👥 Collab-Browser geschlossen")
 
-        # Hauptbrowser auf volle Breite zurücksetzen
+        # Hauptbrowser auf volle Breite zurücksetzen.
+        # Chrome lehnt set_window_position/size ab wenn der Window-State noch
+        # 'maximized' ist — daher vorher explizit set_window_rect verwenden,
+        # was den Window aus dem maximized State holt.
         if hasattr(self, '_original_window_bounds') and self._original_window_bounds:
             mx, my, mw, mh = self._original_window_bounds
-            self.driver.set_window_position(mx, my)
-            self.driver.set_window_size(mw, mh)
-            print(f"   👥 Hauptbrowser → volle Breite: ({mx},{my}) {mw}x{mh}")
+            try:
+                self.driver.set_window_rect(x=mx, y=my, width=mw, height=mh)
+                print(f"   👥 Hauptbrowser → volle Breite: ({mx},{my}) {mw}x{mh}")
+            except Exception as exc:
+                # Fallback: 2-step (Position then Size). Ignore failure to not
+                # abort the recording 19 steps in.
+                try:
+                    self.driver.set_window_position(mx, my)
+                    self.driver.set_window_size(mw, mh)
+                    print(f"   👥 Hauptbrowser → volle Breite (fallback): ({mx},{my}) {mw}x{mh}")
+                except Exception as exc2:
+                    print(f"   ⚠️ Hauptbrowser konnte nicht zurückgesetzt werden: {exc2}")
             self._original_window_bounds = None
             self._collab_layout_bounds = None
             time.sleep(0.3)

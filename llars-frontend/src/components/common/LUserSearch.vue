@@ -17,13 +17,13 @@
       no-filter
       :disabled="disabled"
     >
-      <template #item="{ props, item }">
-        <v-list-item v-bind="props" class="user-suggestion">
+      <template #item="{ props: itemProps, item }">
+        <v-list-item v-bind="itemProps" class="user-suggestion">
           <template #prepend>
-            <LAvatar :username="item.raw.username" :seed="item.raw.avatar_seed" :src="item.raw.avatar_url" size="sm" />
+            <LAvatar :username="item.raw.username" :seed="item.raw.avatar_seed" :src="item.raw.avatar_url" size="sm" class="user-avatar-prepend" />
           </template>
           <v-list-item-title class="user-title">
-            {{ formatDisplayName(item.raw.username) }}
+            {{ getUserDisplayName(item.raw) }}
           </v-list-item-title>
           <v-list-item-subtitle class="user-subtitle">@{{ item.raw.username }}</v-list-item-subtitle>
         </v-list-item>
@@ -31,18 +31,13 @@
       <template #selection="{ item }">
         <div class="d-flex align-center ga-2">
           <LAvatar :username="item.raw.username" :seed="item.raw.avatar_seed" :src="item.raw.avatar_url" size="xs" />
-          <span>{{ formatDisplayName(item.raw.username) }}</span>
+          <span>{{ getUserDisplayName(item.raw) }}</span>
         </div>
       </template>
       <template #no-data>
-        <v-list-item v-if="searchQuery && searchQuery.length >= 2 && !loading">
+        <v-list-item v-if="!loading">
           <v-list-item-title class="text-medium-emphasis">
-            Keine Nutzer gefunden
-          </v-list-item-title>
-        </v-list-item>
-        <v-list-item v-else-if="!loading">
-          <v-list-item-title class="text-medium-emphasis">
-            Mindestens 2 Zeichen eingeben
+            {{ noResultsText }}
           </v-list-item-title>
         </v-list-item>
       </template>
@@ -65,10 +60,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import axios from 'axios'
-import { formatDisplayName } from '@/utils/userUtils'
+import { useI18n } from 'vue-i18n'
+import { getUserDisplayName } from '@/utils/userUtils'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: { type: Object, default: null },
@@ -80,7 +78,8 @@ const props = defineProps({
   addButtonText: { type: String, default: 'Hinzufügen' },
   buttonSize: { type: String, default: 'small' },
   excludeUsernames: { type: Array, default: () => [] },
-  searchEndpoint: { type: String, default: '/api/users/search' }
+  searchEndpoint: { type: String, default: '/api/users/search' },
+  noResultsText: { type: String, default: null },
 })
 
 const emit = defineEmits(['update:modelValue', 'select', 'add'])
@@ -89,9 +88,20 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const selectedUser = ref(props.modelValue)
 const searchQuery = ref('')
-const suggestions = ref([])
+const rawSuggestions = ref([])
 const loading = ref(false)
 const adding = ref(false)
+
+const noResultsText = computed(() =>
+  props.noResultsText || t('common.noUsersFound', 'Keine Nutzer gefunden')
+)
+
+// Reactive filtering: re-filters whenever excludeUsernames changes
+const suggestions = computed(() => {
+  if (props.excludeUsernames.length === 0) return rawSuggestions.value
+  const excluded = new Set(props.excludeUsernames.map(u => u.toLowerCase()))
+  return rawSuggestions.value.filter(u => !excluded.has(u.username.toLowerCase()))
+})
 
 let searchTimer = null
 
@@ -100,40 +110,34 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+async function fetchUsers(query = '') {
+  loading.value = true
+  try {
+    const params = { limit: 15 }
+    if (query) params.q = query
+    const res = await axios.get(`${API_BASE}${props.searchEndpoint}`, {
+      headers: authHeaders(),
+      params,
+    })
+
+    rawSuggestions.value = res.data.users || []
+  } catch (e) {
+    console.error('User search failed:', e)
+    rawSuggestions.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// Load all users on mount
+onMounted(() => fetchUsers())
+
 watch(searchQuery, (query) => {
   if (searchTimer) clearTimeout(searchTimer)
   const q = String(query || '').trim()
 
-  if (q.length < 2) {
-    suggestions.value = []
-    loading.value = false
-    return
-  }
-
   loading.value = true
-  searchTimer = setTimeout(async () => {
-    try {
-      const res = await axios.get(`${API_BASE}${props.searchEndpoint}`, {
-        headers: authHeaders(),
-        params: { q, limit: 10 }
-      })
-
-      let users = res.data.users || []
-
-      // Filter out excluded usernames
-      if (props.excludeUsernames.length > 0) {
-        const excluded = new Set(props.excludeUsernames.map(u => u.toLowerCase()))
-        users = users.filter(u => !excluded.has(u.username.toLowerCase()))
-      }
-
-      suggestions.value = users
-    } catch (e) {
-      console.error('User search failed:', e)
-      suggestions.value = []
-    } finally {
-      loading.value = false
-    }
-  }, 250)
+  searchTimer = setTimeout(() => fetchUsers(q), 200)
 })
 
 watch(selectedUser, (user) => {
@@ -153,12 +157,13 @@ function handleAdd() {
   emit('add', selectedUser.value)
 }
 
-// Expose method to reset after external add completes
 function reset() {
   selectedUser.value = null
   searchQuery.value = ''
-  suggestions.value = []
+  rawSuggestions.value = []
   adding.value = false
+  // Reload all users
+  fetchUsers()
 }
 
 function setAdding(val) {
@@ -173,34 +178,13 @@ defineExpose({ reset, setAdding })
   width: 100%;
 }
 
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px 3px 8px 3px;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.04);
-}
-
-.user-avatar.small {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px 2px 6px 2px;
-}
-
-.user-avatar--list {
-  margin-left: -4px;
-  margin-right: 12px;
-}
-
-.user-avatar--selection {
-  margin-right: 0;
-}
-
 .user-suggestion {
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.user-suggestion :deep(.v-list-item__prepend) {
+  margin-right: 12px;
 }
 
 .user-title {

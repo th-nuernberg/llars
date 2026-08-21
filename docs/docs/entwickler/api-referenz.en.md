@@ -465,12 +465,14 @@ file: <image>
 
 ## Rate limiting
 
-!!! warning "In development"
-    Rate limiting is not implemented yet.
+Rate limiting is implemented via `flask-limiter`.
 
-Planned limits:
-- 100 requests/minute for chat endpoints
-- 1000 requests/minute for other endpoints
+| Mode | Default limit |
+|------|--------------|
+| Development | 1000 requests/hour |
+| Production | 500 requests/hour |
+
+Endpoint-specific limits can be configured in `app/main.py`. Exceeding the limit returns HTTP 429 (Too Many Requests).
 
 ---
 

@@ -97,7 +97,7 @@
         <div v-if="formData.sourceType === 'from_job'" class="source-config mt-6">
           <v-autocomplete
             v-model="formData.sourceJobId"
-            :items="completedJobs"
+            :items="allSelectableJobs"
             :loading="loadingJobs"
             item-title="name"
             item-value="id"
@@ -107,12 +107,21 @@
             @update:model-value="onJobSelected"
           >
             <template v-slot:item="{ props, item }">
-              <v-list-item v-bind="props">
+              <!-- Group header (not selectable) -->
+              <v-list-subheader v-if="item.raw._header" class="mt-2">
+                {{ item.raw._header }}
+              </v-list-subheader>
+              <v-list-item v-else v-bind="props">
                 <template v-slot:prepend>
-                  <LIcon size="20" class="mr-2">mdi-auto-fix</LIcon>
+                  <LIcon size="20" class="mr-2">
+                    {{ item.raw._shared ? 'mdi-share-variant' : 'mdi-auto-fix' }}
+                  </LIcon>
                 </template>
                 <template v-slot:subtitle>
                   {{ item.raw.total_items }} Outputs · {{ item.raw.created_at_formatted }}
+                  <span v-if="item.raw._shared && item.raw.created_by" class="ml-1">
+                    · {{ $t('generation.wizard.step1.sharedBy') }} {{ item.raw.created_by }}
+                  </span>
                 </template>
               </v-list-item>
             </template>
@@ -343,6 +352,28 @@
               />
             </v-col>
           </v-row>
+
+          <v-divider class="mb-4" />
+
+          <!-- Parallelism -->
+          <h4 class="subsection-title">{{ $t('generation.wizard.step4.parallelism') }}</h4>
+
+          <v-row>
+            <v-col cols="12" md="8">
+              <v-slider
+                v-model="formData.maxParallel"
+                :label="$t('generation.wizard.step4.maxParallel')"
+                :min="1"
+                :max="adminMaxParallel"
+                :step="1"
+                thumb-label
+                show-ticks="always"
+                :hint="$t('generation.wizard.step4.maxParallelHint')"
+                persistent-hint
+                class="mb-4"
+              />
+            </v-col>
+          </v-row>
         </div>
       </div>
 
@@ -361,6 +392,10 @@
             <div class="review-item">
               <span class="review-label">{{ $t('generation.wizard.step4.jobName') }}:</span>
               <span class="review-value">{{ formData.name }}</span>
+            </div>
+            <div class="review-item">
+              <span class="review-label">{{ $t('generation.wizard.step4.parallelism') }}:</span>
+              <span class="review-value">{{ formData.maxParallel }}x</span>
             </div>
           </div>
 
@@ -482,6 +517,7 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useGeneration } from '@/composables/useGeneration'
 import { parseUserProviderModelId } from '@/utils/formatters'
+import { generationApi } from '@/services/generationApi'
 
 const emit = defineEmits(['close', 'created'])
 
@@ -509,10 +545,12 @@ const loadingModels = ref(false)
 
 // Data
 const completedJobs = ref([])
+const sharedCompletedJobs = ref([])
 const promptTemplates = ref([])
 const availableModels = ref([])
 const selectedJobInfo = ref(null)
 const costEstimate = ref(null)
+const adminMaxParallel = ref(5)
 
 // Form data
 const formData = ref({
@@ -527,7 +565,8 @@ const formData = ref({
     max_tokens: null,  // null = unlimited (good for reasoning models like Magistral)
     retry_count: 3
   },
-  budgetLimit: null
+  budgetLimit: null,
+  maxParallel: 3
 })
 
 // Computed
@@ -662,10 +701,13 @@ async function loadJobs() {
   loadingJobs.value = true
   try {
     const response = await axios.get('/api/generation/jobs', { params: { status: 'completed' } })
-    completedJobs.value = (response.data.jobs || []).map(j => ({
+    const formatJob = (j, shared = false) => ({
       ...j,
-      created_at_formatted: new Date(j.created_at).toLocaleDateString()
-    }))
+      created_at_formatted: new Date(j.created_at).toLocaleDateString(),
+      _shared: shared
+    })
+    completedJobs.value = (response.data.jobs || []).map(j => formatJob(j))
+    sharedCompletedJobs.value = (response.data.shared_jobs || []).map(j => formatJob(j, true))
   } catch (error) {
     console.error('Failed to load jobs:', error)
   } finally {
@@ -673,8 +715,25 @@ async function loadJobs() {
   }
 }
 
+/** All selectable jobs: own jobs + shared jobs with group headers */
+const allSelectableJobs = computed(() => {
+  const items = []
+  if (completedJobs.value.length) {
+    items.push({ _header: t('generation.wizard.step1.ownJobsHeader'), id: '__own_header', name: '' })
+    items.push(...completedJobs.value)
+  }
+  if (sharedCompletedJobs.value.length) {
+    items.push({ _header: t('generation.wizard.step1.sharedJobsHeader'), id: '__shared_header', name: '' })
+    items.push(...sharedCompletedJobs.value)
+  }
+  return items
+})
+
 function onJobSelected(jobId) {
-  selectedJobInfo.value = completedJobs.value.find(j => j.id === jobId) || null
+  selectedJobInfo.value =
+    completedJobs.value.find(j => j.id === jobId) ||
+    sharedCompletedJobs.value.find(j => j.id === jobId) ||
+    null
 }
 
 function handleFileDrop(event) {
@@ -781,7 +840,7 @@ async function loadModels() {
             const fullId = ownerName
               ? `user-provider:${provider.id}:${ownerName}:${modelId}`
               : `user-provider:${provider.id}:${modelId}`
-            const parsed = parseUserProviderModelId(fullId)
+            const parsed = parseUserProviderModelId(fullId, provider.name)
             providerModels.push({
               id: fullId,
               model_id: fullId,
@@ -800,7 +859,7 @@ async function loadModels() {
         const fullId = ownerName
           ? `user-provider:${provider.id}:${ownerName}:${modelId}`
           : `user-provider:${provider.id}:${modelId}`
-        const parsed = parseUserProviderModelId(fullId)
+        const parsed = parseUserProviderModelId(fullId, provider.name)
         providerModels.push({
           id: fullId,
           model_id: fullId,
@@ -869,7 +928,10 @@ function buildJobConfig() {
     prompts: formData.value.prompts,
     llm_models: formData.value.llmModels,
     generation_params: formData.value.generationParams,
-    budget_limit_usd: formData.value.budgetLimit
+    budget_limit_usd: formData.value.budgetLimit,
+    limits: {
+      max_parallel: formData.value.maxParallel
+    }
   }
 }
 
@@ -892,8 +954,20 @@ async function createJob() {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadJobs()
+  try {
+    const res = await generationApi.getMaxParallel()
+    if (res.data?.max_parallel) {
+      adminMaxParallel.value = res.data.max_parallel
+      // Clamp formData if default exceeds admin max
+      if (formData.value.maxParallel > adminMaxParallel.value) {
+        formData.value.maxParallel = adminMaxParallel.value
+      }
+    }
+  } catch (e) {
+    console.warn('[GenerationWizard] Could not load max parallel setting:', e)
+  }
 })
 </script>
 

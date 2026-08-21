@@ -23,6 +23,43 @@ class ChatbotService:
 
     USER_PROVIDER_PREFIX = "user-provider:"
 
+    # ========== Access guards (F2: cross-tenant RAG attach) ==========
+
+    @staticmethod
+    def _user_can_view_collection(username: Optional[str], collection_id: int) -> bool:
+        """Defer to RAGAccessService.can_view_collection — central source of
+        truth for RAG visibility (admin / owner / explicit permission /
+        document-share). Without this guard, anyone with chatbot:write
+        could attach a foreign user's RAG collection to their own bot
+        and exfiltrate it via chat. See SECURITY-2026-05 (F2)."""
+        if not username:
+            return False
+        # Local import to avoid a hard dependency cycle: chatbot_service is
+        # imported very early during app boot, RAGAccessService pulls in
+        # the full RAG model graph.
+        from services.rag.access_service import RAGAccessService
+        collection = RAGCollection.query.get(collection_id)
+        if collection is None:
+            return False
+        return RAGAccessService.can_view_collection(username, collection)
+
+    @staticmethod
+    def _filter_visible_collection_ids(
+        collection_ids: List[int], username: Optional[str],
+    ) -> List[int]:
+        """Drop any collection ids the user can't view. Used by
+        create_chatbot's bulk loop and by duplicate_chatbot — silently
+        skipping inaccessible collections is the safer behaviour than
+        failing the whole create on a single bad id (the assign route
+        below DOES raise so a deliberate misuse gets a clear 400).
+        """
+        if not collection_ids:
+            return []
+        return [
+            cid for cid in collection_ids
+            if ChatbotService._user_can_view_collection(username, cid)
+        ]
+
     @staticmethod
     def _resolve_llm_model_id(model_name: Optional[str]) -> Optional[str]:
         if not model_name:
@@ -77,8 +114,44 @@ class ChatbotService:
             db.session.add(settings)
             db.session.flush()  # Ensure it's in the session before setting attributes
 
+        # Security: Only allow known safe fields to prevent mass assignment.
+        # Extended in 2026-05 to cover the v1 ChatbotPromptSettingsBlock —
+        # without these, PATCH /api/v1/chatbots/{id} with prompt_settings
+        # silently dropped the whole block (allowed_fields was a strict
+        # subset of the actual ChatbotPromptSettings model). Mirror the
+        # full model field list rather than maintain two lists in sync.
+        allowed_fields = {
+            'system_prompt', 'temperature', 'max_tokens', 'model_id',
+            'rag_system_prompt', 'rag_prompt_template', 'rag_top_k',
+            'rag_score_threshold',
+            'rag_require_citations', 'rag_use_cross_encoder',
+            'rag_unknown_answer', 'rag_citation_instructions',
+            'rag_context_prefix', 'rag_context_item_template',
+            # Agent / multi-step config
+            'agent_mode', 'task_type', 'agent_max_iterations',
+            # Web-search add-on
+            'web_search_enabled', 'web_search_max_results', 'tavily_api_key',
+            # Tool whitelist + per-mode prompt overrides
+            'tools_enabled', 'reflection_prompt', 'act_system_prompt',
+            'react_system_prompt', 'reflact_system_prompt',
+        }
+        # Fields that are stored encrypted at rest — encrypt before
+        # we hand the value to setattr. ``encrypt_secret`` is idempotent
+        # against already-encrypted values? No: it would double-wrap.
+        # Callers always pass a fresh plaintext value through this path
+        # (the field is write-only in the API + admin UI), so a single
+        # encrypt is correct.
+        from services.llm.secret_encryption import encrypt_secret, is_encrypted_secret
+        encrypted_at_rest = {'tavily_api_key'}
+
         for key, value in payload.items():
-            if hasattr(settings, key):
+            if key in allowed_fields and hasattr(settings, key):
+                if key in encrypted_at_rest and value:
+                    # Defensive: tolerate the (unusual) case where an
+                    # already-encrypted blob is fed back in — don't
+                    # double-encrypt, just store as-is.
+                    if not is_encrypted_secret(str(value)):
+                        value = encrypt_secret(str(value))
                 setattr(settings, key, value)
 
         # Citations need sources for clickable [n] references.
@@ -307,8 +380,20 @@ class ChatbotService:
         # _upsert_prompt_settings handles creating settings if needed
         ChatbotService._upsert_prompt_settings(chatbot, data)
 
-        # Assign collections if provided
-        collection_ids = data.get('collection_ids', [])
+        # Assign collections if provided. F2: drop collections the requesting
+        # user cannot view. Without this filter, a chatbot:write key could
+        # mint a bot that pulls from any admin-owned collection.
+        raw_collection_ids = data.get('collection_ids', []) or []
+        collection_ids = ChatbotService._filter_visible_collection_ids(
+            raw_collection_ids, username,
+        )
+        if len(collection_ids) != len(raw_collection_ids):
+            dropped = sorted(set(raw_collection_ids) - set(collection_ids))
+            logger.warning(
+                "[ChatbotService] dropped %d inaccessible collection(s) %s "
+                "while creating chatbot for user %s",
+                len(dropped), dropped, username,
+            )
         for i, coll_id in enumerate(collection_ids):
             collection = RAGCollection.query.get(coll_id)
             if collection:
@@ -531,6 +616,15 @@ class ChatbotService:
 
         if not chatbot or not collection:
             return None
+
+        # F2: refuse to attach a collection the requesting user cannot view.
+        # Returning a value-error here (not a silent skip) so the API surface
+        # produces a clear 400 — single-target POST is a deliberate action.
+        if not ChatbotService._user_can_view_collection(username, collection_id):
+            raise ValueError(
+                f"User '{username}' is not allowed to attach collection "
+                f"{collection_id} (no view permission)"
+            )
 
         # Check if already assigned
         existing = ChatbotCollection.query.filter_by(

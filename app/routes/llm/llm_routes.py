@@ -396,8 +396,20 @@ def create_provider():
     data = request.get_json() or {}
     provider = LLMProviderService.create_provider(data)
 
-    sync_models_flag = bool(data.get('sync_models'))
     model_ids = data.get('model_ids') or []
+    if isinstance(model_ids, str):
+        model_ids = [m.strip() for m in model_ids.split(',') if m.strip()]
+    elif not isinstance(model_ids, list):
+        model_ids = []
+
+    # Auto-sync OpenAI-compatible providers on create when no explicit model list
+    # was provided and caller did not set sync_models explicitly.
+    sync_models_raw = data.get('sync_models')
+    if sync_models_raw is None:
+        sync_models_flag = bool(provider.is_openai_compatible and not model_ids)
+    else:
+        sync_models_flag = bool(sync_models_raw)
+
     model_metadata = data.get('model_metadata') or {}
     sync_result = None
     if sync_models_flag or model_ids:
@@ -495,7 +507,8 @@ def sync_provider_models(provider_id: int):
     provider = LLMProvider.query.get(provider_id)
     if not provider:
         raise NotFoundError('Provider not found')
-    data = request.get_json() or {}
+    # Allow empty-body POST from UI sync button (no Content-Type / no JSON payload).
+    data = request.get_json(silent=True) or {}
     model_ids = data.get('model_ids') or []
     admin_username = AuthUtils.extract_username_without_validation()
     result = LLMProviderService.sync_models(

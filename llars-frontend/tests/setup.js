@@ -5,23 +5,20 @@
  */
 
 import { config } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
 import { vi } from 'vitest'
 import LIcon from '@/components/common/LIcon.vue'
-
-// Create Vuetify instance for tests
-const vuetify = createVuetify({
-  components,
-  directives,
-})
+import LLabelButton from '@/components/common/LLabelButton.vue'
+import i18n from '@/i18n'
 
 // Configure Vue Test Utils globally
-config.global.plugins = [vuetify]
+config.global.plugins = [i18n]
 config.global.components = {
   ...(config.global.components || {}),
   LIcon,
+  // Globally registered in main.js; specs assert on the real button
+  // (.l-label-btn) rather than a stub, because its selected/disabled
+  // states are behaviour the labeling tests care about.
+  LLabelButton,
 }
 
 // Add common stubs
@@ -95,6 +92,9 @@ Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock })
 
 // Reset mocks between tests
 beforeEach(() => {
+  if (i18n?.global?.locale?.value) {
+    i18n.global.locale.value = 'de'
+  }
   vi.clearAllMocks()
   localStorageMock.getItem.mockReset()
   localStorageMock.setItem.mockReset()

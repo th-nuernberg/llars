@@ -65,6 +65,7 @@ def anonymize_health() -> Any:
         status = AnonymizeService.quick_status()
 
     status["llm"] = AnonymizeService.llm_quick_status()
+    status["privacy_filter"] = AnonymizeService.privacy_filter_quick_status()
     status["mode"] = "full" if mode == "full" else "quick"
     return jsonify({"success": True, "status": status})
 
@@ -82,8 +83,8 @@ def anonymize_pseudonymize() -> Any:
     if not isinstance(engine, str):
         raise ValidationError("Field 'engine' must be a string")
     engine = engine.strip().lower()
-    if engine not in {"offline", "llm", "hybrid"}:
-        raise ValidationError("Invalid engine. Allowed: offline, llm, hybrid")
+    if engine not in {"offline", "llm", "hybrid", "privacy-filter"}:
+        raise ValidationError("Invalid engine. Allowed: offline, llm, hybrid, privacy-filter")
 
     llm_model = payload.get("llm_model")
     if llm_model is not None and not isinstance(llm_model, str):
@@ -113,6 +114,15 @@ def anonymize_pseudonymize() -> Any:
             "code": "ANONYMIZE_LLM_NOT_READY",
             "status": status_llm,
         }), 503
+    if engine == "privacy-filter":
+        status_pf = AnonymizeService.privacy_filter_quick_status()
+        if not status_pf.get("ready"):
+            return jsonify({
+                "success": False,
+                "error": "privacy-filter engine is not available (transformers/torch missing)",
+                "code": "ANONYMIZE_PRIVACY_FILTER_NOT_READY",
+                "status": status_pf,
+            }), 503
 
     group_overrides = payload.get("group_overrides") or {}
     if not isinstance(group_overrides, dict):
@@ -160,7 +170,7 @@ def anonymize_pseudonymize_stream() -> Any:
     if not isinstance(engine, str):
         return jsonify({"success": False, "error": "Field 'engine' must be a string"}), 400
     engine = engine.strip().lower()
-    if engine not in {"offline", "llm", "hybrid"}:
+    if engine not in {"offline", "llm", "hybrid", "privacy-filter"}:
         return jsonify({"success": False, "error": "Invalid engine"}), 400
 
     llm_model = payload.get("llm_model")
@@ -188,6 +198,12 @@ def anonymize_pseudonymize_stream() -> Any:
             "success": False,
             "error": "LLM not ready",
             "code": "ANONYMIZE_LLM_NOT_READY",
+        }), 503
+    if engine == "privacy-filter" and not AnonymizeService.privacy_filter_quick_status().get("ready"):
+        return jsonify({
+            "success": False,
+            "error": "privacy-filter engine not available",
+            "code": "ANONYMIZE_PRIVACY_FILTER_NOT_READY",
         }), 503
 
     group_overrides = payload.get("group_overrides") or {}
@@ -242,8 +258,8 @@ def anonymize_pseudonymize_file() -> Any:
     payload = request.form.to_dict() or {}
 
     engine = (payload.get("engine") or "offline").strip().lower()
-    if engine not in {"offline", "llm", "hybrid"}:
-        raise ValidationError("Invalid engine. Allowed: offline, llm, hybrid")
+    if engine not in {"offline", "llm", "hybrid", "privacy-filter"}:
+        raise ValidationError("Invalid engine. Allowed: offline, llm, hybrid, privacy-filter")
     llm_model = payload.get("llm_model") or None
     if isinstance(llm_model, str) and llm_model.strip():
         from db.models.llm_model import LLMModel
@@ -270,6 +286,15 @@ def anonymize_pseudonymize_file() -> Any:
             "code": "ANONYMIZE_LLM_NOT_READY",
             "status": status_llm,
         }), 503
+    if engine == "privacy-filter":
+        status_pf = AnonymizeService.privacy_filter_quick_status()
+        if not status_pf.get("ready"):
+            return jsonify({
+                "success": False,
+                "error": "privacy-filter engine is not available (transformers/torch missing)",
+                "code": "ANONYMIZE_PRIVACY_FILTER_NOT_READY",
+                "status": status_pf,
+            }), 503
 
     # Optional JSON-like fields can be passed as plain strings; we keep it simple for now.
     # The frontend uses the JSON endpoint for interactive updates.

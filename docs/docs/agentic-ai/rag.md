@@ -256,3 +256,11 @@ results = chat_service._search_collection(collection, query, k=12)
 [ChatRAGRetrieval] Top 24 candidates before relevance filter:
 [ChatRAGRetrieval] Reranking 12 results
 ```
+
+---
+
+## Siehe auch
+
+- [ReACT - Reasoning and Acting](react.md)
+- [ReflAct - Reflection-Grounded Agent Reasoning](reflact.md)
+- [Agentic AI Uebersicht](index.md)

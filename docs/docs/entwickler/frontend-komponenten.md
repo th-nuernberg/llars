@@ -285,7 +285,7 @@ Verwende eindeutige, beschreibende Storage Keys:
 ```vue
 <!-- Gut -->
 storage-key="llars-git-panel"
-storage-key="llars-ai-assistant-latex"
+storage-key="llars-ai-assistant-chat"
 storage-key="llars-prompt-git-panel"
 
 <!-- Schlecht -->

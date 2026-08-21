@@ -240,3 +240,70 @@ Shows all documents in the processing queue:
 - **Processing**: Currently processing
 - **Indexed**: Finished
 - **Failed**: Error during processing
+
+### Actions
+
+- **Reindex**: Re-index a document
+- **Delete**: Delete a document
+- **Move**: Move to another collection
+
+---
+
+## System Settings
+
+### General settings
+
+| Setting | Description |
+|---------|-------------|
+| `site_name` | Display name of the instance |
+| `maintenance_mode` | Enable maintenance mode |
+| `registration_enabled` | Allow self-registration |
+
+### LLM settings
+
+| Setting | Description |
+|---------|-------------|
+| `default_llm_model` | Default LLM for new chatbots |
+| `default_embedding_model` | Default embedding model |
+| `litellm_base_url` | LiteLLM proxy URL |
+| `litellm_api_key` | LiteLLM API key |
+
+### Storage settings
+
+| Setting | Description |
+|---------|-------------|
+| `storage_path` | Base storage path |
+| `max_upload_size` | Max upload size in MB |
+| `allowed_file_types` | Allowed file types |
+
+---
+
+## Troubleshooting
+
+### Docker Monitor shows no data
+
+1. Check if `/var/run/docker.sock` is mounted
+2. Check Docker socket permissions:
+   ```bash
+   docker exec llars_flask_service ls -la /var/run/docker.sock
+   ```
+3. Restart the backend:
+   ```bash
+   docker restart llars_flask_service
+   ```
+
+### DB Explorer shows errors
+
+1. Check MariaDB connection:
+   ```bash
+   docker exec llars_flask_service python -c "from db.db import db; print(db.engine.url)"
+   ```
+2. Check DB user permissions
+
+### Analytics not available
+
+1. Check Matomo container:
+   ```bash
+   docker logs llars_matomo_service
+   ```
+2. Check `MATOMO_SITE_ID` in `.env`

@@ -195,3 +195,158 @@ const ID_TYPE_MAP = {
 | `buckets-3` | 3 categories | Good/Medium/Bad | Standard |
 | `buckets-5` | 5 categories | Very good to very bad | Finer |
 | `priority` | Priority | Ordered | Ranking |
+
+### Comparison presets
+
+| ID | Name | Description |
+|----|------|-------------|
+| `pairwise` | Pairwise comparison | A vs B |
+| `pairwise-confidence` | With confidence | + confidence rating |
+| `multicriteria` | Multi-criteria | Multiple dimensions |
+
+### Mail-rating presets
+
+| ID | Name | Description |
+|----|------|-------------|
+| `beratungsqualitaet` | Counseling quality | Multi-dimensional rating of counseling emails |
+| `antwortqualitaet` | Response quality | Rating quality of individual counselor responses |
+| `einfach` | Simple rating | Quick overall rating without dimensions |
+| `custom` | Custom | Define your own rating dimensions |
+
+### Authenticity presets
+
+| ID | Name | Description |
+|----|------|-------------|
+| `nachricht-echtheit` | Message authenticity | Real vs. fake counseling messages |
+| `ki-generiert` | AI detection | AI-generated vs. human |
+| `dringlichkeit` | Urgency assessment | Acute to low |
+| `custom` | Custom | Define your own categories |
+
+## Localization
+
+The wizard supports DE and EN:
+
+```json
+// de.json
+{
+  "scenarioManager": {
+    "wizard": {
+      "step1": { "title": "Daten hochladen" },
+      "step2": { "title": "Aufgabentyp wählen" },
+      "step3": { "title": "Konfiguration" },
+      "step4": { "title": "Team zusammenstellen" },
+      "step5": { "title": "Zusammenfassung" }
+    },
+    "types": {
+      "rating": "Rating",
+      "ranking": "Ranking",
+      "labeling": "Labeling",
+      "comparison": "Vergleich"
+    }
+  }
+}
+```
+
+## Permissions
+
+| Permission | Description |
+|------------|-------------|
+| `data:manage_scenarios` | Create/edit scenarios |
+| `feature:rating:view` | View ratings |
+| `feature:rating:edit` | Edit ratings |
+
+## Example workflow
+
+1. **Researcher opens Scenario Manager**
+2. **Clicks "New Scenario"** → Wizard opens
+3. **Uploads sentiment dataset** (CSV with texts)
+4. **AI analyzes** → Suggests "labeling" with "binary-sentiment"
+5. **Researcher accepts** or selects a different preset
+6. **Configures distribution** (all rate all)
+7. **Invites team** (3 evaluators + GPT-4)
+8. **Creates scenario** → Evaluation starts
+
+## Data formats for import
+
+### Rating data
+
+```json
+[
+  {
+    "id": "1",
+    "text": "The text to be rated...",
+    "category": "Optional: category"
+  }
+]
+```
+
+### Ranking data (e.g. summary quality)
+
+**IMPORTANT:** For ranking scenarios like summary quality:
+- The **source text** is shown as context (right panel)
+- The **items to rank** (e.g. summaries) are stored as features (left panel)
+
+```json
+[
+  {
+    "subject": "Summary Ranking: Article title",
+    "source_text": "The full original text serving as context...",
+    "items": [
+      { "id": "A", "content": "First summary..." },
+      { "id": "B", "content": "Second summary..." },
+      { "id": "C", "content": "Third summary..." }
+    ],
+    "task": "Rank the summaries by quality"
+  }
+]
+```
+
+**Technical implementation:**
+- `source_text` → stored as **Message** (displayed on the right)
+- `items` → stored as **Features** (ranking on the left)
+- Items are NOT stored as messages!
+
+### Labeling data
+
+```json
+[
+  {
+    "id": "1",
+    "text": "The text to classify...",
+    "ground_truth": "category_a"  // Optional for accuracy calculation
+  }
+]
+```
+
+### Comparison data
+
+```json
+[
+  {
+    "id": "1",
+    "context": "Optional context...",
+    "option_a": "First option to compare",
+    "option_b": "Second option to compare",
+    "task": "Which option is better?"
+  }
+]
+```
+
+### Authenticity data
+
+```json
+[
+  {
+    "id": "1",
+    "text": "The text for authenticity check...",
+    "is_fake": true  // Ground truth for accuracy/F1 calculation
+  }
+]
+```
+
+## See also
+
+- [Ranking scenarios in detail](./ranking-scenarios.md)
+- [Scenario Manager testing](./scenario-manager-testing.md)
+- [Database schema](../../entwickler/datenbank-schema.md)
+- [Permission system](../../guides/permission-system.md)

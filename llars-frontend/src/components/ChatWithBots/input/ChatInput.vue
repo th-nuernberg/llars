@@ -66,7 +66,7 @@
     </div>
 
     <!-- Supported file types info -->
-    <div class="text-caption text-medium-emphasis mt-1">
+    <div class="text-caption text-medium-emphasis mt-1 supported-types-hint">
       <template v-if="supportsVision">
         {{ $t('chat.supportedTypesWithImages') }}
       </template>
@@ -268,5 +268,55 @@ defineExpose({
   max-height: 150px;
   line-height: 1.5;
   resize: none;
+}
+
+/* ==================== Mobile ==================== */
+@media (max-width: 600px) {
+  /* Bottom-pinned composer: tighter horizontal padding + safe-area bottom inset
+     so the bar clears the iOS home indicator and stays above the soft keyboard
+     (the parent shell uses 100dvh, so the bar tracks the visible viewport). A
+     subtle top divider/shadow separates it from the streaming messages. */
+  .chat-input {
+    padding: 8px 10px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    flex-shrink: 0;
+    box-shadow: 0 -1px 0 rgba(var(--v-theme-on-surface), 0.06);
+  }
+
+  /* Align attach + textarea + send along the bottom so a multi-row textarea
+     grows upward while the buttons stay at the composer baseline. */
+  .chat-input .d-flex {
+    align-items: flex-end !important;
+    gap: 6px !important;
+  }
+
+  /* Pill-shaped, auto-growing textarea (max ~5 rows) with comfortable padding. */
+  .chat-input :deep(.v-field) {
+    border-radius: 22px !important;
+  }
+
+  .chat-textarea :deep(textarea) {
+    max-height: 132px; /* ~5 rows */
+    font-size: 16px;   /* >=16px prevents iOS zoom-on-focus */
+  }
+
+  /* Attach button: 44px touch target, muted so the send button stands out. */
+  .chat-input .v-btn.v-btn--icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Large, thumb-friendly, high-contrast send button with the LLARS asymmetric
+     radius signature. */
+  .chat-input .v-btn.v-btn--icon:last-child {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px 4px 16px 4px;
+  }
+
+  /* Hide the verbose "supported file types" hint to save vertical space */
+  .chat-input .supported-types-hint {
+    display: none;
+  }
 }
 </style>

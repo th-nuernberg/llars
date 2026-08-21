@@ -331,13 +331,13 @@
             </v-card-text>
           </v-card>
 
-          <!-- AI Assistant Settings -->
+          <!-- Self-Service Password Reset Settings -->
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
-              <LIcon class="mr-2" size="small">mdi-robot</LIcon>
-              {{ $t('admin.systemSettings.aiAssistant.title') }}
+              <LIcon class="mr-2" size="small">mdi-lock-reset</LIcon>
+              {{ $t('admin.systemSettings.passwordReset.title') }}
               <v-spacer />
-              <LStatusChip :state="sectionStates.aiAssistant" />
+              <LStatusChip :state="sectionStates.passwordReset" />
             </v-card-title>
             <v-card-text>
               <v-alert
@@ -346,225 +346,35 @@
                 density="compact"
                 class="mb-4"
               >
-                {{ $t('admin.systemSettings.aiAssistant.info') }}
+                {{ $t('admin.systemSettings.passwordReset.info') }}
               </v-alert>
 
               <v-row>
                 <v-col cols="12" md="6">
                   <v-switch
-                    v-model="settings.ai_assistant_enabled"
-                    :label="$t('admin.systemSettings.aiAssistant.enable')"
+                    v-model="settings.self_service_password_reset_enabled"
+                    :label="$t('admin.systemSettings.passwordReset.enable')"
                     color="primary"
                     hide-details
                     density="compact"
                     class="mb-2"
                   />
                   <div class="text-caption text-medium-emphasis ml-10">
-                    {{ $t('admin.systemSettings.aiAssistant.enableHint') }}
-                  </div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="settings.ai_assistant_username"
-                    :label="$t('admin.systemSettings.aiAssistant.username')"
-                    variant="outlined"
-                    density="comfortable"
-                    :hint="$t('admin.systemSettings.aiAssistant.usernameHint')"
-                    persistent-hint
-                    maxlength="50"
-                  />
-                </v-col>
-              </v-row>
-
-              <v-row class="mt-2">
-                <v-col cols="12" md="6">
-                  <div class="d-flex align-center">
-                    <v-menu
-                      :close-on-content-click="false"
-                      location="bottom start"
-                    >
-                      <template #activator="{ props }">
-                        <div
-                          v-bind="props"
-                          class="color-preview cursor-pointer mr-3"
-                          :style="{ backgroundColor: settings.ai_assistant_color }"
-                        />
-                      </template>
-                      <v-color-picker
-                        v-model="settings.ai_assistant_color"
-                        mode="hex"
-                        :modes="['hex']"
-                        hide-inputs
-                        show-swatches
-                        :swatches="aiColorSwatches"
-                      />
-                    </v-menu>
-                    <v-text-field
-                      v-model="settings.ai_assistant_color"
-                      :label="$t('admin.systemSettings.aiAssistant.color')"
-                      variant="outlined"
-                      density="comfortable"
-                      :hint="$t('admin.systemSettings.aiAssistant.colorHint')"
-                      persistent-hint
-                      maxlength="7"
-                      style="max-width: 200px;"
-                    />
-                  </div>
-                </v-col>
-                <v-col cols="12" md="6" class="d-flex align-center">
-                  <div class="ai-preview-card pa-3 rounded">
-                    <div class="text-caption text-medium-emphasis mb-1">{{ $t('admin.systemSettings.aiAssistant.preview') }}</div>
-                    <div class="d-flex align-center">
-                      <div
-                        class="ai-avatar mr-2"
-                        :style="{ backgroundColor: settings.ai_assistant_color }"
-                      >
-                        <LIcon size="small" color="white">mdi-robot</LIcon>
-                      </div>
-                      <span class="font-weight-medium">{{ settings.ai_assistant_username || 'LLARS KI' }}</span>
-                    </div>
+                    {{ $t('admin.systemSettings.passwordReset.enableHint') }}
                   </div>
                 </v-col>
               </v-row>
-            </v-card-text>
-          </v-card>
 
-          <!-- Zotero OAuth Settings -->
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1 d-flex align-center">
-              <LIcon class="mr-2" size="small">zotero</LIcon>
-              {{ $t('admin.systemSettings.zotero.title') }}
-              <v-spacer />
-              <v-chip
-                :color="zoteroStatus.oauth_available ? 'success' : 'warning'"
-                variant="tonal"
-                size="x-small"
-              >
-                <LIcon start size="x-small">
-                  {{ zoteroStatus.oauth_available ? 'mdi-check-circle' : 'mdi-alert-circle' }}
-                </LIcon>
-                {{ zoteroStatusLabel }}
-              </v-chip>
-            </v-card-title>
-            <v-card-text>
-              <!-- Info Alert -->
               <v-alert
-                type="info"
+                v-if="settings.self_service_password_reset_enabled"
+                type="success"
                 variant="tonal"
                 density="compact"
-                class="mb-4"
+                class="mt-4"
               >
-                <div class="text-body-2">
-                  {{ $t('admin.systemSettings.zotero.info') }}
-                  {{ $t('admin.systemSettings.zotero.registerApp') }}
-                  <a href="https://www.zotero.org/oauth/apps" target="_blank" rel="noopener">
-                    zotero.org/oauth/apps
-                  </a>.
-                  <br>
-                  <strong>{{ $t('admin.systemSettings.zotero.priority') }}</strong>
-                </div>
+                <LIcon start size="small">mdi-check-circle</LIcon>
+                {{ $t('admin.systemSettings.passwordReset.activeAlert') }}
               </v-alert>
-
-              <!-- Environment Variables Status (read-only) -->
-              <div class="mb-4">
-                <div class="text-subtitle-2 mb-2 d-flex align-center">
-                  <LIcon size="small" class="mr-1">mdi-file-cog</LIcon>
-                  {{ $t('admin.systemSettings.zotero.envVariables') }}
-                  <v-chip
-                    v-if="zoteroStatus.active_source === 'env'"
-                    color="primary"
-                    variant="flat"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ $t('admin.systemSettings.zotero.active') }}
-                  </v-chip>
-                </div>
-                <v-row>
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      :model-value="zoteroStatus.env?.client_key || $t('admin.systemSettings.zotero.notSet')"
-                      label="ZOTERO_CLIENT_KEY"
-                      variant="outlined"
-                      density="compact"
-                      readonly
-                      disabled
-                    />
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      :model-value="zoteroStatus.env?.client_secret_set ? '••••••••' : $t('admin.systemSettings.zotero.notSet')"
-                      label="ZOTERO_CLIENT_SECRET"
-                      variant="outlined"
-                      density="compact"
-                      readonly
-                      disabled
-                    />
-                  </v-col>
-                </v-row>
-              </div>
-
-              <v-divider class="mb-4" />
-
-              <!-- Database Fallback (editable) -->
-              <div>
-                <div class="text-subtitle-2 mb-2 d-flex align-center">
-                  <LIcon size="small" class="mr-1">mdi-database</LIcon>
-                  {{ $t('admin.systemSettings.zotero.databaseFallback') }}
-                  <v-chip
-                    v-if="zoteroStatus.active_source === 'database'"
-                    color="primary"
-                    variant="flat"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ $t('admin.systemSettings.zotero.active') }}
-                  </v-chip>
-                  <v-spacer />
-                  <LStatusChip :state="sectionStates.zotero" />
-                </div>
-                <v-row>
-                  <v-col cols="12">
-                    <v-switch
-                      v-model="zoteroDb.enabled"
-                      :label="$t('admin.systemSettings.zotero.enableFallback')"
-                      color="primary"
-                      hide-details
-                      density="compact"
-                    />
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      v-model="zoteroDb.client_key"
-                      :label="$t('admin.systemSettings.zotero.clientKey')"
-                      variant="outlined"
-                      density="compact"
-                      :disabled="!zoteroDb.enabled"
-                    />
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      v-model="zoteroDb.client_secret"
-                      :type="showSecret ? 'text' : 'password'"
-                      :label="$t('admin.systemSettings.zotero.clientSecret')"
-                      variant="outlined"
-                      density="compact"
-                      :disabled="!zoteroDb.enabled"
-                      :placeholder="$t('admin.systemSettings.zotero.newSecretPlaceholder')"
-                    >
-                      <template #append-inner>
-                        <v-btn
-                          :icon="showSecret ? 'mdi-eye-off' : 'mdi-eye'"
-                          variant="text"
-                          density="compact"
-                          size="small"
-                          @click="showSecret = !showSecret"
-                        />
-                      </template>
-                    </v-text-field>
-                  </v-col>
-                </v-row>
-              </div>
             </v-card-text>
           </v-card>
 
@@ -584,7 +394,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { logI18n, logI18nParams } from '@/utils/logI18n'
@@ -597,7 +407,6 @@ const { refreshRegistrationStatus } = useReferralSystem()
 
 const loading = ref(true)
 const initialLoadDone = ref(false)
-const showSecret = ref(false)
 
 // Section save states: 'idle' | 'saving' | 'saved' | 'error'
 const sectionStates = reactive({
@@ -607,8 +416,7 @@ const sectionStates = reactive({
   llmLogging: 'idle',
   batchGeneration: 'idle',
   referral: 'idle',
-  aiAssistant: 'idle',
-  zotero: 'idle'
+  passwordReset: 'idle'
 })
 
 // Debounce timers
@@ -632,13 +440,11 @@ const settings = reactive({
   llm_ai_log_response_max: 800,
   llm_ai_log_prompts: false,
   llm_ai_log_prompt_max: 800,
-  batch_generation_max_parallel: 1,
+  batch_generation_max_parallel: 4,
   referral_system_enabled: false,
   self_registration_enabled: false,
   default_referral_role: 'evaluator',
-  ai_assistant_enabled: true,
-  ai_assistant_color: '#9B59B6',
-  ai_assistant_username: 'LLARS KI',
+  self_service_password_reset_enabled: false,
   updated_at: null
 })
 
@@ -648,37 +454,7 @@ const availableRoles = [
   { value: 'chatbot_manager', label: 'Chatbot Manager' }
 ]
 
-// AI Assistant color swatches (distinct colors for the AI)
-const aiColorSwatches = [
-  ['#9B59B6', '#8E44AD', '#6C3483'], // Purple variants (default)
-  ['#3498DB', '#2980B9', '#1F618D'], // Blue variants
-  ['#1ABC9C', '#16A085', '#117A65'], // Teal variants
-  ['#E74C3C', '#C0392B', '#922B21']  // Red variants
-]
-
 const originalSettings = ref({})
-
-// Zotero OAuth state
-const zoteroStatus = reactive({
-  env: { configured: false, client_key: null, client_secret_set: false },
-  database: { enabled: false, configured: false, client_key: '', client_secret_set: false },
-  active_source: 'none',
-  oauth_available: false
-})
-
-const zoteroDb = reactive({
-  enabled: false,
-  client_key: '',
-  client_secret: ''
-})
-
-const originalZoteroDb = ref({})
-
-const zoteroStatusLabel = computed(() => {
-  if (zoteroStatus.active_source === 'env') return t('admin.systemSettings.zotero.statusEnv')
-  if (zoteroStatus.active_source === 'database') return t('admin.systemSettings.zotero.statusDb')
-  return t('admin.systemSettings.zotero.statusNone')
-})
 
 // Generic auto-save function for settings
 async function saveSettingsSection(sectionKey, fields) {
@@ -817,108 +593,23 @@ watch(
   }
 )
 
-// Watch AI Assistant Settings
+// Watch Self-Service Password Reset Settings
 watch(
-  () => [
-    settings.ai_assistant_enabled,
-    settings.ai_assistant_color,
-    settings.ai_assistant_username
-  ],
+  () => [settings.self_service_password_reset_enabled],
   () => {
     if (!initialLoadDone.value) return
-    debouncedSave('aiAssistant', [
-      'ai_assistant_enabled',
-      'ai_assistant_color',
-      'ai_assistant_username'
-    ], 300)
+    debouncedSave('passwordReset', ['self_service_password_reset_enabled'], 300)
   }
 )
-
-// Watch Zotero settings
-watch(
-  () => [zoteroDb.enabled, zoteroDb.client_key, zoteroDb.client_secret],
-  () => {
-    if (!initialLoadDone.value) return
-    debouncedSaveZotero()
-  }
-)
-
-let zoteroSaveTimer = null
-function debouncedSaveZotero() {
-  if (zoteroSaveTimer) clearTimeout(zoteroSaveTimer)
-  zoteroSaveTimer = setTimeout(saveZoteroSettings, 500)
-}
-
-async function saveZoteroSettings() {
-  sectionStates.zotero = 'saving'
-
-  try {
-    const payload = {
-      enabled: zoteroDb.enabled,
-      client_key: zoteroDb.client_key
-    }
-    if (zoteroDb.client_secret) {
-      payload.client_secret = zoteroDb.client_secret
-    }
-
-    const response = await axios.patch('/api/admin/system/zotero-oauth', payload)
-
-    if (response.data.success) {
-      const z = response.data.zotero_oauth
-      Object.assign(zoteroStatus, z)
-
-      zoteroDb.client_secret = ''
-      originalZoteroDb.value = {
-        enabled: z.database?.enabled || false,
-        client_key: z.database?.client_key || ''
-      }
-
-      sectionStates.zotero = 'saved'
-
-      setTimeout(() => {
-        if (sectionStates.zotero === 'saved') {
-          sectionStates.zotero = 'idle'
-        }
-      }, 3000)
-    }
-  } catch (error) {
-    logI18n('error', 'logs.admin.systemSettings.saveZoteroOauthFailed', error)
-    sectionStates.zotero = 'error'
-    snackbar.text = t('admin.systemSettings.errors.zoteroSaveFailed')
-    snackbar.show = true
-
-    setTimeout(() => {
-      if (sectionStates.zotero === 'error') {
-        sectionStates.zotero = 'idle'
-      }
-    }, 5000)
-  }
-}
 
 async function loadSettings() {
   loading.value = true
   try {
-    const [settingsRes, zoteroRes] = await Promise.all([
-      axios.get('/api/admin/system/settings'),
-      axios.get('/api/admin/system/zotero-oauth').catch(() => ({ data: { success: false } }))
-    ])
+    const settingsRes = await axios.get('/api/admin/system/settings')
 
     if (settingsRes.data.success) {
       Object.assign(settings, settingsRes.data.settings)
       originalSettings.value = { ...settingsRes.data.settings }
-    }
-
-    if (zoteroRes.data.success) {
-      const z = zoteroRes.data.zotero_oauth
-      Object.assign(zoteroStatus, z)
-
-      zoteroDb.enabled = z.database?.enabled || false
-      zoteroDb.client_key = z.database?.client_key || ''
-      zoteroDb.client_secret = ''
-      originalZoteroDb.value = {
-        enabled: z.database?.enabled || false,
-        client_key: z.database?.client_key || ''
-      }
     }
 
     // Enable watches after initial load

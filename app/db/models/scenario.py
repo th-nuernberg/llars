@@ -8,10 +8,48 @@ from sqlalchemy.orm import Mapped, mapped_column, synonym
 from db import db
 
 
+class ManagerRole(Enum):
+    """Scenario management role — controls access to Scenario Manager features.
+
+    owner:  full control (settings, users, delete)
+    editor: settings + user management, but cannot delete
+    viewer: read-only access to results & IRR
+    none:   no management access (pure evaluator)
+    """
+    OWNER = 'owner'
+    EDITOR = 'editor'
+    VIEWER = 'viewer'
+    NONE = 'none'
+
+
+class EvaluationRole(Enum):
+    """Evaluation participation role — controls access to evaluation features.
+
+    assessor: can view items and submit evaluations
+    viewer:   can view items read-only
+    none:     no evaluation access
+    """
+    ASSESSOR = 'assessor'
+    VIEWER = 'viewer'
+    NONE = 'none'
+
+
 class ScenarioRoles(Enum):
-    OWNER = 'Owner'          # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
-    EVALUATOR = 'Evaluator'  # Kann bewerten/interagieren (ehemals RATER)
-    VIEWER = 'Viewer'        # Nur lesend (ehemals EVALUATOR)
+    """Legacy role enum - kept for backwards compatibility during migration.
+    New code should use manager_role + evaluation_role on ScenarioUsers."""
+    OWNER = 'Owner'
+    MANAGER = 'Manager'
+    ASSESSOR = 'Assessor'
+    EVALUATOR = 'Assessor'   # Legacy alias
+    VIEWER = 'Viewer'
+
+
+class AccessLevel(Enum):
+    """Legacy access level - kept for backwards compatibility during migration.
+    New code should use manager_role on ScenarioUsers."""
+    OWNER = 'OWNER'
+    MANAGER = 'MANAGER'
+    MEMBER = 'MEMBER'
 
 
 class InvitationStatus(Enum):
@@ -23,6 +61,8 @@ class InvitationStatus(Enum):
 class MembershipStatus(Enum):
     ACTIVE = 'active'        # User ist aktiv im Szenario
     ARCHIVED = 'archived'    # User wurde entfernt, Bewertungen bleiben erhalten
+    EVALUATOR = 'Evaluator'
+    OWNER = 'Owner'
 
 
 class ProgressionStatus(Enum):
@@ -59,6 +99,11 @@ class EvaluationItem(db.Model):
     # Optional ground truth for supervised evaluation (labeling, comparison)
     ground_truth_label = mapped_column(db.Text, nullable=True)  # TEXT for long labels
 
+    # Arbitrary per-item research metadata (e.g. axis, stratum, alpha for steering studies).
+    # Stored as JSON; surfaced to the evaluation frontend for {{variable}} substitution
+    # in the task description. NULL for items that don't carry research metadata.
+    metadata_json = mapped_column(db.JSON, nullable=True)
+
     # Backwards compatibility: thread_id is a synonym for item_id (for queries)
     thread_id = synonym('item_id')
 
@@ -71,6 +116,15 @@ class EvaluationItem(db.Model):
     def email_thread(self):
         """Backwards compatibility alias."""
         return self
+
+    @property
+    def content(self):
+        """Legacy alias: map historical `content` field to `subject`."""
+        return self.subject
+
+    @content.setter
+    def content(self, value):
+        self.subject = value
 
     __table_args__ = (
         db.UniqueConstraint('chat_id', 'institut_id', 'function_type_id', name='_chat_institut_function_uc'),
@@ -92,12 +146,6 @@ class Message(db.Model):
 
     # Backwards compatibility: thread_id is a synonym for item_id (for queries)
     thread_id = synonym('item_id')
-
-
-class LLM(db.Model):
-    __tablename__ = 'llms'
-    llm_id = mapped_column(db.Integer, primary_key=True)
-    name = mapped_column(db.String(255), unique=True)
 
 
 class FeatureType(db.Model):
@@ -131,11 +179,10 @@ class Feature(db.Model):
     feature_id = mapped_column(db.Integer, primary_key=True)
     item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
-    llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
+    model_id = mapped_column(db.String(255), index=True)
     content = mapped_column(db.TEXT)
 
     feature_type = db.relationship('FeatureType', backref='features')
-    llm = db.relationship('LLM', backref='features')
 
     # Backwards compatibility: thread_id is a synonym for item_id (for queries)
     thread_id = synonym('item_id')
@@ -147,14 +194,14 @@ class UserFeatureRanking(db.Model):
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     feature_id = mapped_column(db.Integer, db.ForeignKey('features.feature_id'))
     ranking_content = mapped_column(db.Float)
-    type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))  # Neuer Typ
-    llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
-    bucket = mapped_column(db.String(20))  # Neuer Bucket (z.B. 'Gut', 'Mittel', 'Schlecht')
+    type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
+    model_id = mapped_column(db.String(255), index=True)
+    # Custom bucket labels from scenario configs can be long (e.g. "Setzt Regeln sehr gut um")
+    bucket = mapped_column(db.String(255))
 
     user = db.relationship('User', backref='feature_rankings')
     feature = db.relationship('Feature', backref='user_rankings')
-    feature_type = db.relationship('FeatureType', backref='user_rankings')  # Verknüpfung mit dem FeatureType
-    llm = db.relationship('LLM', backref='user_rankings')
+    feature_type = db.relationship('FeatureType', backref='user_rankings')
 
 
 
@@ -204,11 +251,38 @@ class RatingScenarios(db.Model):
 
 
 class ScenarioUsers(db.Model):
+    """
+    Scenario membership with 2-axis role model:
+    - manager_role (owner/editor/viewer/none): Scenario Manager access
+    - evaluation_role (assessor/viewer/none): Evaluation participation
+
+    These two axes are independent — a user can be an editor + assessor,
+    a viewer + eval-viewer, or any other combination.
+
+    Legacy columns (role, access_level, is_viewer, is_assessor) are kept
+    temporarily for backwards compatibility during migration.
+    """
     __tablename__ = 'scenario_users'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+
+    # --- New 2-axis role model ---
+    manager_role: Mapped[str] = mapped_column(
+        db.String(10), nullable=False, default='none', server_default='none'
+    )
+    evaluation_role: Mapped[str] = mapped_column(
+        db.String(10), nullable=False, default='none', server_default='none'
+    )
+
+    # --- Legacy columns (kept for migration, not read by new code) ---
     role = mapped_column(db.Enum(ScenarioRoles))
+    access_level: Mapped[Optional[str]] = mapped_column(
+        db.String(20), nullable=True, default='MEMBER'
+    )
+    is_viewer: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default='0')
+    is_assessor: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default='0')
+
     # Einladungsstatus: accepted (default), rejected, pending
     invitation_status = mapped_column(
         db.Enum(InvitationStatus),
@@ -233,6 +307,23 @@ class ScenarioUsers(db.Model):
     archived_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
 
     user = db.relationship('User', backref='scenario_users')
+
+    # --- Computed properties from new role fields ---
+
+    @property
+    def can_manage(self) -> bool:
+        """Check if user can manage the scenario (edit settings, invite users)."""
+        return self.manager_role in (ManagerRole.OWNER.value, ManagerRole.EDITOR.value)
+
+    @property
+    def is_owner_level(self) -> bool:
+        """Check if user is the scenario owner."""
+        return self.manager_role == ManagerRole.OWNER.value
+
+    @property
+    def can_see_evaluation(self) -> bool:
+        """Check if user has any evaluation access (assessor or eval-viewer)."""
+        return self.evaluation_role != EvaluationRole.NONE.value
 
     # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
     __table_args__ = (
@@ -432,6 +523,21 @@ class ItemLabelingEvaluation(db.Model):
     item_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'), nullable=False, index=True)
     scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'), nullable=False, index=True)
 
+    # Which span of the item this vote belongs to.
+    #
+    # Empty string = "the whole item" — that is the classic labeling type, where
+    # one item carries exactly one decision. The conversation-labeling type
+    # (function_type 9) instead stores one row PER SPAN of a conversation, using
+    # the stable span id that came in with the import (e.g. "gemco_A/1/m2/s003").
+    #
+    # NOT NULL DEFAULT '' on purpose: MariaDB treats NULL values in a unique key
+    # as distinct from each other, so a nullable column would silently disable
+    # the duplicate protection for every classic labeling row. With the empty
+    # string those rows keep exactly the guarantee they had before.
+    span_id: Mapped[str] = mapped_column(
+        db.String(64), nullable=False, default='', server_default=''
+    )
+
     # Selected category ID (from scenario config)
     category_id: Mapped[str] = mapped_column(db.String(255), nullable=True)
 
@@ -454,7 +560,10 @@ class ItemLabelingEvaluation(db.Model):
     thread_id = synonym('item_id')
 
     __table_args__ = (
-        db.UniqueConstraint('user_id', 'item_id', 'scenario_id', name='uix_user_item_scenario_labeling'),
+        db.UniqueConstraint(
+            'user_id', 'item_id', 'scenario_id', 'span_id',
+            name='uix_user_item_scenario_span_labeling'
+        ),
     )
 
     def to_dict(self) -> dict:
@@ -464,9 +573,60 @@ class ItemLabelingEvaluation(db.Model):
             'user_id': self.user_id,
             'item_id': self.item_id,
             'scenario_id': self.scenario_id,
+            'span_id': self.span_id,
             'category_id': self.category_id,
             'is_unsure': self.is_unsure,
             'feedback': self.feedback,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class ItemComparisonEvaluation(db.Model):
+    """
+    Comparison evaluation for an item - A/B choice by a user.
+
+    Used for comparison tasks where users pick Option A, B, or tie
+    between two texts/features of a single item.
+    """
+    __tablename__ = 'item_comparison_evaluations'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    item_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'), nullable=False, index=True)
+    scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'), nullable=False, index=True)
+
+    # Selected option: 'A', 'B', or 'tie'
+    choice: Mapped[str] = mapped_column(db.String(10), nullable=False)
+
+    # Optional notes/justification
+    notes: Mapped[Optional[str]] = mapped_column(db.TEXT, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    # Relationships
+    user = db.relationship('User', backref='comparison_item_evaluations')
+    item = db.relationship('EvaluationItem', backref='comparison_item_evaluations')
+    scenario = db.relationship('RatingScenarios', backref='comparison_item_evaluations')
+
+    # Backwards compatibility
+    thread_id = synonym('item_id')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'item_id', 'scenario_id', name='uix_user_item_scenario_comparison'),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'item_id': self.item_id,
+            'scenario_id': self.scenario_id,
+            'choice': self.choice,
+            'notes': self.notes,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

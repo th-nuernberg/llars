@@ -8,7 +8,7 @@
           variant="primary"
           prepend-icon="mdi-plus"
           class="new-chat-btn"
-          :disabled="!selectedChatbot"
+          :disabled="!chatbots || chatbots.length === 0"
           @click="$emit('new-chat')"
         >
           {{ $t('chat.newChat') }}
@@ -17,7 +17,7 @@
       <LTooltip v-else :text="$t('chat.newChat')" location="right">
         <button
           class="new-chat-btn-mini"
-          :disabled="!selectedChatbot"
+          :disabled="!chatbots || chatbots.length === 0"
           @click="$emit('new-chat')"
         >
           <LIcon size="20">mdi-plus</LIcon>

@@ -677,6 +677,14 @@ def register_chatbot_events(socketio):
                 emit("chatbot:error", {"error": "session_id is required"}, room=client_id)
                 return
 
+            # Anti-cost-DoS (pentest 2026-06-10): cap LLM stream starts per user.
+            # Socket.IO is exempt from the global Flask limiter, so without this a
+            # single account could script unbounded chatbot completions.
+            from socketio_handlers.socket_rate_limit import allow_llm_event
+            if not allow_llm_event(username):
+                emit("chatbot:error", {"error": "Zu viele Anfragen — bitte kurz warten.", "code": "RATE_LIMITED"}, room=client_id)
+                return
+
             # Get chatbot
             chatbot = Chatbot.query.get(chatbot_id)
             if not chatbot:

@@ -4,28 +4,16 @@ These routes provide compatibility with the frontend while using Authentik for a
 Uses Authentik's OAuth2/OIDC endpoints for proper token issuance and validation.
 """
 
+from typing import Optional
+
 from flask import Blueprint, jsonify, request, g, current_app
 from auth.decorators import authentik_required, admin_required, public_endpoint
 from auth.oidc_validator import get_username, get_user_id
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
 from services.user_profile_service import build_avatar_url
-from functools import wraps
 
 # Create blueprint for Authentik-specific routes
 authentik_auth_blueprint = Blueprint('authentik_auth', __name__)
-
-
-def rate_limit(limit_string):
-    """Custom rate limit decorator that works with blueprints"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Rate limiting wird durch Flask-Limiter auf App-Level gehandhabt
-            # Hier nur als Dokumentation der Limits
-            return f(*args, **kwargs)
-        decorated_function._rate_limit = limit_string
-        return decorated_function
-    return decorator
 
 
 @authentik_auth_blueprint.route('/health_check', methods=['GET'])
@@ -49,7 +37,6 @@ def health_check():
 
 @authentik_auth_blueprint.route('/me', methods=['GET'])
 @authentik_required
-@rate_limit("100 per hour")
 def get_current_user():
     """
     Get current authenticated user information
@@ -83,7 +70,6 @@ def get_current_user():
 
 @authentik_auth_blueprint.route('/validate', methods=['GET'])
 @authentik_required
-@rate_limit("200 per hour")
 @handle_api_errors(logger_name='authentik')
 def validate_token_endpoint():
     """
@@ -112,9 +98,93 @@ def check_admin():
     }), 200
 
 
+@authentik_auth_blueprint.route('/refresh', methods=['POST'])
+@public_endpoint
+@handle_api_errors(logger_name='authentik')
+def refresh():
+    """
+    Exchange a refresh token for a fresh access token.
+
+    Why this exists (INCIDENT 2026-07-29): Authentik issues access tokens with a
+    60-minute lifetime and the login response has always included a
+    ``refresh_token`` — but nothing ever used it. There was no refresh endpoint
+    and no client-side call, so after exactly one hour the next API request 401'd
+    and the axios interceptor hard-logged the user out. For raters working
+    through a few hundred labeling items that meant a forced re-login mid-study,
+    every hour, losing whatever was in flight.
+
+    ``@public_endpoint`` on purpose: by the time a refresh is needed the access
+    token is typically already expired, so requiring a valid one would defeat
+    the point. The refresh token itself is the credential here — Authentik
+    validates it and will reject anything revoked, expired or forged.
+
+    Returns the same shape as ``/login`` (access_token, refresh_token, ...,
+    plus ``llars_roles``) so the frontend can reuse one storage path.
+    """
+    import os
+    import requests as http_requests
+
+    data = request.get_json() or {}
+    refresh_token = data.get('refresh_token')
+
+    if not refresh_token:
+        raise ValidationError('refresh_token required')
+
+    authentik_base_url = os.getenv('AUTHENTIK_INTERNAL_URL', 'http://authentik-server:9000')
+    client_id = os.getenv('AUTHENTIK_BACKEND_CLIENT_ID', 'llars-backend')
+    client_secret = os.getenv(
+        'AUTHENTIK_BACKEND_CLIENT_SECRET',
+        'llars-backend-secret-change-in-production'
+    )
+
+    try:
+        token_response = http_requests.post(
+            f"{authentik_base_url}/application/o/token/",
+            data={
+                'grant_type': 'refresh_token',
+                'refresh_token': refresh_token,
+                'client_id': client_id,
+                'client_secret': client_secret,
+            },
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            timeout=10
+        )
+    except http_requests.RequestException as exc:
+        current_app.logger.error(f"Refresh request to Authentik failed: {exc}")
+        raise ValidationError('Authentication service error')
+
+    if token_response.status_code != 200:
+        # Revoked / expired / rotated-away refresh token. 401 (not 400) so the
+        # frontend's existing "session is over" path handles it: the interceptor
+        # only falls back to a real logout once the refresh itself is rejected.
+        current_app.logger.info(
+            f"Refresh rejected by Authentik: {token_response.status_code}"
+        )
+        raise UnauthorizedError('Refresh token invalid or expired')
+
+    token_data = token_response.json()
+
+    # Roles live in MariaDB, not in the Authentik token, so a refreshed token
+    # needs the same enrichment as a login — otherwise the client would silently
+    # lose llars_roles on refresh and the router's power-role checks would start
+    # treating the user as an evaluator.
+    username = None
+    try:
+        from auth.oidc_validator import validate_token as _validate
+        payload = _validate(token_data.get('access_token') or '')
+        if payload:
+            username = get_username(payload)
+    except Exception as exc:  # pragma: no cover - defensive
+        current_app.logger.warning(f"Could not read username from refreshed token: {exc}")
+
+    if username:
+        _enrich_token_with_roles(token_data, username)
+
+    return jsonify(token_data), 200
+
+
 @authentik_auth_blueprint.route('/login', methods=['POST'])
 @public_endpoint
-@rate_limit("10 per minute")
 @handle_api_errors(logger_name='authentik')
 def login():
     """
@@ -398,6 +468,124 @@ def login():
         raise ValidationError('Authentication service timeout')
 
 
+def issue_authentik_token(username: str, password: str) -> Optional[dict]:
+    """
+    Authenticate the given credentials against Authentik and return an
+    OAuth2 token bundle ({access_token, id_token, expires_in, ...,
+    llars_roles}). Returns ``None`` if any step of the flow fails.
+
+    Extracted from ``login()`` so that other routes (e.g. the referral
+    self-registration handler) can issue a token immediately after
+    creating a user, without a second HTTP round-trip to ``/auth/login``.
+
+    Does not raise — the caller decides how to handle a None result.
+    Side effects: enriches the token with ``llars_roles`` via
+    ``_enrich_token_with_roles``.
+    """
+    import os
+    import uuid
+    import requests as http_requests
+    from urllib.parse import urlparse, parse_qs
+
+    if not username or not password:
+        return None
+
+    authentik_base_url = os.getenv('AUTHENTIK_INTERNAL_URL', 'http://authentik-server:9000')
+    flow_slug = 'llars-api-authentication'
+    client_id = os.getenv('AUTHENTIK_BACKEND_CLIENT_ID', 'llars-backend')
+    client_secret = os.getenv('AUTHENTIK_BACKEND_CLIENT_SECRET',
+                              'llars-backend-secret-change-in-production')
+
+    try:
+        session = http_requests.Session()
+        flow_url = f"{authentik_base_url}/api/v3/flows/executor/{flow_slug}/"
+
+        flow_response = session.get(
+            flow_url, headers={'Accept': 'application/json'}, timeout=10
+        )
+        if flow_response.status_code != 200:
+            return None
+        flow_data = flow_response.json()
+
+        if flow_data.get('component') == 'ak-stage-identification':
+            flow_response = session.post(
+                flow_url,
+                json={'uid_field': username},
+                headers={'Accept': 'application/json',
+                         'Content-Type': 'application/json'},
+                timeout=10,
+            )
+            if flow_response.status_code != 200:
+                return None
+            flow_data = flow_response.json()
+
+        if flow_data.get('component') == 'ak-stage-password':
+            flow_response = session.post(
+                flow_url,
+                json={'password': password},
+                headers={'Accept': 'application/json',
+                         'Content-Type': 'application/json'},
+                timeout=10,
+            )
+            if flow_response.status_code != 200:
+                return None
+            flow_data = flow_response.json()
+
+        if not (flow_data.get('type') == 'redirect' or 'to' in flow_data):
+            return None
+
+        # OAuth2 authorization code → token exchange
+        state = str(uuid.uuid4())
+        nonce = str(uuid.uuid4())
+        auth_response = session.get(
+            f"{authentik_base_url}/application/o/authorize/",
+            params={
+                'response_type': 'code',
+                'client_id': client_id,
+                'redirect_uri': f"{authentik_base_url}/",
+                'scope': 'openid profile email',
+                'state': state,
+                'nonce': nonce,
+            },
+            allow_redirects=False,
+            timeout=10,
+        )
+        if auth_response.status_code not in (302, 303):
+            return None
+        params = parse_qs(urlparse(auth_response.headers.get('Location', '')).query)
+        if 'code' not in params:
+            return None
+        auth_code = params['code'][0]
+
+        token_response = http_requests.post(
+            f"{authentik_base_url}/application/o/token/",
+            data={
+                'grant_type': 'authorization_code',
+                'code': auth_code,
+                'redirect_uri': f"{authentik_base_url}/",
+                'client_id': client_id,
+                'client_secret': client_secret,
+            },
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            timeout=10,
+        )
+        if token_response.status_code != 200:
+            return None
+
+        token_data = token_response.json()
+        _enrich_token_with_roles(token_data, username)
+        return token_data
+    except Exception as exc:  # noqa: BLE001 — explicit best-effort
+        try:
+            from flask import current_app
+            current_app.logger.warning(
+                f"issue_authentik_token({username}) failed: {exc}"
+            )
+        except Exception:
+            pass
+        return None
+
+
 def _enrich_token_with_roles(token_data: dict, username: str) -> None:
     """Add LLARS-specific roles from MariaDB to the token response"""
     try:
@@ -427,3 +615,31 @@ def _enrich_token_with_roles(token_data: dict, username: str) -> None:
     except Exception as e:
         from flask import current_app
         current_app.logger.warning(f"Could not fetch LLARS roles for {username}: {e}")
+
+    # Referral-binding (Burghardt 2026-05-18): if the user originally
+    # registered via a referral link that points at a specific scenario,
+    # surface that scenario_id in the login response so the frontend
+    # router can shortcut them straight into the rater flow on EVERY
+    # subsequent login — not just on the initial registration redirect.
+    # Best-effort: failures (no row, dropped link, schema mismatch) are
+    # swallowed; the absence of the field just means "no shortcut".
+    try:
+        from db.database import db
+        from db.models.referral import ReferralRegistration, ReferralLink
+        registration = (
+            db.session.query(ReferralRegistration)
+            .filter_by(username=username)
+            .first()
+        )
+        target_scenario_id = None
+        if registration and registration.link_id:
+            link = db.session.get(ReferralLink, registration.link_id)
+            if link and getattr(link, 'target_scenario_id', None):
+                target_scenario_id = link.target_scenario_id
+        if target_scenario_id:
+            token_data['referral_target_scenario_id'] = target_scenario_id
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.warning(
+            f"Could not resolve referral target for {username}: {e}"
+        )

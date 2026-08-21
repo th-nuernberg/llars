@@ -1,19 +1,13 @@
 """
 Collaboration Access Service
 
-Provides unified access control for LaTeX and Markdown collaboration features.
-This eliminates code duplication between latex_collab_routes.py and markdown_collab_routes.py.
+Provides unified access control for collaborative document workspaces. The
+member model is passed in, so the same checks serve any collab system built on
+the workspace/member/document shape.
 
 Usage:
     from services.collab import CollabAccessService
 
-    # For LaTeX
-    CollabAccessService.require_workspace_access(
-        workspace, username,
-        member_model=LatexWorkspaceMember
-    )
-
-    # For Markdown
     CollabAccessService.require_workspace_access(
         workspace, username,
         member_model=MarkdownWorkspaceMember
@@ -30,8 +24,8 @@ class CollabAccessService:
     """
     Centralized access control for collaboration workspaces and documents.
 
-    Supports both LaTeX and Markdown collaboration by accepting the appropriate
-    model classes as parameters.
+    Works with any collab system by accepting the appropriate model classes as
+    parameters (currently Markdown Collab).
     """
 
     # Permission used to identify admin users
@@ -64,9 +58,9 @@ class CollabAccessService:
         Verify user has access to a workspace (owner, member, or admin).
 
         Args:
-            workspace: The workspace object (LatexWorkspace or MarkdownWorkspace)
+            workspace: The workspace object (e.g. MarkdownWorkspace)
             username: The username requesting access
-            member_model: The member model class (LatexWorkspaceMember or MarkdownWorkspaceMember)
+            member_model: The member model class (e.g. MarkdownWorkspaceMember)
             error_message: Custom error message for access denial
 
         Raises:
@@ -132,7 +126,7 @@ class CollabAccessService:
         Verify user has access to a document via its workspace.
 
         Args:
-            document: The document object (LatexDocument or MarkdownDocument)
+            document: The document object (e.g. MarkdownDocument)
             username: The username requesting access
             member_model: The member model class
             error_message: Custom error message for access denial

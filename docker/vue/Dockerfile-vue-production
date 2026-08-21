@@ -3,10 +3,15 @@
 # ============================================
 # Stage 1: Build the Vue app
 # Stage 2: Serve static files with nginx
+#
+# Cache strategy:
+#   - npm ci is cached as long as package*.json doesn't change
+#   - Source COPY + build is invalidated on every new commit via
+#     CACHE_BUST build-arg (set to git commit hash by deploy script)
 # ============================================
 
 # Stage 1: Build
-FROM public.ecr.aws/docker/library/node:23-alpine AS builder
+FROM public.ecr.aws/docker/library/node:23.11.1-alpine AS builder
 
 WORKDIR /app
 
@@ -17,7 +22,25 @@ ARG VITE_MKDOCS_URL
 ARG VITE_KEYCLOAK_URL
 ARG VITE_KEYCLOAK_CLIENT_ID=llars-frontend
 ARG VITE_KEYCLOAK_REALM=llars
-ARG VITE_SOCKETIO_ENABLE_WEBSOCKET=false
+ARG VITE_SOCKETIO_ENABLE_WEBSOCKET=true
+
+# Copy package files first for better caching (npm ci only re-runs when these change)
+COPY llars-frontend/package*.json ./
+
+# Install dependencies (cached layer - only invalidated by package*.json changes)
+RUN npm ci
+
+# --- Cache bust: everything below re-runs on every new commit ---
+# CACHE_BUST is set to the git commit hash by deploy_bluegreen.sh.
+# Changing this ARG invalidates all subsequent layers, ensuring source
+# code changes are always picked up even if Docker's file-hash check
+# fails to detect them (known BuildKit issue with git-pulled files).
+ARG CACHE_BUST=unknown
+
+# Version info (computed by deploy script, no .git in container)
+ARG APP_VERSION=0.0.0
+ARG APP_COMMIT_HASH=unknown
+ARG APP_BRANCH=unknown
 
 # Set as environment for build
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
@@ -27,14 +50,11 @@ ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL
 ENV VITE_KEYCLOAK_CLIENT_ID=$VITE_KEYCLOAK_CLIENT_ID
 ENV VITE_KEYCLOAK_REALM=$VITE_KEYCLOAK_REALM
 ENV VITE_SOCKETIO_ENABLE_WEBSOCKET=$VITE_SOCKETIO_ENABLE_WEBSOCKET
+ENV APP_VERSION=$APP_VERSION
+ENV APP_COMMIT_HASH=$APP_COMMIT_HASH
+ENV APP_BRANCH=$APP_BRANCH
 
-# Copy package files first for better caching
-COPY llars-frontend/package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
+# Copy source code (invalidated by CACHE_BUST above)
 COPY llars-frontend/ ./
 
 # Build the production bundle
@@ -43,7 +63,7 @@ RUN npm run build
 # ============================================
 # Stage 2: Production - nginx serves static files
 # ============================================
-FROM public.ecr.aws/docker/library/nginx:alpine AS production
+FROM public.ecr.aws/docker/library/nginx:1.28.3-alpine AS production
 
 # Copy custom nginx config for SPA
 COPY docker/vue/nginx-frontend.conf /etc/nginx/nginx.conf
@@ -65,8 +85,8 @@ USER vueuser
 
 EXPOSE 5173
 
-# Health check
+# Health check — use curl (available in nginx:alpine), NOT wget (not installed)
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -q --spider http://127.0.0.1:5173/health || exit 1
+    CMD curl -fsS http://127.0.0.1:5173/health -o /dev/null || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

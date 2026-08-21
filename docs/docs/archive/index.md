@@ -30,7 +30,6 @@ Frühe Konzeptdokumente aus der Entwicklungsphase (Januar 2026).
 | [LLM Evaluator](legacy-concepts/LLMEvaluatorKonzept.md) | LLM-as-Judge Konzept |
 | [Ranking Redesign](legacy-concepts/ranking-redesign-concept.md) | Ranking-System Redesign |
 | [Scenario Wizard](legacy-concepts/scenario-wizard.md) | Ursprüngliches Wizard-Konzept |
-| [AI Writing Assistant](AI_WRITING_ASSISTANT_KONZEPT.md) | KI-Schreibassistent Konzept |
 
 ## Obsolete Systeme
 

@@ -192,6 +192,7 @@ import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import axios from 'axios'
 import { usePanelResize } from '@/composables/usePanelResize'
+import { useMobile } from '@/composables/useMobile'
 
 const props = defineProps({
   scenarioId: {
@@ -224,6 +225,21 @@ const canEvaluate = computed(() => props.scenario?.can_evaluate !== false)
 
 const { t, locale } = useI18n()
 
+// Localize a value that may be a plain string or a localized object {de, en}.
+// api_v1-created scenarios store bucket labels as localized objects (canonical
+// evaluation_data_schemas shape); legacy scenarios store strings or {de,en}
+// under `name`.
+function localize(v) {
+  if (v == null) return ''
+  if (typeof v === 'string') return v
+  return v[locale.value] || v.de || v.en || ''
+}
+
+// isMobile (<600px) lowers the "more/less" expand threshold so the toggle
+// appears (and the actions row stays reachable) on narrow viewports where
+// even shorter content overflows the stacked single-column buckets.
+const { isMobile } = useMobile()
+
 // Panel resize composable
 const { containerRef, leftPanelStyle, rightPanelStyle, startResize } = usePanelResize({
   initialLeftPercent: 60,
@@ -241,7 +257,11 @@ const LEGACY_BUCKETS = [
 
 const bucketConfig = computed(() => {
   const cfg = props.config || {}
+  // Read defensively across all known nestings. api_v1 scenarios wrap the
+  // config under `config` (canonical evaluation_data_schemas shape); wizard
+  // scenarios use `eval_config[.config]`; manual scenarios pass it flat.
   const buckets = cfg.buckets
+    || cfg.config?.buckets
     || cfg.eval_config?.buckets
     || cfg.eval_config?.config?.buckets
 
@@ -257,8 +277,9 @@ function bucketStyle(color) {
 }
 
 function bucketLabel(bucket) {
-  const loc = locale.value || 'de'
-  return bucket.name?.[loc] || bucket.name?.de || bucket.name || `Bucket ${bucket.id}`
+  // Schema buckets expose `label` ({de,en}); legacy buckets expose `name`
+  // (string or {de,en}). Fall back to the id so the column is never blank.
+  return localize(bucket.label) || localize(bucket.name) || bucket.id || `Bucket ${bucket.id}`
 }
 
 function normalizeBucketKey(value) {
@@ -284,6 +305,8 @@ function resolveBucketIndex(rawBucketValue) {
       bucket?.name?.de,
       bucket?.name?.en,
       bucket?.label,
+      bucket?.label?.de,
+      bucket?.label?.en,
       bucket?.label_de,
       bucket?.label_en
     ]
@@ -301,7 +324,8 @@ function getBucketStorageValue(bucket) {
   if (bucket && typeof bucket.id === 'string' && bucket.id.trim()) {
     return bucket.id
   }
-  return bucket?.name?.de || bucket?.name?.en || bucket?.name || String(bucket?.id ?? '')
+  return bucket?.name?.de || bucket?.name?.en || bucket?.name
+    || bucket?.label?.de || bucket?.label?.en || String(bucket?.id ?? '')
 }
 
 // State
@@ -324,6 +348,11 @@ const error = ref(null)
 // Save queue for auto-save
 const saveQueue = []
 let isProcessingSaveQueue = false
+
+// Per-case timing: when each thread was shown (thread_id → epoch ms). Sent as a
+// query param with the ranking save so exports carry time-on-case; the save
+// payload is a list, so timing can't ride in the body. Backend first-write-only.
+const shownAtByThread = {}
 
 // Computed
 const hasNext = computed(() => currentItemIndex.value < items.value.length - 1)
@@ -361,7 +390,11 @@ function translateFeatureType(type) {
     'Zusammenfassung': t('ranker.featureTypes.summary', 'Zusammenfassung'),
     'Analyse': t('ranker.featureTypes.analysis', 'Analyse'),
     'Bewertung': t('ranker.featureTypes.evaluation', 'Bewertung'),
-    'Empfehlung': t('ranker.featureTypes.recommendation', 'Empfehlung')
+    'Empfehlung': t('ranker.featureTypes.recommendation', 'Empfehlung'),
+    // Generated ranking features carry the technical type 'candidate' (e.g. the
+    // IJCAI ranking set). Map it to a localized generic label so the accordion
+    // header doesn't show the raw English token.
+    'candidate': t('ranker.featureTypes.candidate', 'Antwort')
   }
   return typeMap[type] || type
 }
@@ -376,11 +409,16 @@ function formatFeatureContent(type, content) {
     .replace(/\n/g, '<br>')
 }
 
-// Check if content is long enough to show toggle
+// Check if content is long enough to show toggle.
+// Mobile uses a lower threshold (~120 chars) so the expand toggle stays
+// available when the clamped text would otherwise hide the rest off-screen.
 const CONTENT_EXPAND_THRESHOLD = 220
+const CONTENT_EXPAND_THRESHOLD_MOBILE = 120
 
 function isLongContent(content) {
-  return content && content.length > CONTENT_EXPAND_THRESHOLD
+  if (!content) return false
+  const threshold = isMobile.value ? CONTENT_EXPAND_THRESHOLD_MOBILE : CONTENT_EXPAND_THRESHOLD
+  return content.length > threshold
 }
 
 // Toggle minimize state
@@ -479,12 +517,13 @@ function applyServerRanking(featureMap, serverRanking) {
   return featureMap
 }
 
-// Prepare features for server save
+// Prepare features for server save (includes feature_id for reliable lookup)
 function prepareForServerSave() {
   return groupedFeatures.value.map(group => ({
     type: group.type,
     details: group.bucketLists.flatMap((list, bIdx) =>
       list.map((detail, position) => ({
+        feature_id: detail.feature_id,
         model_name: detail.model_name,
         content: detail.content,
         position,
@@ -567,8 +606,13 @@ async function processSaveQueue() {
       saving.value = true
 
       try {
+        // Timing + scenario as query params (the body is a bucket list, not an
+        // object, so they can't be body keys).
+        const shownAt = shownAtByThread[task.threadId]
+        const params = new URLSearchParams({ scenario_id: String(props.scenarioId) })
+        if (shownAt) params.set('time_on_item_ms', String(Date.now() - shownAt))
         await axios.post(
-          `/api/save_ranking/${task.threadId}`,
+          `/api/save_ranking/${task.threadId}?${params.toString()}`,
           task.payload,
           { headers: { 'Content-Type': 'application/json' } }
         )
@@ -658,6 +702,9 @@ async function loadItem(threadId) {
       subject: response.data.subject,
       ranked: response.data.ranked
     }
+    // Start the per-case timer when this thread becomes visible (keep the first
+    // shown time if the rater revisits — mirrors the backend first-write rule).
+    if (!shownAtByThread[threadId]) shownAtByThread[threadId] = Date.now()
     messages.value = response.data.messages || []
     content.value = response.data.content || response.data.reference_content || ''
     features.value = response.data.features || []
@@ -906,6 +953,10 @@ watch(() => props.initialItemId, (newItemId) => {
 .bucket-content {
   flex: 1;
   min-height: 80px;
+  /* Long item lists scroll inside the bucket instead of overflowing off the
+     viewport (critical on mobile where buckets stack and height is scarce). */
+  max-height: inherit;
+  overflow-y: auto;
 }
 
 .panel-content--readonly .bucket,
@@ -1036,6 +1087,53 @@ watch(() => props.initialItemId, (newItemId) => {
 }
 
 /* Responsive */
+
+/* Intermediate breakpoint: with 5+ buckets the flex row compresses each
+   bucket below a usable width. Allowing wrap (and giving each bucket a sane
+   min-width) keeps buckets readable by flowing them onto multiple lines
+   instead of squeezing them all into one. Desktop (>1024px) is untouched. */
+@media (max-width: 1024px) {
+  .buckets-row {
+    flex-wrap: wrap;
+  }
+
+  .buckets-row .bucket {
+    flex: 1 1 160px;
+    min-width: 140px;
+  }
+}
+
+/* Small tablets (600–905px): stack panels but keep them roomier than phones.
+   Left panel ~50vh, right panel splits evenly; buckets shrink a bit. */
+@media (max-width: 905px) and (min-width: 601px) {
+  .ranking-interface {
+    flex-direction: column;
+  }
+
+  .left-panel,
+  .right-panel {
+    width: 100% !important;
+  }
+
+  .left-panel {
+    max-height: 50vh;
+    border-right: none;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  }
+
+  .right-panel {
+    max-height: 50vh;
+  }
+
+  .resize-handle {
+    display: none;
+  }
+
+  .bucket {
+    min-height: 60px;
+  }
+}
+
 @media (max-width: 768px) {
   .ranking-interface {
     flex-direction: column;
@@ -1067,6 +1165,75 @@ watch(() => props.initialItemId, (newItemId) => {
 
   .bucket {
     min-height: 100px;
+  }
+}
+
+/* Phone (<=600px) — the weakest viewport for this interface.
+   Mirrors the ComparisonInterface mobile patterns (thin chrome, compact
+   headers, >=38px tap targets). Stacks buckets fully, shrinks fonts,
+   compresses padding, and fixes touch targets. */
+@media (max-width: 600px) {
+  /* Tighter content padding (16px -> 12px) to reclaim horizontal room. */
+  .panel-content {
+    padding: 12px;
+  }
+
+  .panel-header {
+    padding: 8px 12px;
+  }
+
+  .panel-header h3 {
+    font-size: 0.85rem;
+  }
+
+  /* Buckets stack to a single column; tighter gap (12px -> 8px). */
+  .buckets-row {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  /* Shorter buckets so several fit without endless scrolling; the
+     bucket-content scroll rule keeps long lists contained. */
+  .buckets-row .bucket {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 60px;
+    padding: 8px;
+  }
+
+  .bucket h4,
+  .neutral-bucket h4 {
+    font-size: 0.78rem;
+    margin-bottom: 6px;
+  }
+
+  .neutral-bucket {
+    padding: 8px;
+  }
+
+  /* Compact item cards: smaller font (0.875 -> 0.78rem) + tighter padding. */
+  .bucket-item {
+    font-size: 0.78rem;
+    padding: 8px;
+    margin-bottom: 6px;
+  }
+
+  /* "more/less" toggle: meet touch-target + readability minimums. */
+  .toggle-more-btn {
+    min-height: 38px !important;
+    padding: 8px 12px !important;
+    font-size: 0.8rem;
+  }
+
+  /* Navigation footer buttons need a >=38px tap target on a phone. */
+  .nav-footer {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .nav-footer :deep(.v-btn) {
+    min-height: 38px;
   }
 }
 </style>

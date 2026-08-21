@@ -20,6 +20,11 @@
 import { test, expect } from '@playwright/test'
 import { TEST_USERS, quickLogin, dismissConsentBanner, waitForLoading, waitForPageReady } from './helpers.js'
 
+// Skip chatbot wizard tests in production/staging - requires LLM providers, RAG pipeline,
+// and chat functionality that are not available on staging deployments
+const isProduction = !!process.env.E2E_TEST_PASSWORD
+test.skip(isProduction, 'Chatbot wizard tests require dev environment with LLM + RAG')
+
 // Increase timeout for all tests in this file (chatbot operations are slower)
 test.setTimeout(60000)
 
@@ -239,8 +244,7 @@ test.describe.serial('Chatbot Wizard - Complete Lifecycle', () => {
       expect(hasWizard || hasForm).toBeTruthy()
     } else {
       // Just verify we're on the admin chatbot page
-      const hasChatbotContent = await page.locator('[class*="chatbot"], .v-card').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasChatbotContent || true).toBeTruthy()
+      await expect(page.locator('[class*="chatbot"], .v-card').first()).toBeVisible({ timeout: 3000 })
     }
   })
 
@@ -700,8 +704,7 @@ test.describe('Chatbot Wizard - Smoke Tests', () => {
     await quickLogin(page, TEST_USERS.admin)
     await goToChatbotAdmin(page)
 
-    const hasChatbotSection = await page.locator('.chatbot-manager, [class*="chatbot"], h1:has-text("Chatbot")').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasChatbotSection || true).toBeTruthy()
+    await expect(page.locator('.chatbot-manager, [class*="chatbot"], h1:has-text("Chatbot")').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_WIZARD_SMOKE_002: researcher role can access chat', async ({ page }) => {
@@ -723,7 +726,7 @@ test.describe('Chatbot Wizard - Smoke Tests', () => {
     const url = page.url()
     const hasAccessDenied = await page.locator('text=Zugriff verweigert, text=keine Berechtigung').first().isVisible({ timeout: 3000 }).catch(() => false)
 
-    expect(url.includes('/Home') || hasAccessDenied || true).toBeTruthy()
+    expect(url.includes('/Home') || hasAccessDenied).toBeTruthy()
   })
 
   test('E2E_WIZARD_SMOKE_004: chat page loads without errors', async ({ page }) => {
@@ -739,7 +742,6 @@ test.describe('Chatbot Wizard - Smoke Tests', () => {
     await quickLogin(page, TEST_USERS.admin)
     await goToRAGAdmin(page)
 
-    const hasRAGSection = await page.locator('.rag-section, [class*="collection"], table, .v-card').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasRAGSection || true).toBeTruthy()
+    await expect(page.locator('.rag-section, [class*="collection"], table, .v-card').first()).toBeVisible({ timeout: 8000 })
   })
 })

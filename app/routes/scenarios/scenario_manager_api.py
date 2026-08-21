@@ -18,6 +18,7 @@ This module uses the unified EvaluationData schemas for evaluation types:
 
 import json
 import logging
+import time
 from datetime import datetime
 from flask import jsonify, request, g, current_app
 from auth.decorators import authentik_required
@@ -25,7 +26,7 @@ from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 )
 from decorators.permission_decorator import require_permission, has_role
-from db.database import db
+from db.database import db, escape_like
 from db.tables import (
     RatingScenarios, FeatureFunctionType, ScenarioUsers,
     EmailThread, Message, ScenarioThreads, ScenarioRoles, User,
@@ -36,13 +37,118 @@ from db.tables import (
 )
 from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
+from db.models.referral import ReferralLink, ReferralRegistration
 from schemas.evaluation_data_schemas import EvaluationType
-from services.scenario_stats_service import get_progress_stats, get_authenticity_stats, get_scenario_stats_payload
+from services.evaluation.labeling_types import is_labeling_type
+from services.scenario_stats_service import get_authenticity_stats, get_scenario_stats_payload
+from services.runtime_config import get_redis_client
 from services.user_profile_service import serialize_user_brief
 from .. import data_blueprint
-from .scenario_utils import is_scenario_owner, check_scenario_ownership
+from auth.access_control import require_scenario_membership
+from .scenario_utils import (
+    is_scenario_owner, check_scenario_ownership, check_scenario_management_access,
+    is_scenario_manager, assign_items_to_new_assessor, reassign_items_from_user,
+)
 
 logger = logging.getLogger(__name__)
+
+_LLM_AUTO_START_COOLDOWN_SECONDS = 300  # 5 minutes
+
+
+def _claim_llm_auto_start_cooldown(scenario_id: int) -> bool:
+    """Acquire a cross-worker cooldown token for auto-starting evaluators."""
+    key = f"llm:auto_start:scenario:{scenario_id}"
+    try:
+        redis_client = get_redis_client()
+        return bool(redis_client.set(key, str(int(time.time())), ex=_LLM_AUTO_START_COOLDOWN_SECONDS, nx=True))
+    except Exception as exc:
+        logger.warning("[LLM auto-start] Redis cooldown fallback for scenario %d: %s", scenario_id, exc)
+        return True
+
+
+def _normalize_role_value(role) -> str:
+    """Normalize role value for API: map DB 'Evaluator' to display 'Assessor'.
+
+    DEPRECATED: Use _primary_role_display(su) when a ScenarioUsers object is available.
+    Kept as fallback for cases where only a role string/enum is available.
+    """
+    val = role.value if hasattr(role, 'value') else str(role)
+    if val == 'Evaluator':
+        return 'Assessor'
+    return val
+
+
+def _build_role_tags(su) -> list:
+    """Build display tags from ScenarioUsers manager_role + evaluation_role."""
+    tags = []
+    role_map = {'owner': 'Owner', 'editor': 'Editor', 'viewer': 'Viewer'}
+    if su.manager_role in role_map:
+        tags.append(role_map[su.manager_role])
+    eval_map = {'assessor': 'Assessor', 'viewer': 'Eval. Viewer'}
+    if su.evaluation_role in eval_map:
+        tags.append(eval_map[su.evaluation_role])
+    return tags or ['—']
+
+
+def _primary_role_display(su) -> str:
+    """Get the primary display role for backwards-compatible API responses."""
+    if su.manager_role == 'owner':
+        return 'Owner'
+    if su.manager_role == 'editor':
+        return 'Editor'
+    if su.evaluation_role == 'assessor':
+        return 'Assessor'
+    if su.manager_role == 'viewer':
+        return 'Viewer'
+    if su.evaluation_role == 'viewer':
+        return 'Eval. Viewer'
+    return 'Member'
+
+
+def _parse_scenario_config(raw_config):
+    if isinstance(raw_config, str):
+        try:
+            raw_config = json.loads(raw_config)
+        except (json.JSONDecodeError, TypeError):
+            raw_config = {}
+    if not isinstance(raw_config, dict):
+        return {}
+    return dict(raw_config)
+
+
+def _normalize_task_description(value):
+    if value is None:
+        return ''
+    text = str(value).strip()
+    return text
+
+
+def _normalize_evaluation_criteria(value):
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        raw_items = value.replace('\r', '\n').replace(';', ',').split('\n')
+        values = []
+        for item in raw_items:
+            values.extend(item.split(','))
+    elif isinstance(value, list):
+        values = value
+    else:
+        return []
+
+    normalized = []
+    seen = set()
+    for item in values:
+        text = (item if isinstance(item, str) else str(item or '')).strip()
+        if not text:
+            continue
+        if text in seen:
+            continue
+        seen.add(text)
+        normalized.append(text)
+
+    return normalized
 
 
 def _normalize_llm_evaluators(config):
@@ -77,16 +183,47 @@ def _normalize_llm_evaluators(config):
 
 
 def _emit_scenario_stats_update(scenario_id: int) -> None:
-    """Emit WebSocket event when scenario stats change (e.g., config updated)."""
-    socketio = current_app.extensions.get('socketio')
-    if not socketio:
-        return
+    """Mark stats dirty when scenario config changes (e.g., LLM evaluators updated)."""
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-        emit_scenario_stats_updated(socketio, scenario_id)
-        logger.debug(f"Emitted scenario stats update for scenario {scenario_id}")
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
+        logger.debug(f"Marked stats dirty for scenario {scenario_id}")
     except Exception as e:
-        logger.warning(f"Failed to emit scenario stats update: {e}")
+        logger.warning(f"Failed to mark stats dirty: {e}")
+
+
+def _emit_scenario_access_granted(scenario, user_ids) -> None:
+    """Live-push a newly granted scenario to each recipient's Evaluation hub.
+
+    The card payload is built PER RECIPIENT: format_scenario_for_api resolves
+    ownership, role tags and the caller's own progress, so reusing the inviter's
+    payload would show every rater the inviter's view of the study.
+
+    Best-effort — a socket problem must not fail the invite that already
+    committed. Worst case the rater sees the scenario on their next load, which
+    is exactly the old behaviour.
+    """
+    if not user_ids:
+        return
+
+    try:
+        from main import socketio
+        from socketio_handlers.events_scenarios import emit_scenario_access_granted
+    except Exception as exc:  # pragma: no cover - socket layer optional in tests
+        logger.debug(f"Socket layer unavailable, skipping access-granted push: {exc}")
+        return
+
+    for uid in user_ids:
+        try:
+            recipient = User.query.get(uid)
+            if not recipient:
+                continue
+            payload = format_scenario_for_api(
+                scenario, recipient, invitation_map=None, include_detailed_stats=False
+            )
+            emit_scenario_access_granted(socketio, [recipient.username], payload)
+        except Exception as exc:
+            logger.warning(f"Could not push scenario access to user {uid}: {exc}")
 
 
 def _extract_current_user_progress_from_stats(stats_data, user, fallback_total=0):
@@ -172,7 +309,13 @@ def get_user_scenarios(user, invitation_filter=None):
         for su in scenario_users:
             invitation_map[su.scenario_id] = {
                 'status': su.invitation_status.value if su.invitation_status else 'accepted',
-                'role': su.role.value if su.role else 'EVALUATOR',
+                'role': _primary_role_display(su),
+                'manager_role': su.manager_role or 'none',
+                'evaluation_role': su.evaluation_role or 'none',
+                # Backwards compat
+                'access_level': su.access_level or 'MEMBER',
+                'is_viewer': su.manager_role != 'none',
+                'is_assessor': su.evaluation_role == 'assessor',
                 'invited_at': su.invited_at.isoformat() if su.invited_at else None,
                 'invited_by': su.invited_by
             }
@@ -239,8 +382,44 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     user_id = getattr(user, 'id', None)
     username = getattr(user, 'username', str(user))
 
-    # Determine ownership
+    # Resolve the user's ScenarioUsers row for new-field access
+    su_record = None
+    if invitation_map and scenario.id in invitation_map:
+        inv_info = invitation_map.get(scenario.id)
+    else:
+        inv_info = None
+    if user_id:
+        su_record = ScenarioUsers.query.filter_by(scenario_id=scenario.id, user_id=user_id).first()
+
+    # Determine ownership: created_by, admin role, or manager_role='owner'
     is_owner = (scenario.created_by == username) or has_role(user, 'admin')
+    if not is_owner and su_record and su_record.is_owner_level:
+        is_owner = True
+
+    # Determine management access (Owner or Editor) and user's role
+    can_manage = is_owner or is_scenario_manager(scenario, username)
+    if not can_manage and su_record and su_record.can_manage:
+        can_manage = True
+
+    # New role fields
+    manager_role = 'none'
+    evaluation_role = 'none'
+    if su_record:
+        manager_role = su_record.manager_role or 'none'
+        evaluation_role = su_record.evaluation_role or 'none'
+    elif inv_info:
+        manager_role = inv_info.get('manager_role', 'none')
+        evaluation_role = inv_info.get('evaluation_role', 'none')
+    # Fallback for owner without ScenarioUsers row
+    if manager_role == 'none' and is_owner:
+        manager_role = 'owner'
+
+    # Build backwards-compatible fields from new role fields
+    user_role = _primary_role_display(su_record) if su_record else ('Owner' if is_owner else 'Member')
+    is_viewer_flag = manager_role != 'none'
+    is_assessor_flag = evaluation_role == 'assessor'
+    access_level = {'owner': 'OWNER', 'editor': 'MANAGER'}.get(manager_role, 'MEMBER')
+    role_tags = _build_role_tags(su_record) if su_record else (['Owner'] if is_owner else ['—'])
 
     # Get function type name
     func_type = FeatureFunctionType.query.filter_by(
@@ -249,9 +428,11 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     func_type_name = func_type.name if func_type else None
 
     # Count threads/sessions and users (only count accepted users for user_count display)
-    # For comparison scenarios, count ComparisonSession instead of ScenarioThreads
+    # Chat-based comparison uses ComparisonSession; pairwise comparison uses ScenarioItems
     if func_type_name == 'comparison':
-        thread_count = ComparisonSession.query.filter_by(scenario_id=scenario.id).count()
+        session_count = ComparisonSession.query.filter_by(scenario_id=scenario.id).count()
+        item_count = ScenarioThreads.query.filter_by(scenario_id=scenario.id).count()
+        thread_count = session_count if session_count > 0 else item_count
     else:
         thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario.id).count()
     user_count = ScenarioUsers.query.filter(
@@ -266,7 +447,13 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     status = config.get('status') or getattr(scenario, 'status', None)
     if not status:
         current_time = datetime.utcnow()
-        if scenario.begin and scenario.end:
+        # `begin == end` is the model-default for "no time bounds
+        # configured" (see RatingScenarios.begin/end both default to
+        # datetime.utcnow). Without this guard a freshly created
+        # scenario instantly becomes "completed" one second after
+        # creation, which then gets filtered out of the EvaluationHub
+        # for everyone who isn't the owner.
+        if scenario.begin and scenario.end and scenario.begin != scenario.end:
             if current_time < scenario.begin:
                 status = 'draft'
             elif current_time > scenario.end:
@@ -274,7 +461,11 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
             else:
                 status = 'evaluating'
         else:
-            status = 'draft'
+            # No real schedule on the scenario → treat as actively
+            # collecting evaluations. Owners can still archive
+            # explicitly; we only fall back to "draft" when there
+            # are no items yet (handled by the wizard, not here).
+            status = 'evaluating'
 
     # Get owner info
     owner_name = scenario.created_by
@@ -283,86 +474,41 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     user_progress = {'completed': 0, 'progressing': 0, 'total': thread_count}
 
     if include_detailed_stats and thread_count > 0:
-        # Calculate detailed progress stats from actual evaluations
+        # Use lightweight progress counts instead of full stats (no agreement metrics)
         try:
-            progress_data = get_progress_stats(scenario.id)
-            rater_stats = progress_data.get('rater_stats', [])
-            evaluator_stats = progress_data.get('evaluator_stats', [])
+            from services.scenario_stats_service import get_user_progress_counts
+            progress_counts = get_user_progress_counts(scenario.id)
 
-            # Find current user's progress (check both raters and evaluators)
-            all_user_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
-            user_found = False
-            for user_stat in all_user_stats:
-                if user_stat.get('username') == username:
-                    user_progress = {
-                        'completed': user_stat.get('done_threads', 0),
-                        'progressing': user_stat.get('progressing_threads', 0),
-                        'total': user_stat.get('total_threads', thread_count)
-                    }
-                    user_found = True
-                    break
+            # Find current user's progress
+            if username in progress_counts:
+                up = progress_counts[username]
+                user_progress = {
+                    'completed': up['done'],
+                    'progressing': up['progressing'],
+                    'total': up['total'],
+                }
 
-            # Fallback for owners not in ScenarioUsers: calculate progress directly
-            if not user_found and is_owner:
-                from db.models import ItemDimensionRating, ProgressionStatus
-                from db.models import ScenarioThreads as ST, UserMailHistoryRating
-                scenario_thread_ids = [
-                    st.thread_id for st in ST.query.filter_by(scenario_id=scenario.id).all()
-                ]
-                if scenario_thread_ids:
-                    # Check ItemDimensionRating for this user's progress
-                    user_ratings = ItemDimensionRating.query.filter(
-                        ItemDimensionRating.user_id == user_id,
-                        ItemDimensionRating.scenario_id == scenario.id,
-                        ItemDimensionRating.item_id.in_(scenario_thread_ids)
-                    ).all()
+            # Aggregate all user stats
+            human_done = sum(p['done'] for p in progress_counts.values())
+            human_total = sum(p['total'] for p in progress_counts.values())
+            raters_done = sum(
+                1 for p in progress_counts.values()
+                if p['done'] == p['total'] and p['total'] > 0
+            )
 
-                    completed = sum(1 for r in user_ratings if r.status == ProgressionStatus.DONE)
-                    progressing = sum(1 for r in user_ratings if r.status == ProgressionStatus.PROGRESSING)
-
-                    # Also check mail_rating if function_type is mail_rating (3)
-                    if scenario.function_type_id == 3:
-                        mail_ratings = UserMailHistoryRating.query.filter(
-                            UserMailHistoryRating.user_id == user_id,
-                            UserMailHistoryRating.thread_id.in_(scenario_thread_ids)
-                        ).all()
-                        completed = sum(1 for r in mail_ratings if r.status == ProgressionStatus.DONE)
-                        progressing = sum(1 for r in mail_ratings if r.status == ProgressionStatus.PROGRESSING)
-
-                    user_progress = {
-                        'completed': completed,
-                        'progressing': progressing,
-                        'total': thread_count
-                    }
-
-            # Aggregate human evaluator stats
-            human_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
-            human_done = sum(u.get('done_threads', 0) for u in human_stats)
-            human_total = sum(u.get('total_threads', 0) for u in human_stats)
-
-            # Aggregate LLM evaluator stats
-            llm_stats = [e for e in evaluator_stats if e.get('is_llm')]
-            llm_done = sum(u.get('done_threads', 0) for u in llm_stats)
-            llm_total = sum(u.get('total_threads', 0) for u in llm_stats)
-
-            # Count users who are fully done
-            raters_done = len([u for u in rater_stats if u.get('done_threads', 0) == u.get('total_threads', 0) and u.get('total_threads', 0) > 0])
-
-            # Total evaluations = sum of expected evaluations from all evaluators
-            # This ensures progress calculation is correct (completed/total <= 100%)
-            total_expected = human_total + llm_total
+            # LLM progress is computed separately by the /stats endpoint
             stats = {
-                'total': total_expected if total_expected > 0 else thread_count,
-                'completed': human_done + llm_done,
+                'total': human_total if human_total > 0 else thread_count,
+                'completed': human_done,
                 'human_total': human_total,
                 'human_completed': human_done,
-                'llm_total': llm_total,
-                'llm_completed': llm_done,
+                'llm_total': 0,
+                'llm_completed': 0,
                 'raters_done': raters_done,
-                'total_raters': len(rater_stats)
+                'total_raters': len(progress_counts)
             }
         except Exception as e:
-            logger.warning(f"Failed to calculate detailed stats for scenario {scenario.id}: {e}")
+            logger.warning(f"Failed to calculate progress for scenario {scenario.id}: {e}")
             stats = {
                 'total': thread_count,
                 'completed': 0,
@@ -383,53 +529,95 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         }
 
     # Get config - parse JSON string if needed
-    config = scenario.config_json or {}
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
-    if not isinstance(config, dict):
-        config = {}
+    config = _parse_scenario_config(scenario.config_json)
 
     llm_evaluators = _normalize_llm_evaluators(config)
     if llm_evaluators:
         config['llm_evaluators'] = llm_evaluators
+    task_description = _normalize_task_description(config.get('task_description'))
+    evaluation_criteria = _normalize_evaluation_criteria(config.get('evaluation_criteria'))
 
     # Get invitation info for current user
     invitation_info = None
     if invitation_map and scenario.id in invitation_map:
         invitation_info = invitation_map[scenario.id]
     elif user_id and not is_owner:
-        # Fetch invitation info if not provided
-        su = ScenarioUsers.query.filter_by(
-            scenario_id=scenario.id,
-            user_id=user_id
-        ).first()
-        if su:
+        # Use su_record already fetched above to avoid duplicate query
+        if su_record:
             invitation_info = {
-                'status': su.invitation_status.value if su.invitation_status else 'accepted',
-                'role': su.role.value if su.role else 'EVALUATOR',
-                'invited_at': su.invited_at.isoformat() if su.invited_at else None,
-                'invited_by': su.invited_by
+                'status': su_record.invitation_status.value if su_record.invitation_status else 'accepted',
+                'role': _primary_role_display(su_record),
+                'manager_role': su_record.manager_role or 'none',
+                'evaluation_role': su_record.evaluation_role or 'none',
+                'access_level': su_record.access_level or 'MEMBER',
+                'is_viewer': su_record.manager_role != 'none',
+                'is_assessor': su_record.evaluation_role == 'assessor',
+                'invited_at': su_record.invited_at.isoformat() if su_record.invited_at else None,
+                'invited_by': su_record.invited_by
             }
+
+    description = getattr(scenario, 'description', None) or config.get('description')
+
+    # Scenario parts (labeling phases), invisibility invariant: the list/GET
+    # payload carries the full config_json and item counts to every member.
+    # For non-managers strip the parts section + copilot internals from the
+    # config and scale item totals to OPEN parts — a locked part must look
+    # like items that simply don't exist yet (design doc §3.1).
+    # Both labeling flavours use parts (calibration phases), so the invisibility
+    # invariant has to hold for conversation labeling too — otherwise a rater
+    # would see that locked phases exist.
+    if is_labeling_type(func_type_name) and not can_manage:
+        from services.evaluation.scenario_parts_service import ScenarioPartsService
+        open_ids = ScenarioPartsService.open_item_ids(scenario)
+        if open_ids is not None:
+            thread_count = len(open_ids)
+            stats['total'] = thread_count
+            stats['human_total'] = thread_count * user_count if user_count else 0
+            done_in_open = 0
+            if user_id and open_ids:
+                from db.models.scenario import ItemLabelingEvaluation
+                done_in_open = ItemLabelingEvaluation.query.filter(
+                    ItemLabelingEvaluation.scenario_id == scenario.id,
+                    ItemLabelingEvaluation.user_id == user_id,
+                    ItemLabelingEvaluation.item_id.in_(open_ids),
+                ).filter(
+                    (ItemLabelingEvaluation.category_id.isnot(None))
+                    | (ItemLabelingEvaluation.is_unsure.is_(True))
+                ).count()
+            user_progress = {
+                'completed': done_in_open,
+                'progressing': 0,
+                'total': thread_count,
+            }
+        config = ScenarioPartsService.sanitize_config_for_assessor(config)
 
     return {
         'id': scenario.id,
         'scenario_name': scenario.scenario_name,
-        'description': getattr(scenario, 'description', None),
+        'description': description,
         'function_type_id': scenario.function_type_id,
         'function_type_name': func_type_name,
         'begin': scenario.begin.isoformat() if scenario.begin else None,
         'end': scenario.end.isoformat() if scenario.end else None,
         'created_at': scenario.begin.isoformat() if scenario.begin else None,  # Using begin as proxy
         'status': status,
-        'visibility': getattr(scenario, 'visibility', 'private'),
+        # New 2-axis role model
+        'manager_role': manager_role,
+        'evaluation_role': evaluation_role,
+        # Backwards compat (transition period)
         'is_owner': is_owner,
+        'can_manage': can_manage,
+        'user_role': user_role,
+        'access_level': access_level,
+        'is_viewer': is_viewer_flag,
+        'is_assessor': is_assessor_flag,
+        'role_tags': role_tags,
         'owner_name': owner_name,
         'thread_count': thread_count,
         'user_count': user_count,
         'llm_evaluator_count': len(llm_evaluators),
+        'task_description': task_description,
+        'evaluation_criteria': evaluation_criteria,
         'config_json': config,
         'stats': stats,
         'user_progress': user_progress,  # Current user's evaluation progress
@@ -508,35 +696,42 @@ def get_scenario_detail(scenario_id):
     is_admin = has_role(user, 'admin')
     is_owner = scenario.created_by == username
 
-    # Check if user is invited
+    # Check if user is invited and build invitation_map for ownership check
     is_member = False
+    invitation_map = {}
     if user_id:
-        is_member = ScenarioUsers.query.filter_by(
+        su = ScenarioUsers.query.filter_by(
             scenario_id=scenario_id,
             user_id=user_id
-        ).first() is not None
+        ).first()
+        if su:
+            is_member = True
+            invitation_map[scenario_id] = {
+                'status': su.invitation_status.value if su.invitation_status else 'accepted',
+                'role': _primary_role_display(su),
+                'manager_role': su.manager_role or 'none',
+                'evaluation_role': su.evaluation_role or 'none',
+                'access_level': su.access_level or 'MEMBER',
+                'is_viewer': su.manager_role != 'none',
+                'is_assessor': su.evaluation_role == 'assessor',
+                'invited_at': su.invited_at.isoformat() if su.invited_at else None,
+                'invited_by': su.invited_by
+            }
 
     if not (is_admin or is_owner or is_member):
         raise ForbiddenError('You do not have access to this scenario')
 
     # Get detailed stats for detail view
-    result = format_scenario_for_api(scenario, user, include_detailed_stats=True)
+    result = format_scenario_for_api(scenario, user, invitation_map=invitation_map, include_detailed_stats=True)
 
-    # Get detailed user stats from progress service
+    # Get lightweight user progress counts (no expensive agreement metrics)
     try:
-        progress_data = get_progress_stats(scenario.id)
-        user_stats_map = {}
-        for rater in progress_data.get('rater_stats', []):
-            user_stats_map[rater['username']] = {
-                'done': rater.get('done_threads', 0),
-                'total': rater.get('total_threads', 0)
-            }
-        for evaluator in progress_data.get('evaluator_stats', []):
-            if not evaluator.get('is_llm'):
-                user_stats_map[evaluator['username']] = {
-                    'done': evaluator.get('done_threads', 0),
-                    'total': evaluator.get('total_threads', 0)
-                }
+        from services.scenario_stats_service import get_user_progress_counts
+        progress_counts = get_user_progress_counts(scenario.id)
+        user_stats_map = {
+            uname: {'done': p['done'], 'total': p['total']}
+            for uname, p in progress_counts.items()
+        }
     except Exception:
         user_stats_map = {}
 
@@ -555,7 +750,13 @@ def get_scenario_detail(scenario_id):
                 'user_id': su.user_id,
                 'username': db_user.username,
                 'display_name': getattr(db_user, 'display_name', db_user.username),
-                'role': su.role.value if hasattr(su.role, 'value') else str(su.role),
+                'role': _primary_role_display(su),
+                'manager_role': su.manager_role or 'none',
+                'evaluation_role': su.evaluation_role or 'none',
+                'access_level': su.access_level or 'MEMBER',
+                'is_viewer': su.manager_role != 'none',
+                'is_assessor': su.evaluation_role == 'assessor',
+                'tags': _build_role_tags(su),
                 'avatar_seed': avatar.get('avatar_seed'),
                 'avatar_url': avatar.get('avatar_url'),
                 'completed': user_progress.get('done', 0),
@@ -578,61 +779,75 @@ def get_scenario_detail(scenario_id):
         config['llm_evaluators'] = llm_evaluators
     result['llm_evaluators'] = llm_evaluators
 
-    if llm_evaluators and (is_admin or is_owner) and result.get('thread_count', 0) > 0:
-        try:
-            # Get all item IDs for this scenario (threads or comparison sessions)
-            function_type = FeatureFunctionType.query.filter_by(
-                function_type_id=scenario.function_type_id
-            ).first()
-            function_name = function_type.name if function_type else None
-
-            if function_name == "comparison":
-                all_thread_ids = {session.id for session in ComparisonSession.query.filter_by(scenario_id=scenario.id).all()}
-                id_label = "sessions"
-            else:
-                scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario.id).all()
-                all_thread_ids = {st.thread_id for st in scenario_threads}
-                id_label = "threads"
-
-            if all_thread_ids:
-                # For each model, find which threads are missing evaluations
+    # Auto-start LLM evaluations with cooldown to prevent self-DDoS.
+    # Guards: 5min cooldown per scenario + lock per (scenario, model) in runner.
+    if llm_evaluators:
+        if _claim_llm_auto_start_cooldown(scenario_id):
+            try:
                 from services.llm.llm_ai_task_runner import LLMAITaskRunner
-
-                for model_id in llm_evaluators:
-                    # Get threads that already have results for this model
-                    completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
-                        LLMTaskResult.scenario_id == scenario.id,
-                        LLMTaskResult.model_id == model_id,
-                        LLMTaskResult.payload_json.isnot(None),
-                        LLMTaskResult.error.is_(None),
-                    ).all()
-                    completed_thread_ids = {row[0] for row in completed_rows if row[0]}
-
-                    # Find threads that need evaluation
-                    pending_thread_ids = list(all_thread_ids - completed_thread_ids)
-
-                    if pending_thread_ids:
-                        logger.info(
-                            "[LLM AI Runner] Auto-starting %s for scenario %s: %d/%d %s pending",
-                            model_id,
-                            scenario.id,
-                            len(pending_thread_ids),
-                            len(all_thread_ids),
-                            id_label,
-                        )
-                        LLMAITaskRunner.run_for_scenario_async(
-                            scenario.id,
-                            model_ids=[model_id],
-                            thread_ids=pending_thread_ids,
-                        )
-        except Exception as exc:
-            logger.warning(
-                "[LLM AI Runner] Auto-start failed for scenario %s: %s",
-                scenario.id,
-                exc,
-            )
+                # Filter out models that are already running (lock held)
+                models_to_start = [
+                    m for m in llm_evaluators
+                    if not LLMAITaskRunner.is_running(scenario_id, m)
+                ]
+                if models_to_start:
+                    LLMAITaskRunner.run_for_scenario_async(
+                        scenario_id,
+                        model_ids=models_to_start,
+                    )
+            except Exception as exc:
+                logger.warning("[LLM auto-start] scenario %d failed: %s", scenario_id, exc)
 
     return jsonify(result), 200
+
+
+def _labeling_label_resolver(config):
+    """Build a `category_id -> display name` resolver for a labeling scenario.
+
+    Labeling category definitions live in different places depending on how the
+    scenario was created: api_v1/wizard scenarios nest them under
+    `eval_config.config.{categories|labels}`, manually-created ones put them at
+    the top level. Names may be plain strings or localized `{de, en}` objects.
+    The 'unsure' bucket is a separate option (`unsureOption`). This resolver
+    flattens all of that so callers can turn the opaque stored `category_id`
+    (e.g. "cat_1782155516278") into a human label (e.g. "include").
+    """
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    # Locate the inner eval config (nested for api_v1/wizard scenarios).
+    inner = config
+    eval_config = config.get('eval_config')
+    if isinstance(eval_config, dict) and isinstance(eval_config.get('config'), dict):
+        inner = eval_config['config']
+    elif isinstance(config.get('config'), dict):
+        inner = config['config']
+
+    def _localize(name, fallback):
+        if isinstance(name, dict):
+            return name.get('de') or name.get('en') or fallback
+        return name or fallback
+
+    cats = inner.get('categories') or inner.get('labels') or config.get('categories') or []
+    name_by_id = {}
+    for c in cats:
+        if isinstance(c, dict) and c.get('id') is not None:
+            name_by_id[c['id']] = _localize(c.get('name') or c.get('label'), c['id'])
+
+    unsure_opt = inner.get('unsureOption') if isinstance(inner.get('unsureOption'), dict) else {}
+    unsure_name = _localize(unsure_opt.get('name'), 'unsure')
+
+    def resolve(category_id, is_unsure=False):
+        if is_unsure:
+            return unsure_name
+        return name_by_id.get(category_id, category_id)
+
+    return resolve
 
 
 @data_blueprint.route('/scenarios/<int:scenario_id>/threads', methods=['GET'])
@@ -701,8 +916,15 @@ def get_scenario_threads(scenario_id):
     # Get total count
     total = query.count()
 
-    # Apply pagination and ordering
-    query = query.order_by(EmailThread.thread_id.desc())
+    # Apply pagination and ordering.
+    # Order ascending by thread_id so the Data tab lists items in the SAME
+    # order evaluators see them. The evaluator/session path orders ascending
+    # by EmailThread.thread_id (see EvaluationSessionService._get_items_for_scenario,
+    # .order_by(EmailThread.thread_id)), which equals import order
+    # (e.g. mail items first, then chat, then transcript). Previously this
+    # used .desc(), which inverted the order and confused owners comparing
+    # the Data tab against the evaluation view.
+    query = query.order_by(EmailThread.thread_id.asc())
     query = query.offset((page - 1) * per_page).limit(per_page)
 
     # Get all thread IDs for batch status lookup
@@ -805,18 +1027,43 @@ def get_scenario_threads(scenario_id):
                 if vote.vote is not None:
                     user_status_map[vote.item_id] = 'done'
 
+        elif func_type_name == 'conversation_labeling':
+            # A conversation is only done when EVERY span is decided — unlike
+            # classic labeling it has a real middle state (40 of 92 spans).
+            # Deriving it here by hand would be a fourth place that has to agree
+            # about what "done" means, so it goes through the shared service.
+            from services.evaluation.span_progress_service import item_status_map
+            user_status_map.update(
+                item_status_map(scenario_id, user_id, thread_ids)
+            )
+
         elif func_type_name == 'labeling':
-            # Labeling: check for label assignments (using ItemDimensionRating for now)
-            ratings = ItemDimensionRating.query.filter(
-                ItemDimensionRating.scenario_id == scenario_id,
-                ItemDimensionRating.user_id == user_id,
-                ItemDimensionRating.item_id.in_(thread_ids)
+            # Labeling status lives in ItemLabelingEvaluation (a chosen category
+            # OR is_unsure = done), NOT ItemDimensionRating. Reading the rating
+            # table here left every labeled item showing as "pending".
+            from db.models.scenario import ItemLabelingEvaluation
+            labels = ItemLabelingEvaluation.query.filter(
+                ItemLabelingEvaluation.scenario_id == scenario_id,
+                ItemLabelingEvaluation.user_id == user_id,
+                ItemLabelingEvaluation.item_id.in_(thread_ids)
             ).all()
 
-            for r in ratings:
-                # For labeling, having any rating means done
-                if r.dimension_ratings:
-                    user_status_map[r.item_id] = 'done'
+            for lab in labels:
+                if lab.category_id is not None or lab.is_unsure:
+                    user_status_map[lab.item_id] = 'done'
+
+        elif func_type_name in ('comparison', 'communication_comparison'):
+            # Pairwise comparison: check ItemComparisonEvaluation (type-8
+            # communication_comparison stores votes in the same table).
+            from db.models.scenario import ItemComparisonEvaluation
+            comp_evals = ItemComparisonEvaluation.query.filter(
+                ItemComparisonEvaluation.scenario_id == scenario_id,
+                ItemComparisonEvaluation.user_id == user_id,
+                ItemComparisonEvaluation.item_id.in_(thread_ids)
+            ).all()
+
+            for comp_eval in comp_evals:
+                user_status_map[comp_eval.item_id] = 'done'
 
     # Also check for LLM evaluations (independent of user)
     # This ensures Data tab shows items as evaluated when LLMs have processed them
@@ -922,8 +1169,8 @@ def get_available_threads(scenario_id):
     if search:
         query = query.filter(
             db.or_(
-                EmailThread.subject.ilike(f'%{search}%'),
-                EmailThread.sender.ilike(f'%{search}%')
+                EmailThread.subject.ilike(f'%{escape_like(search)}%'),
+                EmailThread.sender.ilike(f'%{escape_like(search)}%')
             )
         )
 
@@ -1050,6 +1297,13 @@ def scenario_manager_add_threads(scenario_id):
     except Exception as exc:
         logger.warning("[LLM AI Runner] Add threads trigger failed: %s", exc)
 
+    # The item set changed, so cached IRR/progress stats are now stale.
+    try:
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
+    except Exception:
+        pass
+
     return jsonify({
         'message': f'Successfully added {len(validated_threads)} threads',
         'added_count': len(validated_threads),
@@ -1076,10 +1330,12 @@ def get_scenario_thread_detail(scenario_id, thread_id):
     Returns:
         - thread: Thread object with messages and votes
     """
-    # Verify scenario exists
+    # Verify scenario exists and user has access
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    require_scenario_membership(scenario_id, g.authentik_user)
 
     # Verify thread is in this scenario
     scenario_thread = ScenarioThreads.query.filter_by(
@@ -1344,13 +1600,20 @@ def get_scenario_thread_detail(scenario_id, thread_id):
                     'created_at': ranking.created_at.isoformat() if ranking.created_at else None
                 })
 
-    elif func_type_name == 'labeling':
-        # Get human labelings from ItemDimensionRating table
-        from db.models.scenario import ItemDimensionRating
-        human_labels = ItemDimensionRating.query.filter_by(
+    elif func_type_name in ('labeling', 'conversation_labeling'):
+        # Human labelings live in ItemLabelingEvaluation (category_id + is_unsure
+        # + feedback), NOT ItemDimensionRating. Resolve the opaque category_id to
+        # its display name so the dialog shows "include" instead of "cat_1782…".
+        from db.models.scenario import ItemLabelingEvaluation
+        resolve_label = _labeling_label_resolver(scenario.config_json)
+        human_labels = ItemLabelingEvaluation.query.filter_by(
             scenario_id=scenario_id,
             item_id=thread_id
         ).all()
+        # Conversation labeling yields ~92 rows per item rather than one, so the
+        # dialog needs a stable reading order — otherwise the same conversation
+        # lists its decisions differently on every open.
+        human_labels.sort(key=lambda r: (r.user_id, r.span_id or ''))
 
         for label in human_labels:
             user = User.query.get(label.user_id)
@@ -1358,8 +1621,12 @@ def get_scenario_thread_detail(scenario_id, thread_id):
                 'type': 'human',
                 'user_id': label.user_id,
                 'username': user.username if user else 'Unknown',
-                'label': label.dimension_ratings.get('label') if label.dimension_ratings else None,
-                'status': label.status.value if label.status else None,
+                'label': resolve_label(label.category_id, label.is_unsure),
+                'is_unsure': bool(label.is_unsure),
+                'reasoning': label.feedback,
+                # Which span this decision belongs to; empty for classic
+                # labeling, where the whole item is the unit.
+                'span_id': label.span_id or None,
                 'created_at': label.created_at.isoformat() if label.created_at else None
             })
 
@@ -1378,6 +1645,46 @@ def get_scenario_thread_detail(scenario_id, thread_id):
                 'confidence': payload.get('confidence'),
                 'reasoning': payload.get('reasoning'),
                 'created_at': label.created_at.isoformat() if label.created_at else None
+            })
+
+    elif func_type_name in ('comparison', 'communication_comparison'):
+        # Human comparison choices from ItemComparisonEvaluation. Both classic
+        # comparison (type 4) and the counselling-style communication_comparison
+        # (type 8) persist a single A/B/tie choice here — without listing type 8
+        # the single-item detail dialog silently dropped every human choice.
+        from db.models.scenario import ItemComparisonEvaluation
+        human_comparisons = ItemComparisonEvaluation.query.filter_by(
+            scenario_id=scenario_id,
+            item_id=thread_id
+        ).all()
+
+        for comp in human_comparisons:
+            user = User.query.get(comp.user_id)
+            votes.append({
+                'type': 'human',
+                'user_id': comp.user_id,
+                'username': user.username if user else 'Unknown',
+                'vote': comp.choice,
+                'reasoning': comp.notes,
+                'created_at': comp.created_at.isoformat() if comp.created_at else None
+            })
+
+        # LLM comparison results
+        llm_comparisons = LLMTaskResult.query.filter_by(
+            scenario_id=scenario_id,
+            item_id=thread_id,
+            task_type='comparison'
+        ).filter(LLMTaskResult.error.is_(None)).all()
+
+        for comp in llm_comparisons:
+            payload = comp.payload_json or {}
+            votes.append({
+                'type': 'llm',
+                'model_id': comp.model_id,
+                'vote': payload.get('winner'),
+                'confidence': payload.get('confidence'),
+                'reasoning': payload.get('reasoning'),
+                'created_at': comp.created_at.isoformat() if comp.created_at else None
             })
 
     return jsonify({
@@ -1446,6 +1753,13 @@ def remove_thread_from_scenario(scenario_id, thread_id):
     db.session.delete(scenario_thread)
     db.session.commit()
 
+    # The item set changed, so cached IRR/progress stats are now stale.
+    try:
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
+    except Exception:
+        pass
+
     logger.info(f"User {username} removed thread {thread_id} from scenario {scenario_id}")
 
     return jsonify({
@@ -1504,18 +1818,28 @@ def sm_create_scenario():
         end = datetime.utcnow() + timedelta(days=30)
 
     # Build config
-    config = data.get('config_json', {})
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
-    if not isinstance(config, dict):
-        config = {}
+    config = _parse_scenario_config(data.get('config_json', {}))
     if not config.get('distribution_mode'):
         config['distribution_mode'] = 'all'
     if not config.get('order_mode'):
         config['order_mode'] = 'random'
+    if 'description' in data:
+        config['description'] = data.get('description') or ''
+
+    task_description = _normalize_task_description(
+        data.get('task_description', config.get('task_description'))
+    )
+    evaluation_criteria = _normalize_evaluation_criteria(
+        data.get('evaluation_criteria', config.get('evaluation_criteria'))
+    )
+    if task_description:
+        config['task_description'] = task_description
+    else:
+        config.pop('task_description', None)
+    if evaluation_criteria:
+        config['evaluation_criteria'] = evaluation_criteria
+    else:
+        config.pop('evaluation_criteria', None)
 
     # Resolve LLM evaluators (supports legacy selected_llms from older frontends)
     raw_llm_evaluators = data.get('llm_evaluators')
@@ -1556,6 +1880,23 @@ def sm_create_scenario():
     else:
         config.pop('llm_evaluators', None)
 
+    # Labeling co-pilot: stamp salt + prompt version 1 on first write
+    from services.evaluation.labeling_copilot_service import LabelingCopilotService
+    config = LabelingCopilotService.normalize_config_on_write(config)
+
+    # Scenario parts (labeling phases): normalize ids/flags. The wizard
+    # creates the scenario BEFORE importing items, so part specs (sizes)
+    # stay unresolved here and behave like parts-disabled until the import
+    # hook resolves them (ScenarioPartsService.resolve_after_import).
+    from services.evaluation.scenario_parts_service import (
+        PartsConfigError,
+        ScenarioPartsService,
+    )
+    try:
+        config = ScenarioPartsService.normalize_config_on_write(config)
+    except PartsConfigError as exc:
+        raise ValidationError(f'parts: {exc}')
+
     # Create scenario
     new_scenario = RatingScenarios(
         scenario_name=scenario_name,
@@ -1577,6 +1918,27 @@ def sm_create_scenario():
     db.session.add(new_scenario)
     db.session.commit()
 
+    # Auto-create a membership row for the owner so they appear in the team list.
+    # If owner_as_assessor is true, owner starts as assessor immediately.
+    owner_as_assessor = data.get('owner_as_assessor', False)
+    owner_user = User.query.filter_by(username=username).first()
+    if owner_user:
+        owner_su = ScenarioUsers(
+            scenario_id=new_scenario.id,
+            user_id=owner_user.id,
+            role=ScenarioRoles.ASSESSOR if owner_as_assessor else ScenarioRoles.VIEWER,
+            access_level='OWNER',
+            is_viewer=not owner_as_assessor,
+            is_assessor=owner_as_assessor,
+            manager_role='owner',
+            evaluation_role='assessor' if owner_as_assessor else 'none',
+            invitation_status=InvitationStatus.ACCEPTED,
+            membership_status=MembershipStatus.ACTIVE,
+            invited_by=username
+        )
+        db.session.add(owner_su)
+        db.session.commit()
+
     logger.info(f"User {username} created scenario {new_scenario.id}: {scenario_name}")
 
     if enable_llm and config.get('llm_evaluators'):
@@ -1585,6 +1947,12 @@ def sm_create_scenario():
             new_scenario.id,
             model_ids=config.get('llm_evaluators'),
         )
+
+    # Auto-start co-pilot suggestion generation (one-shot at creation, like
+    # the LLM evaluator auto-start above; later re-runs go through
+    # POST /api/evaluation/llm/<id>/copilot/start)
+    if LabelingCopilotService.get_copilot_config(new_scenario):
+        LabelingCopilotService.start_generation(new_scenario, clear_errors=False)
 
     return jsonify({
         'message': 'Scenario created successfully',
@@ -1599,7 +1967,7 @@ def update_scenario(scenario_id):
     """
     Update an existing scenario.
 
-    Only the owner or admin can update a scenario.
+    Owner, Manager, or Admin can update a scenario.
     """
     user = g.authentik_user
     username = getattr(user, 'username', str(user))
@@ -1608,12 +1976,21 @@ def update_scenario(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    # Check ownership
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    # Check management access (Owner, Manager, or Admin)
+    check_scenario_management_access(scenario, user)
 
     data = request.get_json()
     if not data:
         raise ValidationError('Request body is required')
+
+    existing_config = scenario.config_json or {}
+    if isinstance(existing_config, str):
+        try:
+            existing_config = json.loads(existing_config)
+        except (json.JSONDecodeError, TypeError):
+            existing_config = {}
+    if not isinstance(existing_config, dict):
+        existing_config = {}
 
     # Update allowed fields
     if 'scenario_name' in data:
@@ -1622,12 +1999,73 @@ def update_scenario(scenario_id):
         scenario.begin = datetime.fromisoformat(data['begin'].replace('Z', '+00:00'))
     if 'end' in data and data['end']:
         scenario.end = datetime.fromisoformat(data['end'].replace('Z', '+00:00'))
-    if 'config_json' in data:
-        scenario.config_json = data['config_json']
+    existing_config = _parse_scenario_config(scenario.config_json)
+    incoming_config = _parse_scenario_config(data.get('config_json')) if 'config_json' in data else None
+    next_config = {**existing_config, **(incoming_config or {})}
+
+    # Preserve description from existing config if not in incoming
+    if incoming_config is not None and 'description' not in (incoming_config or {}) and existing_config.get('description'):
+        next_config['description'] = existing_config.get('description')
+
+    has_task_description_update = 'task_description' in data
+    has_criteria_update = 'evaluation_criteria' in data
+    if has_task_description_update or 'task_description' in next_config:
+        task_description = _normalize_task_description(
+            data.get('task_description', next_config.get('task_description'))
+        )
+        if task_description:
+            next_config['task_description'] = task_description
+        else:
+            next_config.pop('task_description', None)
+    if has_criteria_update or 'evaluation_criteria' in next_config:
+        evaluation_criteria = _normalize_evaluation_criteria(
+            data.get('evaluation_criteria', next_config.get('evaluation_criteria'))
+        )
+        if evaluation_criteria:
+            next_config['evaluation_criteria'] = evaluation_criteria
+        else:
+            next_config.pop('evaluation_criteria', None)
+
+    if incoming_config is not None or has_task_description_update or has_criteria_update:
+        # Labeling co-pilot: keep salt stable, bump prompt_version + history
+        # when prompt/codebook changed (item->prompt-version mapping stays
+        # auditable; re-generation is triggered manually via copilot/start).
+        from services.evaluation.labeling_copilot_service import LabelingCopilotService
+        next_config = LabelingCopilotService.normalize_config_on_write(
+            next_config, existing_config
+        )
+        # Scenario parts: normalize + keep resolved assignments server-
+        # authoritative (a generic config PUT can toggle flags but never
+        # rewrite item_ids — audit trail). Enabling parts on a scenario that
+        # already has items resolves the specs right here.
+        from services.evaluation.scenario_parts_service import (
+            PartsConfigError,
+            ScenarioPartsService,
+        )
+        try:
+            next_config = ScenarioPartsService.normalize_config_on_write(
+                next_config, existing_config
+            )
+            scenario.config_json = next_config
+            ScenarioPartsService.resolve_specs(scenario)
+        except PartsConfigError as exc:
+            db.session.rollback()
+            raise ValidationError(f'parts: {exc}')
 
     # Optional fields
     if hasattr(scenario, 'description') and 'description' in data:
         scenario.description = data['description']
+    if 'description' in data:
+        config = scenario.config_json or {}
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except (json.JSONDecodeError, TypeError):
+                config = {}
+        if not isinstance(config, dict):
+            config = {}
+        config['description'] = data['description'] or ''
+        scenario.config_json = config
     if hasattr(scenario, 'status') and 'status' in data:
         scenario.status = data['status']
     if hasattr(scenario, 'visibility') and 'visibility' in data:
@@ -1651,10 +2089,20 @@ def update_scenario(scenario_id):
 @handle_api_errors(logger_name='scenario_manager')
 def sm_delete_scenario(scenario_id):
     """
-    Delete a scenario.
+    Delete a scenario AND any EvaluationItems that become orphaned by the
+    deletion (i.e. items only ever linked to this scenario).
+
+    Without the orphan cleanup, the import service's ``_find_existing_thread``
+    keeps reusing those stale items by ``chat_id`` hash on subsequent
+    re-imports — that's how scenario 10 ended up with 180 items whose
+    senders were still tagged "Klient" from the original broken import.
 
     Only the owner or admin can delete a scenario.
     """
+    # Deletion order + orphan cleanup live in the shared service so the IJCAI
+    # demo seeder's --reset path deletes scenarios exactly the same way.
+    from services.scenario_deletion_service import delete_scenario_deep
+
     user = g.authentik_user
     username = getattr(user, 'username', str(user))
     scenario = RatingScenarios.query.get(scenario_id)
@@ -1662,22 +2110,20 @@ def sm_delete_scenario(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    # Check ownership
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    check_scenario_ownership(scenario, user)
 
-    # Delete related records (order matters for FK constraints)
-    # First delete comparison sessions (for comparison scenarios)
-    ComparisonSession.query.filter_by(scenario_id=scenario_id).delete()
-    ScenarioThreadDistribution.query.filter_by(scenario_id=scenario_id).delete()
-    ScenarioThreads.query.filter_by(scenario_id=scenario_id).delete()
-    ScenarioUsers.query.filter_by(scenario_id=scenario_id).delete()
-
-    db.session.delete(scenario)
+    orphaned_count = delete_scenario_deep(scenario)
     db.session.commit()
 
-    logger.info(f"User {username} deleted scenario {scenario_id}")
+    logger.info(
+        f"User {username} deleted scenario {scenario_id} "
+        f"(also cleaned up {orphaned_count} orphaned items)"
+    )
 
-    return jsonify({'message': 'Scenario deleted successfully'}), 200
+    return jsonify({
+        'message': 'Scenario deleted successfully',
+        'orphaned_items_cleaned': orphaned_count,
+    }), 200
 
 
 @data_blueprint.route('/scenarios/<int:scenario_id>/stats', methods=['GET'])
@@ -1695,6 +2141,8 @@ def get_scenario_stats(scenario_id):
 
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    require_scenario_membership(scenario_id, user)
 
     thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario_id).count()
     user_count = ScenarioUsers.query.filter_by(
@@ -1714,7 +2162,7 @@ def get_scenario_stats(scenario_id):
             user_stats = stats_data.get('user_stats', [])
             # EVALUATOR role can interact (rate/evaluate), VIEWER is read-only
             rater_stats = [u for u in user_stats if u.get('role') == 'Evaluator' and not u.get('is_llm')]
-            evaluator_stats = [u for u in user_stats if u.get('role') in ('Viewer', 'Owner') or u.get('is_llm')]
+            evaluator_stats = [u for u in user_stats if u.get('role') in ('Viewer', 'Owner', 'Manager') or u.get('is_llm')]
 
             # Map authenticity fields to standard progress fields
             for stat in rater_stats + evaluator_stats:
@@ -1752,7 +2200,8 @@ def get_scenario_stats(scenario_id):
                 },
                 'vote_distribution': stats_data.get('vote_distribution'),
                 'overall_accuracy': stats_data.get('overall_accuracy'),
-                'ground_truth_stats': stats_data.get('ground_truth_stats')
+                'ground_truth_stats': stats_data.get('ground_truth_stats'),
+                'authenticity_provenance': stats_data.get('authenticity_provenance'),
             }
         else:
             # Standard progress scenarios (ranking, rating, mail_rating, etc.)
@@ -1784,16 +2233,21 @@ def get_scenario_stats(scenario_id):
                 'rating_alpha': stats_data.get('rating_alpha'),  # Krippendorff's Alpha split by evaluator type
                 'dimension_averages': stats_data.get('dimension_averages'),
                 'rating_provenance_analysis': stats_data.get('rating_provenance_analysis'),
+                'conversation_provenance': stats_data.get('conversation_provenance'),
                 'pairwise_agreement': stats_data.get('pairwise_agreement'),
                 # Ranking-specific stats
                 'bucket_distribution': stats_data.get('bucket_distribution'),
                 'provenance_analysis': stats_data.get('provenance_analysis'),
                 'ranking_agreement': stats_data.get('ranking_agreement'),
+                # Nominal alpha + Fleiss' kappa, labeling only (None elsewhere).
+                'labeling_alpha': stats_data.get('labeling_alpha'),
                 'agreement_metrics': {
                     'kappa': None,
                     'alpha': stats_data.get('krippendorff_alpha'),
                     'interpretation': stats_data.get('alpha_interpretation'),
-                    'fleiss': None
+                    # Fleiss' kappa is only defined for nominal multi-rater
+                    # data; labeling is currently the only such type.
+                    'fleiss': (stats_data.get('labeling_alpha') or {}).get('fleiss')
                 }
             }
     except Exception as e:
@@ -1820,7 +2274,109 @@ def get_scenario_stats(scenario_id):
         fallback_total=thread_count
     )
 
+    # Scenario parts (labeling phases): the hub card renders
+    # current_user_progress.completed/total — for assessors the totals must
+    # only count items of OPEN parts, otherwise "100/1532" would reveal that
+    # the scenario is partitioned (invisibility invariant, design doc §3.1).
+    _apply_parts_progress_scoping(scenario, user, response)
+
     return jsonify(response), 200
+
+
+def _apply_parts_progress_scoping(scenario, user, response):
+    """Scale assessor-visible item totals in a stats payload to open parts.
+
+    No-op for managers/owners/admins and for scenarios without active parts.
+    Fails CLOSED on role-resolution errors (treat as assessor) — a broken
+    lookup must never leak the partition.
+    """
+    from services.evaluation.scenario_parts_service import ScenarioPartsService
+    open_ids = ScenarioPartsService.open_item_ids(scenario)
+    if open_ids is None:
+        return
+    try:
+        if ScenarioPartsService.is_manager(scenario, user.id):
+            return
+    except Exception as exc:
+        logger.warning("[Parts] Manager check failed for scenario %s: %s",
+                       scenario.id, exc)
+
+    from db.models.scenario import ItemLabelingEvaluation
+    completed = 0
+    if open_ids:
+        completed = ItemLabelingEvaluation.query.filter(
+            ItemLabelingEvaluation.scenario_id == scenario.id,
+            ItemLabelingEvaluation.user_id == user.id,
+            ItemLabelingEvaluation.item_id.in_(open_ids),
+        ).filter(
+            (ItemLabelingEvaluation.category_id.isnot(None))
+            | (ItemLabelingEvaluation.is_unsure.is_(True))
+        ).count()
+    response['current_user_progress'] = {
+        'completed': completed,
+        'progressing': 0,
+        'total': len(open_ids),
+    }
+    response['total_threads'] = len(open_ids)
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/parts', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def sm_get_scenario_parts(scenario_id):
+    """Parts status for the owner settings tab (session-auth counterpart of
+    GET /api/v1/scenarios/<id>/parts). Management access required — the
+    partition must never be visible to assessors."""
+    user = g.authentik_user
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+    check_scenario_management_access(scenario, user)
+
+    from services.evaluation.scenario_parts_service import ScenarioPartsService
+    return jsonify({
+        'scenario_id': scenario_id,
+        **ScenarioPartsService.get_parts_status(scenario),
+    })
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/parts/<part_id>', methods=['PUT'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def sm_update_scenario_part(scenario_id, part_id):
+    """Partial part update (lock/unlock, copilot toggle, name, order) from the
+    owner settings tab. Unlocking is the study gate between calibration
+    phases — assessors just see new items appear."""
+    user = g.authentik_user
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+    check_scenario_management_access(scenario, user)
+
+    body = request.get_json(silent=True) or {}
+    if not body:
+        raise ValidationError(
+            'Request body must contain at least one editable field '
+            '(locked, copilot, name, order)'
+        )
+
+    from services.evaluation.scenario_parts_service import (
+        PartsConfigError,
+        ScenarioPartsService,
+    )
+    try:
+        ScenarioPartsService.update_part(scenario, part_id, body)
+    except PartsConfigError as exc:
+        raise ValidationError(str(exc))
+    db.session.commit()
+
+    _emit_scenario_stats_update(scenario_id)
+    logger.info("User %s updated part '%s' of scenario %s: %s",
+                getattr(user, 'username', user), part_id, scenario_id, body)
+    return jsonify({
+        'scenario_id': scenario_id,
+        **ScenarioPartsService.get_parts_status(scenario),
+    })
 
 
 @data_blueprint.route('/scenarios/<int:scenario_id>/invite', methods=['POST'])
@@ -1832,7 +2388,8 @@ def sm_invite_users(scenario_id):
 
     Request body:
         - user_ids: list of user IDs
-        - role: EVALUATOR (can interact) or VIEWER (read-only) (default: EVALUATOR)
+        - role: ASSESSOR|EVALUATOR (can interact), MANAGER (co-manage), or VIEWER (read-only)
+                Default: ASSESSOR
 
     Invitations are auto-accepted by default. Users can later reject them.
     """
@@ -1843,19 +2400,43 @@ def sm_invite_users(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    # Managers can also invite users
+    check_scenario_management_access(scenario, user)
 
     data = request.get_json()
     user_ids = data.get('user_ids', [])
-    role_str = data.get('role', 'EVALUATOR').lower()
+    role_str = data.get('role', 'ASSESSOR').lower()
 
-    # Map role string to enum
-    if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compatibility
-        role_enum = ScenarioRoles.EVALUATOR
+    # Map role string to enum + new permission fields (including new manager_role/evaluation_role)
+    if role_str in ('assessor', 'evaluator', 'rater'):  # Accept legacy names
+        role_enum = ScenarioRoles.ASSESSOR
+        new_access_level = 'MEMBER'
+        new_is_assessor = True
+        new_is_viewer = False
+        new_manager_role = 'none'
+        new_evaluation_role = 'assessor'
+    elif role_str == 'manager':
+        role_enum = ScenarioRoles.MANAGER
+        new_access_level = 'MANAGER'
+        new_is_assessor = False
+        new_is_viewer = True
+        new_manager_role = 'editor'
+        new_evaluation_role = 'none'
     elif role_str == 'viewer':
         role_enum = ScenarioRoles.VIEWER
+        new_access_level = 'MEMBER'
+        new_is_assessor = False
+        new_is_viewer = True
+        new_manager_role = 'viewer'
+        new_evaluation_role = 'none'
     else:
-        raise ValidationError(f'Invalid role: {role_str}. Must be EVALUATOR or VIEWER.')
+        raise ValidationError(f'Invalid role: {role_str}. Must be ASSESSOR, MANAGER, or VIEWER.')
+
+    # Legacy compat: allow direct manager_role/evaluation_role override from request
+    if data.get('manager_role'):
+        new_manager_role = data['manager_role']
+    if data.get('evaluation_role'):
+        new_evaluation_role = data['evaluation_role']
 
     if not user_ids:
         raise ValidationError('user_ids is required')
@@ -1863,7 +2444,19 @@ def sm_invite_users(scenario_id):
     added = 0
     reinvited = 0
     restored = 0
+    skipped_invalid = 0
+    # Track new assessors for item distribution after commit
+    new_assessor_su_ids = []
+    # Users who gained (or regained) access in this request — they get the live
+    # push so the scenario appears on their Evaluation hub without a reload.
+    granted_user_ids = []
+
     for uid in user_ids:
+        # Validate user exists before attempting to add
+        if not User.query.get(uid):
+            skipped_invalid += 1
+            continue
+
         # Check if already added (including archived users)
         existing = ScenarioUsers.query.filter_by(
             scenario_id=scenario_id,
@@ -1875,23 +2468,40 @@ def sm_invite_users(scenario_id):
                 scenario_id=scenario_id,
                 user_id=uid,
                 role=role_enum,
+                access_level=new_access_level,
+                is_viewer=new_is_viewer,
+                is_assessor=new_is_assessor,
+                manager_role=new_manager_role,
+                evaluation_role=new_evaluation_role,
                 invitation_status=InvitationStatus.ACCEPTED,  # Auto-accept new invitations
                 invited_at=datetime.utcnow(),
                 invited_by=username,
                 membership_status=MembershipStatus.ACTIVE
             )
             db.session.add(su)
+            db.session.flush()  # Get the su.id for distribution
+            if new_is_assessor:
+                new_assessor_su_ids.append(su.id)
+            granted_user_ids.append(uid)
             added += 1
         elif existing.membership_status == MembershipStatus.ARCHIVED:
             # Restore archived user - their evaluations are preserved
             # Role is set to the new requested role (EVALUATOR can continue, VIEWER is read-only)
             existing.membership_status = MembershipStatus.ACTIVE
             existing.role = role_enum
+            existing.access_level = new_access_level
+            existing.is_viewer = new_is_viewer
+            existing.is_assessor = new_is_assessor
+            existing.manager_role = new_manager_role
+            existing.evaluation_role = new_evaluation_role
             existing.invitation_status = InvitationStatus.ACCEPTED
             existing.invited_at = datetime.utcnow()
             existing.invited_by = username
             existing.archived_at = None
             existing.archived_by = None
+            if new_is_assessor:
+                new_assessor_su_ids.append(existing.id)
+            granted_user_ids.append(uid)
             restored += 1
         elif existing.invitation_status == InvitationStatus.REJECTED:
             # Re-invite a rejected user
@@ -1899,11 +2509,22 @@ def sm_invite_users(scenario_id):
             existing.invited_at = datetime.utcnow()
             existing.invited_by = username
             existing.responded_at = None
+            granted_user_ids.append(uid)
             reinvited += 1
+
+    # Assign items to newly added assessors (round_robin mode only)
+    for su_id in new_assessor_su_ids:
+        assign_items_to_new_assessor(scenario_id, scenario, su_id)
 
     db.session.commit()
 
-    logger.info(f"User {username} invited {added} users (reinvited {reinvited}, restored {restored}) to scenario {scenario_id}")
+    # Invalidate stats cache so the Assessors tab shows correct counts immediately
+    _emit_scenario_stats_update(scenario_id)
+
+    # Live-notify the new members (see _emit_scenario_access_granted).
+    _emit_scenario_access_granted(scenario, granted_user_ids)
+
+    logger.info(f"User {username} invited {added} users (reinvited {reinvited}, restored {restored}, skipped_invalid {skipped_invalid}) to scenario {scenario_id}")
 
     msg_parts = []
     if added:
@@ -1912,12 +2533,15 @@ def sm_invite_users(scenario_id):
         msg_parts.append(f'reinvited {reinvited}')
     if restored:
         msg_parts.append(f'restored {restored}')
+    if skipped_invalid:
+        msg_parts.append(f'skipped {skipped_invalid} invalid user IDs')
 
     return jsonify({
         'message': ', '.join(msg_parts) if msg_parts else 'No changes made',
         'added': added,
         'reinvited': reinvited,
-        'restored': restored
+        'restored': restored,
+        'skipped_invalid': skipped_invalid
     }), 200
 
 
@@ -1948,15 +2572,32 @@ def sm_remove_user(scenario_id, user_id):
     if not su:
         raise NotFoundError('User not found in scenario')
 
-    # Cannot archive the owner
-    if su.role == ScenarioRoles.OWNER:
+    # Cannot archive the owner (determined by created_by field)
+    target_user = User.query.get(user_id)
+    if target_user and scenario.created_by and target_user.username == scenario.created_by:
         raise ValidationError('Cannot remove the scenario owner')
+
+    # If the user was an assessor, reassign their undone items to remaining assessors
+    was_assessor = su.is_assessor
 
     # Archive instead of delete - preserves evaluations for potential restoration
     su.membership_status = MembershipStatus.ARCHIVED
+    su.is_assessor = False
     su.archived_at = datetime.utcnow()
     su.archived_by = username
+
+    # Flush archive state before reassignment — reassign_items_from_user() queries
+    # ScenarioUsers which triggers autoflush; SQLite chokes on autoflush during
+    # SELECT ("not an error" OperationalError). Explicit flush avoids this.
+    db.session.flush()
+
+    if was_assessor:
+        reassign_items_from_user(scenario_id, scenario, su.id)
+
     db.session.commit()
+
+    # Invalidate stats cache so the Assessors tab updates immediately
+    _emit_scenario_stats_update(scenario_id)
 
     logger.info(f"User {username} archived user {user_id} from scenario {scenario_id}")
 
@@ -1971,7 +2612,7 @@ def sm_update_user_role(scenario_id, user_id):
     Update a user's role in a scenario.
 
     Request body:
-        - role: EVALUATOR (can interact) or VIEWER (read-only)
+        - role: ASSESSOR|EVALUATOR (can interact), MANAGER (co-manage), or VIEWER (read-only)
 
     Cannot change the OWNER role.
     """
@@ -1982,7 +2623,8 @@ def sm_update_user_role(scenario_id, user_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    # Managers can also change roles (except to Manager - only Owner can promote to Manager)
+    check_scenario_management_access(scenario, user)
     target_user = User.query.get(user_id)
     is_target_owner = bool(
         target_user
@@ -2005,6 +2647,11 @@ def sm_update_user_role(scenario_id, user_id):
             scenario_id=scenario_id,
             user_id=user_id,
             role=ScenarioRoles.VIEWER,
+            access_level='OWNER',
+            is_viewer=True,
+            is_assessor=False,
+            manager_role='owner',
+            evaluation_role='none',
             invitation_status=InvitationStatus.ACCEPTED,
             membership_status=MembershipStatus.ACTIVE,
             invited_by=scenario.created_by
@@ -2019,16 +2666,43 @@ def sm_update_user_role(scenario_id, user_id):
     data = request.get_json()
     role_str = data.get('role', '').lower()
 
-    # Map role string to enum
-    if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compatibility
-        role_enum = ScenarioRoles.EVALUATOR
+    # Map role string to enum + new permission fields (including new manager_role/evaluation_role)
+    if role_str in ('assessor', 'evaluator', 'rater'):  # Accept legacy names
+        role_enum = ScenarioRoles.ASSESSOR
+        new_access_level = su.access_level if su.is_owner_level else 'MEMBER'
+        new_is_assessor = True
+        new_is_viewer = False
+        new_manager_role = 'none'
+        new_evaluation_role = 'assessor'
+    elif role_str == 'manager':
+        role_enum = ScenarioRoles.MANAGER
+        new_access_level = 'MANAGER' if not su.is_owner_level else su.access_level
+        new_is_assessor = False
+        new_is_viewer = True
+        new_manager_role = 'editor'
+        new_evaluation_role = 'none'
     elif role_str == 'viewer':
         role_enum = ScenarioRoles.VIEWER
+        new_access_level = su.access_level if su.is_owner_level else 'MEMBER'
+        new_is_assessor = False
+        new_is_viewer = True
+        new_manager_role = 'viewer'
+        new_evaluation_role = 'none'
     else:
-        raise ValidationError(f'Invalid role: {role_str}. Must be EVALUATOR or VIEWER.')
+        raise ValidationError(f'Invalid role: {role_str}. Must be ASSESSOR, MANAGER, or VIEWER.')
 
-    old_role = su.role.value
+    old_role = _primary_role_display(su)
+    was_assessor = su.is_assessor
+
     su.role = role_enum
+    # Preserve OWNER access_level - owners changing their capability flags
+    # should not lose their management access
+    if not su.is_owner_level:
+        su.access_level = new_access_level
+    su.is_assessor = new_is_assessor
+    su.is_viewer = new_is_viewer
+    su.manager_role = new_manager_role
+    su.evaluation_role = new_evaluation_role
 
     # Role changes should always reactivate membership for active collaboration.
     su.membership_status = MembershipStatus.ACTIVE
@@ -2037,15 +2711,106 @@ def sm_update_user_role(scenario_id, user_id):
     su.invitation_status = InvitationStatus.ACCEPTED
     su.responded_at = None
 
+    # Handle item distribution changes when assessor status changes
+    if not was_assessor and new_is_assessor:
+        # Viewer/Manager → Assessor: assign items
+        assign_items_to_new_assessor(scenario_id, scenario, su.id)
+    elif was_assessor and not new_is_assessor:
+        # Assessor → Viewer/Manager: reassign undone items to remaining assessors
+        reassign_items_from_user(scenario_id, scenario, su.id)
+
     db.session.commit()
 
-    logger.info(f"User {username} changed role of user {user_id} from {old_role} to {role_enum.value} in scenario {scenario_id}")
+    # Invalidate stats cache so the Assessors tab updates immediately
+    _emit_scenario_stats_update(scenario_id)
+
+    logger.info(f"User {username} changed role of user {user_id} from {old_role} to {_primary_role_display(su)} in scenario {scenario_id}")
 
     return jsonify({
         'message': 'Role updated successfully',
         'user_id': user_id,
         'old_role': old_role,
-        'new_role': role_enum.value
+        'new_role': _primary_role_display(su),
+        'manager_role': su.manager_role or 'none',
+        'evaluation_role': su.evaluation_role or 'none',
+        'access_level': su.access_level or 'MEMBER',
+        'is_viewer': su.manager_role != 'none',
+        'is_assessor': su.evaluation_role == 'assessor',
+        'tags': _build_role_tags(su)
+    }), 200
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/users/<int:user_id>/flags', methods=['PUT'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def sm_update_user_flags(scenario_id, user_id):
+    """Toggle capability flags for a user in a scenario.
+
+    Accepts both legacy flags (is_viewer, is_assessor) and new 2-axis role
+    fields (manager_role, evaluation_role). When both are sent, the new
+    fields take precedence. All fields are kept in sync bidirectionally.
+    """
+    user = g.authentik_user
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+    check_scenario_management_access(scenario, user)
+
+    su = ScenarioUsers.query.filter_by(scenario_id=scenario_id, user_id=user_id).first()
+    if not su:
+        raise NotFoundError('User not found in scenario')
+
+    data = request.get_json()
+
+    # Validate incoming role values against an explicit whitelist before applying
+    # them. 'owner' is deliberately EXCLUDED from manager_role here: promoting to
+    # owner via this flags endpoint would be a privilege escalation (ownership is
+    # managed elsewhere). Mirrors the validation style in sm_update_user_role.
+    if 'manager_role' in data and data['manager_role'] not in ('editor', 'viewer', 'none'):
+        raise ValidationError(
+            f"Invalid manager_role: {data['manager_role']}. "
+            "Must be editor, viewer, or none."
+        )
+    if 'evaluation_role' in data and data['evaluation_role'] not in ('assessor', 'viewer', 'none'):
+        raise ValidationError(
+            f"Invalid evaluation_role: {data['evaluation_role']}. "
+            "Must be assessor, viewer, or none."
+        )
+
+    # Accept both legacy flags (is_viewer/is_assessor) and new 2-axis fields
+    # (manager_role/evaluation_role). New fields take precedence when both are sent.
+    if 'is_viewer' in data:
+        su.is_viewer = bool(data['is_viewer'])
+        su.manager_role = 'viewer' if su.is_viewer else 'none'
+    if 'is_assessor' in data:
+        su.is_assessor = bool(data['is_assessor'])
+        su.evaluation_role = 'assessor' if su.is_assessor else 'none'
+
+    # New 2-axis fields override legacy flags when explicitly provided
+    if 'manager_role' in data:
+        su.manager_role = data['manager_role']
+        su.is_viewer = su.manager_role != 'none'
+    if 'evaluation_role' in data:
+        su.evaluation_role = data['evaluation_role']
+        su.is_assessor = su.evaluation_role == 'assessor'
+
+    # Sync legacy role column for backwards compat
+    if su.is_assessor:
+        su.role = ScenarioRoles.ASSESSOR
+    elif su.is_viewer:
+        su.role = ScenarioRoles.VIEWER
+
+    db.session.commit()
+    _emit_scenario_stats_update(scenario_id)
+
+    return jsonify({
+        'message': 'User flags updated',
+        'manager_role': su.manager_role or 'none',
+        'evaluation_role': su.evaluation_role or 'none',
+        'is_viewer': su.manager_role != 'none',
+        'is_assessor': su.evaluation_role == 'assessor',
+        'tags': _build_role_tags(su),
+        'role': _primary_role_display(su)
     }), 200
 
 
@@ -2060,6 +2825,12 @@ def sm_get_available_users(scenario_id):
 
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Schutz gegen User-Enumeration: Diese Route gibt die komplette Userliste
+    # (id/username/display_name) zurück. Nur Owner/Manager/Admin dürfen einladen,
+    # also auch nur sie die Kandidatenliste sehen — konsistent mit allen anderen
+    # mutierenden Routen dieser Datei.
+    check_scenario_management_access(scenario, g.authentik_user)
 
     # Get users already in scenario
     existing_ids = {su.user_id for su in ScenarioUsers.query.filter_by(scenario_id=scenario_id).all()}
@@ -2087,17 +2858,42 @@ def export_scenario_results(scenario_id):
         - format: json, csv (default: json)
 
     Returns structured data based on function_type:
-        - ranking (1): Feature rankings by user
-        - rating (2): Feature ratings by user
-        - authenticity (4): Authenticity votes by user
-        - comparison (5): Pairwise comparisons
-        - labeling (6): Multi-class classification
+        - ranking (1):       Feature rankings by user (UserFeatureRanking)
+        - rating (2):        Multi-dimensional ratings by user (ItemDimensionRating)
+        - mail_rating (3):   Mail-history ratings + consulting categories
+        - comparison (4):    Pairwise A/B/tie choices (ItemComparisonEvaluation)
+        - authenticity (5):  Human/AI fake-or-real votes (UserAuthenticityVote)
+        - labeling (7):      Multi-class category assignments (ItemLabelingEvaluation)
     """
     user = g.authentik_user
     scenario = RatingScenarios.query.get(scenario_id)
 
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Block non-members outright (raises ForbiddenError for outsiders).
+    require_scenario_membership(scenario_id, user)
+
+    # Raw cross-rater export defeats rater blinding, so it is restricted to
+    # management (owner/editor/admin) plus explicit viewers — the documented
+    # "viewers may see results" rule. Plain assessors (and 'none') must NOT be
+    # able to read every other participant's raw per-user evaluations.
+    # Note: check_scenario_management_access() raises on failure, so we use the
+    # underlying boolean helpers here to combine it with the viewer check.
+    username = getattr(user, 'username', str(user))
+    is_manager = (
+        has_role(user, 'admin')
+        or is_scenario_owner(scenario, username)
+        or is_scenario_manager(scenario, username)
+    )
+    if not is_manager:
+        su = ScenarioUsers.query.filter_by(
+            scenario_id=scenario_id, user_id=user.id
+        ).first() if getattr(user, 'id', None) else None
+        if not (su and su.manager_role == 'viewer'):
+            raise ForbiddenError(
+                'Only the scenario owner, manager, viewer, or admin can export results'
+            )
 
     export_format = request.args.get('format', 'json')
 
@@ -2367,6 +3163,170 @@ def export_scenario_results(scenario_id):
                 'timestamp': result.created_at.isoformat() if result.created_at else None
             })
 
+    elif func_type_name in ('comparison', 'communication_comparison'):
+        # Pairwise A/B/tie choices live in `item_comparison_evaluations` —
+        # the previous version of this handler had no comparison branch and
+        # silently dropped 100% of human votes into the generic LLM-only
+        # `else:` fallback below. communication_comparison (type-8) stores votes
+        # in the SAME table, so it must be handled here too (the live study
+        # scenario exported 0 results without this). See
+        # agreement_metrics_service.py for the parallel collector fix.
+        from db.models.scenario import ItemComparisonEvaluation, Feature
+
+        # Resolve the author of option A and B per comparison item so the analysis
+        # "Individual votes" table can show whether a pick was a human or an LLM
+        # answer. Options map to the item's features in creation order: A = first
+        # feature, B = second. `Feature.model_id` carries the author — empty or a
+        # human keyword means a human-written answer, anything else is the LLM
+        # model id. Human detection mirrors the canonical classifier in
+        # comparison_preference_stats_service._categorize (a "human:" prefix or a
+        # trailing "/human" / ":human" segment) and additionally recognises the
+        # bare German counselling role names the seeders use ("Berater",
+        # "Klient:in", …). Falls back to None when no feature data exists, in
+        # which case the frontend just shows plain A/B. Keep in sync with
+        # _categorize so the author analysis agrees with the preference stats.
+        _HUMAN_ROLE_KEYWORDS = {
+            'human', 'mensch', 'klient', 'klientin', 'klient:in',
+            'berater', 'beraterin', 'berater:in', 'user', 'person',
+        }
+
+        def _source_from_model_id(mid):
+            name = (mid or '').strip()
+            if not name:
+                # No model id ⇒ a human-written answer.
+                return {'type': 'human', 'name': None}
+            lower = name.lower()
+            # Tail = segment after the last "/" or ":" (e.g. "sft:foo/human").
+            tail = lower.split('/')[-1].split(':')[-1].strip()
+            if (lower.startswith('human:') or tail == 'human'
+                    or lower in _HUMAN_ROLE_KEYWORDS or tail in _HUMAN_ROLE_KEYWORDS):
+                return {'type': 'human', 'name': None}
+            return {'type': 'llm', 'name': name}
+
+        item_option_sources = {}
+        comp_features = Feature.query.filter(
+            Feature.item_id.in_(scenario_thread_ids)
+        ).order_by(Feature.item_id, Feature.feature_id).all()
+        for feat in comp_features:
+            item_option_sources.setdefault(feat.item_id, []).append(
+                _source_from_model_id(feat.model_id)
+            )
+
+        comp_evals = ItemComparisonEvaluation.query.filter(
+            ItemComparisonEvaluation.scenario_id == scenario_id,
+            ItemComparisonEvaluation.user_id.in_(scenario_user_ids),
+            ItemComparisonEvaluation.item_id.in_(scenario_thread_ids),
+        ).all()
+        for ev in comp_evals:
+            user_info = user_map.get(ev.user_id, {})
+            thread_info = thread_map.get(ev.item_id, {})
+            opt_sources = item_option_sources.get(ev.item_id, [])
+            results.append({
+                'type': 'comparison',
+                'user_id': ev.user_id,
+                'username': user_info.get('username'),
+                'item_id': ev.item_id,
+                'item_subject': thread_info.get('subject'),
+                'choice': ev.choice,
+                'notes': ev.notes,
+                # Author of each option (human vs LLM). None when no feature data.
+                'option_a_source': opt_sources[0] if len(opt_sources) >= 1 else None,
+                'option_b_source': opt_sources[1] if len(opt_sources) >= 2 else None,
+                'timestamp': ev.created_at.isoformat() if ev.created_at else None,
+                'updated_at': ev.updated_at.isoformat() if ev.updated_at else None,
+            })
+
+        llm_results = LLMTaskResult.query.filter(
+            LLMTaskResult.scenario_id == scenario_id,
+            LLMTaskResult.task_type == 'comparison',
+            LLMTaskResult.thread_id.in_(scenario_thread_ids),
+        ).all()
+        for result in llm_results:
+            thread_info = thread_map.get(result.thread_id, {})
+            payload = result.payload_json or {}
+            results.append({
+                'type': 'comparison_llm',
+                'model_id': result.model_id,
+                'item_id': result.thread_id,
+                'item_subject': thread_info.get('subject'),
+                'choice': payload.get('choice') or payload.get('selection'),
+                'reasoning': payload.get('reasoning'),
+                'error': result.error,
+                'timestamp': result.created_at.isoformat() if result.created_at else None,
+            })
+
+    elif func_type_name in ('labeling', 'conversation_labeling'):
+        # Multi-class category assignments live in `item_labeling_evaluations`.
+        # Same silent-drop bug as comparison before this branch existed.
+        from db.models.scenario import ItemLabelingEvaluation
+        label_evals = ItemLabelingEvaluation.query.filter(
+            ItemLabelingEvaluation.scenario_id == scenario_id,
+            ItemLabelingEvaluation.user_id.in_(scenario_user_ids),
+            ItemLabelingEvaluation.item_id.in_(scenario_thread_ids),
+        ).all()
+        # span_id -> (message_id, span_index) so a GUI download can be joined
+        # back to the imported unitizing, exactly like the v1 export.
+        span_meta = {}
+        if func_type_name == 'conversation_labeling':
+            from services.evaluation.span_progress_service import (
+                CONVERSATION_LABELING_META_KEY,
+            )
+            from db.models import EvaluationItem
+            for item in EvaluationItem.query.filter(
+                EvaluationItem.item_id.in_(scenario_thread_ids)
+            ).all():
+                block = ((item.metadata_json or {})
+                         .get(CONVERSATION_LABELING_META_KEY) or {})
+                span_meta[item.item_id] = {
+                    s.get('span_id'): (s.get('message_id'), s.get('span_index'))
+                    for s in (block.get('spans') or [])
+                    if s.get('span_id')
+                }
+
+        for ev in label_evals:
+            user_info = user_map.get(ev.user_id, {})
+            thread_info = thread_map.get(ev.item_id, {})
+            message_id, span_index = span_meta.get(ev.item_id, {}).get(
+                ev.span_id or '', (None, None)
+            )
+            results.append({
+                'type': func_type_name,
+                'user_id': ev.user_id,
+                'username': user_info.get('username'),
+                'item_id': ev.item_id,
+                'item_subject': thread_info.get('subject'),
+                'category_id': ev.category_id,
+                'is_unsure': ev.is_unsure,
+                'feedback': ev.feedback,
+                # Empty for classic labeling — the whole item is the unit there.
+                # ItemTimingService.stamp_rows reads span_id to key per-case
+                # timing, so this must be present before the post-stamp runs.
+                'span_id': ev.span_id or None,
+                'message_id': message_id,
+                'span_index': span_index,
+                'timestamp': ev.created_at.isoformat() if ev.created_at else None,
+                'updated_at': ev.updated_at.isoformat() if ev.updated_at else None,
+            })
+
+        llm_results = LLMTaskResult.query.filter(
+            LLMTaskResult.scenario_id == scenario_id,
+            LLMTaskResult.task_type == 'labeling',
+            LLMTaskResult.thread_id.in_(scenario_thread_ids),
+        ).all()
+        for result in llm_results:
+            thread_info = thread_map.get(result.thread_id, {})
+            payload = result.payload_json or {}
+            results.append({
+                'type': 'labeling_llm',
+                'model_id': result.model_id,
+                'item_id': result.thread_id,
+                'item_subject': thread_info.get('subject'),
+                'category_id': payload.get('category_id') or payload.get('label'),
+                'reasoning': payload.get('reasoning'),
+                'error': result.error,
+                'timestamp': result.created_at.isoformat() if result.created_at else None,
+            })
+
     else:
         # Generic export - try to get any LLM task results
         llm_results = LLMTaskResult.query.filter(
@@ -2386,15 +3346,67 @@ def export_scenario_results(scenario_id):
                 'timestamp': result.created_at.isoformat() if result.created_at else None
             })
 
+    # Stamp each human row with the voter's provenance — WHERE they came from —
+    # so the export carries the same origin story the team view shows: which
+    # referral/invite link they signed up through ('referral') vs a pre-existing
+    # account manually added ('existing'). Applied uniformly across every type
+    # (comparison, ranking, rating, …); LLM rows have no username and are
+    # skipped. Reuses _resolve_source_links (same module, owner/manager-gated).
+    member_usernames = {
+        info['username'] for info in user_map.values() if info.get('username')
+    }
+    source_links = _resolve_source_links(member_usernames, scenario_id)
+    for row in results:
+        uname = row.get('username')
+        if not uname:
+            continue
+        ref = source_links.get(uname)
+        row['voter_origin'] = 'referral' if ref else 'existing'
+        row['voter_source'] = (
+            (ref.get('label') or ref.get('campaign') or ref.get('slug')) if ref else None
+        )
+
+    # Per-case timing columns — uniform post-stamp, mirrors the v1 export so the
+    # GUI download carries the same measure. ``time_on_item_ms`` = captured value
+    # from EvaluationItemTiming; ``time_since_prev_ms`` = DERIVED fallback (gap
+    # between a voter's consecutive item timestamps) so studies predating real
+    # timing capture still get an approximate per-case duration (first case per
+    # voter and ranking rows — which have no timestamp — stay null). See
+    # ItemTimingService.stamp_rows. Best-effort: never break the export.
+    timing_metrics = None
+    try:
+        from services.evaluation.item_timing_service import ItemTimingService
+        ItemTimingService.stamp_rows(results, scenario_id)
+        # Per-voter timing aggregates (mean/median/min/max/std/n per rater +
+        # overall). Deduped per CASE inside summarize_cases — the span for
+        # conversation labeling, the item everywhere else.
+        summary = ItemTimingService.summarize_cases(
+            (r.get('user_id'), r.get('username'),
+             ((r.get('item_id') if r.get('item_id') is not None else r.get('thread_id')),
+              r.get('span_id') or ''),
+             r.get('time_on_item_ms'), r.get('time_since_prev_ms'))
+            for r in results if r.get('user_id') is not None
+        )
+        if summary['per_voter']:
+            timing_metrics = summary
+    except Exception:
+        import logging
+        logging.getLogger('scenario_manager').warning(
+            'Timing post-stamp failed for scenario %s export', scenario_id, exc_info=True
+        )
+
     if export_format == 'json':
-        return jsonify({
+        payload = {
             'scenario_id': scenario_id,
             'scenario_name': scenario.scenario_name,
             'function_type': func_type_name,
             'total_results': len(results),
             'results': results,
             'exported_at': datetime.utcnow().isoformat()
-        }), 200
+        }
+        if timing_metrics is not None:
+            payload['timing_metrics'] = timing_metrics
+        return jsonify(payload), 200
 
     elif export_format == 'csv':
         import csv
@@ -2408,13 +3420,31 @@ def export_scenario_results(scenario_id):
                 'exported_at': datetime.utcnow().isoformat()
             }), 200
 
-        # Create CSV
+        # Create CSV. Use the UNION of keys across ALL rows: different result
+        # kinds (human vs LLM) carry different fields, so the old
+        # results[0].keys() raised ValueError (-> 400) and broke the download
+        # for any scenario with LLM votes. extrasaction='ignore' is belt-and-
+        # suspenders against any remaining key drift.
+        fieldnames = []
+        _seen_fields = set()
+        for row in results:
+            for k in row.keys():
+                if k not in _seen_fields:
+                    _seen_fields.add(k)
+                    fieldnames.append(k)
+
+        def _csv_safe(value):
+            # Neutralize spreadsheet formula injection: Excel/Sheets execute a
+            # cell that begins with = + - @ (or a control char) as a formula.
+            if isinstance(value, str) and value and value[0] in ('=', '+', '-', '@', '\t', '\r'):
+                return "'" + value
+            return value
+
         output = io.StringIO()
-        fieldnames = list(results[0].keys())
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
         writer.writeheader()
         for row in results:
-            writer.writerow(row)
+            writer.writerow({k: _csv_safe(v) for k, v in row.items()})
 
         from flask import Response
         return Response(
@@ -2543,6 +3573,113 @@ def reinvite_user(scenario_id, target_user_id):
     }), 200
 
 
+def _resolve_source_links(usernames, scenario_id=None):
+    """
+    Resolve, per username, the referral link they registered through plus enough
+    context to explain *where they came from* in the team view.
+
+    Returns ``{username: referral_info | None}`` where referral_info is::
+
+        {
+          'slug': str|None, 'label': str|None,
+          'campaign': str|None,          # campaign display name
+          'registered_at': iso str|None,
+          'color': '#rrggbb',            # resolved badge color (ReferralLink.resolved_color)
+          'link_id': int,
+          'autoenroll_here': bool,       # this link auto-enrolls into scenario_id
+        }
+
+    None means the user has no ReferralRegistration row — i.e. they were already
+    a LLARS account (manually added) rather than arriving via a referral link.
+
+    BATCHED to avoid N+1: one ReferralRegistration query (filtered by the
+    username set) plus one ReferralLink query (filtered by the referenced link
+    IDs). The username column carries a unique constraint, so each user maps to
+    at most one registration. Exposure is gated by the caller — this helper is
+    only used inside owner/manager/admin-gated endpoints.
+    """
+    result = {u: None for u in usernames}
+    if not usernames:
+        return result
+
+    registrations = ReferralRegistration.query.filter(
+        ReferralRegistration.username.in_(list(usernames))
+    ).all()
+    if not registrations:
+        return result
+
+    link_ids = {r.link_id for r in registrations if r.link_id is not None}
+    links_by_id = {}
+    if link_ids:
+        links = ReferralLink.query.filter(ReferralLink.id.in_(link_ids)).all()
+        links_by_id = {link.id: link for link in links}
+
+    for reg in registrations:
+        link = links_by_id.get(reg.link_id) if reg.link_id is not None else None
+        if link is None:
+            continue
+        autoenroll_here = False
+        if scenario_id is not None:
+            # A link that auto-enrolls (as assessor or read-only viewer) into
+            # this scenario explains the membership as "came straight in via the
+            # link" — even when ScenarioUsers.invited_by is NULL for that row.
+            target_ids = set(link.get_assessor_scenario_ids())
+            target_ids.update(link.get_viewer_scenario_ids())
+            autoenroll_here = scenario_id in target_ids
+        result[reg.username] = {
+            'slug': link.slug,
+            'label': link.label,
+            'campaign': link.campaign.name if link.campaign else None,
+            'registered_at': reg.registered_at.isoformat() if reg.registered_at else None,
+            'color': link.resolved_color,
+            'link_id': link.id,
+            'autoenroll_here': autoenroll_here,
+        }
+    return result
+
+
+def _compose_member_origin(referral, *, invited_by, invited_at, invitation_status,
+                           is_owner, username):
+    """Build the per-member ``origin`` object surfaced in the scenario team view.
+
+    Two independent dimensions:
+
+    - ``account`` — how the person joined LLARS at all: ``referral`` (arrived via
+      a referral link) vs ``existing`` (already had a LLARS account, manually
+      added). This drives the pill's color/label.
+    - ``scenario`` — how they ended up in THIS scenario: ``owner`` /
+      ``referral_autoenroll`` / ``invited`` (by whom) / ``self``. ``joined_via``
+      is *derived* so the auto-enroll and legacy-invite gaps (NULL invited_by)
+      still classify sensibly instead of all collapsing to "self".
+    """
+    account = 'referral' if referral else 'existing'
+    if is_owner:
+        joined_via = 'owner'
+    elif referral and referral.get('autoenroll_here'):
+        joined_via = 'referral_autoenroll'
+    elif invited_by and invited_by != username:
+        joined_via = 'invited'
+    else:
+        joined_via = 'self'
+
+    return {
+        'account': account,
+        'referral': {
+            'slug': referral.get('slug'),
+            'label': referral.get('label'),
+            'campaign': referral.get('campaign'),
+            'registered_at': referral.get('registered_at'),
+            'color': referral.get('color'),
+        } if referral else None,
+        'scenario': {
+            'joined_via': joined_via,
+            'invited_by': invited_by,
+            'invited_at': invited_at.isoformat() if invited_at else None,
+            'status': invitation_status,
+        },
+    }
+
+
 @data_blueprint.route('/scenarios/<int:scenario_id>/team', methods=['GET'])
 @authentik_required
 @handle_api_errors(logger_name='scenario_manager')
@@ -2559,8 +3696,8 @@ def get_scenario_team(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    # Check access (owner or admin)
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    # Check access (owner, manager, or admin)
+    check_scenario_management_access(scenario, user)
 
     # Only show active members in team view
     scenario_users = ScenarioUsers.query.filter_by(
@@ -2571,6 +3708,16 @@ def get_scenario_team(scenario_id):
     team = []
     existing_user_ids = set()
 
+    # Pre-resolve referral source links for every member (and the owner-fallback
+    # below) in a single batched lookup. This view is already owner/manager/admin
+    # gated, so exposing where each participant signed up from is safe here.
+    member_users = [User.query.get(su.user_id) for su in scenario_users]
+    member_usernames = {u.username for u in member_users if u}
+    owner_username = scenario.created_by
+    if owner_username:
+        member_usernames.add(owner_username)
+    source_links = _resolve_source_links(member_usernames, scenario_id)
+
     for su in scenario_users:
         db_user = User.query.get(su.user_id)
         if not db_user:
@@ -2578,12 +3725,31 @@ def get_scenario_team(scenario_id):
 
         existing_user_ids.add(db_user.id)
         avatar = serialize_user_brief(db_user)
+        referral = source_links.get(db_user.username)
+        invitation_status = su.invitation_status.value if su.invitation_status else 'accepted'
         team.append({
             'user_id': su.user_id,
             'username': db_user.username,
             'display_name': getattr(db_user, 'display_name', db_user.username),
-            'role': su.role.value if su.role else 'EVALUATOR',
-            'invitation_status': su.invitation_status.value if su.invitation_status else 'accepted',
+            'role': _primary_role_display(su),
+            'manager_role': su.manager_role or 'none',
+            'evaluation_role': su.evaluation_role or 'none',
+            'access_level': su.access_level or 'MEMBER',
+            'is_viewer': su.manager_role != 'none',
+            'is_assessor': su.evaluation_role == 'assessor',
+            'tags': _build_role_tags(su),
+            # Slim referral source kept for backward compat (older clients read
+            # .label/.slug). The richer two-dimensional story is in `origin`.
+            'source_link': {'slug': referral['slug'], 'label': referral['label']} if referral else None,
+            'origin': _compose_member_origin(
+                referral,
+                invited_by=su.invited_by,
+                invited_at=su.invited_at,
+                invitation_status=invitation_status,
+                is_owner=(su.manager_role == 'owner'),
+                username=db_user.username,
+            ),
+            'invitation_status': invitation_status,
             'invited_at': su.invited_at.isoformat() if su.invited_at else None,
             'invited_by': su.invited_by,
             'responded_at': su.responded_at.isoformat() if su.responded_at else None,
@@ -2600,11 +3766,27 @@ def get_scenario_team(scenario_id):
 
     if owner_user and owner_user.id not in existing_user_ids:
         avatar = serialize_user_brief(owner_user)
+        owner_referral = source_links.get(owner_user.username)
         team.append({
             'user_id': owner_user.id,
             'username': owner_user.username,
             'display_name': getattr(owner_user, 'display_name', owner_user.username),
-            'role': ScenarioRoles.VIEWER.value,
+            'role': 'Owner',
+            'manager_role': 'owner',
+            'evaluation_role': 'none',
+            'access_level': 'OWNER',
+            'is_viewer': True,
+            'is_assessor': False,
+            'tags': ['Owner', 'Viewer'],
+            'source_link': {'slug': owner_referral['slug'], 'label': owner_referral['label']} if owner_referral else None,
+            'origin': _compose_member_origin(
+                owner_referral,
+                invited_by=scenario.created_by,
+                invited_at=None,
+                invitation_status=InvitationStatus.ACCEPTED.value,
+                is_owner=True,
+                username=owner_user.username,
+            ),
             'invitation_status': InvitationStatus.ACCEPTED.value,
             'invited_at': None,
             'invited_by': scenario.created_by,
@@ -2702,6 +3884,14 @@ def duplicate_scenario(scenario_id):
     }), 201
 
 
+def _is_archived(scenario) -> bool:
+    """Whether a scenario is archived. Reads from config_json since
+    RatingScenarios has no dedicated `status` column — soft-tagging via the
+    existing JSON config avoids a DB migration."""
+    cfg = scenario.config_json or {}
+    return bool(cfg.get('archived'))
+
+
 @data_blueprint.route('/scenarios/<int:scenario_id>/archive', methods=['POST'])
 @authentik_required
 @handle_api_errors(logger_name='scenario_manager')
@@ -2709,8 +3899,10 @@ def archive_scenario(scenario_id):
     """
     Archive a scenario.
 
-    Sets the scenario status to 'archived'. Archived scenarios are
-    read-only and hidden from the default scenario list.
+    Soft-tags the scenario as archived inside ``config_json`` — read-only
+    in the UI and hidden from the default scenario list. Persisted as
+    ``config_json.archived = True`` because the model has no ``status``
+    column and we don't want a migration just for this flag.
     """
     user = g.authentik_user
     username = getattr(user, 'username', str(user))
@@ -2719,19 +3911,17 @@ def archive_scenario(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    # Check ownership
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    check_scenario_ownership(scenario, user)
 
-    # Check if already archived
-    current_status = getattr(scenario, 'status', None)
-    if current_status == 'archived':
+    if _is_archived(scenario):
         raise ValidationError('Scenario is already archived')
 
-    # Archive the scenario
-    if hasattr(scenario, 'status'):
-        scenario.status = 'archived'
-    else:
-        raise ValidationError('Scenario model does not support archiving')
+    # Mutate via a fresh dict so SQLAlchemy notices the JSON column changed.
+    cfg = dict(scenario.config_json or {})
+    cfg['archived'] = True
+    cfg['archived_at'] = datetime.utcnow().isoformat()
+    cfg['archived_by'] = username
+    scenario.config_json = cfg
 
     db.session.commit()
 
@@ -2750,8 +3940,10 @@ def unarchive_scenario(scenario_id):
     """
     Unarchive a scenario.
 
-    Sets the scenario status back to 'completed' or 'draft' depending on
-    whether it has evaluations.
+    Clears ``config_json.archived`` and the related audit fields. The
+    legacy "status" recomputation (evaluating / data_collection / draft) is
+    skipped — the scenario lifecycle isn't tracked in this column for the
+    current model.
     """
     user = g.authentik_user
     username = getattr(user, 'username', str(user))
@@ -2760,27 +3952,16 @@ def unarchive_scenario(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    # Check ownership
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    check_scenario_ownership(scenario, user)
 
-    # Check if actually archived
-    current_status = getattr(scenario, 'status', None)
-    if current_status != 'archived':
+    if not _is_archived(scenario):
         raise ValidationError('Scenario is not archived')
 
-    # Determine new status based on progress
-    thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario_id).count()
-    user_count = ScenarioUsers.query.filter_by(
-        scenario_id=scenario_id,
-        membership_status=MembershipStatus.ACTIVE
-    ).count()
-
-    if thread_count > 0 and user_count > 0:
-        scenario.status = 'evaluating'
-    elif thread_count > 0:
-        scenario.status = 'data_collection'
-    else:
-        scenario.status = 'draft'
+    cfg = dict(scenario.config_json or {})
+    cfg.pop('archived', None)
+    cfg.pop('archived_at', None)
+    cfg.pop('archived_by', None)
+    scenario.config_json = cfg
 
     db.session.commit()
 

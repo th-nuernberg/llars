@@ -206,10 +206,12 @@ def test_field_prompt(template_id: int):
     # Call the LLM using admin-configured default model
     try:
         from db.models.llm_model import LLMModel
-        client = LLMClientFactory.get_client_for_model(None)
-        model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-        if not model:
+        default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+        if not default_model_id:
             raise ValidationError("No default LLM model configured")
+        client, model = LLMClientFactory.resolve_client_and_model_id(default_model_id)
+        if not client:
+            raise ValidationError("No LLM provider available for default model")
         response = client.chat.completions.create(
             model=model,
             messages=[

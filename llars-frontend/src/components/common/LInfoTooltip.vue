@@ -15,6 +15,7 @@
       <div v-if="title" class="l-info-tooltip__title">{{ title }}</div>
       <div class="l-info-tooltip__text">
         <slot v-if="hasSlot" />
+        <div v-else-if="hasRichContent" class="l-info-tooltip__rich" v-html="renderedRichContent"></div>
         <span v-else>{{ text }}</span>
       </div>
     </div>
@@ -23,6 +24,8 @@
 
 <script setup>
 import { computed, useSlots } from 'vue'
+import { marked } from 'marked'
+import { sanitizeHtmlCustom } from '@/utils/sanitize'
 
 const props = defineProps({
   title: {
@@ -30,6 +33,14 @@ const props = defineProps({
     default: ''
   },
   text: {
+    type: String,
+    default: ''
+  },
+  markdown: {
+    type: String,
+    default: ''
+  },
+  html: {
     type: String,
     default: ''
   },
@@ -66,13 +77,38 @@ const sizeMap = {
   'x-large': 28
 }
 
+const tooltipSanitizeConfig = {
+  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'div', 'span', 'code', 'pre', 'a'],
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'class']
+}
+
 const iconSize = computed(() => sizeMap[props.size] || 18)
 const hasSlot = computed(() => Boolean(slots.default))
+const hasMarkdown = computed(() => Boolean(props.markdown?.trim()))
+const hasHtml = computed(() => Boolean(props.html?.trim()))
+const hasRichContent = computed(() => hasMarkdown.value || hasHtml.value)
 const resolvedAriaLabel = computed(() => props.ariaLabel || props.title || 'Info')
 const contentStyle = computed(() => {
   if (props.maxWidth === null || props.maxWidth === undefined) return undefined
   const value = typeof props.maxWidth === 'number' ? `${props.maxWidth}px` : String(props.maxWidth)
   return { maxWidth: value }
+})
+
+const renderedRichContent = computed(() => {
+  if (hasMarkdown.value) {
+    try {
+      const parsed = marked.parse(props.markdown, { breaks: true })
+      return sanitizeHtmlCustom(String(parsed), tooltipSanitizeConfig)
+    } catch {
+      return sanitizeHtmlCustom(props.markdown, tooltipSanitizeConfig)
+    }
+  }
+
+  if (hasHtml.value) {
+    return sanitizeHtmlCustom(props.html, tooltipSanitizeConfig)
+  }
+
+  return ''
 })
 </script>
 
@@ -100,6 +136,18 @@ const contentStyle = computed(() => {
   font-size: 0.85rem;
   line-height: 1.4;
   white-space: pre-line;
+}
+
+.l-info-tooltip__rich {
+  white-space: normal;
+}
+
+.l-info-tooltip__rich :deep(p) {
+  margin: 0 0 6px;
+}
+
+.l-info-tooltip__rich :deep(p:last-child) {
+  margin-bottom: 0;
 }
 
 .l-info-tooltip__text :deep(ul) {

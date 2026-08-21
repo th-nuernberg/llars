@@ -46,7 +46,7 @@ let ioInstance = null;
  * Room management with extended awareness tracking.
  *
  * Tracks connected users and their cursor positions per room.
- * Room names follow the pattern: `{type}_{id}` where type is 'prompt', 'markdown', or 'latex'.
+ * Room names follow the pattern: `{type}_{id}` where type is 'prompt' or 'markdown'.
  *
  * @type {Object.<string, {users: Object, cursors: Object}>}
  * @property {Object.<string, {username: string, color: string, userId: number, isAdmin: boolean}>} users - Connected users by socket ID
@@ -54,7 +54,7 @@ let ioInstance = null;
  *
  * @example
  * // Room structure
- * rooms['latex_42'] = {
+ * rooms['markdown_42'] = {
  *   users: { 'socket123': { username: 'alice', color: '#FF6B6B', userId: 1, isAdmin: false } },
  *   cursors: { 'socket123': { blockId: 'block-1', range: { index: 10, length: 5 }, ... } }
  * }
@@ -120,14 +120,13 @@ function jsonToYdoc(jsonString) {
  * Room naming convention:
  * - `room_{id}` - Prompt Engineering documents
  * - `markdown_{id}` - Markdown Collab documents
- * - `latex_{id}` - LaTeX Collab documents
  *
  * @param {string} roomName - The room name to parse
- * @returns {{kind: 'prompt'|'markdown'|'latex', id: number}|null} Parsed info or null if invalid
+ * @returns {{kind: 'prompt'|'markdown', id: number}|null} Parsed info or null if invalid
  *
  * @example
- * parseRoom('latex_42') // { kind: 'latex', id: 42 }
- * parseRoom('invalid')  // null
+ * parseRoom('markdown_42') // { kind: 'markdown', id: 42 }
+ * parseRoom('invalid')     // null
  */
 function parseRoom(roomName) {
   if (typeof roomName !== 'string') return null;
@@ -138,10 +137,6 @@ function parseRoom(roomName) {
   const markdownMatch = roomName.match(/^markdown_(\d+)$/);
   if (markdownMatch) {
     return { kind: 'markdown', id: parseInt(markdownMatch[1], 10) };
-  }
-  const latexMatch = roomName.match(/^latex_(\d+)$/);
-  if (latexMatch) {
-    return { kind: 'latex', id: parseInt(latexMatch[1], 10) };
   }
   return null;
 }
@@ -190,65 +185,22 @@ async function canAccessMarkdownDocument(documentId, username, isAdmin) {
 }
 
 /**
- * Check if a user has access to a LaTeX document.
- * Access is granted if user is admin, workspace owner, or workspace member.
- *
- * @param {number} documentId - The latex document ID
- * @param {string} username - Username to check access for
- * @param {boolean} isAdmin - Whether the user has admin privileges
- * @returns {Promise<boolean>} True if user has access
- */
-async function canAccessLatexDocument(documentId, username, isAdmin) {
-  try {
-    if (isAdmin) return true;
-    if (!username) return false;
-
-    const [rows] = await pool.query(
-      `SELECT ld.workspace_id AS workspace_id, lw.owner_username AS owner_username
-       FROM latex_documents ld
-       JOIN latex_workspaces lw ON lw.id = ld.workspace_id
-       WHERE ld.id = ?
-       LIMIT 1`,
-      [documentId]
-    );
-
-    if (!rows || rows.length === 0) return false;
-    const workspaceId = rows[0].workspace_id;
-    const ownerUsername = rows[0].owner_username;
-    if (ownerUsername === username) return true;
-
-    const [memberRows] = await pool.query(
-      `SELECT 1
-       FROM latex_workspace_members
-       WHERE workspace_id = ? AND username = ?
-       LIMIT 1`,
-      [workspaceId, username]
-    );
-
-    return !!(memberRows && memberRows.length > 0);
-  } catch (e) {
-    console.error(`[AuthZ] Failed to check latex access for doc ${documentId}:`, e);
-    return false;
-  }
-}
-
-/**
  * Persist a Yjs document to the database.
  *
- * This function handles saving for all document types (prompt, markdown, latex).
- * For markdown and latex documents, it also emits a `document_saved` event
- * to the workspace room, enabling real-time Git panel updates.
+ * This function handles saving for all document types (prompt, markdown).
+ * For markdown documents, it also emits a `document_saved` event to the
+ * workspace room, enabling real-time Git panel updates.
  *
  * Storage format:
  * - `content`: JSON-serialized Yjs state (full CRDT history)
  * - `content_text`: Plain text extraction for Git diff, search, and fallback loading
  *
- * Event emission (for markdown/latex):
+ * Event emission (for markdown):
  * - Event: `document_saved`
- * - Room: `workspace_{type}_{workspaceId}` (e.g., `workspace_latex_42`)
+ * - Room: `workspace_{type}_{workspaceId}` (e.g., `workspace_markdown_42`)
  * - Payload: `{ documentId, workspaceId, kind, contentLength, savedAt }`
  *
- * @param {string} roomName - Room name in format `{type}_{id}` (e.g., 'latex_42')
+ * @param {string} roomName - Room name in format `{type}_{id}` (e.g., 'markdown_42')
  * @param {Y.Doc} doc - The Yjs document to persist
  * @param {string} name - Document name (used for prompts only)
  * @param {number|null} userId - Owner user ID (can be null)
@@ -258,8 +210,8 @@ async function canAccessLatexDocument(documentId, username, isAdmin) {
  *
  * @example
  * // Called after debounce timer expires
- * await saveYdocToDB('latex_42', doc, 'Room latex_42', userId, 'alice')
- * // Emits to 'workspace_latex_5' if doc belongs to workspace 5
+ * await saveYdocToDB('markdown_42', doc, 'Room markdown_42', userId, 'alice')
+ * // Emits to 'workspace_markdown_5' if doc belongs to workspace 5
  */
 /**
  * Extract rendered prompt content from a Yjs document.
@@ -423,45 +375,6 @@ async function saveYdocToDB(roomName, doc, name, userId, username = null) {
         console.log(`[document_saved] Emitted to ${workspaceRoom} for markdown doc ${roomId}`);
       }
     }
-
-    if (parsed.kind === 'latex') {
-      const [rows] = await pool.query(
-        'SELECT id, workspace_id FROM latex_documents WHERE id = ?',
-        [roomId]
-      );
-
-      if (rows.length === 0) {
-        console.warn(`Latex document ${roomId} not found; cannot persist Y.Doc for room ${roomName}`);
-        return;
-      }
-
-      await pool.query(
-        `UPDATE latex_documents
-         SET content = ?, content_text = ?, updated_at = NOW(), last_editor_username = COALESCE(?, last_editor_username)
-         WHERE id = ?`,
-        [jsonString, textContent, username, roomId]
-      );
-      console.log(`Y.Doc für Raum ${roomName} (latex_documents.id=${roomId}) gespeichert.`);
-
-      // =====================================================================
-      // Real-time Git Panel Update: Emit document_saved to workspace room
-      // =====================================================================
-      // Same as markdown above - broadcast save event for Git panel refresh.
-      // See markdown section for detailed explanation of the architecture.
-      // =====================================================================
-      if (ioInstance && rows[0].workspace_id) {
-        const workspaceId = rows[0].workspace_id;
-        const workspaceRoom = `workspace_latex_${workspaceId}`;
-        ioInstance.to(workspaceRoom).emit('document_saved', {
-          documentId: roomId,
-          workspaceId: workspaceId,
-          kind: 'latex',
-          contentLength: textContent.length,
-          savedAt: new Date().toISOString()
-        });
-        console.log(`[document_saved] Emitted to ${workspaceRoom} for latex doc ${roomId}`);
-      }
-    }
   } catch (err) {
     console.error(`Fehler beim Speichern des Y.Doc für Raum ${roomName}:`, err);
   }
@@ -479,7 +392,7 @@ async function saveYdocToDB(roomName, doc, name, userId, username = null) {
  * the Yjs CRDT state becomes corrupt. This is especially important for
  * documents created before Yjs integration or after manual DB edits.
  *
- * @param {string} roomName - Room name in format `{type}_{id}` (e.g., 'latex_42')
+ * @param {string} roomName - Room name in format `{type}_{id}` (e.g., 'markdown_42')
  * @returns {Promise<Y.Doc>} Loaded Yjs document (or empty doc if not found)
  */
 async function loadYdocFromDB(roomName) {
@@ -567,48 +480,6 @@ async function loadYdocFromDB(roomName) {
       }
       return new Y.Doc();
     }
-
-    if (parsed.kind === 'latex') {
-      const [rows] = await pool.query(
-        'SELECT content, content_text FROM latex_documents WHERE id = ?',
-        [roomId]
-      );
-      if (rows.length > 0) {
-        const hasContent = !!rows[0].content;
-        const hasContentText = !!rows[0].content_text;
-        const contentTextLength = rows[0].content_text ? rows[0].content_text.length : 0;
-        console.log(`[loadYdocFromDB] Latex doc ${roomId}: hasContent=${hasContent}, hasContentText=${hasContentText}, contentTextLength=${contentTextLength}`);
-
-        // Try to load from YJS JSON content first
-        if (rows[0].content) {
-          try {
-            console.log(`[loadYdocFromDB] Trying YJS JSON content for doc ${roomId}`);
-            const doc = jsonToYdoc(rows[0].content);
-            // Verify the doc has content (not a corrupt/empty state)
-            const text = doc.getText('content').toString();
-            if (text.length > 0 || !rows[0].content_text) {
-              console.log(`[loadYdocFromDB] Using YJS JSON content for doc ${roomId}, text length: ${text.length}`);
-              return doc;
-            }
-            // YJS content is empty but content_text exists - fall through to use content_text
-            console.log(`[loadYdocFromDB] YJS JSON content is empty, falling back to content_text for doc ${roomId}`);
-          } catch (e) {
-            console.error(`[loadYdocFromDB] Failed to parse YJS JSON for doc ${roomId}, falling back to content_text:`, e.message);
-            // Fall through to content_text fallback
-          }
-        }
-
-        // Fallback: use content_text
-        if (rows[0].content_text) {
-          console.log(`[loadYdocFromDB] Using content_text for doc ${roomId}: "${rows[0].content_text.substring(0, 100)}..."`);
-          const doc = new Y.Doc();
-          doc.getText('content').insert(0, rows[0].content_text);
-          return doc;
-        }
-      }
-      console.log(`[loadYdocFromDB] No content found for doc ${roomId}, returning empty doc`);
-      return new Y.Doc();
-    }
   } catch (err) {
     console.error(`Fehler beim Laden des Y.Doc für Raum ${roomName}:`, err);
   }
@@ -627,7 +498,7 @@ function getOrCreateRoom(roomName) {
       users: {},    // socketId -> { username, color }
       cursors: {},  // socketId -> { blockId, range, username, color }
       workspaceId: null,  // Cached workspace ID for real-time updates
-      kind: null    // Document kind (latex, markdown, prompt)
+      kind: null    // Document kind (markdown, prompt)
     };
   }
   return rooms[roomName];
@@ -685,15 +556,6 @@ function setupSocketHandlers(io) {
           return;
         }
       }
-      if (parsed?.kind === 'latex') {
-        const allowed = await canAccessLatexDocument(parsed.id, username, authenticatedUser.isAdmin);
-        if (!allowed) {
-          console.warn(`[AuthZ] Denied access for user "${username}" to room "${room}"`);
-          socket.emit('collab:error', { error: 'Forbidden' });
-          socket.disconnect(true);
-          return;
-        }
-      }
 
       // Join the document room for Yjs sync and cursor updates
       socket.join(room);
@@ -704,7 +566,7 @@ function setupSocketHandlers(io) {
       // In addition to the document room, join the workspace-level room.
       // This is essential for receiving `document_saved` events that trigger
       // Git panel refreshes. The workspace room pattern is:
-      //   `workspace_{type}_{workspaceId}` (e.g., 'workspace_latex_42')
+      //   `workspace_{type}_{workspaceId}` (e.g., 'workspace_markdown_42')
       //
       // Why workspace-level rooms?
       // - Document rooms only contain users editing THAT specific document
@@ -717,20 +579,7 @@ function setupSocketHandlers(io) {
       const roomObj = getOrCreateRoom(room);
       roomObj.kind = parsed?.kind || null;
 
-      if (parsed?.kind === 'latex') {
-        const [wsRows] = await pool.query(
-          'SELECT workspace_id FROM latex_documents WHERE id = ?',
-          [parsed.id]
-        );
-        if (wsRows.length > 0 && wsRows[0].workspace_id) {
-          roomObj.workspaceId = wsRows[0].workspace_id;
-          const workspaceRoom = `workspace_latex_${wsRows[0].workspace_id}`;
-          socket.join(workspaceRoom);
-          console.log(`[join_room] Also joined workspace room: ${workspaceRoom}`);
-        }
-
-        // Load baseline will happen after doc is loaded (see below)
-      } else if (parsed?.kind === 'markdown') {
+      if (parsed?.kind === 'markdown') {
         const [wsRows] = await pool.query(
           'SELECT workspace_id FROM markdown_documents WHERE id = ?',
           [parsed.id]
@@ -764,15 +613,7 @@ function setupSocketHandlers(io) {
       if (!baselineMap.has('text')) {
         // Load baseline from DB (last commit snapshot)
         let baseline = '';
-        if (parsed?.kind === 'latex') {
-          const [commitRows] = await pool.query(
-            `SELECT content_snapshot FROM latex_commits
-             WHERE document_id = ? AND content_snapshot IS NOT NULL
-             ORDER BY created_at DESC, id DESC LIMIT 1`,
-            [parsed.id]
-          );
-          baseline = commitRows.length > 0 ? (commitRows[0].content_snapshot || '') : '';
-        } else if (parsed?.kind === 'markdown') {
+        if (parsed?.kind === 'markdown') {
           const [commitRows] = await pool.query(
             `SELECT content_snapshot FROM markdown_commits
              WHERE document_id = ? AND content_snapshot IS NOT NULL
@@ -945,7 +786,7 @@ function setupSocketHandlers(io) {
         // After a revert, the baseline IS the current content (no uncommitted changes).
         // =====================================================================
         const parsed = parseRoom(room);
-        if (parsed?.kind === 'latex' || parsed?.kind === 'markdown') {
+        if (parsed?.kind === 'markdown') {
           const baselineMap = doc.getMap('baseline');
           baselineMap.set('text', newContent);
           console.log(`[reload_room] Updated baseline in YJS Map: ${newContent.length} chars`);

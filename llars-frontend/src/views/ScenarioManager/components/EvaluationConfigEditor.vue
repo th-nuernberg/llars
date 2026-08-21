@@ -55,6 +55,7 @@
       <template v-else-if="editorType === 'labeling'">
         <LabelingConfigEditor
           v-model="localConfig"
+          :item-count="itemCount"
           @update:modelValue="emitUpdate"
         />
       </template>
@@ -63,6 +64,7 @@
       <template v-else-if="editorType === 'comparison'">
         <ComparisonConfigEditor
           v-model="localConfig"
+          :available-variables="availableVariables"
           @update:modelValue="emitUpdate"
         />
       </template>
@@ -121,7 +123,13 @@ const props = defineProps({
   evalType: {
     type: String,
     required: true,
-    validator: (v) => ['rating', 'ranking', 'labeling', 'comparison', 'mail_rating', 'authenticity'].includes(v)
+    // The editor itself is chosen via getBaseType(), so the LLARS-specific
+    // types route to their base editor automatically — they only need to pass
+    // the validator. communication_comparison was missing here as well.
+    validator: (v) => [
+      'rating', 'ranking', 'labeling', 'comparison', 'mail_rating',
+      'authenticity', 'communication_comparison', 'conversation_labeling'
+    ].includes(v)
   },
   modelValue: {
     type: Object,
@@ -134,6 +142,18 @@ const props = defineProps({
   showPreview: {
     type: Boolean,
     default: true
+  },
+  // Metadata keys detected from the uploaded data — passed through to
+  // ComparisonConfigEditor so it can show a variable picker for {{var}} templates.
+  availableVariables: {
+    type: Array,
+    default: () => []
+  },
+  // Uploaded item count — passed through to LabelingConfigEditor for the
+  // parts-section boundary hints (0 = unknown).
+  itemCount: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -190,6 +210,12 @@ const availablePresets = computed(() => {
 
 const showCustomConfig = computed(() => {
   if (!editorType.value) return false
+  // Comparison: always render the editor so the allowTie /
+  // gamificationEnabled toggles are reachable even when a non-custom
+  // preset (Pairwise, Tournament, …) is selected. Without this, the
+  // toggles would be hidden behind the preset grid and the user can't
+  // disable ties or enable the reward system on the preset path.
+  if (editorType.value === EVAL_TYPES.COMPARISON) return true
   return selectedPresetId.value === 'custom' || !props.showPresets
 })
 

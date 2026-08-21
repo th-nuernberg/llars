@@ -967,6 +967,7 @@ const quickProviders = [
 // Provider icon mapping - colors use global CSS variables
 const providerMeta = {
   openai: { icon: 'openai', colorVar: 'openai' },
+  ionos: { icon: 'openai', colorVar: 'openai' },
   anthropic: { icon: 'claude', colorVar: 'anthropic' },
   gemini: { icon: 'gemini', colorVar: 'gemini' },
   ollama: { icon: 'ollama', colorVar: 'ollama' },
@@ -1020,6 +1021,7 @@ function showMessage(text, color = 'info') {
 
 const providerTypeOptions = [
   { title: 'OpenAI', value: 'openai' },
+  { title: 'IONOS AI Model Hub', value: 'ionos' },
   { title: 'OpenAI kompatibel', value: 'openai_compatible' },
   { title: 'Ollama', value: 'ollama' },
   { title: 'vLLM', value: 'vllm' },

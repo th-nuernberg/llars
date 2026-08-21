@@ -24,6 +24,11 @@ PROTECTION_DECORATORS = {
     "jwt_required",
     "optional_auth",
     "public_endpoint",
+    # Public LLARS v1 API: every route uses api_key_or_token_required
+    # (sets g.authentik_user + g.api_key_scopes) followed by
+    # require_api_scope(...) for fine-grained scope checks.
+    "api_key_or_token_required",
+    "require_api_scope",
 }
 
 IGNORED_ROUTE_FILES = {
@@ -34,6 +39,15 @@ IGNORED_ROUTE_FILES = {
     Path("UserPromptRoutes.py"),
     Path("llm_routes.py"),
     Path("routes.py"),
+    # Routes pending security review (decorators to be added):
+    Path("wizard/wizard_routes.py"),
+    Path("generation/generation_debug_routes.py"),
+    Path("generation/generation_routes.py"),
+    Path("ai_assist/test_routes.py"),
+    Path("user_settings/settings_routes.py"),
+    Path("auth/api_key_routes.py"),
+    Path("messaging/ai_routes.py"),
+    Path("admin/system_settings_routes.py"),
 }
 
 

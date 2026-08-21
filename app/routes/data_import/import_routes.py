@@ -314,63 +314,28 @@ def import_from_data():
     # Get filename for context (helps AI detect Long-Format patterns)
     filename = data.get('filename', source_name)
 
-    # =========================================================================
-    # Long-Format Detection & Transformation
-    # =========================================================================
-    # Long-Format: Same ID appears multiple times with different variants
-    # Example: CSV with rows [S001,gpt4,output1], [S001,claude,output2], etc.
-    # This needs to be transformed to LLARS ranking format before import.
+    # AI is intentionally NOT used to map or rewrite the input shape here —
+    # by product decision the wizard treats AI as a *suggestion helper* only
+    # (names, descriptions, evaluation type), never as a structural data
+    # transformer. The deterministic UniversalTransformer is the single
+    # source of truth for shape conversion; LLARS-Native items pass through
+    # unchanged thanks to `_extract_native_features` preserving the nested
+    # `features` array.
     #
-    # KEY HEURISTIC:
-    # - 1 Reference → N Outputs = RANKING (compare/sort outputs)
-    # - 1 Reference → 1 Output = RATING (rate single output quality)
-    # =========================================================================
-    # Skip long-format detection if data was already transformed by frontend
-    # (e.g., generation data transformed to wide-format for ranking)
-    skip_long_format = (
-        field_mapping
-        and field_mapping.get('from_generation')
-    )
-
-    ai_analyzer = get_ai_analyzer()
-
-    if not skip_long_format and ai_analyzer._detect_long_format(items):
-        logger.info(f"Long-Format detected for {filename}, generating field mapping...")
-
-        # Generate field mapping for Long-Format data
-        long_format_mapping = ai_analyzer.generate_field_mapping(
-            data=items,
-            detected_type=task_type.value if task_type else 'ranking',
-            detected_format='long',
-            filename=filename
+    # If a caller wants long-format → ranking conversion, they must do it
+    # client-side or upstream and send already-wide data with the
+    # `from_generation` hint (preserved below for the existing generation
+    # job pipeline, which uses force_new_threads on import).
+    skip_long_format = bool(field_mapping and field_mapping.get('from_generation'))
+    if skip_long_format:
+        sample_keys = list(items[0].keys()) if items else []
+        logger.info(
+            f"Generation import: from_generation=True, "
+            f"items={len(items)}, task_type={task_type}, "
+            f"sample_keys={sample_keys[:15]}"
         )
 
-        if long_format_mapping.get('success') and long_format_mapping.get('format') == 'long':
-            logger.info(f"Long-Format mapping: grouping={long_format_mapping.get('grouping_field')}, "
-                       f"variant={long_format_mapping.get('variant_field')}, "
-                       f"output={long_format_mapping.get('output_field')}")
-
-            # KEY HEURISTIC: Long-Format with multiple outputs per reference = RANKING
-            # This overrides any previous task_type detection because:
-            # - Multiple outputs for same input = comparison task = ranking
-            variants_per_group = long_format_mapping.get('variants_per_group', 0)
-            if variants_per_group > 1:
-                logger.info(f"Long-Format has {variants_per_group} variants per group -> forcing RANKING type")
-                task_type = TaskType.RANKING
-
-            # Transform Long-Format to LLARS ranking format
-            items = ai_analyzer.transform_long_format_to_ranking(items, long_format_mapping)
-            logger.info(f"Long-Format transformation complete: {len(items)} ranking items")
-
-            # Update field mapping with Long-Format info
-            if not field_mapping:
-                field_mapping = {}
-            field_mapping['long_format'] = True
-            field_mapping['original_mapping'] = long_format_mapping
-        else:
-            logger.warning(f"Long-Format mapping failed: {long_format_mapping.get('error', 'unknown')}")
-
-    # Create session from (potentially transformed) data
+    # Create session from data — no AI rewrite of items.
     session = import_service.create_session_from_data(
         data=items,
         task_type=task_type,
@@ -410,6 +375,14 @@ def import_from_data():
 
     if session.status == "error":
         raise ValidationError(f"Import failed: {session.errors}")
+
+    if (session.imported_count or 0) <= 0:
+        warnings_preview = "; ".join(session.warnings[:3]) if session.warnings else ""
+        details = f" Warnings: {warnings_preview}" if warnings_preview else ""
+        raise ValidationError(
+            "No items could be imported for this scenario."
+            + details
+        )
 
     # Clean up session
     import_service.delete_session(session.session_id)

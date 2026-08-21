@@ -22,6 +22,7 @@ cp .env.template.development .env
 | admin | admin123 | admin |
 | researcher | admin123 | researcher |
 | evaluator | admin123 | evaluator |
+| chatbot_manager | admin123 | chatbot_manager |
 
 ## Verify / Debug
 

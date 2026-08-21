@@ -80,12 +80,25 @@
                     >
                       {{ vote.vote }}
                     </LTag>
+                    <!-- Labeling label (category or "unsure") -->
+                    <LTag
+                      v-if="vote.label"
+                      :variant="getLabelVariant(vote.label)"
+                      size="sm"
+                    >
+                      {{ vote.label }}
+                    </LTag>
                     <!-- Rating dimensions -->
                     <div v-if="vote.ratings" class="ratings-display">
                       <div v-for="(value, key) in vote.ratings" :key="key" class="rating-item">
                         <span class="rating-label">{{ key }}:</span>
                         <span class="rating-value">{{ value }}</span>
                       </div>
+                    </div>
+                    <!-- Optional free-text feedback the labeler left -->
+                    <div v-if="vote.reasoning" class="reasoning">
+                      <span class="reasoning-label">{{ $t('scenarioManager.threadDetail.reasoning') }}:</span>
+                      <span class="reasoning-text">{{ vote.reasoning }}</span>
                     </div>
                     <!-- Ranking votes -->
                     <div v-if="vote.rankings && vote.rankings.length > 0" class="rankings-display">
@@ -206,7 +219,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 
 const props = defineProps({
   modelValue: {
@@ -221,6 +234,8 @@ const props = defineProps({
 
 defineEmits(['update:modelValue'])
 
+const { formatModelName: registryFormatModelName } = useModelRegistry()
+
 const humanVotes = computed(() => {
   return (props.thread?.votes || []).filter(v => v.type === 'human')
 })
@@ -230,11 +245,7 @@ const llmVotes = computed(() => {
 })
 
 function formatLlmModelName(modelId) {
-  const parsed = parseUserProviderModelId(modelId)
-  if (parsed?.displayName) {
-    return parsed.displayName
-  }
-  return modelId || 'LLM'
+  return registryFormatModelName(modelId)
 }
 
 function getMessageClass(message) {
@@ -261,6 +272,11 @@ function getRoleIcon(message) {
 
 function getVoteVariant(vote) {
   const v = vote?.toLowerCase() || ''
+  // Pairwise comparison choices (A / B / tie) — keep in sync with the
+  // Einzelstimmen matrix colours in ScenarioEvaluationTab.
+  if (v === 'a') return 'info'
+  if (v === 'b') return 'accent'
+  if (v === 'tie' || v === 'equal') return 'warning'
   if (v.includes('real') || v.includes('echt') || v.includes('authentic')) {
     return 'success'
   }
@@ -591,5 +607,25 @@ function formatContent(content) {
   background-color: rgba(var(--v-theme-on-surface), 0.03);
   border-radius: 4px;
   text-align: center;
+}
+
+/* ===== Mobile responsive (<= 600px) =====
+   Stack the messages + votes panels vertically so the fixed 320px votes
+   panel stops squeezing the messages pane to ~0px on narrow screens. */
+@media (max-width: 600px) {
+  .content-split {
+    flex-direction: column;
+  }
+
+  .messages-panel {
+    /* Remove the now-meaningless vertical divider between stacked panels */
+    border-right: none;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  }
+
+  .votes-panel {
+    width: 100%;
+    border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  }
 }
 </style>

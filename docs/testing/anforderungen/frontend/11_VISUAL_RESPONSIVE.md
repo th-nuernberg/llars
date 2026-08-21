@@ -33,7 +33,6 @@ Dieses Dokument beschreibt Visual Regression Tests, Responsive Design Tests und 
 | RES-BP02 | Chat Interface | ✓ | ✓ | ✓ | ✓ | ✓ |
 | RES-BP03 | Admin Panel | - | ✓ | ✓ | ✓ | ✓ |
 | RES-BP04 | Ranker/Rater | ✓ | ✓ | ✓ | ✓ | ✓ |
-| RES-BP05 | LaTeX Editor | - | - | ✓ | ✓ | ✓ |
 | RES-BP06 | Markdown Collab | - | ✓ | ✓ | ✓ | ✓ |
 
 ### Test-Code
@@ -332,7 +331,6 @@ test('BRW-02: websocket connection works', async ({ page, browserName }) => {
 | VIS-05 | /Ranker | md, lg | light, dark |
 | VIS-06 | /Rater | md, lg | light, dark |
 | VIS-07 | /Judge | lg | light, dark |
-| VIS-08 | /LatexCollab | lg | light, dark |
 | VIS-09 | /MarkdownCollab | lg | light, dark |
 | VIS-10 | /Anonymize | md, lg | light, dark |
 

@@ -203,6 +203,32 @@ export const generationApi = {
   },
 
   // ===========================================================================
+  // SHARING
+  // ===========================================================================
+
+  /**
+   * Share a job with another user (read-only access).
+   *
+   * @param {number} jobId - Job ID
+   * @param {string} username - Target username
+   * @returns {Promise<Object>} Share info
+   */
+  shareJob(jobId, username) {
+    return axios.post(`${API_BASE}/jobs/${jobId}/share`, { username })
+  },
+
+  /**
+   * Remove a share from a job.
+   *
+   * @param {number} jobId - Job ID
+   * @param {string} username - Target username
+   * @returns {Promise<Object>} Success response
+   */
+  unshareJob(jobId, username) {
+    return axios.post(`${API_BASE}/jobs/${jobId}/unshare`, { username })
+  },
+
+  // ===========================================================================
   // STATISTICS & ESTIMATION
   // ===========================================================================
 
@@ -231,6 +257,19 @@ export const generationApi = {
    */
   estimateCost(config) {
     return axios.post(`${API_BASE}/estimate`, { config })
+  },
+
+  // ===========================================================================
+  // SETTINGS
+  // ===========================================================================
+
+  /**
+   * Get admin-configured max parallelism for generation jobs.
+   *
+   * @returns {Promise<Object>} { max_parallel: N }
+   */
+  getMaxParallel() {
+    return axios.get(`${API_BASE}/settings/max-parallel`)
   },
 
   // ===========================================================================

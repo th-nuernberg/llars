@@ -8,9 +8,24 @@ bind = '0.0.0.0:8081'
 backlog = 2048
 
 # Worker processes
-# For gevent/eventlet, use 1 worker (greenlets handle concurrency)
-# For sync workers, use: (2 * CPU cores) + 1
-workers = 1
+# Multiple gevent workers let LLARS spread request and Socket.IO load across CPU cores.
+# CPU-heavy work is offloaded to dedicated backend workers, so the web tier stays responsive.
+# Auto-scale to CPU count: cpu_count + 1 for gevent async workers.
+# Gevent workers handle concurrency via greenlets, so fewer processes are needed
+# than the sync formula (2*cpu+1). Each worker loads the full Flask app (~400MB+
+# Flair NER model), so more workers = more RAM. Capped at 13 to stay within
+# Docker memory limit (12GB). Override via GUNICORN_WORKERS env var.
+def _auto_workers() -> int:
+    env_val = os.environ.get('GUNICORN_WORKERS', '').strip()
+    if env_val:
+        return max(1, int(env_val))
+    try:
+        cpu_count = len(os.sched_getaffinity(0))
+    except AttributeError:
+        cpu_count = os.cpu_count() or 4
+    return min(cpu_count + 1, 13)
+
+workers = _auto_workers()
 
 # Worker class: gevent-websocket for real WebSocket support
 # This provides better Docker DNS compatibility than eventlet
@@ -47,9 +62,16 @@ keyfile = None
 certfile = None
 
 # Hooks
+# NOTE: a master-side Flair preload (on_starting) was tried to kill the ~35s
+# per-worker cold model load, but loading torch/flair in the master BEFORE the
+# gevent workers monkey-patch breaks background greenlets (the chatbot-wizard
+# crawl hung at 0% in dev/staging smoke). The Flair speed fix needs a
+# gevent-safe design (e.g. offload NER to the dedicated worker container, or
+# load post-monkeypatch) — see git history of this file for the reverted attempt.
 def on_starting(server):
     """Called just before the master process is initialized."""
     pass
+
 
 def on_reload(server):
     """Called to recycle workers during a reload via SIGHUP."""

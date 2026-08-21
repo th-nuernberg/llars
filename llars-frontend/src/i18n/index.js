@@ -15,30 +15,19 @@ export const LANGUAGE_STORAGE_KEY = 'llars-language'
 export const DEFAULT_LANGUAGE = 'de'
 export const SUPPORTED_LANGUAGES = ['de', 'en']
 
-/**
- * Detect a supported language from the browser settings.
- * @returns {string|null} The language code ('de' or 'en') or null
- */
-function getSystemLanguage() {
-  if (typeof navigator === 'undefined') return null
-
-  const candidates = Array.isArray(navigator.languages) && navigator.languages.length > 0
-    ? navigator.languages
-    : [navigator.language]
-
-  for (const lang of candidates) {
-    if (!lang) continue
-    const code = String(lang).toLowerCase().split('-')[0]
-    if (SUPPORTED_LANGUAGES.includes(code)) {
-      return code
-    }
-  }
-
-  return null
-}
+// getSystemLanguage helper removed — see getInitialLanguage above.
+// LLARS defaults to DE for new visitors; users opt into EN explicitly.
 
 /**
- * Get the saved language from localStorage or fall back to system/default.
+ * Get the saved language from localStorage or fall back to the default.
+ *
+ * LLARS defaults to German for any new visitor — the platform's home
+ * country, the source language of all study material, and what the
+ * outreach mails are written in. Browser-language sniffing is
+ * intentionally skipped: an EN-browser user who lands on a DE study
+ * link should see DE first and switch manually if desired (saved to
+ * localStorage for next visits).
+ *
  * @returns {string} The language code ('de' or 'en')
  */
 export function getInitialLanguage() {
@@ -53,7 +42,7 @@ export function getInitialLanguage() {
     }
   }
 
-  return getSystemLanguage() || DEFAULT_LANGUAGE
+  return DEFAULT_LANGUAGE
 }
 
 /**

@@ -1,0 +1,113 @@
+/* =====================================================================
+   LLARS-Design für die MkDocs-Dokumentation (Material for MkDocs)
+   ---------------------------------------------------------------------
+   "Ein bisschen LLARS": Farbpalette + die asymmetrische Border-Radius-
+   Signatur, ohne das Material-Theme umzubauen. Funktioniert in Light-
+   (default) und Dark- (slate) Scheme. Die Farben werden per Scheme-
+   Selektor gesetzt; da dieses Stylesheet nach dem Theme-CSS geladen wird,
+   gewinnen die Overrides bei gleicher Spezifität via Quell-Reihenfolge.
+   ===================================================================== */
+
+:root {
+  --llars-primary: #b0ca97;
+  --llars-secondary: #d1bc8a;
+  --llars-accent: #88c4c8;
+  --llars-success: #98d4bb;
+  --llars-danger: #e8a087;
+  --llars-ink: #23331a; /* dunkler Text auf hellgrünem Header */
+
+  --llars-radius: 16px 4px 16px 4px;   /* Buttons */
+  --llars-radius-sm: 8px 2px 8px 2px;  /* Karten/Code-Blöcke */
+  --llars-radius-xs: 6px 2px 6px 2px;  /* Chips/Tags/Suche */
+}
+
+/* ---- Light Scheme -------------------------------------------------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #b0ca97;
+  --md-primary-fg-color--light: #c5d9b3;
+  --md-primary-fg-color--dark: #8fae74;
+  --md-primary-bg-color: var(--llars-ink);          /* Header-Text dunkel (Kontrast auf Grün) */
+  --md-primary-bg-color--light: rgba(35, 51, 26, 0.7);
+
+  --md-accent-fg-color: #4f9096;                     /* Hover/Akzent: lesbares Teal */
+  --md-accent-fg-color--transparent: rgba(136, 196, 200, 0.1);
+  --md-typeset-a-color: #3f8388;                     /* Links */
+}
+
+/* ---- Dark Scheme (slate) ------------------------------------------ */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #8fae74;
+  --md-primary-fg-color--light: #b0ca97;
+  --md-primary-fg-color--dark: #6f8f57;
+  --md-primary-bg-color: #ffffff;
+
+  --md-accent-fg-color: #88c4c8;
+  --md-typeset-a-color: #9fd2d6;
+}
+
+/* Header-/Tab-Text im Light-Scheme dunkel halten (hellgrüner Hintergrund) */
+[data-md-color-scheme="default"] .md-header,
+[data-md-color-scheme="default"] .md-tabs {
+  color: var(--llars-ink);
+}
+[data-md-color-scheme="default"] .md-search__input::placeholder {
+  color: rgba(35, 51, 26, 0.55);
+}
+
+/* ---- Asymmetrische Radius-Signatur -------------------------------- */
+.md-typeset .highlight > pre,
+.md-typeset pre > code,
+.md-typeset .admonition,
+.md-typeset details,
+.md-typeset table:not([class]) {
+  border-radius: var(--llars-radius-sm);
+}
+
+.md-typeset code {
+  border-radius: var(--llars-radius-xs);
+  background-color: rgba(176, 202, 151, 0.16);
+}
+
+.md-search__form {
+  border-radius: var(--llars-radius-xs);
+}
+
+.md-typeset .md-button {
+  border-radius: var(--llars-radius);
+}
+
+/* ---- Admonitions in LLARS-Akzentfarben ---------------------------- */
+.md-typeset .admonition.note,
+.md-typeset .admonition.info,
+.md-typeset .admonition.abstract {
+  border-left-color: var(--llars-accent);
+}
+.md-typeset .admonition.tip,
+.md-typeset .admonition.success,
+.md-typeset .admonition.hint {
+  border-left-color: var(--llars-success);
+}
+.md-typeset .admonition.warning,
+.md-typeset .admonition.attention {
+  border-left-color: var(--llars-secondary);
+}
+.md-typeset .admonition.danger,
+.md-typeset .admonition.failure {
+  border-left-color: var(--llars-danger);
+}
+
+/* ---- Tabellen: LLARS-getönter Header ------------------------------ */
+.md-typeset table:not([class]) th {
+  background-color: rgba(176, 202, 151, 0.16);
+}
+
+/* ---- Aktiver Nav-Eintrag betont ----------------------------------- */
+.md-nav__link--active,
+.md-nav__link--active > .md-nav__link {
+  font-weight: 600;
+}
+
+/* ---- Code-Copy-Button + Tabs im Akzentton ------------------------- */
+.md-typeset .tabbed-labels > label:hover {
+  color: var(--md-accent-fg-color);
+}

@@ -260,7 +260,9 @@ const typeOptions = [
   { title: '⭐️ Rating', value: 'rating' },
   { title: '✉️ Verlaufsbewertung', value: 'mail_rating' },
   { title: '⚖️ Gegenüberstellung', value: 'comparison' },
-  { title: '🕵️ Fake/Echt', value: 'authenticity' }
+  { title: '💬 Kommunikations-Vergleich', value: 'communication_comparison' },
+  { title: '🕵️ Fake/Echt', value: 'authenticity' },
+  { title: '🏷️ Konversationslabeling', value: 'conversation_labeling' }
 ];
 
 // Table headers
@@ -282,7 +284,11 @@ const filteredScenarios = computed(() => {
     const matchesStatus = statusFilter.value === 'all' || s.status === statusFilter.value;
     const matchesType = typeFilter.value === 'all' || s.function_type_name === typeFilter.value;
     return matchesSearch && matchesStatus && matchesType;
-  });
+  })
+  // Default order: newest scenario first (highest scenario_id = most recently created).
+  // The v-data-table keeps this order until the user clicks a column header to re-sort.
+  .slice()
+  .sort((a, b) => (b.scenario_id || 0) - (a.scenario_id || 0));
 });
 
 const scenarioStats = computed(() => {
@@ -309,7 +315,9 @@ const getFunctionTypeName = (type) => {
     'rating': '⭐️ Rating',
     'ranking': '🏆 Ranking',
     'comparison': '⚖️ Gegenüberstellung',
-    'authenticity': '🕵️ Fake/Echt'
+    'communication_comparison': '💬 Kommunikations-Vergleich',
+    'authenticity': '🕵️ Fake/Echt',
+    'conversation_labeling': '🏷️ Konversationslabeling'
   };
   return typeMap[type] || type;
 };
@@ -320,7 +328,9 @@ const getTypeColor = (type) => {
     'rating': 'orange',
     'ranking': 'blue',
     'comparison': 'indigo',
-    'authenticity': 'teal'
+    'communication_comparison': 'cyan',
+    'authenticity': 'teal',
+    'conversation_labeling': 'teal'
   };
   return colorMap[type] || 'grey';
 };
@@ -331,7 +341,9 @@ const getTypeIcon = (type) => {
     'rating': 'mdi-star-outline',
     'ranking': 'mdi-format-list-numbered',
     'comparison': 'mdi-compare-horizontal',
-    'authenticity': 'mdi-shield-search'
+    'communication_comparison': 'mdi-forum-outline',
+    'authenticity': 'mdi-shield-search',
+    'conversation_labeling': 'mdi-tag-multiple-outline'
   };
   return iconMap[type] || 'mdi-clipboard-outline';
 };
@@ -351,7 +363,9 @@ const getTypeVariant = (type) => {
     'rating': 'warning',
     'ranking': 'info',
     'comparison': 'primary',
-    'authenticity': 'secondary'
+    'communication_comparison': 'accent',
+    'authenticity': 'secondary',
+    'conversation_labeling': 'accent'
   };
   return variantMap[type] || 'gray';
 };

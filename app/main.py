@@ -8,12 +8,48 @@ from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
 from routes.registry import register_all_blueprints
 from services.api_metrics_service import create_metrics_middleware
+from services.runtime_config import get_redis_client, get_redis_url, get_runtime_role, is_web_runtime
 from werkzeug.middleware.proxy_fix import ProxyFix
+import logging
 import re
 import os
-import redis
+
+
+class _SocketIOAccessLogFilter(logging.Filter):
+    """Suppress noisy Socket.IO polling access logs."""
+
+    _socketio_path_pattern = re.compile(r'"\w+\s+/socket\.io/', re.IGNORECASE)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:
+            return True
+        return not bool(self._socketio_path_pattern.search(message))
+
+
+def _configure_access_log_filters() -> None:
+    suppress_socketio_access_logs = str(
+        os.environ.get('SUPPRESS_SOCKETIO_ACCESS_LOGS', 'true')
+    ).lower() in ('1', 'true', 'yes', 'on')
+    if not suppress_socketio_access_logs:
+        return
+
+    filter_instance = _SocketIOAccessLogFilter()
+    for logger_name in ('werkzeug', 'gunicorn.access'):
+        logger = logging.getLogger(logger_name)
+        has_socketio_filter = any(
+            isinstance(existing_filter, _SocketIOAccessLogFilter)
+            for existing_filter in logger.filters
+        )
+        if not has_socketio_filter:
+            logger.addFilter(filter_instance)
 
 app = Flask(__name__)
+_configure_access_log_filters()
+
+# Limit upload size to 50 MB to prevent oversized file uploads
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 # Trust one reverse proxy hop (nginx) by default so request.remote_addr
 # resolves to the actual client IP instead of the container network IP.
@@ -32,15 +68,7 @@ create_metrics_middleware(app)
 
 # Initialize Redis client for server-authoritative sessions (Wizard Sessions, etc.)
 # Redis provides persistent session storage that survives browser closures and server restarts
-redis_client = redis.Redis(
-    host=os.environ.get('REDIS_HOST', 'llars-redis'),
-    port=int(os.environ.get('REDIS_PORT', 6379)),
-    db=int(os.environ.get('REDIS_DB', 0)),
-    decode_responses=True,  # Return strings instead of bytes
-    socket_connect_timeout=5,
-    socket_timeout=5,
-    retry_on_timeout=True
-)
+redis_client = get_redis_client()
 
 # CORS configuration - restrict in production!
 allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost,http://localhost:80,http://localhost:5173').split(',')
@@ -58,7 +86,17 @@ else:
 
 
 def _skip_startup_tasks() -> bool:
+    if get_runtime_role() == 'standby':
+        return True
     return os.environ.get('LLARS_SKIP_STARTUP_TASKS', '').lower() in ('1', 'true', 'yes')
+
+
+def _should_run_one_time_startup_tasks() -> bool:
+    if _skip_startup_tasks() or not is_web_runtime():
+        return False
+    if os.environ.get('FLASK_ENV', 'production') == 'development':
+        return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+    return True
 
 # SocketIO with increased timeouts for long-running LLM streams
 # ping_timeout: How long to wait for pong before disconnecting (default: 20s)
@@ -78,10 +116,15 @@ socketio_transports = None
 if socketio_async_mode == 'threading':
     socketio_transports = ['polling']
 
+socketio_message_queue = os.environ.get('SOCKETIO_MESSAGE_QUEUE', '').strip() or None
+if socketio_message_queue is None and socketio_async_mode != 'threading':
+    socketio_message_queue = get_redis_url()
+
 socketio = SocketIO(
     app,
     cors_allowed_origins=socket_cors,
     async_mode=socketio_async_mode,
+    message_queue=socketio_message_queue,
     ping_timeout=120,  # 2 minutes - allow for long LLM responses
     ping_interval=30,  # Send ping every 30 seconds
     allow_upgrades=socketio_allow_upgrades,
@@ -95,61 +138,203 @@ socketio = SocketIO(
 # Rate Limiting - Schützt vor Brute-Force und DoS
 # In development mode, use much higher limits to support E2E testing
 is_development = os.environ.get('FLASK_ENV', 'production') == 'development'
-rate_limit_defaults = ["10000 per day", "1000 per hour"] if is_development else ["200 per day", "50 per hour"]
+rate_limit_defaults = ["10000 per day", "1000 per hour"] if is_development else ["5000 per day", "500 per hour"]
+rate_limit_storage_uri = os.environ.get('RATE_LIMIT_STORAGE_URI', '').strip()
+if not rate_limit_storage_uri:
+    rate_limit_storage_uri = "memory://" if is_development else get_redis_url(
+        db_override=int(os.environ.get('REDIS_RATE_LIMIT_DB', os.environ.get('REDIS_DB', 0)))
+    )
+
+
+def _get_real_client_ip():
+    """
+    Ermittelt die echte Client-IP hinter dem nginx Reverse Proxy — spoofing-resistent.
+
+    Ohne diese Funktion sehen alle User wie eine einzige IP aus (nginx-Container-IP),
+    und das Rate-Limit wird für ALLE User gemeinsam gezählt.
+
+    SICHERHEIT: nginx hängt die echte Peer-IP RECHTS an einen ggf. vom Client
+    mitgeschickten X-Forwarded-For an (`proxy_add_x_forwarded_for`). Würde man dem
+    LINKEN (ersten) Element vertrauen, könnte ein Angreifer seine Rate-Limit-Bucket
+    frei wählen, indem er einfach einen gefälschten X-Forwarded-For-Header schickt —
+    und damit das Limit für Login-Brute-Force, Passwort-Reset-Mail-Flooding und DoS
+    komplett umgehen. Korrekt ist die Adresse, die unser eigener vertrauenswürdiger
+    Proxy beigesteuert hat: das `PROXY_FIX_X_FOR`-te Element VON RECHTS (Default 1 Hop
+    → letztes Element). Die linken Einträge sind potenziell client-gefälscht und werden
+    ignoriert. X-Real-IP wird von nginx mit `$remote_addr` überschrieben und ist daher
+    ebenfalls nicht fälschbar.
+    """
+    # Anzahl der vertrauenswürdigen Proxy-Hops (mind. 1) — gespiegelt aus der
+    # ProxyFix-Konfiguration oben, damit beide dieselbe Topologie annehmen.
+    trusted_hops = max(proxy_fix_x_for, 1)
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        parts = [p.strip() for p in forwarded_for.split(',') if p.strip()]
+        if parts:
+            # Von rechts zählen: nur die von unseren Proxies angehängten Einträge
+            # sind vertrauenswürdig. Bei genau 1 Hop ist das das letzte Element.
+            return parts[-min(trusted_hops, len(parts))]
+    # X-Real-IP wird von nginx (überschreibend) gesetzt → nicht client-fälschbar.
+    real_ip = request.headers.get('X-Real-Ip')
+    if real_ip:
+        return real_ip.strip()
+    return get_remote_address()
+
 
 limiter = Limiter(
     app=app,
-    key_func=get_remote_address,
+    key_func=_get_real_client_ip,
     default_limits=rate_limit_defaults,
-    storage_uri="memory://",  # In production: Redis verwenden
+    storage_uri=rate_limit_storage_uri,
 )
 
-# Exempt health check and judge session endpoints from rate limiting
+
+# CI-/interne Anfragen vom Rate-Limit ausnehmen. Die nächtliche E2E-Suite testet
+# die Staging-Instanz von einer EINZIGEN internen IP (Docker-Gateway/Loopback)
+# gegen localhost:55080 und sprengt sonst das strikte Per-IP-Limit (500/h im
+# Prod-Modus) → 429, was den ganzen Deploy blockiert (E2E-Timeout + smoke:staging
+# 429). Echte Nutzer kommen über das öffentliche FH-Gateway mit ÖFFENTLICHEN IPs
+# und bleiben unverändert limitiert. Spoofing-sicher: X-Real-IP/X-Forwarded-For
+# sind nicht client-fälschbar (siehe _get_real_client_ip), eine öffentliche
+# Quelle kann keine private IP vortäuschen.
+@limiter.request_filter
+def exempt_internal_ips():
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(_get_real_client_ip())
+    except (ValueError, TypeError):
+        return False
+    return ip.is_private or ip.is_loopback
+
+
+# Exempt high-frequency and internal endpoints from rate limiting
 @limiter.request_filter
 def exempt_endpoints():
-    """Exempt health check and high-frequency judge endpoints from rate limiting"""
+    """Exempt health check, Socket.IO, and high-frequency endpoints from rate limiting."""
+    path = request.path or ''
+    # Exempt Socket.IO / WebSocket endpoints (check path BEFORE endpoint)
+    if path.startswith('/socket.io'):
+        return True
     if not request.endpoint:
         return False
-    path = request.path or ''
-    # Scenario stats are lazy-loaded in list views and can legitimately create
-    # bursty request patterns when users browse many scenarios.
-    if request.method == 'GET' and re.fullmatch(r'/api/scenarios/\d+/stats', path):
-        return True
-    # Exempt health checks
+    # Exempt health checks and version endpoint
     if 'health_check' in request.endpoint:
         return True
-    # Exempt judge session polling endpoints (queue, current, comparisons, workers)
-    if request.path and '/api/judge/sessions/' in request.path:
+    if request.endpoint == 'data_bp.get_version':
         return True
-    # Exempt email thread endpoints (frequently accessed by judge workers)
-    if request.path and '/api/email_threads/' in request.path:
+    # Exempt judge session polling (queue, current, comparisons, workers)
+    if '/api/judge/sessions/' in path:
         return True
-    # Exempt chatbot wizard endpoints (high-frequency polling/updates)
-    if request.path and '/api/chatbots/' in request.path and '/wizard/' in request.path:
+    # Exempt evaluation session endpoints (frequent polling during active evaluation)
+    if path.startswith('/api/evaluation/'):
         return True
-    # Exempt crawler job status polling endpoints
-    if request.path and request.path.startswith('/api/crawler/jobs'):
+    # Exempt scenario endpoints (stats polling, pagination)
+    if path.startswith('/api/scenarios/'):
         return True
-    # Exempt LaTeX compile status + SyncTeX endpoints (frequently polled)
-    if request.path and request.path.startswith('/api/latex-collab/compile/'):
+    # Exempt generation endpoints (pagination, WebSocket polling)
+    if path.startswith('/api/generation/'):
         return True
-    # Exempt data import endpoints (bulk uploads can exceed normal limits)
-    if request.path and request.path.startswith('/api/import/'):
+    # Exempt data import endpoints (bulk uploads)
+    if path.startswith('/api/import/'):
+        return True
+    # Exempt the app-shell polling endpoints.
+    #
+    # INCIDENT 2026-07-29: these two are polled by the running SPA roughly
+    # every 5s (usePermissions / useCommunicationAdmin), i.e. ~720 req/h per
+    # user — well past the production default of 500/h per (IP, endpoint).
+    # Once the budget was gone every request 429'd, `fetchPermissions()` never
+    # set hasLoaded, the permission set stayed EMPTY, and the router guard
+    # bounced raters out of permission-gated routes back to /login. Users
+    # reported it as "I keep getting logged out" / "I can't log in at all" —
+    # there was never a 401 involved (230x 429, 0x 401 for the worst-hit IP).
+    #
+    # Both are cheap, authenticated reads that the app cannot function
+    # without, so rate-limiting them only ever breaks legitimate sessions;
+    # they are useless as an attack surface (no writes, no enumeration).
+    if path.startswith('/api/permissions/'):
+        return True
+    if path.startswith('/api/system/communication-status'):
         return True
     return False
 
-# Flask Secret Key (required for session management, e.g. Zotero OAuth)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production'))
+# Flask Secret Key (required for session management and signed cookies)
+_DEFAULT_SECRET_KEY = 'dev-secret-key-change-in-production'
+_flask_secret = os.environ.get('FLASK_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', _DEFAULT_SECRET_KEY))
+_jwt_secret = os.environ.get('JWT_SECRET_KEY', _DEFAULT_SECRET_KEY)
+
+# Security: Refuse to start in production with default FLASK_SECRET_KEY
+# (JWT_SECRET_KEY is legacy and will be removed after full Authentik migration)
+if not is_development:
+    if _flask_secret == _DEFAULT_SECRET_KEY:
+        raise RuntimeError(
+            "SECURITY ERROR: Default FLASK_SECRET_KEY detected in production! "
+            "Set FLASK_SECRET_KEY to a unique, cryptographically random value. "
+            "Example: python3 -c \"import secrets; print(secrets.token_hex(64))\""
+        )
+    _system_api_key = os.environ.get('SYSTEM_ADMIN_API_KEY', '')
+    if _system_api_key and 'change-in-production' in _system_api_key.lower():
+        raise RuntimeError(
+            "SECURITY ERROR: Default SYSTEM_ADMIN_API_KEY detected in production! "
+            "Set SYSTEM_ADMIN_API_KEY to a unique, cryptographically random value."
+        )
+
+app.secret_key = _flask_secret
+
+# Session-Cookie-Härtung: Die Flask-Session trägt kurzlebigen Server-State.
+# HTTPONLY blockt JS-Zugriff (XSS), SAMESITE=Lax mindert CSRF, SECURE erzwingt
+# HTTPS-only-Übertragung (nur in Production, da Dev über http läuft).
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = not is_development
 
 # JWT Configuration (for legacy auth routes)
 # TODO: Complete migration to Authentik and remove legacy JWT auth
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['JWT_SECRET_KEY'] = _jwt_secret
 jwt = JWTManager(app)
 
 configure_database(app)
 
 # Register all blueprints via central registry
 register_all_blueprints(app)
+
+
+# ---------------------------------------------------------------------------
+# Dedicated, stricter rate limits on sensitive UNAUTHENTICATED endpoints.
+# These stack on top of the global default_limits and target brute-force /
+# email-bombing of the self-service password-reset flow.
+#
+# Applied here (after blueprint registration) rather than as @limiter.limit
+# decorators in the route modules, because the limiter lives in main.py and the
+# route files cannot import it at definition time without a circular import
+# (mirrors the lazy `from main import socketio` pattern used elsewhere).
+# Flask-Limiter keys decorator limits by the view function's qualified name, so
+# applying limiter.limit(...) to the already-registered view object binds at
+# request time. The per-IP key is only as good as _get_real_client_ip() — see
+# the spoofing-resistant X-Forwarded-For handling above; the password-reset
+# request route additionally enforces a per-account cooldown that no IP trick
+# can bypass.
+# ---------------------------------------------------------------------------
+_pw_reset_request_limit = (
+    "30 per hour;15 per 10 minutes" if is_development else "6 per hour;3 per 10 minutes"
+)
+_pw_reset_redeem_limit = "60 per hour" if is_development else "20 per hour"
+# Public, account-creating referral endpoints: throttle to curb mass account
+# creation / email-bombing / DoS on the unauthenticated POST /register and the
+# write-triggering (click_count) GET /validate. Generous in dev.
+_referral_register_limit = "60 per hour;20 per 10 minutes" if is_development else "20 per hour;6 per 10 minutes"
+_referral_validate_limit = "300 per hour" if is_development else "120 per hour"
+_SENSITIVE_ENDPOINT_LIMITS = {
+    'auth.request_password_reset': _pw_reset_request_limit,
+    'auth.perform_password_reset': _pw_reset_redeem_limit,
+    'referral.register_via_referral': _referral_register_limit,
+    'referral.validate_referral_link': _referral_validate_limit,
+}
+for _endpoint, _limit_spec in _SENSITIVE_ENDPOINT_LIMITS.items():
+    _view = app.view_functions.get(_endpoint)
+    if _view is not None:
+        limiter.limit(_limit_spec)(_view)
+    else:
+        print(f"[Startup] WARN: rate-limit target endpoint not registered: {_endpoint}")
 
 
 # Configure all SocketIO event handlers
@@ -172,7 +357,7 @@ def _should_start_background_threads() -> bool:
     In development, `flask run` spawns a reloader parent process and a child process.
     The child sets `WERKZEUG_RUN_MAIN=true`. Background threads must only start once.
     """
-    if _skip_startup_tasks():
+    if _skip_startup_tasks() or not is_web_runtime():
         return False
     if os.environ.get('FLASK_ENV', 'production') == 'development':
         return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
@@ -231,7 +416,8 @@ def fix_missing_chroma_collection_names():
         except Exception as e:
             print(f"[Startup] Error fixing chroma_collection_names: {e}")
 
-fix_missing_chroma_collection_names()
+if _should_run_one_time_startup_tasks():
+    fix_missing_chroma_collection_names()
 
 
 # Seed default LLM models into the database
@@ -250,7 +436,8 @@ def seed_llm_models():
         except Exception as e:
             print(f"[Startup] Error seeding LLM models: {e}")
 
-seed_llm_models()
+if _should_run_one_time_startup_tasks():
+    seed_llm_models()
 
 
 # Ensure LLM providers from environment variables (LiteLLM, OpenAI)
@@ -273,7 +460,8 @@ def ensure_llm_providers():
         except Exception as e:
             print(f"[Startup] Error setting up LLM providers: {e}")
 
-ensure_llm_providers()
+if _should_run_one_time_startup_tasks():
+    ensure_llm_providers()
 
 
 # Seed default field prompts for AI-assist features
@@ -295,145 +483,348 @@ def seed_field_prompts():
         except Exception as e:
             print(f"[Startup] Error seeding field prompts: {e}")
 
-seed_field_prompts()
+if _should_run_one_time_startup_tasks():
+    seed_field_prompts()
 
 
-# Auto-start LLM evaluations for scenarios with configured evaluators
-def start_pending_llm_evaluations():
+# Migrate plaintext API keys to argon2 hashes
+def migrate_api_key_hashes():
     """
-    Start LLM evaluations for all scenarios that have pending evaluations.
-
-    This runs on startup to ensure LLM evaluators process any threads that
-    haven't been evaluated yet. Runs in background threads to not block startup.
+    One-time migration: hash any remaining plaintext API keys with argon2id.
+    Idempotent — only processes users with api_key set but api_key_hash missing.
     """
     if _skip_startup_tasks():
-        print("[Startup] Skipping LLM evaluation startup (LLARS_SKIP_STARTUP_TASKS=true)")
+        print("[Startup] Skipping API key hash migration (LLARS_SKIP_STARTUP_TASKS=true)")
         return
-
-    import json
-    import threading
+    from migrations.hash_api_keys import migrate_api_keys_to_hash
     from db.database import db
-    from db.models import (
-        RatingScenarios, ScenarioThreads, LLMTaskResult,
-        ComparisonSession, FeatureFunctionType
+
+    with app.app_context():
+        try:
+            migrated = migrate_api_keys_to_hash(db)
+            if migrated > 0:
+                print(f"[Startup] Migrated {migrated} API keys from plaintext to argon2 hash")
+            else:
+                print("[Startup] No plaintext API keys to migrate")
+        except Exception as e:
+            print(f"[Startup] Error migrating API keys: {e}")
+
+if _should_run_one_time_startup_tasks():
+    migrate_api_key_hashes()
+
+
+# Add metadata_json column to evaluation_items (introduced in 6f2acd61, never migrated).
+def migrate_evaluation_item_metadata_column():
+    """
+    One-time migration: add metadata_json (JSON, nullable) to evaluation_items.
+    Idempotent — no-op when the column already exists.
+    See app/db/migrations/migrate_evaluation_items_metadata.py for details.
+    """
+    if _skip_startup_tasks():
+        print("[Startup] Skipping evaluation_items metadata_json migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_evaluation_items_metadata import migrate_evaluation_item_metadata
+
+    with app.app_context():
+        try:
+            result = migrate_evaluation_item_metadata()
+            if result.get('column_added'):
+                print("[Startup] Added metadata_json column to evaluation_items")
+            else:
+                print("[Startup] evaluation_items.metadata_json already exists — skipping")
+        except Exception as e:
+            print(f"[Startup] Error migrating evaluation_items.metadata_json: {e}")
+
+if _should_run_one_time_startup_tasks():
+    migrate_evaluation_item_metadata_column()
+
+
+# Add span_id to the three labeling tables (conversation labeling, function_type 9).
+def migrate_labeling_span_id_columns():
+    """
+    One-time migration: span_id + extended unique key on
+    item_labeling_evaluations, labeling_copilot_logs, evaluation_item_timings.
+
+    Purely additive (NOT NULL DEFAULT ''), so existing labeling study data keeps
+    exactly the duplicate protection it had. Idempotent.
+    See app/db/migrations/migrate_labeling_span_id.py for the full rationale.
+    """
+    if _skip_startup_tasks():
+        print("[Startup] Skipping labeling span_id migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_labeling_span_id import migrate_labeling_span_id
+
+    with app.app_context():
+        try:
+            result = migrate_labeling_span_id()
+            if result.get('changed'):
+                touched = [
+                    t['table'] for t in result['tables']
+                    if t['column_added'] or t['index_swapped']
+                ]
+                print(f"[Startup] Added span_id to: {', '.join(touched)}")
+            else:
+                print("[Startup] labeling span_id already present — skipping")
+        except Exception as e:
+            print(f"[Startup] Error migrating labeling span_id: {e}")
+
+if _should_run_one_time_startup_tasks():
+    migrate_labeling_span_id_columns()
+
+
+# Add collect_email + collect_display_name flags to referral_links so
+# study links can hide / skip those fields on the registration form.
+def migrate_referral_link_collect_flags_column():
+    """One-time migration: ``collect_email`` + ``collect_display_name``.
+    Idempotent — no-op when both columns already exist.
+    See app/db/migrations/migrate_referral_link_collect_flags.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping referral_links collect-flags migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_referral_link_collect_flags import migrate_referral_link_collect_flags
+    with app.app_context():
+        try:
+            result = migrate_referral_link_collect_flags()
+            if result.get('columns_added'):
+                print(f"[Startup] referral_links — added {result['columns_added']}")
+            else:
+                print("[Startup] referral_links — collect-flag columns already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating referral_links collect-flags: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_referral_link_collect_flags_column()
+
+
+# Add collect_email_optional flag to referral_links so a link can offer
+# an email field that is shown but not required (optional email at signup).
+def migrate_collect_email_optional_column():
+    """One-time migration: ``collect_email_optional``.
+    Idempotent — no-op when the column already exists.
+    See app/db/migrations/migrate_add_collect_email_optional.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping referral_links collect_email_optional migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_add_collect_email_optional import migrate_add_collect_email_optional
+    with app.app_context():
+        try:
+            result = migrate_add_collect_email_optional()
+            if result.get('columns_added'):
+                print(f"[Startup] referral_links — added {result['columns_added']}")
+            else:
+                print("[Startup] referral_links — collect_email_optional already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating referral_links collect_email_optional: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_collect_email_optional_column()
+
+
+# Add click_count to referral_links so admins can see a funnel
+# "X Aufrufe -> Y registriert" per link (page opens vs registrations).
+def migrate_referral_click_count_column():
+    """One-time migration: ``click_count``.
+    Idempotent — no-op when the column already exists.
+    See app/db/migrations/migrate_add_referral_click_count.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping referral_links click_count migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_add_referral_click_count import migrate_add_referral_click_count
+    with app.app_context():
+        try:
+            result = migrate_add_referral_click_count()
+            if result.get('columns_added'):
+                print(f"[Startup] referral_links — added {result['columns_added']}")
+            else:
+                print("[Startup] referral_links — click_count already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating referral_links click_count: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_referral_click_count_column()
+
+
+# Add demo-enrollment + configurable signup columns to referral_links:
+# target_scenario_ids / viewer_scenario_ids (multi-scenario auto-enroll +
+# read-only viewer) and signup_mode (full | email | instant). Powers the
+# IJCAI demo link. Idempotent.
+def migrate_referral_link_demo_enrollment_columns():
+    """One-time migration: target_scenario_ids, viewer_scenario_ids, signup_mode.
+    Idempotent — no-op when columns already exist.
+    See app/db/migrations/migrate_referral_link_demo_enrollment.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping referral_links demo-enrollment migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_referral_link_demo_enrollment import migrate_referral_link_demo_enrollment
+    with app.app_context():
+        try:
+            result = migrate_referral_link_demo_enrollment()
+            if result.get('columns_added'):
+                print(f"[Startup] referral_links — added {result['columns_added']}")
+            else:
+                print("[Startup] referral_links — demo-enrollment columns already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating referral_links demo-enrollment: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_referral_link_demo_enrollment_columns()
+
+
+# Add demo-content provisioning to referral_links: provision_json says which
+# prompts get cloned and which generation jobs get shared with everyone who
+# registers through the link (IJCAI conference QR code). Idempotent.
+def migrate_referral_link_provisioning_column():
+    """One-time migration: provision_json.
+    Idempotent — no-op when the column already exists.
+    See app/db/migrations/migrate_referral_link_provisioning.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping referral_links provisioning migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_referral_link_provisioning import migrate_referral_link_provisioning
+    with app.app_context():
+        try:
+            result = migrate_referral_link_provisioning()
+            if result.get('columns_added'):
+                print(f"[Startup] referral_links — added {result['columns_added']}")
+            else:
+                print("[Startup] referral_links — provision_json already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating referral_links provisioning: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_referral_link_provisioning_column()
+
+
+# Add a per-link badge color so a referral source keeps one consistent color
+# everywhere it surfaces (scenario-team origin pills, legends, admin list).
+def migrate_referral_link_color_column():
+    """One-time migration: ``color``.
+    Idempotent — no-op when the column already exists.
+    See app/db/migrations/migrate_add_referral_link_color.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping referral_links color migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_add_referral_link_color import migrate_add_referral_link_color
+    with app.app_context():
+        try:
+            result = migrate_add_referral_link_color()
+            if result.get('columns_added'):
+                print(f"[Startup] referral_links — added {result['columns_added']}")
+            else:
+                print("[Startup] referral_links — color already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating referral_links color: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_referral_link_color_column()
+
+
+# Create the password_reset_tokens table backing the self-service
+# "Passwort vergessen?" flow on the login page.
+def migrate_password_reset_tokens():
+    """One-time migration: create ``password_reset_tokens``.
+    Idempotent — no-op when the table already exists.
+    See app/db/migrations/migrate_password_reset_tokens_table.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping password_reset_tokens migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_password_reset_tokens_table import migrate_password_reset_tokens_table
+    with app.app_context():
+        try:
+            result = migrate_password_reset_tokens_table()
+            if result.get('table_created'):
+                print("[Startup] Created password_reset_tokens table")
+            else:
+                print("[Startup] password_reset_tokens table already exists — skipping")
+        except Exception as exc:
+            print(f"[Startup] Error migrating password_reset_tokens table: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_password_reset_tokens()
+
+
+# Create the Mail-Center tables (email_log + referral_invitation) backing the
+# Admin Mail-Center: central mail audit log + invitation→acceptance tracking.
+def migrate_mail_center():
+    """One-time migration: create ``email_log`` + ``referral_invitation``.
+    Idempotent — no-op when the tables already exist.
+    See app/db/migrations/migrate_mail_center_tables.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping mail-center migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_mail_center_tables import migrate_mail_center_tables
+    with app.app_context():
+        try:
+            result = migrate_mail_center_tables()
+            created = result.get('created') or []
+            if created:
+                print(f"[Startup] Created Mail-Center tables: {', '.join(created)}")
+            else:
+                print("[Startup] Mail-Center tables already exist — skipping")
+        except Exception as exc:
+            print(f"[Startup] Error migrating Mail-Center tables: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_mail_center()
+
+
+# Add open/click tracking columns to email_log (Brevo webhook).
+def migrate_email_log_tracking():
+    """One-time migration: ``provider_message_id`` + ``opened_at`` + ``clicked_at``.
+    Idempotent — no-op when all columns already exist.
+    See app/db/migrations/migrate_add_email_log_tracking.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping email_log tracking migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_add_email_log_tracking import migrate_add_email_log_tracking
+    with app.app_context():
+        try:
+            result = migrate_add_email_log_tracking()
+            if result.get('columns_added') or result.get('index_added'):
+                print(f"[Startup] email_log — added {result.get('columns_added')} "
+                      f"(index_added={result.get('index_added')})")
+            else:
+                print("[Startup] email_log — tracking columns already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating email_log tracking columns: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_email_log_tracking()
+
+
+# Add the self_service_password_reset_enabled toggle to system_settings.
+def migrate_self_service_password_reset_setting():
+    """One-time migration: ``self_service_password_reset_enabled``.
+    Idempotent — no-op when the column already exists.
+    See app/db/migrations/migrate_add_self_service_password_reset_setting.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping self_service_password_reset_enabled migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_add_self_service_password_reset_setting import (
+        migrate_add_self_service_password_reset_setting,
     )
-
-    def _run_pending_evaluations():
-        with app.app_context():
-            try:
-                # Find all scenarios with LLM evaluators configured
-                scenarios = RatingScenarios.query.filter(
-                    RatingScenarios.config_json.isnot(None)
-                ).all()
-
-                scenarios_to_process = []
-                for scenario in scenarios:
-                    config = scenario.config_json
-                    if isinstance(config, str):
-                        try:
-                            config = json.loads(config)
-                        except (json.JSONDecodeError, TypeError):
-                            continue
-                    if not isinstance(config, dict):
-                        continue
-
-                    llm_evaluators = config.get('llm_evaluators') or config.get('selected_llms') or []
-                    if not llm_evaluators:
-                        continue
-
-                    # Get function type to handle comparison scenarios differently
-                    function_type = FeatureFunctionType.query.filter_by(
-                        function_type_id=scenario.function_type_id
-                    ).first()
-                    function_name = function_type.name if function_type else None
-
-                    # For comparison scenarios, use ComparisonSessions
-                    if function_name == "comparison":
-                        comparison_sessions = ComparisonSession.query.filter_by(
-                            scenario_id=scenario.id
-                        ).all()
-                        all_ids = {cs.id for cs in comparison_sessions}
-                    else:
-                        # For other scenarios, use ScenarioThreads
-                        scenario_threads = ScenarioThreads.query.filter_by(
-                            scenario_id=scenario.id
-                        ).all()
-                        all_ids = {st.thread_id for st in scenario_threads}
-
-                    if not all_ids:
-                        continue
-
-                    scenarios_to_process.append({
-                        'scenario': scenario,
-                        'llm_evaluators': llm_evaluators,
-                        'all_ids': all_ids,
-                        'is_comparison': function_name == "comparison",
-                    })
-
-                if not scenarios_to_process:
-                    print("[Startup] No scenarios with pending LLM evaluations")
-                    return
-
-                print(f"[Startup] Checking {len(scenarios_to_process)} scenarios for pending LLM evaluations...")
-
-                from services.llm.llm_ai_task_runner import LLMAITaskRunner
-
-                total_started = 0
-                for item in scenarios_to_process:
-                    scenario = item['scenario']
-                    llm_evaluators = item['llm_evaluators']
-                    all_ids = item['all_ids']
-
-                    for model_id in llm_evaluators:
-                        # Get IDs that already have successful results
-                        completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
-                            LLMTaskResult.scenario_id == scenario.id,
-                            LLMTaskResult.model_id == model_id,
-                            LLMTaskResult.payload_json.isnot(None),
-                            LLMTaskResult.error.is_(None),
-                        ).all()
-                        completed_ids = {row[0] for row in completed_rows if row[0]}
-
-                        # Find IDs that need evaluation
-                        pending_ids = list(all_ids - completed_ids)
-
-                        if pending_ids:
-                            id_type = "sessions" if item['is_comparison'] else "threads"
-                            print(
-                                f"[Startup] Starting LLM evaluation: scenario={scenario.id} "
-                                f"({scenario.scenario_name}), model={model_id}, "
-                                f"pending_{id_type}={len(pending_ids)}/{len(all_ids)}"
-                            )
-                            LLMAITaskRunner.run_for_scenario_async(
-                                scenario.id,
-                                model_ids=[model_id],
-                                thread_ids=pending_ids,  # Works for both threads and session IDs
-                            )
-                            total_started += 1
-
-                if total_started > 0:
-                    print(f"[Startup] Started {total_started} LLM evaluation tasks")
-                else:
-                    print("[Startup] All LLM evaluations are up to date")
-
-            except Exception as e:
-                print(f"[Startup] Error starting LLM evaluations: {e}")
-
-    # Run in background thread after a short delay to let other services initialize
-    def _delayed_start():
-        import time
-        time.sleep(5)  # Wait 5 seconds for other services to be ready
-        _run_pending_evaluations()
-
-    # Start background thread - skip only if LLARS_SKIP_STARTUP_TASKS is set
-    # For Docker/Gunicorn, we always want to run this (unlike embedding worker which
-    # has special handling for Flask reloader)
-    thread = threading.Thread(target=_delayed_start, daemon=True)
-    thread.start()
-    print("[Startup] LLM evaluation checker scheduled")
+    with app.app_context():
+        try:
+            result = migrate_add_self_service_password_reset_setting()
+            if result.get('columns_added'):
+                print(f"[Startup] system_settings — added {result['columns_added']}")
+            else:
+                print("[Startup] system_settings — self_service_password_reset_enabled already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating system_settings self_service_password_reset_enabled: {exc}")
 
 
-start_pending_llm_evaluations()
+if _should_run_one_time_startup_tasks():
+    migrate_self_service_password_reset_setting()
 
 
 # Sync LLARS documentation to RAG collection for the chatbot
@@ -464,7 +855,37 @@ def sync_documentation_collection():
             print(f"[Startup] Error syncing documentation: {e}")
 
 
-sync_documentation_collection()
+if _should_run_one_time_startup_tasks():
+    sync_documentation_collection()
+
+
+# Auto-start DB Price Agent scheduler for periodic price monitoring.
+# Disabled by default (DB_AGENT_SCHEDULER_ENABLED=false) — bahn.de currently
+# returns 403 Forbidden for the public API and the scheduler was filling the
+# log with hundreds of error lines per scan cycle, drowning the actual
+# Flask logs. Set DB_AGENT_SCHEDULER_ENABLED=true to opt back in once the
+# upstream API is reachable again.
+def start_db_agent_scheduler():
+    """Start the DB Agent background scheduler on boot (opt-in)."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping DB Agent scheduler (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    if os.environ.get('DB_AGENT_SCHEDULER_ENABLED', 'false').lower() != 'true':
+        print("[Startup] DB Agent scheduler disabled (set DB_AGENT_SCHEDULER_ENABLED=true to enable)")
+        return
+    from services.db_agent.db_agent_scheduler import start_scheduler
+    try:
+        started = start_scheduler(app)
+        if started:
+            print("[Startup] DB Agent scheduler started (6h interval)")
+        else:
+            print("[Startup] DB Agent scheduler already running")
+    except Exception as e:
+        print(f"[Startup] Error starting DB Agent scheduler: {e}")
+
+
+if _should_start_background_threads():
+    start_db_agent_scheduler()
 
 
 if __name__ == '__main__':

@@ -265,8 +265,8 @@ export function useBuilderState() {
     if (data.crawler_type || data.crawlerType) {
       crawlProgress.value.crawlerType = data.crawler_type || data.crawlerType
     }
-    if (data.message) {
-      crawlProgress.value.message = data.message
+    if (data.message !== undefined) {
+      crawlProgress.value.message = data.message ?? ''
     }
   }
 

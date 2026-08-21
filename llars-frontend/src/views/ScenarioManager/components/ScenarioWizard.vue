@@ -43,7 +43,7 @@
     <!-- Step Content -->
     <v-card-text class="wizard-content">
       <!-- Step 1: Data Upload & AI Analysis -->
-      <div v-if="currentStep === 0" class="step-content">
+      <div v-if="currentStepKey === 'data'" class="step-content">
         <div class="step-title-row">
           <h3 class="step-title">{{ $t('scenarioManager.wizard.step1.title') }}</h3>
           <LInfoTooltip
@@ -92,7 +92,7 @@
           <input
             ref="fileInput"
             type="file"
-            accept=".json,.csv,.xlsx,.xls"
+            accept=".json,.csv"
             multiple
             hidden
             @change="handleFileSelect"
@@ -151,39 +151,39 @@
           </template>
         </div>
 
-        <!-- AI Analysis Section -->
-        <div v-if="uploadedFiles.length > 0" class="ai-analysis-section">
-          <div class="analysis-header">
-            <LIcon color="primary" class="mr-2">mdi-robot</LIcon>
-            <span>{{ $t('scenarioManager.wizard.step1.aiAnalysis') }}</span>
-          </div>
-
-          <!-- Start Analysis Button (before analysis) -->
-          <LBtn
-            v-if="!analyzing && !analysisResult && !streamingPhase"
-            variant="primary"
-            @click="analyzeData"
-          >
-            <LIcon start>mdi-magnify-scan</LIcon>
-            {{ $t('scenarioManager.wizard.step1.startAnalysis') }}
-          </LBtn>
-
-          <!-- Streaming Analysis Panel (during and after analysis) -->
-          <StreamingAnalysisPanel
-            v-if="analyzing || analysisResult || streamingPhase"
-            ref="analysisPanel"
-            :analyzed-data="analyzedData"
-            :data-summary="dataSummaryForPanel"
-            :data-quality="analysisResult?.dataQuality"
-            :show-chat="streamingPhase === 'done' && analysisResult?.aiPowered"
-            @update:config="handleAnalysisPanelConfigUpdate"
-            @regenerate="reanalyzeData"
-          />
+        <!-- Auto-Analysis Status Banner.
+             Replaces the old verbose AI Analysis panel: by product decision
+             AI runs silently in the background as soon as a valid file is
+             dropped, pre-fills name/description/evalType in the next steps,
+             and the user clicks Next directly. The banner only surfaces
+             progress / result / errors in a single line. -->
+        <div v-if="uploadedFiles.length > 0 || formatError" class="analysis-banner">
+          <template v-if="formatError">
+            <LIcon size="20" color="error" class="mr-2">mdi-file-alert-outline</LIcon>
+            <span class="banner-text banner-text-error">{{ formatError }}</span>
+          </template>
+          <template v-else-if="analyzing">
+            <v-progress-circular indeterminate size="18" width="2" color="primary" class="mr-2" />
+            <span class="banner-text">{{ $t('scenarioManager.wizard.step1.analyzing') }}</span>
+          </template>
+          <template v-else-if="analysisResult">
+            <LIcon size="20" color="success" class="mr-2">mdi-check-circle-outline</LIcon>
+            <span class="banner-text">
+              {{ $t('scenarioManager.wizard.step1.analyzedSummary', {
+                count: analysisResult.itemCount,
+                type: analysisResult.suggestedType || '—'
+              }) }}
+            </span>
+          </template>
+          <template v-else>
+            <LIcon size="20" color="primary" class="mr-2">mdi-robot-outline</LIcon>
+            <span class="banner-text">{{ $t('scenarioManager.wizard.step1.analysisPending') }}</span>
+          </template>
         </div>
       </div>
 
       <!-- Step 2: Task Definition -->
-      <div v-if="currentStep === 1" class="step-content">
+      <div v-if="currentStepKey === 'task'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step2.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step2.description') }}</p>
 
@@ -228,9 +228,10 @@
               class="type-card"
               :class="{
                 selected: formData.evalType === type.id,
-                suggested: suggestedEvalType === type.id
+                suggested: suggestedEvalType === type.id,
+                disabled: disabledEvalTypes.has(type.id)
               }"
-              @click="selectEvalType(type.id)"
+              @click="!disabledEvalTypes.has(type.id) && selectEvalType(type.id)"
             >
               <div class="type-icon" :style="{ backgroundColor: type.color + '20' }">
                 <LIcon :color="type.color" size="32">{{ type.icon }}</LIcon>
@@ -243,6 +244,9 @@
               <LTag v-if="suggestedEvalType === type.id" variant="warning" size="small" class="suggested-tag">
                 {{ $t('scenarioManager.wizard.step2.recommended') }}
               </LTag>
+              <LTooltip v-if="disabledEvalTypes.has(type.id)" :text="$t('scenarioManager.wizard.step2.rankingDisabledHint')" location="top">
+                <LIcon size="16" color="grey" class="disabled-hint-icon">mdi-information-outline</LIcon>
+              </LTooltip>
             </div>
           </div>
         </div>
@@ -313,14 +317,12 @@
               </template>
             </v-text-field>
 
-            <v-textarea
-              v-model="formData.description"
-              :label="$t('scenarioManager.wizard.step2.descriptionField')"
-              :hint="$t('scenarioManager.wizard.step2.descriptionHint')"
-              variant="outlined"
-              rows="2"
-            >
-              <template #append-inner>
+            <div class="wizard-markdown-field">
+              <div class="wizard-markdown-field__header">
+                <span class="wizard-markdown-field__label wf-toggle" @click="descOpen = !descOpen">
+                  {{ $t('scenarioManager.wizard.step2.descriptionField') }}
+                  <v-icon class="wf-chevron" :class="{ 'is-open': descOpen }" size="16">mdi-chevron-down</v-icon>
+                </span>
                 <LAIFieldButton
                   field-key="scenario.settings.description"
                   :context="{
@@ -332,14 +334,79 @@
                   size="small"
                   @generated="formData.description = $event"
                 />
-              </template>
-            </v-textarea>
+              </div>
+              <div v-show="descOpen">
+                <LMarkdownEditor
+                  v-model="formData.description"
+                  :placeholder="$t('scenarioManager.wizard.step2.descriptionHint')"
+                  :rows="8"
+                />
+              </div>
+            </div>
+
+            <v-textarea
+              v-model="formData.ai_generation_prompt"
+              :label="$t('scenarioManager.wizard.step2.aiGenerationPromptField')"
+              :hint="$t('scenarioManager.wizard.step2.aiGenerationPromptHint')"
+              variant="outlined"
+              rows="2"
+              class="mt-4 mb-3"
+              persistent-hint
+            />
+
+            <div class="wizard-markdown-field mt-4">
+              <div class="wizard-markdown-field__header">
+                <span class="wizard-markdown-field__label wf-toggle" @click="taskDescOpen = !taskDescOpen">
+                  {{ $t('evaluation.briefing.taskDescription') }}
+                  <v-icon class="wf-chevron" :class="{ 'is-open': taskDescOpen }" size="16">mdi-chevron-down</v-icon>
+                </span>
+                <LAIFieldButton
+                  field-key="scenario.settings.task_description"
+                  :context="buildScenarioAiContext()"
+                  icon-only
+                  size="small"
+                  @generated="updateBriefingTaskDescription($event)"
+                />
+              </div>
+              <div v-show="taskDescOpen">
+                <LMarkdownEditor
+                  :model-value="briefingTaskDescription"
+                  :placeholder="$t('evaluation.briefing.taskDescriptionPlaceholder')"
+                  :rows="6"
+                  @update:modelValue="updateBriefingTaskDescription"
+                />
+              </div>
+            </div>
+
+            <div class="wizard-markdown-field mt-4">
+              <div class="wizard-markdown-field__header">
+                <span class="wizard-markdown-field__label wf-toggle" @click="criteriaOpen = !criteriaOpen">
+                  {{ $t('evaluation.briefing.criteria') }}
+                  <v-icon class="wf-chevron" :class="{ 'is-open': criteriaOpen }" size="16">mdi-chevron-down</v-icon>
+                </span>
+                <LAIFieldButton
+                  field-key="scenario.settings.evaluation_criteria"
+                  :context="buildScenarioAiContext()"
+                  icon-only
+                  size="small"
+                  @generated="updateBriefingCriteria($event)"
+                />
+              </div>
+              <div v-show="criteriaOpen">
+                <LMarkdownEditor
+                  :model-value="briefingCriteria"
+                  :placeholder="briefingCriteriaPlaceholder"
+                  :rows="8"
+                  @update:modelValue="updateBriefingCriteria"
+                />
+              </div>
+            </div>
           </v-form>
         </div>
       </div>
 
       <!-- Step 3: Configuration -->
-      <div v-if="currentStep === 2" class="step-content">
+      <div v-if="currentStepKey === 'config'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step3.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step3.description') }}</p>
 
@@ -350,6 +417,8 @@
           v-model="formData.evalConfig"
           :show-presets="true"
           :show-preview="true"
+          :available-variables="detectedMetaKeys"
+          :item-count="analyzedData.length"
         />
 
         <v-divider class="my-6" />
@@ -414,11 +483,61 @@
               </span>
             </LSwitch>
           </div>
+
+          <!-- Comparison-only options (Tie + Gamification reward system).
+               Surfaced here next to Distribution Settings so they're
+               always reachable, regardless of which preset (Pairwise,
+               Tournament, Multi-Criteria…) is currently selected in the
+               EvaluationConfigEditor above. Bound directly to the same
+               formData.evalConfig.config keys the editor uses, so the two
+               surfaces stay in sync. -->
+          <template v-if="isComparisonType">
+            <div class="config-section">
+              <LSwitch
+                v-model="comparisonAllowTie"
+                :label="$t('scenarioManager.evalConfig.comparison.allowTie')"
+              />
+            </div>
+            <div class="config-section">
+              <LSwitch
+                v-model="comparisonGamificationEnabled"
+                :label="$t('scenarioManager.evalConfig.comparison.gamificationEnabled')"
+              />
+            </div>
+            <div v-if="comparisonGamificationEnabled" class="config-section gamification-thresholds">
+              <v-text-field
+                v-model.number="comparisonGamificationFirst"
+                :label="$t('scenarioManager.evalConfig.comparison.gamificationFirstMilestone')"
+                type="number"
+                variant="outlined"
+                density="compact"
+                :min="2"
+                hide-details
+              />
+              <v-text-field
+                v-model.number="comparisonGamificationRecurring"
+                :label="$t('scenarioManager.evalConfig.comparison.gamificationRecurringMilestone')"
+                type="number"
+                variant="outlined"
+                density="compact"
+                :min="1"
+                hide-details
+              />
+            </div>
+            <div v-if="comparisonGamificationEnabled" class="config-section">
+              <LSwitch
+                v-model="comparisonProgressiveReveal"
+                :label="$t('scenarioManager.evalConfig.comparison.progressiveReveal')"
+                :hint="$t('scenarioManager.evalConfig.comparison.progressiveRevealHint')"
+                persistent-hint
+              />
+            </div>
+          </template>
         </div>
       </div>
 
       <!-- Step 4: Team (Users & AI) -->
-      <div v-if="currentStep === 3" class="step-content">
+      <div v-if="currentStepKey === 'team'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step4.teamTitle') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step4.teamDescription') }}</p>
 
@@ -448,6 +567,10 @@
                 density="compact"
                 class="mb-3"
               />
+
+              <LSwitch v-model="ownerAsAssessor" class="mb-3">
+                {{ $t('scenarioManager.wizard.step4.ownerAsAssessor') }}
+              </LSwitch>
 
               <div v-if="loadingUsers" class="d-flex justify-center py-4">
                 <v-progress-circular indeterminate size="24" />
@@ -604,7 +727,7 @@
       </div>
 
       <!-- Step 5: Summary & Create -->
-      <div v-if="currentStep === 4" class="step-content">
+      <div v-if="currentStepKey === 'summary'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step5.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step5.description') }}</p>
 
@@ -620,7 +743,21 @@
             </div>
             <div class="summary-row" v-if="formData.description">
               <span class="summary-label">{{ $t('scenarioManager.wizard.step5.descriptionLabel') }}</span>
-              <span class="summary-value">{{ formData.description }}</span>
+              <div class="summary-value summary-value--markdown">
+                <LMarkdownContent :markdown="formData.description" compact />
+              </div>
+            </div>
+            <div class="summary-row" v-if="briefingTaskDescription">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.taskDescriptionLabel') }}</span>
+              <div class="summary-value summary-value--markdown">
+                <LMarkdownContent :markdown="briefingTaskDescription" compact />
+              </div>
+            </div>
+            <div class="summary-row" v-if="briefingCriteria">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.evaluationCriteriaLabel') }}</span>
+              <div class="summary-value summary-value--markdown">
+                <LMarkdownContent :markdown="briefingCriteria" compact />
+              </div>
             </div>
           </div>
 
@@ -642,6 +779,27 @@
               <span class="summary-label">{{ $t('scenarioManager.wizard.step5.preset') }}</span>
               <span class="summary-value">{{ formData.evalConfig?.presetId || 'custom' }}</span>
             </div>
+            <!-- Parts / phases structure (labeling calibration studies) -->
+            <div v-if="summaryParts.length" class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.evalConfig.labeling.parts.title') }}</span>
+              <span class="summary-value">
+                <div class="d-flex flex-wrap gap-1">
+                  <v-chip
+                    v-for="(part, idx) in summaryParts"
+                    :key="idx"
+                    size="small"
+                    variant="tonal"
+                  >
+                    <LIcon v-if="part.locked" size="14" class="mr-1">mdi-lock-outline</LIcon>
+                    <LIcon v-if="part.copilot" size="14" class="mr-1">mdi-robot-outline</LIcon>
+                    {{ part.name }} ·
+                    {{ part.size != null
+                      ? part.size
+                      : $t('scenarioManager.evalConfig.labeling.parts.rest') }}
+                  </v-chip>
+                </div>
+              </span>
+            </div>
           </div>
 
           <v-divider class="my-3" />
@@ -651,16 +809,30 @@
               <LIcon class="mr-2" color="primary">mdi-database-outline</LIcon>
               {{ $t('scenarioManager.wizard.step5.data') }}
             </h5>
-            <div class="summary-row">
-              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.files') }}</span>
-              <span class="summary-value">
-                {{ uploadedFiles.length > 0 ? `${uploadedFiles.length} ${$t('scenarioManager.wizard.step1.filesSelected')}` : '-' }}
-              </span>
-            </div>
-            <div class="summary-row" v-if="analysisResult">
-              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.items') }}</span>
-              <span class="summary-value">{{ analysisResult.itemCount }}</span>
-            </div>
+            <!-- Generation mode: show metadata from stats -->
+            <template v-if="props.generationJobId && generationJobMeta">
+              <div class="server-import-hint mt-2">
+                <LIcon size="16" color="accent" class="mr-1">mdi-server</LIcon>
+                <span>
+                  {{ generationJobMeta.totalOutputs }} Outputs
+                  ({{ generationJobMeta.models.length }} Modell{{ generationJobMeta.models.length > 1 ? 'e' : '' }},
+                  {{ generationJobMeta.variants.length || 1 }} Variante{{ (generationJobMeta.variants.length || 1) > 1 ? 'n' : '' }})
+                </span>
+              </div>
+            </template>
+            <!-- File-upload mode -->
+            <template v-else>
+              <div class="summary-row">
+                <span class="summary-label">{{ $t('scenarioManager.wizard.step5.files') }}</span>
+                <span class="summary-value">
+                  {{ uploadedFiles.length > 0 ? `${uploadedFiles.length} ${$t('scenarioManager.wizard.step1.filesSelected')}` : '-' }}
+                </span>
+              </div>
+              <div class="summary-row" v-if="analysisResult">
+                <span class="summary-label">{{ $t('scenarioManager.wizard.step5.items') }}</span>
+                <span class="summary-value">{{ analysisResult.itemCount }}</span>
+              </div>
+            </template>
           </div>
 
           <v-divider class="my-3" />
@@ -838,8 +1010,14 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { parseUserProviderModelId } from '@/utils/formatters'
 import { useAuth } from '@/composables/useAuth'
+import { useSnackbar } from '@/composables/useSnackbar'
 import { useScenarioManager } from '../composables/useScenarioManager'
 import importService from '@/services/importService'
+import {
+  criteriaListToMarkdown,
+  getLocalizedText,
+  setLocalizedText
+} from '@/utils/scenarioBriefing'
 import EvaluationConfigEditor from './EvaluationConfigEditor.vue'
 import { StreamingAnalysisPanel } from '@/components/ScenarioWizard/AIAnalysis'
 import {
@@ -866,7 +1044,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'created'])
 
 const { t, locale } = useI18n()
-const { createNewScenario, inviteUsers } = useScenarioManager()
+const { showError } = useSnackbar()
+const { createNewScenario, inviteUsers, deleteScenarioById } = useScenarioManager()
 const auth = useAuth()
 
 // JSON code examples (raw strings to avoid vue-i18n placeholder parsing)
@@ -897,6 +1076,22 @@ const analysisResult = ref(null)
 const analyzedData = ref([]) // Merged data from all files
 const aiSuggestions = ref(null) // AI-generated suggestions
 
+// Metadata keys found across all uploaded LLARS-native items — used to render
+// variable picker chips in ComparisonConfigEditor's itemHeaderTemplate section.
+const detectedMetaKeys = computed(() => {
+  const keys = new Set()
+  for (const item of analyzedData.value) {
+    if (item?.metadata && typeof item.metadata === 'object') {
+      Object.keys(item.metadata).forEach(k => keys.add(k))
+    }
+  }
+  return [...keys].sort()
+})
+// Holds the translated error message when an upload fails the strict
+// format gate (LLARS-Native JSON / generation-export CSV only). Null
+// means "no problem" — the banner shows status / progress instead.
+const formatError = ref(null)
+
 // Streaming AI state
 const aiThinking = ref(false)
 const streamedJsonContent = ref('') // Raw JSON being streamed from LLM
@@ -907,7 +1102,15 @@ const transformingData = ref(false) // Long-format transformation in progress
 const availableUsers = ref([])
 const selectedUsers = ref([])
 const loadingUsers = ref(false)
-const inviteRole = ref('EVALUATOR')
+const inviteRole = ref('ASSESSOR')
+// Default ON: the scenario creator almost always wants to evaluate too.
+// They can uncheck if setting up a scenario purely for others to assess.
+const ownerAsAssessor = ref(true)
+
+// Collapsible state for Step 2 (Aufgabe) markdown sections
+const descOpen = ref(true)
+const taskDescOpen = ref(true)
+const criteriaOpen = ref(true)
 
 // LLM state - System models (admin-configured)
 const availableLLMs = ref([])
@@ -919,14 +1122,19 @@ const userProviders = ref([])
 const selectedProviders = ref([])
 const loadingUserProviders = ref(false)
 
-// Steps definition
-const steps = computed(() => [
-  { key: 'data', label: t('scenarioManager.wizard.steps.data'), icon: 'mdi-database-import-outline' },
-  { key: 'task', label: t('scenarioManager.wizard.steps.task'), icon: 'mdi-clipboard-list-outline' },
-  { key: 'config', label: t('scenarioManager.wizard.steps.config'), icon: 'mdi-tune' },
-  { key: 'team', label: t('scenarioManager.wizard.steps.team'), icon: 'mdi-account-group' },
-  { key: 'summary', label: t('scenarioManager.wizard.steps.summary'), icon: 'mdi-check-all' }
-])
+// Steps definition - dynamically filtered when coming from generation (skip data tab)
+const steps = computed(() => {
+  const allSteps = [
+    { key: 'data', label: t('scenarioManager.wizard.steps.data'), icon: 'mdi-database-import-outline' },
+    { key: 'task', label: t('scenarioManager.wizard.steps.task'), icon: 'mdi-clipboard-list-outline' },
+    { key: 'config', label: t('scenarioManager.wizard.steps.config'), icon: 'mdi-tune' },
+    { key: 'team', label: t('scenarioManager.wizard.steps.team'), icon: 'mdi-account-group' },
+    { key: 'summary', label: t('scenarioManager.wizard.steps.summary'), icon: 'mdi-check-all' }
+  ]
+  return props.generationJobId ? allSteps.filter(s => s.key !== 'data') : allSteps
+})
+
+const currentStepKey = computed(() => steps.value[currentStep.value]?.key || '')
 
 // Evaluation types - grouped by category
 const evaluationTypesGrouped = computed(() => {
@@ -969,7 +1177,9 @@ function getTypeVariant(typeId) {
     [EVAL_TYPES.LABELING]: 'danger',
     [EVAL_TYPES.COMPARISON]: 'primary',
     [EVAL_TYPES.MAIL_RATING]: 'info',
-    [EVAL_TYPES.AUTHENTICITY]: 'success'
+    [EVAL_TYPES.AUTHENTICITY]: 'success',
+    [EVAL_TYPES.COMMUNICATION_COMPARISON]: 'accent',
+    [EVAL_TYPES.CONVERSATION_LABELING]: 'accent'
   }
   return variants[typeId] || 'gray'
 }
@@ -986,6 +1196,9 @@ const formData = ref({
   evalType: null,
   scenario_name: '',
   description: '',
+  ai_generation_prompt: '',
+  task_description: '',
+  evaluation_criteria: [],
   evalConfig: null,
   config: {
     distribution_mode: 'all',
@@ -1004,8 +1217,58 @@ const selectedTypeInfo = computed(() => {
   return evaluationTypes.value.find(t => t.id === formData.value.evalType)
 })
 
+const generationVariantStats = computed(() => {
+  // Generation mode with metadata from stats API
+  if (props.generationJobId && generationJobMeta.value) {
+    const meta = generationJobMeta.value
+    const variantsPerItem = meta.models.length * (meta.variants.length || 1)
+    return {
+      sourceCount: Math.ceil(meta.totalOutputs / Math.max(variantsPerItem, 1)),
+      maxVariantsPerSource: variantsPerItem,
+      supportsRanking: variantsPerItem >= 2
+    }
+  }
+
+  // File-upload mode: derive from analyzedData
+  const generationItems = analyzedData.value.filter(item => item?._source === 'generation')
+  if (generationItems.length === 0) {
+    return {
+      sourceCount: 0,
+      maxVariantsPerSource: 0,
+      supportsRanking: false
+    }
+  }
+
+  const countsBySource = new Map()
+  generationItems.forEach((item, index) => {
+    const rawSourceId = item.source_id ?? item._source_item_id ?? item._source_index ?? item.id ?? `idx_${index}`
+    const sourceId = String(rawSourceId)
+    countsBySource.set(sourceId, (countsBySource.get(sourceId) || 0) + 1)
+  })
+
+  const counts = Array.from(countsBySource.values())
+  const maxVariantsPerSource = counts.length > 0 ? Math.max(...counts) : 0
+
+  return {
+    sourceCount: countsBySource.size,
+    maxVariantsPerSource,
+    supportsRanking: maxVariantsPerSource >= 2
+  }
+})
+
+const disabledEvalTypes = computed(() => {
+  if (props.generationJobId && !generationVariantStats.value.supportsRanking) {
+    return new Set([EVAL_TYPES.RANKING])
+  }
+  return new Set()
+})
+
 const suggestedEvalType = computed(() => {
-  if (props.generationJobId) return EVAL_TYPES.RANKING
+  if (props.generationJobId) {
+    return generationVariantStats.value.supportsRanking
+      ? EVAL_TYPES.RANKING
+      : EVAL_TYPES.RATING
+  }
   return analysisResult.value?.suggestedType || null
 })
 
@@ -1014,6 +1277,15 @@ const isGenerationData = computed(() => {
 })
 
 const isRankingType = computed(() => getBaseType(formData.value.evalType) === EVAL_TYPES.RANKING)
+const isComparisonType = computed(() => getBaseType(formData.value.evalType) === EVAL_TYPES.COMPARISON)
+
+// Parts / phases (labeling): structure shown in the summary step. Empty for
+// non-labeling types or when the parts toggle is off.
+const summaryParts = computed(() => {
+  const parts = formData.value.evalConfig?.config?.parts
+  if (!parts?.enabled || !Array.isArray(parts.list)) return []
+  return parts.list
+})
 
 const showSplitByPromptOption = computed(() => isRankingType.value && isGenerationData.value)
 
@@ -1031,11 +1303,166 @@ function ensureEvalConfigInitialized() {
   }
 }
 
+function ensureBriefingFields() {
+  ensureEvalConfigInitialized()
+  const config = formData.value.evalConfig.config
+  const rootTaskDescription = formData.value.task_description || ''
+  const rootCriteria = normalizeCriteriaList(formData.value.evaluation_criteria)
+
+  if (!config.taskDescriptionMarkdown) {
+    const fallbackTaskDescription =
+      getLocalizedText(config.question, 'de') ||
+      getLocalizedText(config.question, 'en') ||
+      rootTaskDescription
+
+    config.taskDescriptionMarkdown = {
+      de: getLocalizedText(config.taskDescriptionMarkdown, 'de') || fallbackTaskDescription || '',
+      en: getLocalizedText(config.taskDescriptionMarkdown, 'en') || fallbackTaskDescription || ''
+    }
+  }
+
+  if (isComparisonType.value && !config.question) {
+    config.question = {
+      de: 'Welche Option ist besser?',
+      en: 'Which option is better?'
+    }
+  }
+
+  if (!config.criteriaMarkdown) {
+    config.criteriaMarkdown = {
+      de:
+        getLocalizedText(formData.value.config?.criteriaMarkdown, 'de') ||
+        getLocalizedText(formData.value.config?.evaluation_criteria_markdown, 'de') ||
+        criteriaListToMarkdown(rootCriteria, 'de') ||
+        criteriaListToMarkdown(config.criteria, 'de'),
+      en:
+        getLocalizedText(formData.value.config?.criteriaMarkdown, 'en') ||
+        getLocalizedText(formData.value.config?.evaluation_criteria_markdown, 'en') ||
+        criteriaListToMarkdown(rootCriteria, 'en') ||
+        criteriaListToMarkdown(config.criteria, 'en')
+    }
+  }
+
+  return config
+}
+
+function copyBriefingFields(sourceConfig, targetConfig) {
+  if (!sourceConfig || !targetConfig || typeof sourceConfig !== 'object' || typeof targetConfig !== 'object') {
+    return
+  }
+
+  if (sourceConfig.taskDescriptionMarkdown && !targetConfig.taskDescriptionMarkdown) {
+    targetConfig.taskDescriptionMarkdown = JSON.parse(JSON.stringify(sourceConfig.taskDescriptionMarkdown))
+  }
+
+  if (sourceConfig.criteriaMarkdown && !targetConfig.criteriaMarkdown) {
+    targetConfig.criteriaMarkdown = JSON.parse(JSON.stringify(sourceConfig.criteriaMarkdown))
+  }
+
+  if (isComparisonType.value && sourceConfig.question && !targetConfig.question) {
+    targetConfig.question = JSON.parse(JSON.stringify(sourceConfig.question))
+  }
+}
+
+const briefingTaskDescription = computed(() => {
+  return (
+    getLocalizedText(formData.value.evalConfig?.config?.taskDescriptionMarkdown, locale.value) ||
+    getLocalizedText(formData.value.evalConfig?.config?.question, locale.value) ||
+    formData.value.task_description
+  )
+})
+
+const briefingCriteria = computed(() => {
+  return (
+    getLocalizedText(formData.value.evalConfig?.config?.criteriaMarkdown, locale.value) ||
+    criteriaListToMarkdown(formData.value.evaluation_criteria, locale.value)
+  )
+})
+
+const briefingCriteriaPlaceholder = computed(() => [
+  locale.value === 'en' ? '## What should be evaluated?' : '## Worauf sollte geachtet werden?',
+  locale.value === 'en' ? '- Argumentation and traceability' : '- Argumentation und Nachvollziehbarkeit',
+  locale.value === 'en' ? '- Factual accuracy' : '- Fachliche Genauigkeit',
+  locale.value === 'en' ? '- Style and clarity' : '- Stil und Klarheit'
+].join('\n'))
+
+function updateBriefingTaskDescription(value) {
+  const config = ensureBriefingFields()
+  if (!config) return
+
+  config.taskDescriptionMarkdown = setLocalizedText(config.taskDescriptionMarkdown, value, locale.value)
+  if (isComparisonType.value) {
+    config.question = setLocalizedText(config.question, value, locale.value)
+  }
+  formData.value.task_description = value || ''
+  formData.value.evalConfig.presetId = 'custom'
+}
+
+function updateBriefingCriteria(value) {
+  const config = ensureBriefingFields()
+  if (!config) return
+
+  config.criteriaMarkdown = setLocalizedText(config.criteriaMarkdown, value, locale.value)
+  formData.value.evaluation_criteria = criteriaMarkdownToList(value)
+  formData.value.evalConfig.presetId = 'custom'
+}
+
 const splitByPromptEnabled = computed({
   get: () => Boolean(formData.value.evalConfig?.config?.splitByPrompt),
   set: (value) => {
     ensureEvalConfigInitialized()
     formData.value.evalConfig.config.splitByPrompt = Boolean(value)
+  }
+})
+
+// Comparison-only bindings used by the Configuration step's
+// Distribution-Settings panel. They write into the same
+// formData.evalConfig.config keys that ComparisonConfigEditor uses, so the
+// wizard panel and the editor (when shown via Custom preset) stay in sync.
+const comparisonAllowTie = computed({
+  get: () => Boolean(formData.value.evalConfig?.config?.allowTie),
+  set: (value) => {
+    ensureEvalConfigInitialized()
+    formData.value.evalConfig.config.allowTie = Boolean(value)
+  }
+})
+
+const comparisonGamificationEnabled = computed({
+  get: () => Boolean(formData.value.evalConfig?.config?.gamificationEnabled),
+  set: (value) => {
+    ensureEvalConfigInitialized()
+    formData.value.evalConfig.config.gamificationEnabled = Boolean(value)
+  }
+})
+
+const comparisonGamificationFirst = computed({
+  get: () => Number(formData.value.evalConfig?.config?.gamificationFirstMilestone ?? 10),
+  set: (value) => {
+    ensureEvalConfigInitialized()
+    const n = Number(value)
+    formData.value.evalConfig.config.gamificationFirstMilestone =
+      Number.isFinite(n) && n >= 2 ? n : 10
+  }
+})
+
+const comparisonGamificationRecurring = computed({
+  get: () => Number(formData.value.evalConfig?.config?.gamificationRecurringMilestone ?? 5),
+  set: (value) => {
+    ensureEvalConfigInitialized()
+    const n = Number(value)
+    formData.value.evalConfig.config.gamificationRecurringMilestone =
+      Number.isFinite(n) && n >= 1 ? n : 5
+  }
+})
+
+// Progressive reveal: only show items up to the next milestone in the
+// evaluation overview. Bites the task into 10 → reward → 5 → reward → 5
+// chunks instead of dumping all 80 cards at once.
+const comparisonProgressiveReveal = computed({
+  get: () => Boolean(formData.value.evalConfig?.config?.progressiveReveal),
+  set: (value) => {
+    ensureEvalConfigInitialized()
+    formData.value.evalConfig.config.progressiveReveal = Boolean(value)
   }
 })
 
@@ -1072,31 +1499,28 @@ const dataSummaryForPanel = computed(() => {
 })
 
 const canProceed = computed(() => {
-  if (currentStep.value === 0) {
-    // Step 1: Need files and analysis
+  const key = currentStepKey.value
+  if (key === 'data') {
     return uploadedFiles.value.length > 0 && analysisResult.value !== null
   }
-  if (currentStep.value === 1) {
-    // Step 2: Need type and name
+  if (key === 'task') {
     return formData.value.evalType !== null &&
            formData.value.scenario_name &&
            formData.value.scenario_name.length >= 3
   }
-  if (currentStep.value === 2) {
-    // Step 3: Need config
+  if (key === 'config') {
     return formData.value.evalConfig !== null
   }
-  if (currentStep.value === 3) {
-    // Step 4: Team - need at least one evaluator (human or LLM)
+  if (key === 'team') {
     return selectedUsers.value.length > 0 || selectedLLMs.value.length > 0 || selectedProviders.value.length > 0
   }
   return true
 })
 
 // Role options for user invitations
-// EVALUATOR can interact (rate/evaluate), VIEWER is read-only
+// ASSESSOR can interact (rate/evaluate), VIEWER is read-only
 const roleOptions = [
-  { value: 'EVALUATOR', title: 'Evaluator' },
+  { value: 'ASSESSOR', title: 'Assessor' },
   { value: 'VIEWER', title: 'Viewer' }
 ]
 
@@ -1106,6 +1530,71 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+function normalizeCriteriaList(value) {
+  const deduped = []
+  const seen = new Set()
+
+  if (Array.isArray(value)) {
+    value
+      .map(item => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter(Boolean)
+      .forEach(item => {
+        if (seen.has(item)) return
+        seen.add(item)
+        deduped.push(item)
+      })
+    return deduped
+  }
+
+  if (typeof value === 'string') {
+    value
+      .split(/[,\n;]/)
+      .map(item => item.trim())
+      .filter(Boolean)
+      .forEach(item => {
+        if (seen.has(item)) return
+        seen.add(item)
+        deduped.push(item)
+      })
+    return deduped
+  }
+
+  return []
+}
+
+function normalizeMarkdownLine(value) {
+  return String(value || '')
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^[-*+]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .replace(/[*_~`]/g, '')
+    .trim()
+}
+
+function criteriaMarkdownToList(markdown) {
+  if (!markdown) return []
+
+  return markdown
+    .split('\n')
+    .map(normalizeMarkdownLine)
+    .filter(Boolean)
+    .filter((value, index, array) => array.indexOf(value) === index)
+}
+
+function buildScenarioAiContext() {
+  const taskDescription = briefingTaskDescription.value || formData.value.task_description || ''
+  const criteriaList = criteriaMarkdownToList(briefingCriteria.value)
+
+  return {
+    scenario_type: formData.value.evalType || '',
+    scenario_name: formData.value.scenario_name || '',
+    existing_description: formData.value.description || '',
+    existing_task_description: taskDescription,
+    existing_evaluation_criteria: criteriaList.join(', '),
+    generation_prompt: formData.value.ai_generation_prompt || ''
+  }
+}
+
 function goToStep(index) {
   if (index < currentStep.value) {
     currentStep.value = index
@@ -1113,7 +1602,7 @@ function goToStep(index) {
 }
 
 function nextStep() {
-  if (currentStep.value === 1 && infoForm.value) {
+  if (currentStepKey.value === 'task' && infoForm.value) {
     infoForm.value.validate()
     if (!infoFormValid.value) return
   }
@@ -1140,29 +1629,86 @@ function handleFileDrop(event) {
   processFiles(files)
 }
 
-function processFiles(files) {
-  const validTypes = ['.json', '.csv', '.xlsx', '.xls']
-  const validFiles = files.filter(file => {
-    const ext = '.' + file.name.split('.').pop().toLowerCase()
-    return validTypes.includes(ext)
-  })
-
-  if (validFiles.length === 0) {
-    console.error('No valid files selected')
-    return
+// Strict format gate. We accept only files whose shape we already know how
+// to import deterministically (no AI-driven mapping any more):
+//   - JSON: LLARS-Native envelope ($schema=llars-import-v1) OR
+//           generation-export envelope (metadata._llars_generation_export
+//           or top-level outputs[]).
+//   - CSV:  LLARS generation export with the magic first-line marker
+//           "# _llars_generation_export".
+// Anything else is rejected with a translated error so the user knows
+// exactly which file is wrong and why.
+async function validateFileFormat(file) {
+  const ext = file.name.split('.').pop().toLowerCase()
+  if (ext !== 'json' && ext !== 'csv') {
+    return { ok: false, reasonKey: 'unsupportedExtension' }
   }
+
+  try {
+    const text = await readFileContent(file)
+    if (ext === 'json') {
+      const data = JSON.parse(text)
+      const isLlarsNative =
+        !Array.isArray(data) &&
+        (data?.$schema === 'llars-import-v1' ||
+          (data?.metadata?.task_type && Array.isArray(data?.items)))
+      const isGenerationExport =
+        !Array.isArray(data) &&
+        (data?.metadata?._llars_generation_export || Array.isArray(data?.outputs))
+      if (!isLlarsNative && !isGenerationExport) {
+        return { ok: false, reasonKey: 'unsupportedJson' }
+      }
+    } else if (ext === 'csv') {
+      const firstLine = text.split('\n', 1)[0] || ''
+      if (!firstLine.startsWith('# _llars_generation_export')) {
+        return { ok: false, reasonKey: 'unsupportedCsv' }
+      }
+    }
+    return { ok: true }
+  } catch (err) {
+    console.error('Format validation failed:', err)
+    return { ok: false, reasonKey: 'parseError' }
+  }
+}
+
+async function processFiles(files) {
+  formatError.value = null
+
+  // Validate each candidate file against the strict format gate before
+  // accepting it. A single bad file produces a translated error and
+  // aborts — no partial uploads to keep the user model simple.
+  const accepted = []
+  for (const file of files) {
+    const result = await validateFileFormat(file)
+    if (!result.ok) {
+      formatError.value = t(`scenarioManager.wizard.step1.formatErrors.${result.reasonKey}`, {
+        name: file.name
+      })
+      return
+    }
+    accepted.push(file)
+  }
+
+  if (accepted.length === 0) return
 
   // Add to existing files, avoiding duplicates by name
   const existingNames = new Set(uploadedFiles.value.map(f => f.name))
-  const newFiles = validFiles.filter(f => !existingNames.has(f.name))
+  const newFiles = accepted.filter(f => !existingNames.has(f.name))
 
   uploadedFiles.value = [...uploadedFiles.value, ...newFiles]
   analysisResult.value = null
   analyzedData.value = []
+
+  // Auto-run analysis the moment a valid file lands. AI fills evalType /
+  // name / description in the background so the user can hit Next directly.
+  if (uploadedFiles.value.length > 0) {
+    analyzeData()
+  }
 }
 
 function removeFile(index) {
   uploadedFiles.value.splice(index, 1)
+  formatError.value = null
   if (uploadedFiles.value.length === 0) {
     analysisResult.value = null
     analyzedData.value = []
@@ -1171,6 +1717,7 @@ function removeFile(index) {
 
 function clearAllFiles() {
   uploadedFiles.value = []
+  formatError.value = null
   analysisResult.value = null
   analyzedData.value = []
 }
@@ -1227,7 +1774,7 @@ async function fetchUserProviders() {
           const fullId = ownerName
             ? `user-provider:${provider.id}:${ownerName}:${mid}`
             : `user-provider:${provider.id}:${mid}`
-          const parsed = parseUserProviderModelId(fullId)
+          const parsed = parseUserProviderModelId(fullId, provider.name)
           expanded.push({
             ...provider,
             _key: `${provider.id}:${mid}`,
@@ -1242,7 +1789,7 @@ async function fetchUserProviders() {
             ? `user-provider:${provider.id}:${ownerName}:${singleModel}`
             : `user-provider:${provider.id}:${singleModel}`)
           : null
-        const parsed = fullId ? parseUserProviderModelId(fullId) : null
+        const parsed = fullId ? parseUserProviderModelId(fullId, provider.name) : null
         expanded.push({
           ...provider,
           _key: String(provider.id),
@@ -1329,10 +1876,13 @@ function buildProviderEvaluatorId(provider) {
 function getProviderIcon(provider) {
   const icons = {
     openai: 'mdi-creation',
+    ionos: 'mdi-domain',
+    openai_compatible: 'mdi-api',
     anthropic: 'mdi-head-snowflake',
     gemini: 'mdi-google',
     azure: 'mdi-microsoft-azure',
     ollama: 'mdi-llama',
+    vllm: 'mdi-chip',
     litellm: 'mdi-api',
     custom: 'mdi-cog'
   }
@@ -1343,10 +1893,13 @@ function getProviderIcon(provider) {
 function getProviderIconColor(provider) {
   const colors = {
     openai: '#10a37f',
+    ionos: '#0a4cd3',
+    openai_compatible: '#10a37f',
     anthropic: '#d4a574',
     gemini: '#4285f4',
     azure: '#0078d4',
     ollama: '#ffffff',
+    vllm: '#7c3aed',
     litellm: '#ffc107',
     custom: '#9e9e9e'
   }
@@ -1357,10 +1910,13 @@ function getProviderIconColor(provider) {
 function getProviderTypeLabel(providerType) {
   const labels = {
     openai: 'OpenAI',
+    ionos: 'IONOS AI Model Hub',
+    openai_compatible: 'OpenAI Compatible',
     anthropic: 'Anthropic',
     gemini: 'Google Gemini',
     azure: 'Azure OpenAI',
     ollama: 'Ollama',
+    vllm: 'vLLM',
     litellm: 'LiteLLM',
     custom: 'Custom'
   }
@@ -1407,6 +1963,11 @@ async function analyzeData() {
   const allData = []
   const fileResults = []
   let totalErrors = 0
+  // LLARS-Native envelope captured from the first matching file. When set,
+  // we skip the AI streaming step entirely — the format is self-describing,
+  // there is nothing to map, and AI guesses would only churn metadata
+  // (per product decision: AI helps, AI does not map).
+  let llarsNativeEnvelope = null
 
   try {
     // Step 1: Parse all files locally
@@ -1418,11 +1979,39 @@ async function analyzeData() {
         const ext = file.name.split('.').pop().toLowerCase()
         if (ext === 'json') {
           data = JSON.parse(text)
-          if (!Array.isArray(data)) {
+          // Detect LLARS-Native (`$schema: "llars-import-v1"`) BEFORE we
+          // strip the envelope — we need metadata.task_type / .name to
+          // pre-fill the form deterministically.
+          if (
+            !Array.isArray(data) &&
+            (data?.$schema === 'llars-import-v1' ||
+              (data?.metadata?.task_type && Array.isArray(data?.items)))
+          ) {
+            console.log(`[ScenarioWizard] Detected LLARS-Native (${data.items?.length || 0} items, task_type=${data.metadata?.task_type})`)
+            llarsNativeEnvelope = llarsNativeEnvelope || {
+              metadata: data.metadata || {},
+              filename: file.name
+            }
+            data = data.items || []
+          } else if (!Array.isArray(data) && (data?.metadata?._llars_generation_export || data?.outputs)) {
+            // Detect LLARS generation export format
+            const outputs = data.outputs || []
+            console.log(`[ScenarioWizard] Detected LLARS generation export (${outputs.length} outputs)`)
+            data = outputs.map(o => normalizeGenerationOutput(o))
+          } else if (!Array.isArray(data)) {
             data = data.data || data.items || data.results || [data]
           }
         } else if (ext === 'csv') {
-          data = parseCSV(text)
+          // Check for LLARS generation CSV marker
+          const firstLine = text.split('\n')[0] || ''
+          if (firstLine.startsWith('# _llars_generation_export')) {
+            console.log('[ScenarioWizard] Detected LLARS generation CSV export')
+            const csvWithoutMarker = text.split('\n').slice(1).join('\n')
+            data = parseCSV(csvWithoutMarker)
+            data = data.map(row => normalizeGenerationOutput(row))
+          } else {
+            data = parseCSV(text)
+          }
         }
 
         if (Array.isArray(data)) {
@@ -1441,6 +2030,57 @@ async function analyzeData() {
 
     // Store merged data for later use
     analyzedData.value = allData
+
+    // LLARS-Native fast-path: the envelope is self-describing, so we map
+    // task_type → evalType deterministically and skip the AI streaming
+    // call entirely. The user can still tweak everything in the
+    // Configuration step. AI assistance for free-form fields (description,
+    // criteria) is still available via the AI buttons in those fields.
+    if (llarsNativeEnvelope) {
+      const meta = llarsNativeEnvelope.metadata || {}
+      const taskTypeMap = {
+        rating: EVAL_TYPES.RATING,
+        ranking: EVAL_TYPES.RANKING,
+        labeling: EVAL_TYPES.LABELING,
+        comparison: EVAL_TYPES.COMPARISON,
+        authenticity: EVAL_TYPES.AUTHENTICITY,
+        mail_rating: EVAL_TYPES.MAIL_RATING,
+        communication_comparison: EVAL_TYPES.COMMUNICATION_COMPARISON,
+        conversation_labeling: EVAL_TYPES.CONVERSATION_LABELING
+      }
+      const mappedType = taskTypeMap[String(meta.task_type || '').toLowerCase()] ||
+        EVAL_TYPES.COMPARISON
+
+      analysisResult.value = {
+        itemCount: allData.length,
+        fieldsCount: allData[0] ? Object.keys(allData[0]).length : 0,
+        fields: allData[0] ? Object.keys(allData[0]) : [],
+        suggestedType: mappedType,
+        suggestedTypeConfidence: 1.0,
+        suggestedTypeReasoning: 'LLARS-Native ($schema=llars-import-v1) — deterministic mapping from metadata.task_type',
+        sampleData: allData.slice(0, 3),
+        fileResults,
+        filesProcessed: uploadedFiles.value.length,
+        filesSuccessful: uploadedFiles.value.length - totalErrors,
+        errors: totalErrors,
+        aiPowered: false,
+        formatHint: 'llars-native'
+      }
+
+      formData.value.evalType = mappedType
+      if (meta.name && !formData.value.scenario_name) {
+        formData.value.scenario_name = meta.name
+      }
+      if (meta.source && !formData.value.description) {
+        formData.value.description = meta.source
+      }
+      if (Array.isArray(meta.criteria_frame) && meta.criteria_frame.length > 0 && !formData.value.evaluation_criteria?.length) {
+        formData.value.evaluation_criteria = normalizeCriteriaList(meta.criteria_frame)
+      }
+
+      streamingPhase.value = 'done'
+      return
+    }
 
     // Step 2: Call streaming AI analysis endpoint
     try {
@@ -1554,6 +2194,16 @@ async function analyzeData() {
                   if (scenarioDescription) {
                     formData.value.description = scenarioDescription
                   }
+                  const taskDescription = parsed.task_description || parsed.taskDescription
+                  if (taskDescription) {
+                    formData.value.task_description = taskDescription
+                  }
+                  const criteria = normalizeCriteriaList(
+                    parsed.evaluation_criteria || parsed.evaluationCriteria
+                  )
+                  if (criteria.length > 0) {
+                    formData.value.evaluation_criteria = criteria
+                  }
 
                   // Forward to panel for final parsing
                   if (analysisPanel.value?.processSuggestions) {
@@ -1573,24 +2223,12 @@ async function analyzeData() {
                   break
 
                 case 'field_mapping':
-                  // Store field mapping for long-format data transformation
-                  if (analysisResult.value) {
-                    analysisResult.value.fieldMapping = parsed
-                  }
-                  console.log('Field mapping received:', parsed)
-
-                  // Auto-transform long-format data to LLARS format
-                  if (parsed.format === 'long' && parsed.success) {
-                    // Call transformation (async, but don't await in the loop)
-                    transformLongFormatData(parsed).then(() => {
-                      console.log('Long-format data transformation complete')
-                    })
-                  }
-
-                  // Forward to panel if it supports it
-                  if (analysisPanel.value?.processFieldMapping) {
-                    analysisPanel.value.processFieldMapping(parsed)
-                  }
+                  // AI-driven field mapping is intentionally ignored: the
+                  // wizard treats AI as a suggestion helper, not a data
+                  // transformer. Items pass through to the backend in
+                  // their original shape and the deterministic
+                  // UniversalTransformer maps them into LLARS ImportItems.
+                  console.log('Field mapping event ignored (AI mapping disabled):', parsed)
                   break
 
                 case 'done':
@@ -1751,6 +2389,14 @@ function handleAnalysisPanelConfigUpdate(config) {
   if (config.scenarioDescription) {
     formData.value.description = config.scenarioDescription
   }
+  if (config.taskDescription || config.task_description) {
+    formData.value.task_description = config.taskDescription || config.task_description
+  }
+  if (config.evaluationCriteria || config.evaluation_criteria) {
+    formData.value.evaluation_criteria = normalizeCriteriaList(
+      config.evaluationCriteria || config.evaluation_criteria
+    )
+  }
 
   // Ensure evalConfig is initialized before applying detailed config updates
   const hasConfigUpdates = config.labels || config.scales || config.buckets ||
@@ -1825,6 +2471,8 @@ function handleAnalysisPanelConfigUpdate(config) {
       formData.value.evalConfig.config.step = config.step
       formData.value.evalConfig.presetId = 'custom'
     }
+
+    ensureBriefingFields()
   }
 }
 
@@ -1889,12 +2537,17 @@ function getSuggestedTypeName(typeId) {
 }
 
 function selectEvalType(typeId) {
+  const previousConfig = formData.value.evalConfig?.config
+
   formData.value.evalType = typeId
   // Initialize default config for the type
   formData.value.evalConfig = {
     presetId: null,
     config: getDefaultConfig(typeId)
   }
+
+  copyBriefingFields(previousConfig, formData.value.evalConfig.config)
+  ensureBriefingFields()
 }
 
 /**
@@ -1942,12 +2595,11 @@ function transformGenerationDataForRanking(items, { splitByPrompt = false } = {}
       const model = item.llm_name || item._model || `Model_${suffix.toUpperCase()}`
       const variant = item._prompt_variant || ''
 
-      if (splitByPrompt && variant) {
-        metadata[`model_${suffix}`] = model
+      // Always store model and prompt separately to keep llms table clean.
+      // Previously: model = "Model (variant)" which polluted the llms table.
+      metadata[`model_${suffix}`] = model
+      if (variant) {
         metadata[`prompt_${suffix}`] = variant
-      } else {
-        // Keep model labels unique when same model was run with multiple prompts.
-        metadata[`model_${suffix}`] = variant ? `${model} (${variant})` : model
       }
     })
 
@@ -1964,7 +2616,11 @@ function getTaskType(evalType) {
     [EVAL_TYPES.MAIL_RATING]: 'mail_rating',
     [EVAL_TYPES.COMPARISON]: 'comparison',
     [EVAL_TYPES.AUTHENTICITY]: 'authenticity',
-    [EVAL_TYPES.LABELING]: 'labeling'
+    [EVAL_TYPES.LABELING]: 'labeling',
+    // Both of these used to fall through to the 'mail_rating' default, which
+    // silently mislabelled the LLM task for the whole scenario.
+    [EVAL_TYPES.COMMUNICATION_COMPARISON]: 'communication_comparison',
+    [EVAL_TYPES.CONVERSATION_LABELING]: 'conversation_labeling'
   }
   return taskTypeMapping[evalType] || 'mail_rating'
 }
@@ -1972,23 +2628,124 @@ function getTaskType(evalType) {
 // Create scenario
 async function createScenario() {
   creating.value = true
+  let scenario = null
+  let importFailed = false
+
   try {
-    // Map eval type to function_type_id for backend compatibility
-    const functionTypeId = ID_TYPE_MAP[formData.value.evalType] || 2
+    const taskType = getTaskType(formData.value.evalType)
+    const isFromGeneration = Boolean(props.generationJobId) || analyzedData.value.some(i => i._source === 'generation')
+
+    // Validate generation → ranking upfront to avoid creating empty scenarios.
+    if (taskType === 'ranking' && isFromGeneration && !generationVariantStats.value.supportsRanking) {
+      throw new Error(
+        'Ranking aus Batch-Generierung benötigt mindestens zwei Varianten pro Eingabetext (mehrere Modelle und/oder Prompts). Bitte wähle stattdessen "Rating" oder erweitere den Generation-Job.'
+      )
+    }
 
     const llmEvaluators = selectedLLMs.value.map(l => l.model_id).filter(Boolean)
     const providerEvaluators = selectedProviders.value.map(p => buildProviderEvaluatorId(p)).filter(Boolean)
-
     const combinedEvaluators = [...llmEvaluators, ...providerEvaluators]
+
+    // === SERVER-SIDE IMPORT: When data comes from a generation job ===
+    // Send only config to backend, no data transfer needed.
+    if (isFromGeneration && props.generationJobId) {
+      const serverPayload = {
+        scenario_name: formData.value.scenario_name,
+        evaluation_type: taskType,
+        description: formData.value.description || '',
+        task_description: formData.value.task_description || '',
+        evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+        config_json: {
+          ...formData.value.config,
+          eval_type: formData.value.evalType,
+          eval_config: formData.value.evalConfig,
+          ai_generation_prompt: formData.value.ai_generation_prompt || '',
+          task_description: formData.value.task_description || '',
+          evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+          enable_llm_evaluation: combinedEvaluators.length > 0,
+          ...(combinedEvaluators.length > 0 ? { llm_evaluators: combinedEvaluators } : {}),
+        },
+        invited_users: selectedUsers.value.map(u => ({ user_id: u.id, role: u.role || 'ASSESSOR' })),
+        owner_as_assessor: ownerAsAssessor.value,
+        split_by_prompt: Boolean(formData.value.evalConfig?.config?.splitByPrompt),
+      }
+
+      console.log('[ScenarioWizard] Server-side import:', {
+        jobId: props.generationJobId,
+        evaluationType: taskType,
+        totalOutputs: generationJobMeta.value?.totalOutputs,
+        invitedUsers: serverPayload.invited_users.length,
+        splitByPrompt: serverPayload.split_by_prompt,
+      })
+
+      const response = await axios.post(
+        `/api/generation/jobs/${props.generationJobId}/to-scenario`,
+        serverPayload
+      )
+
+      scenario = {
+        id: response.data.scenario_id,
+        scenario_name: response.data.scenario_name,
+      }
+
+      emit('created', scenario)
+      return
+    }
+
+    // === CLIENT-SIDE IMPORT: File upload flow (non-generation data) ===
+
+    // Pre-compute import data before creating the scenario.
+    let importData = analyzedData.value
+    // AI-suggested field_mapping is intentionally NOT forwarded to the
+    // backend (AI helps, AI does not map). The only field_mapping flag we
+    // still pass is `from_generation` for the generation-job pipeline,
+    // because it controls deterministic backend behaviour (force_new_threads).
+    let fieldMapping = null
+
+    // Set from_generation for ALL eval types so the backend:
+    // - keeps generation-job IDs intact
+    // - uses force_new_threads=True (needed for generic IDs "0","1","2")
+    if (isFromGeneration) {
+      fieldMapping = { ...(fieldMapping || {}), from_generation: true }
+
+      if (taskType === 'ranking') {
+        const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
+        importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
+        fieldMapping.split_by_prompt = splitByPrompt
+
+        console.log('[ScenarioWizard] Ranking from generation (client-side):', {
+          inputItems: analyzedData.value.length,
+          groups: importData.length,
+          splitByPrompt,
+          featuresPerGroup: importData.map(g =>
+            Object.keys(g).filter(k => k.startsWith('summary_')).length
+          )
+        })
+      } else {
+        console.log(`[ScenarioWizard] ${taskType} from generation (client-side):`, {
+          items: importData.length
+        })
+      }
+    }
+
+    // Map eval type to function_type_id for backend compatibility
+    const functionTypeId = ID_TYPE_MAP[formData.value.evalType] || 2
 
     const scenarioPayload = {
       scenario_name: formData.value.scenario_name,
       function_type_id: functionTypeId,
       description: formData.value.description,
+      task_description: formData.value.task_description,
+      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+      owner_as_assessor: ownerAsAssessor.value,
       config_json: {
         ...formData.value.config,
+        description: formData.value.description,
         eval_type: formData.value.evalType,
         eval_config: formData.value.evalConfig,
+        ai_generation_prompt: formData.value.ai_generation_prompt || '',
+        task_description: formData.value.task_description,
+        evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
         enable_llm_evaluation: combinedEvaluators.length > 0,
         llm_evaluators: combinedEvaluators
       }
@@ -1998,16 +2755,15 @@ async function createScenario() {
       delete scenarioPayload.config_json.llm_evaluators
     }
 
-    const scenario = await createNewScenario(scenarioPayload)
+    scenario = await createNewScenario(scenarioPayload)
 
     // Invite selected human users
     if (selectedUsers.value.length > 0 && scenario?.id) {
-      // Group users by role: EVALUATOR can interact, VIEWER is read-only
-      const evaluators = selectedUsers.value.filter(u => u.role === 'EVALUATOR').map(u => u.id)
+      const assessors = selectedUsers.value.filter(u => u.role === 'ASSESSOR' || u.role === 'EVALUATOR').map(u => u.id)
       const viewers = selectedUsers.value.filter(u => u.role === 'VIEWER').map(u => u.id)
 
-      if (evaluators.length > 0) {
-        await inviteUsers(scenario.id, evaluators, 'EVALUATOR')
+      if (assessors.length > 0) {
+        await inviteUsers(scenario.id, assessors, 'ASSESSOR')
       }
       if (viewers.length > 0) {
         await inviteUsers(scenario.id, viewers, 'VIEWER')
@@ -2017,30 +2773,6 @@ async function createScenario() {
     // Import file data into the scenario
     if (analyzedData.value.length > 0 && scenario?.id) {
       try {
-        const taskType = getTaskType(formData.value.evalType)
-        const isFromGeneration = analyzedData.value.some(i => i._source === 'generation')
-
-        // For ranking from generation: transform long-format → wide-format
-        let importData = analyzedData.value
-        let fieldMapping = aiSuggestions.value?.field_mapping || null
-
-        if (taskType === 'ranking' && isFromGeneration) {
-          const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
-          importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
-          console.log('[ScenarioWizard] Ranking from generation:', {
-            inputItems: analyzedData.value.length,
-            groups: importData.length,
-            splitByPrompt,
-            featuresPerGroup: importData.map(g =>
-              Object.keys(g).filter(k => k.startsWith('summary_')).length
-            )
-          })
-          fieldMapping = {
-            from_generation: true,
-            split_by_prompt: splitByPrompt
-          }
-        }
-
         const importResult = await importService.importFromData(
           importData,
           scenario.id,
@@ -2050,18 +2782,42 @@ async function createScenario() {
         )
         console.log('Data import result:', importResult)
 
+        const importedCount = Number(importResult?.imported_count || 0)
+        if (!importResult?.success || importedCount <= 0) {
+          throw new Error(
+            importResult?.error ||
+            importResult?.message ||
+            'Der Datenimport hat keine auswertbaren Items erzeugt.'
+          )
+        }
+
         if (importResult.warnings?.length > 0) {
           console.warn('Import warnings:', importResult.warnings)
         }
       } catch (importError) {
+        importFailed = true
         console.error('Failed to import data:', importError)
-        // Continue anyway - scenario was created, just data import failed
+        throw importError
       }
     }
 
     emit('created', scenario)
   } catch (error) {
     console.error('Failed to create scenario:', error)
+    const errorMessage = error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Szenario konnte nicht erstellt werden.'
+    showError(errorMessage)
+
+    // Prevent orphaned empty scenarios when import fails.
+    if (importFailed && scenario?.id) {
+      try {
+        await deleteScenarioById(scenario.id)
+      } catch (cleanupError) {
+        console.error('Failed to cleanup scenario after import failure:', cleanupError)
+      }
+    }
   } finally {
     creating.value = false
   }
@@ -2075,137 +2831,133 @@ watch(() => formData.value.evalType, (newType) => {
       config: getDefaultConfig(newType)
     }
   }
+
+  if (newType) {
+    ensureBriefingFields()
+  }
+})
+
+watch(() => formData.value.evalConfig, (newValue, oldValue) => {
+  if (formData.value.evalType && newValue?.config) {
+    copyBriefingFields(oldValue?.config, newValue.config)
+    ensureBriefingFields()
+  }
 })
 
 // Load data from generation job if provided
 const loadingFromGeneration = ref(false)
 const generationJobName = ref('')
+const generationJobMeta = ref(null) // Metadata about total outputs for server-side import
+
+/**
+ * Normalize a single generation output into the wizard's internal item format.
+ * Shared between loadFromGenerationJob() and analyzeData() (JSON/CSV re-upload).
+ */
+function normalizeGenerationOutput(output) {
+  const promptVars = output.prompt_variables || {}
+  const generatedContent = output.generated_content || ''
+
+  const hashString = (value) => {
+    if (!value) return null
+    let hash = 0
+    for (let i = 0; i < value.length; i++) {
+      hash = ((hash << 5) - hash) + value.charCodeAt(i)
+      hash |= 0
+    }
+    return `h${Math.abs(hash)}`
+  }
+
+  const parseRenderedPrompt = (promptText) => {
+    if (!promptText) return { title: null, content: null }
+    const titleMatch = promptText.match(/^(Title|Headline|Titel):\s*(.*)$/m)
+    const title = titleMatch ? titleMatch[2].trim() : null
+    const parts = promptText.split(/\n\s*\n/)
+    const content = parts.length > 1 ? parts.slice(1).join('\n\n').trim() : null
+    return { title, content }
+  }
+
+  // Stable source grouping
+  const renderedPrompt = output.rendered_user_prompt || ''
+  const parsed = parseRenderedPrompt(renderedPrompt)
+  const sourceIndex = promptVars.source_index ?? promptVars._source_index ?? output.source_group_key ?? output.source_item_id ?? hashString(renderedPrompt) ?? output.id
+  const promptKey = output.prompt_template_id ?? promptVars._user_prompt_id ?? output.prompt_variant_name ?? 'prompt'
+  const groupId = `${sourceIndex}`
+
+  // Build a readable source text
+  const sourceTitle = promptVars.title || parsed.title || ''
+  const sourceBody = promptVars.content || promptVars.input || parsed.content || ''
+  const sourceText = sourceTitle
+    ? `Title: ${sourceTitle}\n\n${sourceBody}`
+    : (sourceBody || promptVars.input || renderedPrompt || '')
+
+  // Build the combined content structure
+  let messages = []
+  let text = ''
+
+  if (promptVars.messages && Array.isArray(promptVars.messages)) {
+    messages = [...promptVars.messages]
+    messages.push({ role: 'assistant', content: generatedContent })
+    text = messages.map(m => `${m.role}: ${m.content}`).join('\n\n')
+  } else if (promptVars.input) {
+    messages = [
+      { role: 'user', content: promptVars.input },
+      { role: 'assistant', content: generatedContent }
+    ]
+    text = `User: ${promptVars.input}\n\nAssistant: ${generatedContent}`
+  } else {
+    text = generatedContent
+  }
+
+  return {
+    id: String(output.id),
+    text,
+    content: generatedContent,
+    output: generatedContent,
+    messages: messages.length > 0 ? messages : undefined,
+    subject: promptVars.subject || undefined,
+    source_id: groupId,
+    source_text: sourceText,
+    llm_name: output.llm_model_name,
+    prompt_id: promptKey,
+    prompt_variant: output.prompt_variant_name || null,
+    variant: `${output.llm_model_name} / ${promptKey}${output.prompt_variant_name && output.prompt_variant_name !== promptKey ? ` / ${output.prompt_variant_name}` : ''}`,
+    title: promptVars.title || null,
+    input: promptVars.input || null,
+    _source: 'generation',
+    _model: output.llm_model_name,
+    _prompt_variant: output.prompt_variant_name,
+    _source_item_id: output.source_item_id,
+    _source_index: promptVars.source_index ?? promptVars._source_index ?? null,
+    _original_input: promptVars.input || null
+  }
+}
 
 async function loadFromGenerationJob() {
   if (!props.generationJobId) return
 
   loadingFromGeneration.value = true
   try {
-    // Fetch all completed outputs from the generation job
-    const response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
-      params: { status: 'completed', per_page: 1000, include_prompts: true }
-    })
+    // Load only lightweight stats + job info — no output content needed.
+    // The actual scenario creation happens server-side via /to-scenario.
+    const [statsRes, jobRes] = await Promise.all([
+      axios.get(`/api/generation/jobs/${props.generationJobId}/statistics`),
+      axios.get(`/api/generation/jobs/${props.generationJobId}`)
+    ])
+    const stats = statsRes.data.statistics
+    const job = jobRes.data.job
 
-    const outputs = response.data.items || []
-    if (outputs.length === 0) {
-      console.warn('No completed outputs found in generation job')
-      return
+    generationJobName.value = job?.name || `Generation Job #${props.generationJobId}`
+    generationJobMeta.value = {
+      totalOutputs: stats.overall?.completed || 0,
+      models: Object.keys(stats.by_model || {}),
+      variants: Object.keys(stats.by_prompt_variant || {}),
     }
 
-    // Fetch job info for the name
-    const jobResponse = await axios.get(`/api/generation/jobs/${props.generationJobId}`)
-    generationJobName.value = jobResponse.data.job?.name || `Generation Job #${props.generationJobId}`
-
-    const hashString = (value) => {
-      if (!value) return null
-      let hash = 0
-      for (let i = 0; i < value.length; i++) {
-        hash = ((hash << 5) - hash) + value.charCodeAt(i)
-        hash |= 0
-      }
-      return `h${Math.abs(hash)}`
-    }
-
-    const parseRenderedPrompt = (promptText) => {
-      if (!promptText) return { title: null, content: null }
-      const titleMatch = promptText.match(/^(Title|Headline|Titel):\s*(.*)$/m)
-      const title = titleMatch ? titleMatch[2].trim() : null
-      const parts = promptText.split(/\n\s*\n/)
-      const content = parts.length > 1 ? parts.slice(1).join('\n\n').trim() : null
-      return { title, content }
-    }
-
-    // Transform outputs into items for the wizard
-    // Combine original input data with generated response as a complete conversation
-    const items = outputs.map((output) => {
-      const promptVars = output.prompt_variables || {}
-      const generatedContent = output.generated_content || ''
-
-      // Stable source grouping (source_index is canonical, _source_index for backwards compat)
-      const renderedPrompt = output.rendered_user_prompt || ''
-      const parsed = parseRenderedPrompt(renderedPrompt)
-      const sourceIndex = promptVars.source_index ?? promptVars._source_index ?? output.source_group_key ?? output.source_item_id ?? hashString(renderedPrompt) ?? output.id
-      const promptKey = output.prompt_template_id ?? promptVars._user_prompt_id ?? output.prompt_variant_name ?? 'prompt'
-      const groupId = `${sourceIndex}`
-
-      // Build a readable source text (title + content if available)
-      const sourceTitle = promptVars.title || parsed.title || ''
-      const sourceBody = promptVars.content || promptVars.input || parsed.content || ''
-      const sourceText = sourceTitle
-        ? `Title: ${sourceTitle}\n\n${sourceBody}`
-        : (sourceBody || promptVars.input || renderedPrompt || '')
-
-      // Build the combined content structure (for non-ranking use cases)
-      let messages = []
-      let text = ''
-
-      if (promptVars.messages && Array.isArray(promptVars.messages)) {
-        messages = [...promptVars.messages]
-        messages.push({
-          role: 'assistant',
-          content: generatedContent
-        })
-        text = messages.map(m => `${m.role}: ${m.content}`).join('\n\n')
-      } else if (promptVars.input) {
-        messages = [
-          { role: 'user', content: promptVars.input },
-          { role: 'assistant', content: generatedContent }
-        ]
-        text = `User: ${promptVars.input}\n\nAssistant: ${generatedContent}`
-      } else {
-        text = generatedContent
-      }
-
-      return {
-        id: output.id.toString(),
-        text: text,
-        content: generatedContent,
-        output: generatedContent,
-        messages: messages.length > 0 ? messages : undefined,
-        subject: promptVars.subject || undefined,
-        source_id: groupId,
-        source_text: sourceText,
-        llm_name: output.llm_model_name,
-        prompt_id: promptKey,
-        prompt_variant: output.prompt_variant_name || null,
-        variant: `${output.llm_model_name} / ${promptKey}${output.prompt_variant_name && output.prompt_variant_name !== promptKey ? ` / ${output.prompt_variant_name}` : ''}`,
-        title: promptVars.title || null,
-        input: promptVars.input || null,
-        // Include metadata for context
-        _source: 'generation',
-        _model: output.llm_model_name,
-        _prompt_variant: output.prompt_variant_name,
-        _source_item_id: output.source_item_id,
-        _source_index: promptVars.source_index ?? promptVars._source_index ?? null,
-        _original_input: promptVars.input || null
-      }
-    })
-
-    // Set the data
-    analyzedData.value = items
-
-    // Create a virtual "file" entry to show in the UI
-    uploadedFiles.value = [{
-      name: `${generationJobName.value}.json`,
-      size: JSON.stringify(items).length,
-      _isVirtual: true,
-      _generationJobId: props.generationJobId
-    }]
-
-    // Pre-fill scenario name based on job name
     formData.value.scenario_name = generationJobName.value
-
-    // Auto-advance to step 1 (task type selection) since we have data
-    // The user can still go back to see the data if needed
-    currentStep.value = 1
+    // currentStep starts at 0, which is 'task' (data tab is skipped)
 
   } catch (error) {
-    console.error('Failed to load generation job data:', error)
+    console.error('Failed to load generation job metadata:', error)
   } finally {
     loadingFromGeneration.value = false
   }
@@ -2560,6 +3312,26 @@ onMounted(() => {
   border: 1px solid rgba(var(--v-theme-primary), 0.2);
 }
 
+/* Slim auto-analysis banner: replaces the verbose AI Analysis box. */
+.analysis-banner {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 10px 3px 10px 3px;
+  background: rgba(var(--v-theme-surface-variant), 0.35);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  font-size: 0.9rem;
+}
+
+.analysis-banner .banner-text {
+  color: rgba(var(--v-theme-on-surface), 0.85);
+}
+
+.analysis-banner .banner-text-error {
+  color: rgb(var(--v-theme-error));
+}
+
 .analysis-header {
   display: flex;
   align-items: center;
@@ -2742,6 +3514,23 @@ onMounted(() => {
   padding-top: 36px;
 }
 
+.type-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.type-card.disabled:hover {
+  border-color: rgba(var(--v-theme-on-surface), 0.1);
+  background-color: transparent;
+}
+
+.disabled-hint-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
 .type-icon {
   display: flex;
   align-items: center;
@@ -2810,6 +3599,13 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+/* Side-by-side number inputs for the gamification milestone thresholds. */
+.config-section.gamification-thresholds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 .config-label {
   font-size: 0.9rem;
   font-weight: 600;
@@ -2818,6 +3614,12 @@ onMounted(() => {
 }
 
 .config-label-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-label-inline {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -2862,6 +3664,87 @@ onMounted(() => {
 }
 
 .summary-value {
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.summary-value--markdown {
+  max-width: min(560px, 100%);
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-surface), 0.9);
+}
+
+.wizard-markdown-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wizard-markdown-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wizard-markdown-field__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.wf-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wf-chevron {
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  transition: transform 0.2s ease;
+}
+
+.wf-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.server-import-hint {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-accent), 0.08);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.summary-value--markdown {
+  max-width: min(560px, 100%);
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-surface), 0.9);
+}
+
+.wizard-markdown-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wizard-markdown-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wizard-markdown-field__label {
+  font-size: 0.875rem;
   font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -3132,5 +4015,65 @@ onMounted(() => {
   font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.7);
   margin-bottom: 4px;
+}
+
+/* ===================================================================
+   Responsive / Mobile (<=768px)
+   Scoped to small viewports only — desktop layout must not regress.
+   Prevents stepper overflow, collapses the type grid to one column,
+   and tightens padding so the wizard fits narrow screens without
+   horizontal scrolling. Touch targets kept >=36px.
+   =================================================================== */
+@media (max-width: 768px) {
+  /* Type selection grid: single column to avoid horizontal overflow */
+  .type-grid {
+    grid-template-columns: minmax(140px, 1fr);
+  }
+
+  /* Stepper: hide text labels, keep icon/number only so 5 steps fit */
+  .wizard-stepper {
+    gap: 4px;
+    padding: 12px 8px;
+    flex-wrap: nowrap;
+  }
+
+  .step {
+    padding: 4px 6px;
+    gap: 0;
+  }
+
+  .step-label {
+    display: none;
+  }
+
+  /* Keep the indicator a comfortable touch target */
+  .step-indicator {
+    width: 36px;
+    height: 36px;
+    font-size: 0.85rem;
+  }
+
+  /* Content + actions: tighter padding, allow action buttons to wrap */
+  .wizard-content {
+    padding: 16px !important;
+  }
+
+  .wizard-actions {
+    padding: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Upload zone: reduce generous desktop padding */
+  .upload-zone {
+    padding: 24px;
+  }
+
+  /* Summary rows: stack label above value */
+  .summary-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
 }
 </style>

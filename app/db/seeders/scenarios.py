@@ -118,16 +118,16 @@ def _is_demo_ranking_already_balanced(
     if len(item_features) != expected_total_features:
         return False
 
-    model_ids = {llm.llm_id for llm in feature_model_by_name.values()}
+    model_ids = set(feature_model_by_name.values())
     type_ids = {ft.type_id for ft in feature_type_by_name.values()}
 
     per_item_combo_count = {}
     for feature in item_features:
-        if feature.llm_id not in model_ids or feature.type_id not in type_ids:
+        if feature.model_id not in model_ids or feature.type_id not in type_ids:
             return False
         if _has_demo_model_prefix(feature.content):
             return False
-        key = (feature.item_id, feature.llm_id, feature.type_id)
+        key = (feature.item_id, feature.model_id, feature.type_id)
         per_item_combo_count[key] = per_item_combo_count.get(key, 0) + 1
 
     if any(count != 1 for count in per_item_combo_count.values()):
@@ -148,7 +148,7 @@ def _rebalance_demo_ranking_provenance(db, ranking_scenario):
 
     This replaces legacy SummEval-heavy demo data for scenario provenance demos.
     """
-    from ..tables import Feature, FeatureType, LLM, Message, UserFeatureRanking
+    from ..tables import Feature, FeatureType, Message, UserFeatureRanking
     from db.models.scenario import ScenarioItems
     from db.models.llm_task_result import LLMTaskResult
 
@@ -165,15 +165,8 @@ def _rebalance_demo_ranking_provenance(db, ranking_scenario):
     if not item_ids:
         return
 
-    # Ensure feature-generation model labels exist (legacy llms table, used by features).
-    feature_model_by_name = {}
-    for model_name in DEMO_PROVENANCE_GENERATION_MODELS:
-        llm = LLM.query.filter_by(name=model_name).first()
-        if not llm:
-            llm = LLM(name=model_name)
-            db.session.add(llm)
-            db.session.flush()
-        feature_model_by_name[model_name] = llm
+    # Model ID strings for features (no longer need LLM table entries).
+    feature_model_by_name = {name: name for name in DEMO_PROVENANCE_GENERATION_MODELS}
 
     # Ensure prompt types exist.
     feature_type_by_name = {}
@@ -224,13 +217,13 @@ def _rebalance_demo_ranking_provenance(db, ranking_scenario):
 
         created_feature_ids = []
         for model_name in DEMO_PROVENANCE_GENERATION_MODELS:
-            llm = feature_model_by_name[model_name]
+            model_id = feature_model_by_name[model_name]
             for prompt_name in DEMO_PROVENANCE_PROMPTS:
                 ft = feature_type_by_name[prompt_name]
                 feature = Feature(
                     item_id=item_id,
                     type_id=ft.type_id,
-                    llm_id=llm.llm_id,
+                    model_id=model_id,
                     content=_build_demo_feature_content(prompt_name, model_name, source_text),
                 )
                 db.session.add(feature)
@@ -289,7 +282,7 @@ def seed_demo_scenarios(db):
         db: SQLAlchemy database instance
     """
     from ..tables import (
-        User, UserGroup, EmailThread, Message, Feature, FeatureType, LLM,
+        User, UserGroup, EmailThread, Message, Feature, FeatureType,
         FeatureFunctionType, RatingScenarios, ScenarioUsers,
         ScenarioThreads, ScenarioThreadDistribution, ScenarioRoles,
         AuthenticityConversation,
@@ -317,9 +310,9 @@ def seed_demo_scenarios(db):
         evaluator_user = User(
             username='evaluator',
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
+        evaluator_user.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(evaluator_user)
         print("  Created user: evaluator")
 
@@ -327,9 +320,9 @@ def seed_demo_scenarios(db):
         researcher_user = User(
             username='researcher',
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
+        researcher_user.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(researcher_user)
         print("  Created user: researcher")
 
@@ -337,9 +330,9 @@ def seed_demo_scenarios(db):
         ijcai_reviewer_1 = User(
             username='ijcai_reviewer_1',
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
+        ijcai_reviewer_1.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(ijcai_reviewer_1)
         print("  Created user: ijcai_reviewer_1")
 
@@ -347,9 +340,9 @@ def seed_demo_scenarios(db):
         ijcai_reviewer_2 = User(
             username='ijcai_reviewer_2',
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
+        ijcai_reviewer_2.set_api_key_hashed(str(uuid.uuid4()))
         db.session.add(ijcai_reviewer_2)
         print("  Created user: ijcai_reviewer_2")
 
@@ -380,29 +373,11 @@ def seed_demo_scenarios(db):
         print("  ERROR: FeatureFunctionTypes not found. Run initialize_feature_function_types first.")
         return
 
-    # Create or get LLMs
-    llm_gpt4 = LLM.query.filter_by(name='GPT-4').first()
-    if not llm_gpt4:
-        llm_gpt4 = LLM(name='GPT-4')
-        db.session.add(llm_gpt4)
-
-    llm_claude = LLM.query.filter_by(name='Claude-3').first()
-    if not llm_claude:
-        llm_claude = LLM(name='Claude-3')
-        db.session.add(llm_claude)
-
-    llm_mistral = LLM.query.filter_by(name='Mistral-7B').first()
-    if not llm_mistral:
-        llm_mistral = LLM(name='Mistral-7B')
-        db.session.add(llm_mistral)
-
-    # Create LLM entry for SummEval dataset (for ranking features)
-    llm_summeval = LLM.query.filter_by(name='SummEval').first()
-    if not llm_summeval:
-        llm_summeval = LLM(name='SummEval')
-        db.session.add(llm_summeval)
-
-    db.session.flush()
+    # Model ID strings for features (no longer need LLM table entries)
+    llm_gpt4 = 'Global/OpenAI/gpt-4'
+    llm_claude = 'Global/Anthropic/claude-3'
+    llm_mistral = 'Global/Mistral/Mistral-7B'
+    llm_summeval = 'SummEval'
 
     # Create or get Feature Types
     feature_types = {}
@@ -422,14 +397,38 @@ def seed_demo_scenarios(db):
     existing_labeling = RatingScenarios.query.filter_by(scenario_name='Demo Labeling Szenario').first()
 
     def _ensure_scenario_user(scenario_id: int, user_id: int, role: ScenarioRoles) -> None:
+        """Ensure user exists in scenario with correct role + new flags."""
+        is_assessor = role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)
+        is_viewer = role == ScenarioRoles.VIEWER
+        # Map legacy role to new 2-axis model
+        if role == ScenarioRoles.OWNER:
+            manager_role, evaluation_role = 'owner', 'none'
+        elif role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR):
+            manager_role, evaluation_role = 'none', 'assessor'
+        elif role == ScenarioRoles.VIEWER:
+            manager_role, evaluation_role = 'viewer', 'none'
+        else:
+            manager_role, evaluation_role = 'none', 'none'
         existing = ScenarioUsers.query.filter_by(scenario_id=scenario_id, user_id=user_id).first()
         if existing:
+            if existing.role != role:
+                existing.role = role
+                existing.is_assessor = is_assessor
+                existing.is_viewer = is_viewer
+                existing.manager_role = manager_role
+                existing.evaluation_role = evaluation_role
+                db.session.flush()
             return
         db.session.add(
             ScenarioUsers(
                 scenario_id=scenario_id,
                 user_id=user_id,
                 role=role,
+                access_level='MEMBER',
+                is_assessor=is_assessor,
+                is_viewer=is_viewer,
+                manager_role=manager_role,
+                evaluation_role=evaluation_role,
             )
         )
         db.session.flush()
@@ -552,240 +551,105 @@ def seed_demo_scenarios(db):
 
     threads.append(thread3)
 
-    # Thread 4 for Mail Rating (Verlauf Bewerter)
-    thread4 = EmailThread.query.filter_by(chat_id=9004, institut_id=1, function_type_id=mail_rating_type.function_type_id).first()
-    if not thread4:
-        thread4 = EmailThread(
-            chat_id=9004,
-            institut_id=1,
-            subject='Beratung: Studienabbruch und Neustart',
-            sender='klient4@example.com',
+    # Mail Rating Threads (20 diverse conversations with generated_by provenance)
+    from .demo_datasets import MAIL_RATING_SAMPLES
+
+    mail_rating_threads = []
+    for idx, sample in enumerate(MAIL_RATING_SAMPLES):
+        chat_id = 9004 + idx
+        thread = EmailThread.query.filter_by(
+            chat_id=chat_id, institut_id=1,
             function_type_id=mail_rating_type.function_type_id
-        )
-        db.session.add(thread4)
-        db.session.flush()
+        ).first()
+        if not thread:
+            thread = EmailThread(
+                chat_id=chat_id,
+                institut_id=1,
+                subject=sample['subject'],
+                sender=f'klient_mr{idx}@example.com',
+                function_type_id=mail_rating_type.function_type_id
+            )
+            db.session.add(thread)
+            db.session.flush()
 
-        messages4 = [
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Klient',
-                content='Hallo, ich bin 22 und habe gerade mein Informatikstudium im 5. Semester abgebrochen. Meine Eltern sind enttäuscht und ich weiß nicht, wie es weitergehen soll. Programmieren macht mir keinen Spaß mehr.',
-                timestamp=datetime.now() - timedelta(days=6, hours=14)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Berater',
-                content='Danke, dass Sie sich an uns wenden. Ein Studienabbruch ist keine Seltenheit und kein Weltuntergang. Wichtig ist, dass Sie jetzt herausfinden, was Sie wirklich interessiert. Was hat Sie ursprünglich zur Informatik geführt?',
-                timestamp=datetime.now() - timedelta(days=6, hours=10)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Klient',
-                content='Ehrlich gesagt war es der Druck meiner Eltern. Sie meinten, damit verdient man gut. Aber ich interessiere mich viel mehr für kreative Dinge - Design, Fotografie, vielleicht auch Marketing.',
-                timestamp=datetime.now() - timedelta(days=5, hours=16)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Berater',
-                content='Das ist eine wichtige Erkenntnis! Es gibt viele Berufe, die Kreativität und technisches Verständnis verbinden. Haben Sie schon einmal über Mediengestaltung oder UX/UI Design nachgedacht? Dort könnten Sie beides vereinen.',
-                timestamp=datetime.now() - timedelta(days=5, hours=12)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Klient',
-                content='UX Design klingt interessant! Kann ich das auch ohne fertiges Studium machen? Und wie erkläre ich das meinen Eltern?',
-                timestamp=datetime.now() - timedelta(days=4, hours=20)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Berater',
-                content='Es gibt verschiedene Wege ins UX Design - Bootcamps, Weiterbildungen oder ein neues Studium. Was Ihre Eltern betrifft: Zeigen Sie ihnen konkrete Berufsperspektiven und Gehaltsmöglichkeiten in diesem Bereich. Sollen wir gemeinsam einen Plan erarbeiten?',
-                timestamp=datetime.now() - timedelta(days=4, hours=14)
-            ),
-        ]
-        for msg in messages4:
-            db.session.add(msg)
+            counselor_source = sample.get('counselor_source', 'Human')
+            client_source = sample.get('client_source', 'Human')
 
-    # Thread 5 for Mail Rating (zweiter Fall)
-    thread5 = EmailThread.query.filter_by(chat_id=9005, institut_id=1, function_type_id=mail_rating_type.function_type_id).first()
-    if not thread5:
-        thread5 = EmailThread(
-            chat_id=9005,
-            institut_id=1,
-            subject='Wiedereinstieg nach Elternzeit',
-            sender='klient5@example.com',
-            function_type_id=mail_rating_type.function_type_id
-        )
-        db.session.add(thread5)
-        db.session.flush()
+            for msg_idx, msg in enumerate(sample['messages']):
+                generated_by = counselor_source if msg['sender'] == 'Berater' else client_source
+                db.session.add(Message(
+                    thread_id=thread.thread_id,
+                    sender=msg['sender'],
+                    content=msg['content'],
+                    generated_by=generated_by,
+                    timestamp=datetime.now() - timedelta(days=14 - idx, hours=10 - msg_idx)
+                ))
 
-        messages5 = [
-            Message(
-                thread_id=thread5.thread_id,
-                sender='Klient',
-                content='Guten Tag, nach 3 Jahren Elternzeit möchte ich wieder ins Berufsleben einsteigen. Ich war vorher Buchhalterin, aber die Digitalisierung hat vieles verändert. Bin ich noch auf dem aktuellen Stand?',
-                timestamp=datetime.now() - timedelta(days=4, hours=9)
-            ),
-            Message(
-                thread_id=thread5.thread_id,
-                sender='Berater',
-                content='Willkommen zurück! Ihre Bedenken sind verständlich, aber 3 Jahre sind gut aufzuholen. Die Grundlagen der Buchhaltung bleiben gleich, nur die Tools haben sich weiterentwickelt. Welche Software haben Sie zuletzt genutzt?',
-                timestamp=datetime.now() - timedelta(days=4, hours=5)
-            ),
-            Message(
-                thread_id=thread5.thread_id,
-                sender='Klient',
-                content='Hauptsächlich DATEV und Excel. Ich höre aber, dass jetzt viel mit Cloud-Lösungen gearbeitet wird und alles automatisiert ist. Macht mir das nicht Angst?',
-                timestamp=datetime.now() - timedelta(days=3, hours=15)
-            ),
-            Message(
-                thread_id=thread5.thread_id,
-                sender='Berater',
-                content='DATEV-Kenntnisse sind nach wie vor sehr gefragt! Die Cloud-Version ist intuitiv zu erlernen. Automatisierung betrifft vor allem repetitive Aufgaben - qualifizierte Buchhalter werden weiterhin gebraucht für Analyse und Beratung. Ich empfehle einen Auffrischungskurs.',
-                timestamp=datetime.now() - timedelta(days=3, hours=11)
-            ),
-        ]
-        for msg in messages5:
-            db.session.add(msg)
+        mail_rating_threads.append(thread)
 
-    mail_rating_threads = [thread4, thread5]
+    # Threads for Fake/Echt (Authenticity) - loop over AUTHENTICITY_SAMPLES
+    from .demo_datasets import AUTHENTICITY_SAMPLES
 
-    # Threads for Fake/Echt (Authenticity)
     authenticity_threads = []
-
-    thread6 = EmailThread.query.filter_by(chat_id=9101, institut_id=3, function_type_id=authenticity_type.function_type_id).first()
-    if not thread6:
-        thread6 = EmailThread(
-            chat_id=9101,
-            institut_id=3,
-            subject='Fake/Echt – Demo Fall (Echt)',
-            sender='demo@example.com',
+    for idx, sample in enumerate(AUTHENTICITY_SAMPLES):
+        chat_id = 9101 + idx
+        thread = EmailThread.query.filter_by(
+            chat_id=chat_id, institut_id=3,
             function_type_id=authenticity_type.function_type_id
-        )
-        db.session.add(thread6)
-        db.session.flush()
-
-        messages6 = [
-            Message(
-                thread_id=thread6.thread_id,
-                sender='Ratsuchende',
-                content='Hallo, ich habe ein Problem mit meinem Chef und weiß nicht, wie ich damit umgehen soll.',
-                timestamp=datetime.now() - timedelta(days=2, hours=10),
-                generated_by='Human'
-            ),
-            Message(
-                thread_id=thread6.thread_id,
-                sender='Beratende',
-                content='Danke für deine Nachricht. Magst du kurz beschreiben, was genau passiert ist und wie oft es vorkommt?',
-                timestamp=datetime.now() - timedelta(days=2, hours=9, minutes=30),
-                generated_by='Human'
-            ),
-        ]
-        for msg in messages6:
-            db.session.add(msg)
-
-    authenticity_threads.append(thread6)
-
-    if thread6 and not AuthenticityConversation.query.filter_by(thread_id=thread6.thread_id).first():
-        meta6 = {
-            "conversation_id": 9101,
-            "augmentation_type": "reg_single_any",
-            "replaced_positions": [],
-            "num_replacements": 0,
-            "total_messages": 2,
-            "saeule": "3",
-            "split": "train",
-            "model": None,
-            "model_short": None,
-            "generated_at": datetime.now().isoformat(),
-            "format_version": "v6",
-        }
-        db.session.add(
-            AuthenticityConversation(
-                thread_id=thread6.thread_id,
-                sample_key="v6:demo-auth-9101",
-                conversation_id=9101,
-                augmentation_type=meta6.get("augmentation_type"),
-                replaced_positions=meta6.get("replaced_positions"),
-                num_replacements=meta6.get("num_replacements"),
-                total_messages=meta6.get("total_messages"),
-                saeule=meta6.get("saeule"),
-                split=meta6.get("split"),
-                model=meta6.get("model"),
-                model_short=meta6.get("model_short"),
-                generated_at=datetime.fromisoformat(meta6.get("generated_at")),
-                format_version=meta6.get("format_version"),
-                is_fake=False,
-                metadata_json=meta6,
+        ).first()
+        if not thread:
+            thread = EmailThread(
+                chat_id=chat_id,
+                institut_id=3,
+                subject=sample['subject'],
+                sender='demo@example.com',
+                function_type_id=authenticity_type.function_type_id
             )
-        )
+            db.session.add(thread)
+            db.session.flush()
 
-    thread7 = EmailThread.query.filter_by(chat_id=9102, institut_id=3, function_type_id=authenticity_type.function_type_id).first()
-    if not thread7:
-        thread7 = EmailThread(
-            chat_id=9102,
-            institut_id=3,
-            subject='Fake/Echt – Demo Fall (Fake)',
-            sender='demo@example.com',
-            function_type_id=authenticity_type.function_type_id
-        )
-        db.session.add(thread7)
-        db.session.flush()
+            generated_by = sample.get('model') or 'Human'
+            for msg_idx, msg in enumerate(sample['messages']):
+                db.session.add(Message(
+                    thread_id=thread.thread_id,
+                    sender=msg['sender'],
+                    content=msg['content'],
+                    generated_by=generated_by,
+                    timestamp=datetime.now() - timedelta(days=20 - idx, hours=10 - msg_idx)
+                ))
 
-        messages7 = [
-            Message(
-                thread_id=thread7.thread_id,
-                sender='Ratsuchende',
-                content='Hi, ich bin total überfordert mit meinem Studium und habe Angst zu versagen.',
-                timestamp=datetime.now() - timedelta(days=1, hours=18),
-                generated_by='Human'
-            ),
-            Message(
-                thread_id=thread7.thread_id,
-                sender='Beratende',
-                content='Es tut mir leid, dass du dich so fühlst. Lass uns gemeinsam schauen, was dich am meisten belastet und welche nächsten Schritte möglich sind.',
-                timestamp=datetime.now() - timedelta(days=1, hours=17, minutes=40),
-                generated_by='gpt-5.1'
-            ),
-        ]
-        for msg in messages7:
-            db.session.add(msg)
+        authenticity_threads.append(thread)
 
-    authenticity_threads.append(thread7)
-
-    if thread7 and not AuthenticityConversation.query.filter_by(thread_id=thread7.thread_id).first():
-        meta7 = {
-            "conversation_id": 9102,
-            "augmentation_type": "reg_single_any",
-            "replaced_positions": [1],
-            "num_replacements": 1,
-            "total_messages": 2,
-            "saeule": "3",
-            "split": "train",
-            "model": "gpt-5.1",
-            "model_short": "gpt51",
-            "generated_at": datetime.now().isoformat(),
-            "format_version": "v6",
-        }
-        db.session.add(
-            AuthenticityConversation(
-                thread_id=thread7.thread_id,
-                sample_key="v6:demo-auth-9102",
-                conversation_id=9102,
-                augmentation_type=meta7.get("augmentation_type"),
-                replaced_positions=meta7.get("replaced_positions"),
-                num_replacements=meta7.get("num_replacements"),
-                total_messages=meta7.get("total_messages"),
-                saeule=meta7.get("saeule"),
-                split=meta7.get("split"),
-                model=meta7.get("model"),
-                model_short=meta7.get("model_short"),
-                generated_at=datetime.fromisoformat(meta7.get("generated_at")),
-                format_version=meta7.get("format_version"),
-                is_fake=True,
-                metadata_json=meta7,
+        # Create AuthenticityConversation metadata
+        if thread and not AuthenticityConversation.query.filter_by(thread_id=thread.thread_id).first():
+            is_fake = sample.get('is_fake', False)
+            model = sample.get('model') if is_fake else None
+            model_short = model[:10] if model else None
+            db.session.add(
+                AuthenticityConversation(
+                    thread_id=thread.thread_id,
+                    sample_key=f"v6:demo-auth-{chat_id}",
+                    conversation_id=chat_id,
+                    augmentation_type="reg_single_any",
+                    replaced_positions=[1] if is_fake else [],
+                    num_replacements=1 if is_fake else 0,
+                    total_messages=len(sample['messages']),
+                    saeule="3",
+                    split="train",
+                    model=model,
+                    model_short=model_short,
+                    generated_at=datetime.now(),
+                    format_version="v6",
+                    is_fake=is_fake,
+                    metadata_json={
+                        "conversation_id": chat_id,
+                        "augmentation_type": "reg_single_any",
+                        "model": model,
+                        "is_fake": is_fake,
+                        "indicators": sample.get('indicators', []),
+                    },
+                )
             )
-        )
 
     # Threads for Labeling (generalized text categorization)
     labeling_threads = []
@@ -905,14 +769,14 @@ def seed_demo_scenarios(db):
                 existing = Feature.query.filter_by(
                     thread_id=thread.thread_id,
                     type_id=ft.type_id,
-                    llm_id=llm.llm_id
+                    model_id=llm
                 ).first()
 
                 if not existing:
                     feature = Feature(
                         thread_id=thread.thread_id,
                         type_id=ft.type_id,
-                        llm_id=llm.llm_id,
+                        model_id=llm,
                         content=contents[i]
                     )
                     db.session.add(feature)
@@ -948,14 +812,14 @@ def seed_demo_scenarios(db):
                 existing = Feature.query.filter_by(
                     thread_id=thread.thread_id,
                     type_id=ft.type_id,
-                    llm_id=llm.llm_id
+                    model_id=llm
                 ).first()
 
                 if not existing:
                     feature = Feature(
                         thread_id=thread.thread_id,
                         type_id=ft.type_id,
-                        llm_id=llm.llm_id,
+                        model_id=llm,
                         content=contents[i]
                     )
                     db.session.add(feature)
@@ -985,14 +849,25 @@ def seed_demo_scenarios(db):
         db.session.add(ranking_scenario)
         db.session.flush()
 
-        # Add users to scenario
-        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
-            scenario_user = ScenarioUsers(
-                scenario_id=ranking_scenario.id,
-                user_id=user.id,
-                role=role
-            )
-            db.session.add(scenario_user)
+        # Add users to scenario: ijcai_reviewer_1=EVALUATOR, ijcai_reviewer_2=EVALUATOR, others=VIEWER
+        for user, role in [
+            (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
+            (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
+            (evaluator_user, ScenarioRoles.VIEWER),
+            (researcher_user, ScenarioRoles.EVALUATOR),
+        ]:
+            if user:
+                scenario_user = ScenarioUsers(
+                    scenario_id=ranking_scenario.id,
+                    user_id=user.id,
+                    role=role,
+                    access_level='MEMBER',
+                    is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                    is_viewer=(role == ScenarioRoles.VIEWER),
+                    manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                    evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
+                )
+                db.session.add(scenario_user)
 
         db.session.flush()
 
@@ -1004,10 +879,13 @@ def seed_demo_scenarios(db):
         db.session.add(st)
         db.session.flush()
 
-        # Distribute to rater
-        rater_scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=ranking_scenario.id,
-            role=ScenarioRoles.EVALUATOR
+        # Distribute to rater (assessor)
+        rater_scenario_user = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == ranking_scenario.id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
         if rater_scenario_user:
@@ -1030,8 +908,14 @@ def seed_demo_scenarios(db):
             ranking_scenario.config_json = config
             print(f"  Updated Ranking Scenario with LLM evaluators")
 
-    if admin_user and ranking_scenario:
-        _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+    # Ensure correct user roles for ranking scenario (also fixes existing scenarios)
+    if ranking_scenario:
+        if ijcai_reviewer_1:
+            _ensure_scenario_user(ranking_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.EVALUATOR)
+        if ijcai_reviewer_2:
+            _ensure_scenario_user(ranking_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
+        if admin_user:
+            _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Mail Rating Scenario (Verlauf Bewerter)
     if not existing_mail_rating:
@@ -1050,14 +934,25 @@ def seed_demo_scenarios(db):
         db.session.add(mail_rating_scenario)
         db.session.flush()
 
-        # Add users to scenario
-        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
-            scenario_user = ScenarioUsers(
-                scenario_id=mail_rating_scenario.id,
-                user_id=user.id,
-                role=role
-            )
-            db.session.add(scenario_user)
+        # Add users to scenario: ijcai_reviewer_1=EVALUATOR, ijcai_reviewer_2=EVALUATOR, others=VIEWER
+        for user, role in [
+            (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
+            (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
+            (evaluator_user, ScenarioRoles.VIEWER),
+            (researcher_user, ScenarioRoles.EVALUATOR),
+        ]:
+            if user:
+                scenario_user = ScenarioUsers(
+                    scenario_id=mail_rating_scenario.id,
+                    user_id=user.id,
+                    role=role,
+                    access_level='MEMBER',
+                    is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                    is_viewer=(role == ScenarioRoles.VIEWER),
+                    manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                    evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
+                )
+                db.session.add(scenario_user)
 
         db.session.flush()
 
@@ -1073,10 +968,13 @@ def seed_demo_scenarios(db):
 
         db.session.flush()
 
-        # Distribute to rater
-        rater_scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=mail_rating_scenario.id,
-            role=ScenarioRoles.EVALUATOR
+        # Distribute to rater (assessor)
+        rater_scenario_user = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == mail_rating_scenario.id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
         if rater_scenario_user:
@@ -1100,8 +998,14 @@ def seed_demo_scenarios(db):
             mail_rating_scenario.config_json = config
             print(f"  Updated Mail Rating Scenario with LLM evaluators")
 
-    if admin_user and mail_rating_scenario:
-        _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+    # Ensure correct user roles for mail rating scenario
+    if mail_rating_scenario:
+        if ijcai_reviewer_1:
+            _ensure_scenario_user(mail_rating_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.EVALUATOR)
+        if ijcai_reviewer_2:
+            _ensure_scenario_user(mail_rating_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
+        if admin_user:
+            _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Fake/Echt Scenario (Authenticity)
     if not existing_authenticity:
@@ -1122,13 +1026,24 @@ def seed_demo_scenarios(db):
         db.session.add(authenticity_scenario)
         db.session.flush()
 
-        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
-            scenario_user = ScenarioUsers(
-                scenario_id=authenticity_scenario.id,
-                user_id=user.id,
-                role=role
-            )
-            db.session.add(scenario_user)
+        for user, role in [
+            (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
+            (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
+            (evaluator_user, ScenarioRoles.VIEWER),
+            (researcher_user, ScenarioRoles.EVALUATOR),
+        ]:
+            if user:
+                scenario_user = ScenarioUsers(
+                    scenario_id=authenticity_scenario.id,
+                    user_id=user.id,
+                    role=role,
+                    access_level='MEMBER',
+                    is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                    is_viewer=(role == ScenarioRoles.VIEWER),
+                    manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                    evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
+                )
+                db.session.add(scenario_user)
 
         db.session.flush()
 
@@ -1143,9 +1058,12 @@ def seed_demo_scenarios(db):
 
         db.session.flush()
 
-        rater_scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=authenticity_scenario.id,
-            role=ScenarioRoles.EVALUATOR
+        rater_scenario_user = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == authenticity_scenario.id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
         if rater_scenario_user:
@@ -1168,8 +1086,55 @@ def seed_demo_scenarios(db):
             authenticity_scenario.config_json = config
             print(f"  Updated Authenticity Scenario with LLM evaluators")
 
-    if admin_user and authenticity_scenario:
-        _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+        # Ensure all authenticity threads are linked to the existing scenario
+        existing_thread_ids = {
+            st.thread_id for st in ScenarioThreads.query.filter_by(
+                scenario_id=authenticity_scenario.id
+            ).all()
+        }
+        new_thread_objs = []
+        for thread in authenticity_threads:
+            if thread.thread_id not in existing_thread_ids:
+                st = ScenarioThreads(
+                    scenario_id=authenticity_scenario.id,
+                    thread_id=thread.thread_id
+                )
+                db.session.add(st)
+                new_thread_objs.append(st)
+
+        if new_thread_objs:
+            db.session.flush()
+            # Distribute new threads to existing assessor users
+            evaluator_scenario_users = ScenarioUsers.query.filter(
+                ScenarioUsers.scenario_id == authenticity_scenario.id,
+                db.or_(
+                    ScenarioUsers.is_assessor == True,
+                    ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+                )
+            ).all()
+            for rater_su in evaluator_scenario_users:
+                for st in new_thread_objs:
+                    existing_dist = ScenarioThreadDistribution.query.filter_by(
+                        scenario_id=authenticity_scenario.id,
+                        scenario_user_id=rater_su.id,
+                        scenario_thread_id=st.id
+                    ).first()
+                    if not existing_dist:
+                        db.session.add(ScenarioThreadDistribution(
+                            scenario_id=authenticity_scenario.id,
+                            scenario_user_id=rater_su.id,
+                            scenario_thread_id=st.id
+                        ))
+            print(f"  Added {len(new_thread_objs)} new threads to existing Authenticity Scenario")
+
+    # Ensure correct user roles for authenticity scenario
+    if authenticity_scenario:
+        if ijcai_reviewer_1:
+            _ensure_scenario_user(authenticity_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.EVALUATOR)
+        if ijcai_reviewer_2:
+            _ensure_scenario_user(authenticity_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
+        if admin_user:
+            _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Labeling Scenario (generalized text categorization)
     if not existing_labeling:
@@ -1196,14 +1161,25 @@ def seed_demo_scenarios(db):
         db.session.add(labeling_scenario)
         db.session.flush()
 
-        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
-            db.session.add(
-                ScenarioUsers(
-                    scenario_id=labeling_scenario.id,
-                    user_id=user.id,
-                    role=role
+        for user, role in [
+            (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
+            (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
+            (evaluator_user, ScenarioRoles.VIEWER),
+            (researcher_user, ScenarioRoles.EVALUATOR),
+        ]:
+            if user:
+                db.session.add(
+                    ScenarioUsers(
+                        scenario_id=labeling_scenario.id,
+                        user_id=user.id,
+                        role=role,
+                        access_level='MEMBER',
+                        is_assessor=(role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR)),
+                        is_viewer=(role == ScenarioRoles.VIEWER),
+                        manager_role='owner' if role == ScenarioRoles.OWNER else ('viewer' if role == ScenarioRoles.VIEWER else 'none'),
+                        evaluation_role='assessor' if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.ASSESSOR) else 'none',
+                    )
                 )
-            )
 
         db.session.flush()
 
@@ -1219,9 +1195,12 @@ def seed_demo_scenarios(db):
 
         db.session.flush()
 
-        rater_scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=labeling_scenario.id,
-            role=ScenarioRoles.EVALUATOR
+        rater_scenario_user = ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == labeling_scenario.id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
         if rater_scenario_user:
@@ -1245,8 +1224,14 @@ def seed_demo_scenarios(db):
             labeling_scenario.config_json = config
             print(f"  Updated Labeling Scenario with LLM evaluators")
 
-    if admin_user and labeling_scenario:
-        _ensure_scenario_user(labeling_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+    # Ensure correct user roles for labeling scenario
+    if labeling_scenario:
+        if ijcai_reviewer_1:
+            _ensure_scenario_user(labeling_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.EVALUATOR)
+        if ijcai_reviewer_2:
+            _ensure_scenario_user(labeling_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
+        if admin_user:
+            _ensure_scenario_user(labeling_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     db.session.commit()
     print("Demo scenarios seeded successfully.")
@@ -1278,6 +1263,30 @@ def seed_demo_scenarios(db):
     except Exception as e:
         print(f"  WARNING: Could not seed SummEval demo: {e}")
 
+    # Seed Comparison demo scenario (pairwise A/B for IJCAI reviewers)
+    try:
+        from .comparison_demo_data import seed_comparison_demo_scenario
+        seed_comparison_demo_scenario(db)
+    except Exception as e:
+        print(f"  WARNING: Could not seed Comparison demo: {e}")
+
+    # Seed Communication-Comparison demo (function_type_id=8) — same A/B
+    # mechanics as comparison(4), counselling-style UI shell with
+    # send-animation + response-prompt + rater-note. researcher gets
+    # owner+assessor so the demo is immediately reachable.
+    try:
+        from .comm_comparison_demo_data import seed_comm_comparison_demo_scenario
+        seed_comm_comparison_demo_scenario(db)
+    except Exception as e:
+        print(f"  WARNING: Could not seed Communication-Comparison demo: {e}")
+
+    # Seed GECCO Alignment human evaluation scenario (activation steering A/B study)
+    try:
+        from .gecco_alignment_data import seed_gecco_alignment_scenario
+        seed_gecco_alignment_scenario(db)
+    except Exception as e:
+        print(f"  WARNING: Could not seed GECCO Alignment scenario: {e}")
+
 
 def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
                               authenticity_scenario, labeling_scenario,
@@ -1289,7 +1298,7 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
     """
     from .demo_datasets import get_demo_data_for_scenario_type
     from ..tables import (
-        EmailThread, Message, Feature, FeatureType, LLM, ScenarioThreads,
+        EmailThread, Message, Feature, FeatureType, ScenarioThreads,
         ScenarioThreadDistribution, ScenarioUsers, ScenarioRoles,
         AuthenticityConversation, FeatureFunctionType,
     )
@@ -1305,11 +1314,11 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
     if not labeling_type:
         labeling_type = FeatureFunctionType.query.filter_by(name='text_classification').first()
 
-    # Get or create LLMs
-    llm_gpt4 = LLM.query.filter_by(name='GPT-4').first()
-    llm_claude = LLM.query.filter_by(name='Claude-3').first()
-    llm_mistral = LLM.query.filter_by(name='Mistral-7B').first()
-    llms = [l for l in [llm_gpt4, llm_claude, llm_mistral] if l]
+    # Model ID strings for features
+    llm_gpt4 = 'Global/OpenAI/gpt-4'
+    llm_claude = 'Global/Anthropic/claude-3'
+    llm_mistral = 'Global/Mistral/Mistral-7B'
+    llms = [llm_gpt4, llm_claude, llm_mistral]
 
     # Get or create Feature Types
     feature_types = {}
@@ -1318,11 +1327,14 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
         if ft:
             feature_types[ft_name] = ft
 
-    # Helper to get rater scenario user
+    # Helper to get rater (assessor) scenario user
     def _get_rater_user(scenario_id):
-        return ScenarioUsers.query.filter_by(
-            scenario_id=scenario_id,
-            role=ScenarioRoles.EVALUATOR
+        return ScenarioUsers.query.filter(
+            ScenarioUsers.scenario_id == scenario_id,
+            db.or_(
+                ScenarioUsers.is_assessor == True,
+                ScenarioUsers.role == ScenarioRoles.EVALUATOR,
+            )
         ).first()
 
     # =========================================================================
@@ -1364,20 +1376,19 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
                     timestamp=datetime.now() - timedelta(days=idx, hours=5)
                 ))
 
-                # Get Summary FeatureType and SummEval LLM for ranking features
+                # Get Summary FeatureType for ranking features
                 summary_ft = feature_types.get('Summary')
-                summeval_llm = LLM.query.filter_by(name='SummEval').first()
 
                 # Add each summary ONLY as a Feature (for ranking in left panel)
                 # Do NOT create Messages for summaries - they should only appear
                 # in the left panel as rankable items, not in the right panel
                 for sum_idx, summary in enumerate(sample.get('summaries', [])):
                     # Create Feature for ranking (this is what users actually rank)
-                    if summary_ft and summeval_llm:
+                    if summary_ft:
                         db.session.add(Feature(
                             thread_id=thread.thread_id,
                             type_id=summary_ft.type_id,
-                            llm_id=summeval_llm.llm_id,
+                            model_id='SummEval',
                             content=summary['content']
                         ))
 
@@ -1397,60 +1408,7 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
 
             print(f"    Created {len(ranking_samples)} ranking threads")
 
-    # =========================================================================
-    # 2. MAIL RATING SCENARIO - Extended conversation threads
-    # =========================================================================
-    if mail_rating_scenario and mail_rating_type:
-        mail_rating_samples = get_demo_data_for_scenario_type('mail_rating', count=10)
-        existing_count = ScenarioThreads.query.filter_by(scenario_id=mail_rating_scenario.id).count()
-
-        if existing_count < 5:
-            print(f"  Seeding {len(mail_rating_samples)} mail rating samples...")
-            rater_user = _get_rater_user(mail_rating_scenario.id)
-
-            for idx, sample in enumerate(mail_rating_samples):
-                chat_id = 12000 + idx
-                existing_thread = EmailThread.query.filter_by(
-                    chat_id=chat_id,
-                    function_type_id=mail_rating_type.function_type_id
-                ).first()
-
-                if existing_thread:
-                    continue
-
-                thread = EmailThread(
-                    chat_id=chat_id,
-                    institut_id=1,
-                    subject=sample['subject'],
-                    sender=f'demo_mail_{idx}@example.com',
-                    function_type_id=mail_rating_type.function_type_id
-                )
-                db.session.add(thread)
-                db.session.flush()
-
-                for msg_idx, msg in enumerate(sample['messages']):
-                    db.session.add(Message(
-                        thread_id=thread.thread_id,
-                        sender=msg['sender'],
-                        content=msg['content'],
-                        timestamp=datetime.now() - timedelta(days=14-idx, hours=10-msg_idx)
-                    ))
-
-                st = ScenarioThreads(
-                    scenario_id=mail_rating_scenario.id,
-                    thread_id=thread.thread_id
-                )
-                db.session.add(st)
-                db.session.flush()
-
-                if rater_user:
-                    db.session.add(ScenarioThreadDistribution(
-                        scenario_id=mail_rating_scenario.id,
-                        scenario_user_id=rater_user.id,
-                        scenario_thread_id=st.id
-                    ))
-
-            print(f"    Created {len(mail_rating_samples)} mail rating threads")
+    # (Mail rating extended data removed - 20 threads are created in main seeder)
 
     # =========================================================================
     # 3. AUTHENTICITY SCENARIO - Real vs AI-generated samples

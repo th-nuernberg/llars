@@ -22,6 +22,7 @@ erDiagram
     RAGDocument ||--o{ CollectionDocumentLink : in_collection
     RAGDocument ||--o{ RAGDocumentChunk : has
 
+    RatingScenario ||--o{ ScenarioUser : has
     RatingScenario ||--o{ ScenarioItem : contains
     RatingScenario ||--o{ ScenarioItemDistribution : distributes
 
@@ -33,9 +34,6 @@ erDiagram
     JudgeComparison ||--o{ JudgeEvaluation : results
     JudgeSession ||--o{ PillarStatistics : aggregates
     EvaluationItem ||--o{ PillarThread : assigned
-
-    LatexWorkspace ||--o{ LatexDocument : contains
-    LatexWorkspace ||--o{ WorkspaceUser : has_access
 
     MarkdownWorkspace ||--o{ MarkdownDocument : contains
     MarkdownWorkspace ||--o{ WorkspaceCollaborator : has_access
@@ -201,12 +199,20 @@ User assignment to scenarios.
 | `id` | INT | Primary key |
 | `scenario_id` | INT | FK → RatingScenario |
 | `user_id` | INT | FK → User |
-| `role` | ENUM | OWNER, EVALUATOR, VIEWER |
+| `manager_role` | VARCHAR | Manager axis: `owner`, `editor`, `viewer`, `none` |
+| `evaluation_role` | VARCHAR | Evaluation axis: `assessor`, `viewer`, `none` |
+| `role` | ENUM | Legacy axis: OWNER, MANAGER, ASSESSOR, VIEWER (EVALUATOR → ASSESSOR) |
 | `invitation_status` | ENUM | accepted, rejected, pending |
 | `invited_at` | DATETIME | Invitation sent |
 | `responded_at` | DATETIME | Response time |
 | `invited_by` | VARCHAR(255) | Inviter (username) |
-| `membership_status` | ENUM | active, archived |
+| `membership_status` | ENUM | active, archived (soft-remove; keeps ratings) |
+| `archived_at` / `archived_by` | DATETIME / VARCHAR | Soft-remove metadata |
+
+> The two independent axes (`manager_role` × `evaluation_role`) allow
+> combinations such as the **read-only manager viewer** (sees analysis, edits
+> nothing). `ARCHIVED` members and `REJECTED` invitations lose scenario access
+> (see [Scenario Manager](../guides/scenario-manager.md)).
 
 ### ScenarioItems (formerly ScenarioThreads)
 
@@ -254,6 +260,57 @@ LLM-generated features for evaluation items.
 | `type_id` | INT | FK → FeatureType |
 | `llm_id` | INT | FK → LLM |
 | `content` | TEXT | Feature content |
+
+---
+
+## Referral & Invitations
+
+See [Referral & invitation system](../guides/referral-invitations.md).
+
+### ReferralCampaign
+
+Groups invite links under a theme.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INT | Primary key |
+| `name` | VARCHAR(255) | Campaign name |
+| `status` | VARCHAR | draft, active, paused, expired, archived |
+| `start_date` / `end_date` | DATETIME | Optional time window |
+| `max_registrations` | INT | Optional global cap |
+| `config_json` | JSON | Free-form campaign metadata |
+
+### ReferralLink
+
+Individual invite link (`/join/<slug>`).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INT | Primary key |
+| `campaign_id` | INT | FK → ReferralCampaign |
+| `code` / `slug` | VARCHAR | Auto code / readable slug (both unique) |
+| `role_name` | VARCHAR | Role to assign (allowlist, no admin) |
+| `signup_mode` | VARCHAR | `full`, `email`, `instant` |
+| `collect_email` / `collect_email_optional` / `collect_display_name` | BOOL | Form flags (`full` mode) |
+| `target_scenario_id` | INT | Single auto-enroll (assessor, legacy) |
+| `target_scenario_ids` | JSON | Auto-enroll as assessor (list) |
+| `viewer_scenario_ids` | JSON | Read-only manager viewer (list) |
+| `click_count` | INT | `/join` page opens (funnel) |
+| `max_uses` / `expires_at` | INT / DATETIME | Optional limits |
+| `owner_user_id` | INT | FK → User (NULL = admin-created) |
+
+### ReferralRegistration
+
+One row per registration (unique by username).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INT | Primary key |
+| `link_id` | INT | FK → ReferralLink |
+| `username` | VARCHAR(255) | UNIQUE — registered user |
+| `registered_at` | DATETIME | Timestamp |
+| `ip_address` | VARCHAR(45) | **Anonymized** (IPv4 /24, IPv6 /48) |
+| `metadata_json` | JSON | Email, consent audit, display name |
 
 ---
 
@@ -336,9 +393,9 @@ Aggregated statistics per pillar pair.
 
 ## Collaboration
 
-### LatexWorkspace
+### MarkdownWorkspace
 
-LaTeX workspaces.
+Markdown workspaces.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -349,23 +406,19 @@ LaTeX workspaces.
 | `git_repo_url` | VARCHAR(500) | Git repository URL |
 | `created_at` | DATETIME | Created at |
 
-### LatexDocument
+### MarkdownDocument
 
-LaTeX documents.
+Markdown documents.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | INT | Primary key |
-| `workspace_id` | INT | FK → LatexWorkspace |
-| `filename` | VARCHAR(255) | Filename |
-| `content_text` | LONGTEXT | Document content |
-| `is_main` | BOOLEAN | Main document |
-| `file_type` | VARCHAR(10) | tex, bib, sty |
-| `yjs_state` | BLOB | YJS sync state |
-
-### MarkdownWorkspace
-
-Markdown workspaces (analogous to LaTeX).
+| `workspace_id` | INT | FK → MarkdownWorkspace |
+| `title` | VARCHAR(255) | Filename |
+| `content` | LONGTEXT | YJS JSON state |
+| `content_text` | LONGTEXT | Document content (plain text) |
+| `node_type` | ENUM | file, folder |
+| `parent_id` | INT | FK → MarkdownDocument (folder) |
 
 ---
 
@@ -438,4 +491,4 @@ docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me databa
   -e "source /tmp/001_add_new_column.sql"
 ```
 
-See [CLAUDE.md](https://github.com/your-repo/llars/blob/main/CLAUDE.md) for detailed migration instructions.
+See `CLAUDE.md` in the repository root for detailed migration instructions.

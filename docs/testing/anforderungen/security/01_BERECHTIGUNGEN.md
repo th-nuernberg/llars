@@ -33,10 +33,6 @@ Dieses Dokument beschreibt alle Tests für das LLARS Permission System (RBAC).
 | `feature:markdown_collab:view` | Markdown ansehen | admin, researcher, chatbot_manager, evaluator |
 | `feature:markdown_collab:edit` | Markdown bearbeiten | admin, researcher, chatbot_manager |
 | `feature:markdown_collab:share` | Markdown teilen | admin, researcher, chatbot_manager |
-| `feature:latex_collab:view` | LaTeX ansehen | admin, researcher, chatbot_manager, evaluator |
-| `feature:latex_collab:edit` | LaTeX bearbeiten | admin, researcher, chatbot_manager |
-| `feature:latex_collab:share` | LaTeX teilen | admin, researcher, chatbot_manager |
-| `feature:latex_collab:ai` | LaTeX AI nutzen | admin, researcher, chatbot_manager |
 | `feature:rag:view` | RAG ansehen | admin, chatbot_manager, evaluator |
 | `feature:rag:edit` | RAG bearbeiten | admin, chatbot_manager |
 | `feature:rag:delete` | RAG löschen | admin, chatbot_manager |

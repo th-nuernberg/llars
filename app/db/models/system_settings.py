@@ -73,24 +73,8 @@ class SystemSettings(db.Model):
 
     # Batch Generation Settings
     batch_generation_max_parallel: Mapped[int] = mapped_column(
-        db.Integer, default=1, nullable=False,
+        db.Integer, default=4, nullable=False,
         comment="Maximum number of parallel outputs processed in batch generation"
-    )
-
-    # Zotero OAuth Settings
-    # Admin registers ONE app at zotero.org/oauth/apps and enters credentials here.
-    # All users then use "Connect with Zotero" button to authorize their accounts.
-    zotero_oauth_enabled: Mapped[bool] = mapped_column(
-        db.Boolean, default=False, nullable=False,
-        comment="Enable Zotero OAuth login for users"
-    )
-    zotero_client_key: Mapped[Optional[str]] = mapped_column(
-        db.String(255), nullable=True,
-        comment="Zotero OAuth Client Key from zotero.org/oauth/apps"
-    )
-    zotero_client_secret_encrypted: Mapped[Optional[str]] = mapped_column(
-        db.Text, nullable=True,
-        comment="Zotero OAuth Client Secret (encrypted)"
     )
 
     # Referral/Invitation System Settings
@@ -107,26 +91,24 @@ class SystemSettings(db.Model):
         comment="Default role for users registered via referral"
     )
 
-    # AI Assistant Settings (LLARS KI for LaTeX Collab comments)
-    ai_assistant_enabled: Mapped[bool] = mapped_column(
-        db.Boolean, default=True, nullable=False,
-        comment="Enable AI assistant for comment resolution in LaTeX Collab"
+    # Communication (Messaging) Master Toggle
+    communication_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable communication features (messaging, calls) globally"
     )
-    ai_assistant_color: Mapped[str] = mapped_column(
-        db.String(7), default='#9B59B6', nullable=False,
-        comment="Reserved color for AI assistant (hex, default: purple)"
-    )
-    ai_assistant_username: Mapped[str] = mapped_column(
-        db.String(50), default='LLARS KI', nullable=False,
-        comment="Display name for AI assistant"
+
+    # Self-Service Password Reset Toggle
+    self_service_password_reset_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable self-service 'forgot password' flow on the login page"
     )
 
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
-    def to_dict(self, include_zotero_secret: bool = False):
+    def to_dict(self):
         """Convert to dictionary for API responses."""
-        result = {
+        return {
             'crawl_timeout_seconds': self.crawl_timeout_seconds,
             'embedding_timeout_seconds': self.embedding_timeout_seconds,
             'crawler_default_max_pages': self.crawler_default_max_pages,
@@ -139,20 +121,13 @@ class SystemSettings(db.Model):
             'llm_ai_log_prompts': self.llm_ai_log_prompts,
             'llm_ai_log_prompt_max': self.llm_ai_log_prompt_max,
             'batch_generation_max_parallel': self.batch_generation_max_parallel,
-            'zotero_oauth_enabled': self.zotero_oauth_enabled,
-            'zotero_client_key': self.zotero_client_key,
-            'zotero_oauth_configured': bool(self.zotero_client_key and self.zotero_client_secret_encrypted),
             # Referral System
             'referral_system_enabled': self.referral_system_enabled,
             'self_registration_enabled': self.self_registration_enabled,
             'default_referral_role': self.default_referral_role,
-            # AI Assistant
-            'ai_assistant_enabled': self.ai_assistant_enabled,
-            'ai_assistant_color': self.ai_assistant_color,
-            'ai_assistant_username': self.ai_assistant_username,
+            # Communication
+            'communication_enabled': self.communication_enabled,
+            # Self-Service Password Reset
+            'self_service_password_reset_enabled': self.self_service_password_reset_enabled,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
-        # Never expose the actual secret, only indicate if it's set
-        if include_zotero_secret:
-            result['zotero_client_secret_set'] = bool(self.zotero_client_secret_encrypted)
-        return result

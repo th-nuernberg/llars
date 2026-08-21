@@ -90,8 +90,6 @@ test.describe('Login Page', () => {
 | Prompt Engineering | `/PromptEngineering` | `feature:prompt_engineering:view` | HOME-K05 |
 | Chat | `/chat` | `feature:chatbots:view` | HOME-K06 |
 | Markdown Collab | `/MarkdownCollab` | `feature:markdown_collab:view` | HOME-K07 |
-| LaTeX Collab | `/LatexCollab` | `feature:latex_collab:view` | HOME-K08 |
-| LaTeX AI | `/LatexCollabAI` | `feature:latex_collab:view` | HOME-K09 |
 | Anonymize | `/Anonymize` | `feature:anonymize:view` | HOME-K10 |
 | KAIMO | `/kaimo` | `feature:kaimo:view` | HOME-K11 |
 | Admin | `/admin` | Admin-Rolle | HOME-K12 |

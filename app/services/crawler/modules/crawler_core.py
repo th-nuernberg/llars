@@ -720,13 +720,40 @@ class WebCrawler:
         return links
 
     def _fetch_page(self, url: str) -> Optional[str]:
-        """Fetch a single page with error handling."""
+        """Fetch a single page with error handling and SSRF protection.
+
+        SECURITY: ``url`` can be user-supplied (preview / test-fetch endpoints,
+        or a link discovered on a crawled page). We validate it — and EVERY
+        redirect hop — against the internal-address blocklist before issuing the
+        request, and disable automatic redirect following so a 30x to
+        169.254.169.254 / localhost / an internal container cannot smuggle the
+        crawler onto internal services. See services/security/url_safety.py.
+        """
+        from services.security.url_safety import assert_external_url_safe, UnsafeUrlError
         try:
-            response = self.session.get(
-                url,
-                timeout=self.timeout,
-                allow_redirects=True
-            )
+            current = url
+            response = None
+            for _hop in range(6):  # bounded redirect chain
+                assert_external_url_safe(current)
+                response = self.session.get(
+                    current,
+                    timeout=self.timeout,
+                    allow_redirects=False,
+                )
+                if response.is_redirect or response.is_permanent_redirect:
+                    location = response.headers.get('Location')
+                    if not location:
+                        break
+                    current = urljoin(current, location)
+                    continue
+                break
+            else:
+                logger.warning(f"Too many redirects fetching {url}")
+                self.stats['errors'] += 1
+                return None
+
+            if response is None:
+                return None
             response.raise_for_status()
 
             # Check content type
@@ -738,6 +765,10 @@ class WebCrawler:
             self.stats['total_bytes'] += len(response.content)
             return response.text
 
+        except UnsafeUrlError as e:
+            logger.warning(f"Blocked SSRF attempt fetching {url}: {e}")
+            self.stats['errors'] += 1
+            return None
         except requests.exceptions.Timeout:
             logger.warning(f"Timeout fetching {url}")
             self.stats['errors'] += 1

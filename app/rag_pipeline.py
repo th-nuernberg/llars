@@ -8,7 +8,6 @@ from pathlib import Path
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 import chromadb
@@ -141,6 +140,7 @@ class RAGPipeline:
                                 logging.info(f"Adding custom module path: {root}")
                                 sys.path.insert(0, root)
 
+                from langchain_huggingface import HuggingFaceEmbeddings
                 embeddings = HuggingFaceEmbeddings(
                     model_name=model_id,
                     model_kwargs={"device": "cpu", "trust_remote_code": True},

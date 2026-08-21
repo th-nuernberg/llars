@@ -36,7 +36,11 @@ const FUNCTION_TYPE_MAP = {
   3: 'mail_rating',
   4: 'comparison',
   5: 'authenticity',
-  7: 'labeling'
+  7: 'labeling',
+  8: 'communication_comparison',
+  // conversation_labeling: item = a whole conversation, vote = a single span
+  // inside it (labeling config shape, conversation-history UI).
+  9: 'conversation_labeling'
 }
 
 /**

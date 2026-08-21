@@ -48,7 +48,9 @@ export const EvaluationType = Object.freeze({
   MAIL_RATING: 'mail_rating',   // function_type_id = 3
   COMPARISON: 'comparison',     // function_type_id = 4
   AUTHENTICITY: 'authenticity', // function_type_id = 5
-  LABELING: 'labeling'          // function_type_id = 7
+  LABELING: 'labeling',         // function_type_id = 7
+  COMMUNICATION_COMPARISON: 'communication_comparison',  // function_type_id = 8
+  CONVERSATION_LABELING: 'conversation_labeling'  // function_type_id = 9
 })
 
 /**
@@ -101,7 +103,9 @@ export const FUNCTION_TYPE_MAP = Object.freeze({
   3: EvaluationType.MAIL_RATING,
   4: EvaluationType.COMPARISON,
   5: EvaluationType.AUTHENTICITY,
-  7: EvaluationType.LABELING
+  7: EvaluationType.LABELING,
+  8: EvaluationType.COMMUNICATION_COMPARISON,
+  9: EvaluationType.CONVERSATION_LABELING
 })
 
 /**
@@ -113,7 +117,9 @@ export const EVALUATION_TYPE_TO_ID = Object.freeze({
   [EvaluationType.MAIL_RATING]: 3,
   [EvaluationType.COMPARISON]: 4,
   [EvaluationType.AUTHENTICITY]: 5,
-  [EvaluationType.LABELING]: 7
+  [EvaluationType.LABELING]: 7,
+  [EvaluationType.COMMUNICATION_COMPARISON]: 8,
+  [EvaluationType.CONVERSATION_LABELING]: 9
 })
 
 // =============================================================================
@@ -282,6 +288,45 @@ export const EVALUATION_TYPE_TO_ID = Object.freeze({
  */
 
 /**
+ * Labeling co-pilot configuration (LLM pre-annotation suggestions).
+ * Prompt versioning (prompt_version/prompt_history) and hidden_control_salt
+ * are stamped SERVER-side on save — see CopilotConfig in
+ * app/schemas/evaluation_data_schemas.py (ground truth).
+ * @typedef {Object} CopilotConfig
+ * @property {boolean} enabled - Co-pilot on/off for this scenario
+ * @property {string} [model_id] - LLM model for suggestion generation
+ * @property {string} [prompt] - Task prompt template (placeholders: item, context, labels, codebook in curly braces)
+ * @property {string} [codebook] - Optional coding rules injected into the prompt
+ * @property {number} [prompt_version] - Server-managed, bumped on prompt/codebook change
+ * @property {(1|2)} [top_k=1] - Number of ranked suggestions
+ * @property {number} [hidden_control_ratio=0] - Share of (user,item) pairs with covertly hidden suggestion
+ */
+
+/**
+ * One part (phase) of a partitioned labeling scenario.
+ * The wizard emits `size` boundary specs ("next N items in upload order",
+ * last part may omit size = rest); the SERVER resolves them into internal
+ * item_ids on import — see PartConfig in app/schemas/evaluation_data_schemas.py
+ * (ground truth) and .claude/plans/scenario-parts-design.md.
+ * Assessors never see this structure (config is stripped server-side).
+ * @typedef {Object} PartConfig
+ * @property {string} [id] - Stable part id (server generates p1..pn if omitted)
+ * @property {string} [name] - Owner-facing name (never shown to assessors)
+ * @property {('sequential'|'random')} [order='sequential'] - sequential = identical order for all raters; random = deterministic per-user shuffle
+ * @property {boolean} [copilot=false] - Co-pilot override for this part (under the copilot.enabled master switch)
+ * @property {boolean} [locked=false] - Locked parts are not delivered to assessors (study gate)
+ * @property {number} [size] - Creation-time spec: the next N items in upload order
+ * @property {number[]} [item_ids] - Server-resolved internal item ids (canonical form)
+ */
+
+/**
+ * Scenario parts configuration (optional partitioning into ordered phases).
+ * @typedef {Object} PartsConfig
+ * @property {boolean} enabled - Parts on/off (off = zero behaviour change)
+ * @property {PartConfig[]} list - Parts in delivery order
+ */
+
+/**
  * Labeling configuration
  * @typedef {Object} LabelingConfig
  * @property {('single'|'multi')} mode - Selection mode
@@ -289,6 +334,8 @@ export const EVALUATION_TYPE_TO_ID = Object.freeze({
  * @property {boolean} [allowOther=false] - Allow "other" option
  * @property {number} [minLabels] - Min labels (multi mode)
  * @property {number} [maxLabels] - Max labels (multi mode)
+ * @property {CopilotConfig} [copilot] - Optional LLM co-pilot (pre-annotation)
+ * @property {PartsConfig} [parts] - Optional partitioning into ordered phases
  */
 
 /**

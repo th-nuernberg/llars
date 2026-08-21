@@ -14,10 +14,34 @@ Security Note:
 
 import re
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 
 # Strict pattern for SQL identifiers: alphanumeric + underscore, must start with letter/underscore
 _SQL_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+# MariaDB error codes meaning "the DDL target already exists":
+# 1050 = table exists, 1060 = duplicate column, 1061 = duplicate key name,
+# 1826 = duplicate foreign key constraint.
+# Several containers (flask, worker, supervisor) boot the app concurrently and all
+# run these patches. A sibling container can create the column/table/constraint
+# between our INFORMATION_SCHEMA check and the ALTER (TOCTOU race) - in that case
+# the patch is already applied and startup must not crash.
+_DDL_ALREADY_EXISTS_ERRNOS = {1050, 1060, 1061, 1826}
+
+
+def _execute_ddl_idempotent(db, sql: str) -> bool:
+    """Execute DDL; return False if the target already exists (concurrent bootstrap)."""
+    try:
+        db.session.execute(text(sql))
+        db.session.commit()
+        return True
+    except DBAPIError as exc:
+        errno = exc.orig.args[0] if getattr(exc.orig, "args", None) else None
+        if errno in _DDL_ALREADY_EXISTS_ERRNOS:
+            db.session.rollback()
+            return False
+        raise
 
 # Pattern for column definitions: allows common SQL types and constraints
 # Matches: `column_name` TYPE[(size)] [NOT NULL] [DEFAULT ...] [UNIQUE] etc.
@@ -86,7 +110,41 @@ def _ensure_column(db, table_name: str, column_name: str, column_definition_sql:
     if _column_exists(db, table_name, column_name):
         return False
 
-    db.session.execute(text(f"ALTER TABLE `{table_name}` ADD COLUMN {column_definition_sql}"))
+    return _execute_ddl_idempotent(
+        db, f"ALTER TABLE `{table_name}` ADD COLUMN {column_definition_sql}"
+    )
+
+
+def _get_column_default(db, table_name: str, column_name: str):
+    result = db.session.execute(
+        text(
+            """
+            SELECT COLUMN_DEFAULT
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND COLUMN_NAME = :column_name
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    ).scalar()
+    return result
+
+
+def _ensure_column_default(db, table_name: str, column_name: str, default_expression_sql: str) -> bool:
+    _validate_identifier(table_name, "table_name")
+    _validate_identifier(column_name, "column_name")
+
+    if not _column_exists(db, table_name, column_name):
+        return False
+
+    current_default = _get_column_default(db, table_name, column_name)
+    if str(current_default) == str(default_expression_sql).strip("'"):
+        return False
+
+    db.session.execute(
+        text(f"ALTER TABLE `{table_name}` ALTER COLUMN `{column_name}` SET DEFAULT {default_expression_sql}")
+    )
     db.session.commit()
     return True
 
@@ -136,6 +194,52 @@ def _unique_index_exists(db, table_name: str, column_names: list[str]) -> bool:
     return False
 
 
+def _is_column_nullable(db, table_name: str, column_name: str) -> bool:
+    """Check if a column is nullable."""
+    result = db.session.execute(
+        text(
+            """
+            SELECT IS_NULLABLE
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND COLUMN_NAME = :column_name
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    ).scalar()
+    return result == 'YES'
+
+
+def _make_column_nullable(db, table_name: str, column_name: str, column_type: str) -> bool:
+    """
+    Make an existing NOT NULL column nullable.
+
+    Args:
+        db: SQLAlchemy instance
+        table_name: Table name
+        column_name: Column to alter
+        column_type: SQL type of the column (e.g. 'VARCHAR(100)')
+
+    Returns:
+        True if the column was altered, False if already nullable or doesn't exist.
+    """
+    _validate_identifier(table_name, "table_name")
+    _validate_identifier(column_name, "column_name")
+
+    if not _column_exists(db, table_name, column_name):
+        return False
+
+    if _is_column_nullable(db, table_name, column_name):
+        return False
+
+    db.session.execute(
+        text(f"ALTER TABLE `{table_name}` MODIFY COLUMN `{column_name}` {column_type} NULL")
+    )
+    db.session.commit()
+    return True
+
+
 def _table_exists(db, table_name: str) -> bool:
     _validate_identifier(table_name, "table_name")
     result = db.session.execute(
@@ -156,9 +260,7 @@ def _ensure_table(db, table_name: str, create_sql: str) -> bool:
     _validate_identifier(table_name, "table_name")
     if _table_exists(db, table_name):
         return False
-    db.session.execute(text(create_sql))
-    db.session.commit()
-    return True
+    return _execute_ddl_idempotent(db, create_sql)
 
 
 def _ensure_unique_constraint(
@@ -191,14 +293,11 @@ def _ensure_unique_constraint(
         return False
 
     columns_sql = ", ".join(f"`{column}`" for column in column_names)
-    db.session.execute(
-        text(
-            f"ALTER TABLE `{table_name}` "
-            f"ADD CONSTRAINT `{constraint_name}` UNIQUE ({columns_sql})"
-        )
+    return _execute_ddl_idempotent(
+        db,
+        f"ALTER TABLE `{table_name}` "
+        f"ADD CONSTRAINT `{constraint_name}` UNIQUE ({columns_sql})",
     )
-    db.session.commit()
-    return True
 
 
 def _is_column_nullable(db, table_name: str, column_name: str) -> bool:
@@ -245,6 +344,100 @@ def _ensure_column_nullable(db, table_name: str, column_name: str, column_type: 
     )
     db.session.commit()
     return True
+
+
+def _migrate_scenario_roles_enum(db) -> bool:
+    """
+    Migrate scenario_users.role enum: EVALUATOR → ASSESSOR.
+
+    The ScenarioRoles enum was refactored to use ASSESSOR instead of EVALUATOR.
+    Existing databases may still have EVALUATOR in the MySQL ENUM and in row data.
+    This patch is idempotent and safe to run multiple times.
+    """
+    try:
+        result = db.session.execute(
+            text("""
+                SELECT COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'scenario_users'
+                  AND COLUMN_NAME = 'role'
+            """)
+        )
+        row = result.fetchone()
+        if not row:
+            return False
+
+        column_type = str(row[0])
+
+        # Already migrated if ASSESSOR is present and EVALUATOR is not
+        if 'ASSESSOR' in column_type and 'EVALUATOR' not in column_type:
+            return False
+
+        # Step 1: Add ASSESSOR to enum (alongside EVALUATOR temporarily)
+        if 'ASSESSOR' not in column_type:
+            db.session.execute(text(
+                "ALTER TABLE `scenario_users` MODIFY COLUMN `role` "
+                "ENUM('OWNER','MANAGER','EVALUATOR','ASSESSOR','VIEWER') DEFAULT NULL"
+            ))
+            db.session.commit()
+
+        # Step 2: Migrate all EVALUATOR values to ASSESSOR
+        result = db.session.execute(text(
+            "UPDATE `scenario_users` SET `role` = 'ASSESSOR' WHERE `role` = 'EVALUATOR'"
+        ))
+        migrated = result.rowcount
+        db.session.commit()
+
+        # Step 3: Remove EVALUATOR from enum
+        db.session.execute(text(
+            "ALTER TABLE `scenario_users` MODIFY COLUMN `role` "
+            "ENUM('OWNER','MANAGER','ASSESSOR','VIEWER') DEFAULT NULL"
+        ))
+        db.session.commit()
+
+        if migrated > 0:
+            print(f"  [Schema Patch] Migrated {migrated} scenario_users role(s): EVALUATOR → ASSESSOR")
+        return migrated > 0
+
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ scenario_users role migration failed (non-fatal): {exc}")
+        return False
+
+
+def _migrate_paper_status_enum(db) -> bool:
+    """Add 'published' to papers.status enum if missing."""
+    try:
+        result = db.session.execute(
+            text("""
+                SELECT COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'papers'
+                  AND COLUMN_NAME = 'status'
+            """)
+        )
+        row = result.fetchone()
+        if not row:
+            return False
+
+        column_type = str(row[0])
+        if 'published' in column_type:
+            return False
+
+        db.session.execute(text(
+            "ALTER TABLE `papers` MODIFY COLUMN `status` "
+            "ENUM('planning','in_progress','submitted','accepted','rejected','published') NOT NULL"
+        ))
+        db.session.commit()
+        print("  [Schema Patch] Added 'published' to papers.status enum")
+        return True
+
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ papers.status migration failed (non-fatal): {exc}")
+        return False
 
 
 def apply_schema_patches(db) -> None:
@@ -337,6 +530,38 @@ def apply_schema_patches(db) -> None:
             column_name="last_active_at",
             column_definition_sql="`last_active_at` DATETIME NULL",
         )
+        # User profile name fields (required by User model and admin APIs)
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="first_name",
+            column_definition_sql="`first_name` VARCHAR(100) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="last_name",
+            column_definition_sql="`last_name` VARCHAR(100) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="display_name",
+            column_definition_sql="`display_name` VARCHAR(255) NULL",
+        )
+
+        # API key hashing: add api_key_hash column for argon2id hashed keys
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="api_key_hash",
+            column_definition_sql="`api_key_hash` VARCHAR(255) NULL "
+                                  "COMMENT 'Argon2id hash of the API key'",
+        )
+        # Make api_key nullable for existing databases (was NOT NULL before).
+        # After migration, api_key is set to NULL and api_key_hash holds the argon2 hash.
+        # MariaDB allows multiple NULLs in UNIQUE columns, so keeping UNIQUE is safe.
+        changed |= _make_column_nullable(db, "users", "api_key", "VARCHAR(100) UNIQUE")
 
         # Scenarios: per-scenario config + comparison model config
         changed |= _ensure_column(
@@ -358,6 +583,25 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`config_json` JSON NULL",
         )
 
+        # Legacy LLM schema compatibility: features / user_feature_rankings
+        # Older DBs still have llm_id (FK to llms) but no model_id (VARCHAR).
+        # Current code queries by model_id, so ensure columns exist and backfill.
+        if _table_exists(db, "features"):
+            changed |= _ensure_column(
+                db,
+                table_name="features",
+                column_name="model_id",
+                column_definition_sql="`model_id` VARCHAR(255) NULL",
+            )
+        if _table_exists(db, "user_feature_rankings"):
+            changed |= _ensure_column(
+                db,
+                table_name="user_feature_rankings",
+                column_name="model_id",
+                column_definition_sql="`model_id` VARCHAR(255) NULL",
+            )
+        changed |= _backfill_feature_model_ids(db)
+
         # Chatbot conversations/messages: session scoping + agent traces
         changed |= _ensure_unique_constraint(
             db,
@@ -377,6 +621,29 @@ def apply_schema_patches(db) -> None:
             column_name="stream_metadata",
             column_definition_sql="`stream_metadata` JSON NULL",
         )
+
+        # Evaluation items: per-item research metadata for variable substitution
+        changed |= _ensure_column(
+            db,
+            table_name="evaluation_items",
+            column_name="metadata_json",
+            column_definition_sql=(
+                "`metadata_json` JSON NULL "
+                "COMMENT 'Per-item research metadata (axis, stratum, etc.) for {{var}} substitution in task descriptions'"
+            ),
+        )
+
+        # Anonymization pipeline: derived model/course metadata for filtering/table views
+        if _table_exists(db, "anonymization_conversations"):
+            changed |= _ensure_column(
+                db,
+                table_name="anonymization_conversations",
+                column_name="metadata_json",
+                column_definition_sql=(
+                    "`metadata_json` JSON NULL "
+                    "COMMENT 'Original import metadata + derived model/course summaries'"
+                ),
+            )
 
         # Chatbot prompt settings: agent prompts
         changed |= _ensure_column(
@@ -402,6 +669,26 @@ def apply_schema_patches(db) -> None:
             table_name="chatbot_prompt_settings",
             column_name="reflact_system_prompt",
             column_definition_sql="`reflact_system_prompt` TEXT NOT NULL DEFAULT ''",
+        )
+
+        # Chatbot RAG: forced-grounding toggle + general-mode (no-source) prompt.
+        # 2026-06-13: a query that finds no sufficiently relevant source now
+        # returns NO sources, so the bot answers generic questions from general
+        # knowledge (and stays honest about LLARS-specific gaps) instead of
+        # citing irrelevant chunks. rag_force_grounding lets a bot opt back into
+        # always keeping top-K context. Empty rag_general_mode_instructions
+        # falls back to the code default (ChatPromptBuilder.build_general_mode_instructions).
+        changed |= _ensure_column(
+            db,
+            table_name="chatbots",
+            column_name="rag_force_grounding",
+            column_definition_sql="`rag_force_grounding` TINYINT(1) NOT NULL DEFAULT 0",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="chatbot_prompt_settings",
+            column_name="rag_general_mode_instructions",
+            column_definition_sql="`rag_general_mode_instructions` TEXT NOT NULL DEFAULT ''",
         )
 
         # LLM models: model type (llm/embedding/reranker)
@@ -578,7 +865,13 @@ def apply_schema_patches(db) -> None:
             db,
             table_name="system_settings",
             column_name="batch_generation_max_parallel",
-            column_definition_sql="`batch_generation_max_parallel` INT NOT NULL DEFAULT 1",
+            column_definition_sql="`batch_generation_max_parallel` INT NOT NULL DEFAULT 4",
+        )
+        changed |= _ensure_column_default(
+            db,
+            table_name="system_settings",
+            column_name="batch_generation_max_parallel",
+            default_expression_sql="4",
         )
 
         # Analytics settings: custom dimensions
@@ -621,33 +914,7 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`embedding_dimensions` INT NULL",
         )
 
-        # LaTeX Collab: ensure newer columns exist
-        changed |= _ensure_column(
-            db,
-            table_name="latex_documents",
-            column_name="content_text",
-            column_definition_sql="`content_text` LONGTEXT NULL",
-        )
-        changed |= _ensure_column(
-            db,
-            table_name="latex_commits",
-            column_name="document_id",
-            column_definition_sql="`document_id` INT NULL",
-        )
-        changed |= _ensure_column(
-            db,
-            table_name="latex_compile_jobs",
-            column_name="created_at",
-            column_definition_sql="`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
-        )
-
         # Soft-delete support for git panel (deleted file restore)
-        changed |= _ensure_column(
-            db,
-            table_name="latex_documents",
-            column_name="deleted_at",
-            column_definition_sql="`deleted_at` DATETIME NULL",
-        )
         changed |= _ensure_column(
             db,
             table_name="markdown_documents",
@@ -661,52 +928,12 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`content_text` TEXT NULL",
         )
 
-        # LaTeX Comments: threading support (parent_id for replies)
-        changed |= _ensure_column(
-            db,
-            table_name="latex_comments",
-            column_name="parent_id",
-            column_definition_sql="`parent_id` INT NULL",
-        )
-        # LaTeX Comments: author color for collab identification
-        changed |= _ensure_column(
-            db,
-            table_name="latex_comments",
-            column_name="author_color",
-            column_definition_sql="`author_color` VARCHAR(7) NULL",
-        )
-        # LaTeX Comments: make range columns nullable for replies (replies don't have ranges)
-        changed |= _ensure_column_nullable(
-            db,
-            table_name="latex_comments",
-            column_name="range_start",
-            column_type="INT",
-        )
-        changed |= _ensure_column_nullable(
-            db,
-            table_name="latex_comments",
-            column_name="range_end",
-            column_type="INT",
-        )
-
-        # AI Assistant settings for LaTeX Collab
+        # Communication settings (messaging master toggle)
         changed |= _ensure_column(
             db,
             table_name="system_settings",
-            column_name="ai_assistant_enabled",
-            column_definition_sql="`ai_assistant_enabled` TINYINT(1) NOT NULL DEFAULT 1",
-        )
-        changed |= _ensure_column(
-            db,
-            table_name="system_settings",
-            column_name="ai_assistant_color",
-            column_definition_sql="`ai_assistant_color` VARCHAR(7) NOT NULL DEFAULT '#9B59B6'",
-        )
-        changed |= _ensure_column(
-            db,
-            table_name="system_settings",
-            column_name="ai_assistant_username",
-            column_definition_sql="`ai_assistant_username` VARCHAR(50) NOT NULL DEFAULT 'LLARS KI'",
+            column_name="communication_enabled",
+            column_definition_sql="`communication_enabled` TINYINT(1) NOT NULL DEFAULT 0",
         )
 
         # =========================================================================
@@ -924,6 +1151,60 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`description` TEXT NULL COMMENT 'Additional description for the link'",
         )
 
+        # target_scenario_id: when a registrant joins via this link, auto-
+        # enroll them into the named scenario as an active ASSESSOR. NULL
+        # means "no auto-enroll, just create the user". Used e.g. by the
+        # `human_comparison_emnlp` link to drop participants directly into
+        # the EMNLP Turing-Test pilot.
+        changed |= _ensure_column(
+            db,
+            table_name="referral_links",
+            column_name="target_scenario_id",
+            column_definition_sql="`target_scenario_id` INT NULL COMMENT 'Auto-enroll registrants into this scenario as ASSESSOR'",
+        )
+
+        # Welcome-mail routing per referral link. Historically the
+        # "Kann KI Beratung?" study mail was the GLOBAL fallback for every
+        # link, so joining any other study produced a wrong-study welcome.
+        # 'standard' = generic LLARS welcome; 'kkb' = legacy study mail;
+        # 'custom' = welcome_subject/welcome_body with {placeholders}.
+        welcome_col_added = _ensure_column(
+            db,
+            table_name="referral_links",
+            column_name="welcome_template",
+            column_definition_sql="`welcome_template` VARCHAR(20) NOT NULL DEFAULT 'standard' COMMENT 'welcome mail: standard|kkb|custom'",
+        )
+        changed |= welcome_col_added
+        changed |= _ensure_column(
+            db,
+            table_name="referral_links",
+            column_name="welcome_subject",
+            column_definition_sql="`welcome_subject` VARCHAR(255) NULL COMMENT 'custom welcome subject ({placeholders})'",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="referral_links",
+            column_name="welcome_body",
+            column_definition_sql="`welcome_body` TEXT NULL COMMENT 'custom welcome body ({placeholders})'",
+        )
+        if welcome_col_added:
+            # One-time backfill: links recruited for the KKB study keep their
+            # dedicated mail; everything else switches to the standard welcome.
+            # (ijcai/demo-* slugs are routed by slug and unaffected.)
+            db.session.execute(text(
+                """
+                UPDATE referral_links rl
+                LEFT JOIN referral_campaigns rc ON rc.id = rl.campaign_id
+                SET rl.welcome_template = 'kkb'
+                WHERE (rl.slug IS NULL OR rl.slug NOT IN ('ijcai', 'demo-de', 'demo-en'))
+                  AND (
+                    rc.name LIKE '%Kann KI%' OR rl.label LIKE '%Kann KI%'
+                    OR rc.name LIKE '%KKB%'
+                  )
+                """
+            ))
+            db.session.commit()
+
         # User Settings/Preferences column on users table
         changed |= _ensure_column(
             db,
@@ -965,6 +1246,12 @@ def apply_schema_patches(db) -> None:
             column_name="invited_by",
             column_definition_sql="`invited_by` VARCHAR(255) NULL",
         )
+        changed |= _migrate_scenario_user_roles(db)
+
+        # Migrate ScenarioRoles enum: EVALUATOR → ASSESSOR, RATER removed
+        # The role column was renamed in the code but existing DBs may still
+        # have old enum values. This patch is idempotent.
+        changed |= _migrate_scenario_roles_enum(db)
 
         # =========================================================================
         # AI Field Assist: Prompt Templates for AI-Assisted Form Fields
@@ -1045,6 +1332,7 @@ def apply_schema_patches(db) -> None:
                     `user_id` INT NOT NULL,
                     `item_id` INT NOT NULL,
                     `scenario_id` INT NOT NULL,
+                    `span_id` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'Span within the item; empty = whole item (classic labeling)',
                     `category_id` VARCHAR(255) NULL COMMENT 'Selected category ID from scenario config',
                     `is_unsure` TINYINT(1) NOT NULL DEFAULT 0,
                     `feedback` TEXT NULL,
@@ -1054,13 +1342,270 @@ def apply_schema_patches(db) -> None:
                     INDEX `ix_labeling_eval_user` (`user_id`),
                     INDEX `ix_labeling_eval_item` (`item_id`),
                     INDEX `ix_labeling_eval_scenario` (`scenario_id`),
-                    UNIQUE KEY `uix_user_item_scenario_labeling` (`user_id`, `item_id`, `scenario_id`),
+                    UNIQUE KEY `uix_user_item_scenario_span_labeling` (`user_id`, `item_id`, `scenario_id`, `span_id`),
                     CONSTRAINT `fk_labeling_eval_user` FOREIGN KEY (`user_id`)
                         REFERENCES `users` (`id`) ON DELETE CASCADE,
                     CONSTRAINT `fk_labeling_eval_item` FOREIGN KEY (`item_id`)
                         REFERENCES `evaluation_items` (`item_id`) ON DELETE CASCADE,
                     CONSTRAINT `fk_labeling_eval_scenario` FOREIGN KEY (`scenario_id`)
                         REFERENCES `rating_scenarios` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # Scenario Stats Cache table (DB-backed stats cache for fast retrieval)
+        changed |= _ensure_table(
+            db,
+            table_name="scenario_stats_cache",
+            create_sql=(
+                """
+                CREATE TABLE `scenario_stats_cache` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `scenario_id` INT NOT NULL,
+                    `stats_json` LONGTEXT NOT NULL,
+                    `function_type` VARCHAR(50) NOT NULL,
+                    `computed_at` DATETIME NOT NULL,
+                    `item_count` INT NOT NULL DEFAULT 0,
+                    `is_computing` TINYINT(1) NOT NULL DEFAULT 0,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_scenario` (`scenario_id`),
+                    INDEX `idx_computed_at` (`computed_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="scenario_stats_jobs",
+            create_sql=(
+                """
+                CREATE TABLE `scenario_stats_jobs` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `scenario_id` INT NOT NULL,
+                    `status` VARCHAR(20) NOT NULL DEFAULT 'idle',
+                    `priority` INT NOT NULL DEFAULT 0,
+                    `request_token` INT NOT NULL DEFAULT 0,
+                    `processing_token` INT NOT NULL DEFAULT 0,
+                    `worker_id` VARCHAR(255) NULL,
+                    `lease_expires_at` DATETIME NULL,
+                    `last_heartbeat_at` DATETIME NULL,
+                    `last_requested_at` DATETIME NULL,
+                    `started_at` DATETIME NULL,
+                    `completed_at` DATETIME NULL,
+                    `last_error` TEXT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_scenario_stats_job_scenario` (`scenario_id`),
+                    INDEX `ix_scenario_stats_jobs_status` (`status`),
+                    INDEX `ix_scenario_stats_jobs_lease` (`lease_expires_at`),
+                    INDEX `ix_scenario_stats_jobs_requested` (`last_requested_at`),
+                    CONSTRAINT `fk_scenario_stats_jobs_scenario` FOREIGN KEY (`scenario_id`)
+                        REFERENCES `rating_scenarios` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="llm_eval_runs",
+            create_sql=(
+                """
+                CREATE TABLE `llm_eval_runs` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `scenario_id` INT NOT NULL,
+                    `model_id` VARCHAR(255) NOT NULL,
+                    `task_type` VARCHAR(50) NULL,
+                    `status` VARCHAR(20) NOT NULL DEFAULT 'idle',
+                    `requested_all` TINYINT(1) NOT NULL DEFAULT 0,
+                    `thread_ids_json` JSON NULL,
+                    `request_token` INT NOT NULL DEFAULT 0,
+                    `processing_token` INT NOT NULL DEFAULT 0,
+                    `worker_id` VARCHAR(255) NULL,
+                    `lease_expires_at` DATETIME NULL,
+                    `last_heartbeat_at` DATETIME NULL,
+                    `last_requested_at` DATETIME NULL,
+                    `started_at` DATETIME NULL,
+                    `completed_at` DATETIME NULL,
+                    `last_error` TEXT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_llm_eval_run_scenario_model` (`scenario_id`, `model_id`),
+                    INDEX `ix_llm_eval_runs_status` (`status`),
+                    INDEX `ix_llm_eval_runs_lease` (`lease_expires_at`),
+                    INDEX `ix_llm_eval_runs_requested` (`last_requested_at`),
+                    CONSTRAINT `fk_llm_eval_runs_scenario` FOREIGN KEY (`scenario_id`)
+                        REFERENCES `rating_scenarios` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # =========================================================================
+        # Conference Manager: Series support
+        # =========================================================================
+
+        # Conference Series table (parent for recurring conferences)
+        changed |= _ensure_table(
+            db,
+            table_name="conference_series",
+            create_sql=(
+                """
+                CREATE TABLE `conference_series` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `name` VARCHAR(255) NOT NULL,
+                    `acronym` VARCHAR(100) NOT NULL,
+                    `core_ranking` ENUM('A*','A','B','C','Unranked') DEFAULT NULL,
+                    `website_url` VARCHAR(2048) DEFAULT NULL,
+                    `keywords` JSON DEFAULT NULL,
+                    `notes` TEXT DEFAULT NULL,
+                    `created_by` VARCHAR(255) NOT NULL,
+                    `updated_by` VARCHAR(255) DEFAULT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_series_acronym` (`acronym`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        # FK from conferences to conference_series
+        changed |= _ensure_column(
+            db,
+            table_name="conferences",
+            column_name="series_id",
+            column_definition_sql="`series_id` INT NULL",
+        )
+
+        # Add 'published' to papers.status enum (was missing in initial schema)
+        changed |= _migrate_paper_status_enum(db)
+
+        # =========================================================================
+        # Conference Manager: Research Groups
+        # =========================================================================
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_groups",
+            create_sql=(
+                """
+                CREATE TABLE `research_groups` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `name` VARCHAR(255) NOT NULL,
+                    `slug` VARCHAR(255) NOT NULL,
+                    `description` TEXT DEFAULT NULL,
+                    `created_by` VARCHAR(255) NOT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_research_group_slug` (`slug`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_group_members",
+            create_sql=(
+                """
+                CREATE TABLE `research_group_members` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `group_id` INT NOT NULL,
+                    `user_id` INT NOT NULL,
+                    `role` ENUM('owner','member','viewer') NOT NULL DEFAULT 'member',
+                    `added_by` VARCHAR(255) DEFAULT NULL,
+                    `added_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `unique_group_user` (`group_id`, `user_id`),
+                    KEY `ix_rgm_group_id` (`group_id`),
+                    KEY `ix_rgm_user_id` (`user_id`),
+                    CONSTRAINT `fk_rgm_group` FOREIGN KEY (`group_id`) REFERENCES `research_groups` (`id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_rgm_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_group_access_requests",
+            create_sql=(
+                """
+                CREATE TABLE `research_group_access_requests` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `group_id` INT NOT NULL,
+                    `requester_username` VARCHAR(255) NOT NULL,
+                    `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+                    `message` TEXT DEFAULT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `resolved_at` DATETIME DEFAULT NULL,
+                    `resolved_by` VARCHAR(255) DEFAULT NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `unique_group_requester` (`group_id`, `requester_username`),
+                    KEY `ix_rgar_group_id` (`group_id`),
+                    CONSTRAINT `fk_rgar_group` FOREIGN KEY (`group_id`) REFERENCES `research_groups` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        # group_id FK on conferences, papers, conference_series
+        changed |= _ensure_column(
+            db,
+            table_name="conferences",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="papers",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="conference_series",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+
+        # =========================================================================
+        # Messaging: Link Previews
+        # =========================================================================
+
+        # JSON field on messages for storing resolved link previews
+        changed |= _ensure_column(
+            db,
+            table_name="messaging_messages",
+            column_name="link_previews",
+            column_definition_sql="`link_previews` JSON NULL",
+        )
+
+        # URL-level cache table for fetched OG metadata
+        changed |= _ensure_table(
+            db,
+            table_name="messaging_link_previews",
+            create_sql=(
+                """
+                CREATE TABLE `messaging_link_previews` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `url_hash` VARCHAR(64) NOT NULL,
+                    `url` VARCHAR(2000) NOT NULL,
+                    `title` VARCHAR(300) NULL,
+                    `description` VARCHAR(500) NULL,
+                    `image_url` VARCHAR(2000) NULL,
+                    `favicon_url` VARCHAR(2000) NULL,
+                    `site_name` VARCHAR(200) NULL,
+                    `fetched_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `fetch_error` VARCHAR(500) NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_link_preview_url_hash` (`url_hash`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             ),
@@ -1096,12 +1641,133 @@ def apply_schema_patches(db) -> None:
                 changed = True
                 print(f"  [Backfill] Set rendered_content for {result.rowcount} prompts with JSON blocks")
 
+        # =========================================================================
+        # Scenario Role Redesign: 2-axis permission model (access_level + flags)
+        # =========================================================================
+        changed |= _migrate_to_access_level_flags(db)
+
+        # =========================================================================
+        # Scenario Role Redesign v2: manager_role + evaluation_role
+        # =========================================================================
+        changed |= _migrate_to_manager_evaluation_roles(db)
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:
         db.session.rollback()
         print(f"⚠️  Schema patch failed: {exc}")
         raise
+
+
+def _migrate_to_access_level_flags(db) -> bool:
+    """
+    Migrate scenario_users from single 'role' column to 2-axis model:
+    - access_level (OWNER/MANAGER/MEMBER): hierarchical management permissions
+    - is_viewer: can see evaluation results
+    - is_assessor: can evaluate items
+
+    Migration mapping:
+    | Old role | → access_level | → is_viewer | → is_assessor |
+    |----------|---------------|-------------|---------------|
+    | OWNER    | OWNER         | true        | false         |
+    | MANAGER  | MANAGER       | true        | false         |
+    | ASSESSOR | MEMBER        | false       | true          |
+    | VIEWER   | MEMBER        | true        | false         |
+    """
+    if not _table_exists(db, "scenario_users"):
+        return False
+
+    changed = False
+
+    # Step 1: Add new columns
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="access_level",
+        column_definition_sql="`access_level` VARCHAR(20) NULL DEFAULT 'MEMBER'",
+    )
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="is_viewer",
+        column_definition_sql="`is_viewer` TINYINT(1) NOT NULL DEFAULT 0",
+    )
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="is_assessor",
+        column_definition_sql="`is_assessor` TINYINT(1) NOT NULL DEFAULT 0",
+    )
+
+    # Step 2: Migrate data from role column (only rows where access_level is still NULL)
+    if _column_exists(db, "scenario_users", "role") and _column_exists(db, "scenario_users", "access_level"):
+        try:
+            # OWNER → access_level=OWNER, is_viewer=true
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET access_level = 'OWNER', is_viewer = 1, is_assessor = 0
+                WHERE role = 'OWNER' AND (access_level IS NULL OR access_level = 'MEMBER')
+                  AND is_viewer = 0 AND is_assessor = 0
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Migrated {result.rowcount} OWNER rows")
+
+            # MANAGER → access_level=MANAGER, is_viewer=true
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET access_level = 'MANAGER', is_viewer = 1, is_assessor = 0
+                WHERE role = 'MANAGER' AND (access_level IS NULL OR access_level = 'MEMBER')
+                  AND is_viewer = 0 AND is_assessor = 0
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Migrated {result.rowcount} MANAGER rows")
+
+            # ASSESSOR/EVALUATOR → access_level=MEMBER, is_assessor=true
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET access_level = 'MEMBER', is_viewer = 0, is_assessor = 1
+                WHERE role IN ('ASSESSOR', 'EVALUATOR') AND (access_level IS NULL OR access_level = 'MEMBER')
+                  AND is_viewer = 0 AND is_assessor = 0
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Migrated {result.rowcount} ASSESSOR rows")
+
+            # VIEWER → access_level=MEMBER, is_viewer=true
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET access_level = 'MEMBER', is_viewer = 1, is_assessor = 0
+                WHERE role = 'VIEWER' AND (access_level IS NULL OR access_level = 'MEMBER')
+                  AND is_viewer = 0 AND is_assessor = 0
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Migrated {result.rowcount} VIEWER rows")
+
+            # Special: Scenario creators (created_by) who have a VIEWER row
+            # should be upgraded to OWNER access_level
+            result = db.session.execute(text("""
+                UPDATE scenario_users su
+                INNER JOIN rating_scenarios rs ON rs.id = su.scenario_id
+                INNER JOIN users u ON u.id = su.user_id
+                SET su.access_level = 'OWNER'
+                WHERE u.username = rs.created_by
+                  AND su.access_level != 'OWNER'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Access Level Migration] Promoted {result.rowcount} scenario creators to OWNER")
+
+            if changed:
+                db.session.commit()
+
+        except Exception as exc:
+            db.session.rollback()
+            print(f"  ⚠️ Access level migration failed (non-fatal): {exc}")
+
+    return changed
 
 
 def _migrate_model_id_prefixes(db) -> bool:
@@ -1227,5 +1893,222 @@ def _migrate_model_id_prefixes(db) -> bool:
     except Exception as exc:
         db.session.rollback()
         print(f"  ⚠️ Prefix migration failed (non-fatal): {exc}")
+
+    return changed
+
+
+def _migrate_scenario_user_roles(db) -> bool:
+    """
+    Migrate legacy scenario_users.role enum/value 'EVALUATOR' to 'ASSESSOR'.
+
+    Old DBs use enum('OWNER','EVALUATOR','VIEWER'). Current code expects
+    OWNER/MANAGER/ASSESSOR/VIEWER.
+    """
+    if not _table_exists(db, "scenario_users") or not _column_exists(db, "scenario_users", "role"):
+        return False
+
+    changed = False
+    try:
+        # Convert legacy role value before tightening enum definition.
+        result = db.session.execute(
+            text(
+                """
+                UPDATE scenario_users
+                SET role = 'ASSESSOR'
+                WHERE role = 'EVALUATOR'
+                """
+            )
+        )
+        if result.rowcount > 0:
+            changed = True
+            print(f"  [Role Migration] Converted {result.rowcount} scenario_users from EVALUATOR -> ASSESSOR")
+
+        # Align enum values with current model.
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE scenario_users
+                MODIFY COLUMN role ENUM('OWNER','MANAGER','ASSESSOR','VIEWER') NULL
+                """
+            )
+        )
+        db.session.commit()
+        changed = True
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ scenario_users role migration failed (non-fatal): {exc}")
+
+    return changed
+
+
+def _backfill_feature_model_ids(db) -> bool:
+    """
+    Best-effort backfill for legacy features/user_feature_rankings model_id values.
+
+    Reads from legacy llms.name via llm_id where available and writes normalized
+    model_id strings used by current code.
+    """
+    # Nothing to do if legacy tables/columns are missing.
+    if not _table_exists(db, "llms"):
+        return False
+
+    features_ready = (
+        _table_exists(db, "features")
+        and _column_exists(db, "features", "llm_id")
+        and _column_exists(db, "features", "model_id")
+    )
+    ufr_ready = (
+        _table_exists(db, "user_feature_rankings")
+        and _column_exists(db, "user_feature_rankings", "llm_id")
+        and _column_exists(db, "user_feature_rankings", "model_id")
+    )
+
+    if not features_ready and not ufr_ready:
+        return False
+
+    changed = False
+    try:
+        case_sql = """
+            CASE
+                WHEN l.name = 'GPT-4'           THEN 'Global/OpenAI/gpt-4'
+                WHEN l.name = 'GPT-5 Nano'      THEN 'Global/OpenAI/gpt-5-nano'
+                WHEN l.name = 'GPT-5 Mini'      THEN 'Global/OpenAI/gpt-5-mini'
+                WHEN l.name = 'Claude-3'        THEN 'Global/Anthropic/claude-3'
+                WHEN l.name = 'Mistral-7B'      THEN 'Global/Mistral/Mistral-7B'
+                WHEN l.name = 'Mistral Small'   THEN 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
+                WHEN l.name = 'Magistral Small' THEN 'Global/Mistral/Magistral-Small-2509'
+                WHEN l.name = 'SummEval'        THEN 'SummEval'
+                WHEN l.name LIKE '% (%)'        THEN TRIM(SUBSTRING_INDEX(l.name, ' (', 1))
+                ELSE l.name
+            END
+        """
+
+        if features_ready:
+            result = db.session.execute(
+                text(
+                    f"""
+                    UPDATE features f
+                    JOIN llms l ON f.llm_id = l.llm_id
+                    SET f.model_id = {case_sql}
+                    WHERE f.llm_id IS NOT NULL
+                      AND (f.model_id IS NULL OR f.model_id = '')
+                    """
+                )
+            )
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Backfill] features.model_id set for {result.rowcount} rows")
+
+        if ufr_ready:
+            result = db.session.execute(
+                text(
+                    f"""
+                    UPDATE user_feature_rankings ufr
+                    JOIN llms l ON ufr.llm_id = l.llm_id
+                    SET ufr.model_id = {case_sql}
+                    WHERE ufr.llm_id IS NOT NULL
+                      AND (ufr.model_id IS NULL OR ufr.model_id = '')
+                    """
+                )
+            )
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Backfill] user_feature_rankings.model_id set for {result.rowcount} rows")
+
+        if changed:
+            db.session.commit()
+        else:
+            db.session.rollback()
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ model_id backfill failed (non-fatal): {exc}")
+
+    return changed
+
+
+def _migrate_to_manager_evaluation_roles(db) -> bool:
+    """
+    Migrate scenario_users to the 2-axis role model (manager_role + evaluation_role).
+
+    Backfills from existing access_level/is_viewer/is_assessor fields:
+    | Old fields                           | → manager_role | → evaluation_role |
+    |--------------------------------------|---------------|-------------------|
+    | access_level=OWNER                   | owner         | none              |
+    | access_level=MANAGER                 | editor        | none              |
+    | is_viewer=1, access_level=MEMBER     | viewer        | none              |
+    | is_assessor=1                        | none          | assessor          |
+    | OWNER + is_assessor=1                | owner         | assessor          |
+    """
+    if not _table_exists(db, "scenario_users"):
+        return False
+
+    changed = False
+
+    # Step 1: Add new columns
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="manager_role",
+        column_definition_sql="`manager_role` VARCHAR(10) NOT NULL DEFAULT 'none'",
+    )
+    changed |= _ensure_column(
+        db,
+        table_name="scenario_users",
+        column_name="evaluation_role",
+        column_definition_sql="`evaluation_role` VARCHAR(10) NOT NULL DEFAULT 'none'",
+    )
+
+    # Step 2: Backfill from existing fields (only rows still at defaults)
+    if (
+        _column_exists(db, "scenario_users", "manager_role")
+        and _column_exists(db, "scenario_users", "access_level")
+    ):
+        try:
+            # OWNER access_level → manager_role='owner'
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET manager_role = 'owner'
+                WHERE access_level = 'OWNER' AND manager_role = 'none'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Manager/Eval Role Migration] Set manager_role=owner for {result.rowcount} OWNER rows")
+
+            # MANAGER access_level → manager_role='editor'
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET manager_role = 'editor'
+                WHERE access_level = 'MANAGER' AND manager_role = 'none'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Manager/Eval Role Migration] Set manager_role=editor for {result.rowcount} MANAGER rows")
+
+            # is_viewer=1 with MEMBER access_level → manager_role='viewer'
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET manager_role = 'viewer'
+                WHERE is_viewer = 1 AND access_level = 'MEMBER' AND manager_role = 'none'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Manager/Eval Role Migration] Set manager_role=viewer for {result.rowcount} VIEWER rows")
+
+            # is_assessor=1 → evaluation_role='assessor'
+            result = db.session.execute(text("""
+                UPDATE scenario_users
+                SET evaluation_role = 'assessor'
+                WHERE is_assessor = 1 AND evaluation_role = 'none'
+            """))
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Manager/Eval Role Migration] Set evaluation_role=assessor for {result.rowcount} ASSESSOR rows")
+
+            if changed:
+                db.session.commit()
+
+        except Exception as exc:
+            db.session.rollback()
+            print(f"  ⚠️ Manager/Eval role migration failed (non-fatal): {exc}")
 
     return changed

@@ -76,11 +76,11 @@
               {{ $t('docs.technical.body') }}
             </p>
             <div class="mkdocs-link-container">
-              <a href="/mkdocs/" class="mkdocs-link" @click="openMkDocs">
+              <a :href="mkdocsBase" class="mkdocs-link" @click="openMkDocs">
                 <LIcon size="32">mdi-book-open-page-variant</LIcon>
                 <div class="mkdocs-link-text">
                   <span class="mkdocs-link-title">{{ $t('docs.technical.linkTitle') }}</span>
-                  <span class="mkdocs-link-url">/mkdocs/</span>
+                  <span class="mkdocs-link-url">{{ mkdocsBase }}</span>
                 </div>
                 <LIcon>mdi-open-in-new</LIcon>
               </a>
@@ -120,7 +120,7 @@
           </div>
           <div class="section-body">
             <div class="contact-row">
-              <a href="mailto:info@e-beratungsinstitut.de" class="contact-link">
+              <a href="mailto:llars@e-beratungsinstitut.de" class="contact-link">
                 <LIcon>mdi-email</LIcon>
                 <span>{{ $t('docs.contact.email') }}</span>
               </a>
@@ -144,14 +144,18 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { docsBasePathForLocale } from '@/utils/docsUrl';
+
+const { locale } = useI18n();
+
+// Doku-Basispfad in der aktuellen UI-Sprache (DE -> /mkdocs/, EN -> /mkdocs/en/).
+const mkdocsBase = computed(() => docsBasePathForLocale(locale.value));
 
 // Explizit window.open verwenden um Vue Router zu umgehen
 const openMkDocs = (event) => {
   event.preventDefault();
-  window.open('/mkdocs/', '_blank');
+  window.open(mkdocsBase.value, '_blank');
 };
-
-const { locale } = useI18n();
 const currentDate = computed(() => {
   return new Date().toLocaleDateString(locale.value || undefined, {
     year: 'numeric',

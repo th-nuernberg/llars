@@ -8,9 +8,12 @@ import logging
 import threading
 from flask import Blueprint, request, jsonify, g, current_app
 from decorators.permission_decorator import require_permission
-from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError, ForbiddenError
 from services.crawler.web_crawler import crawler_service, WebCrawler
+from services.rag.access_service import RAGAccessService
 from auth.auth_utils import AuthUtils
+from auth.url_validator import validate_url_not_internal
+from db.tables import RAGCollection
 
 logger = logging.getLogger(__name__)
 
@@ -75,10 +78,14 @@ def start_crawl():
     if not urls:
         raise ValidationError('No URLs provided')
 
-    # Validate URLs
+    # Validate URLs: Schema + SSRF-Schutz (keine internen IPs/Hostnames)
     for url in urls:
         if not url.startswith(('http://', 'https://')):
             raise ValidationError(f'Invalid URL format: {url}')
+        try:
+            validate_url_not_internal(url)
+        except ValueError as e:
+            raise ValidationError(f'URL rejected: {url} - {str(e)}')
 
     # Collection mode: existing or new
     existing_collection_id = data.get('existing_collection_id')
@@ -91,6 +98,16 @@ def start_crawl():
         collection_name = f"Webcrawl: {domain}"
 
     username = AuthUtils.extract_username_without_validation() or 'unknown'
+
+    # AuthZ: appending crawl results to an EXISTING collection requires edit rights
+    # on that collection — otherwise any editor could poison a foreign collection
+    # whose chatbot then cites the crawled content. New collections (no id) are fine.
+    if existing_collection_id is not None:
+        target_collection = RAGCollection.query.get(existing_collection_id)
+        if not target_collection:
+            raise NotFoundError('Collection not found')
+        if not RAGAccessService.can_edit_collection(username, target_collection):
+            raise ForbiddenError('No edit access to the target collection')
 
     # Crawler options
     use_playwright = data.get('use_playwright', True)

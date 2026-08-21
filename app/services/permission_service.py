@@ -105,7 +105,13 @@ class PermissionService:
             # No roles assigned, no direct permission -> deny
             return False
 
-        # Check if any of the user's roles have this permission
+        # Check if any of the user's roles have this permission. Only EXISTENCE
+        # matters (deny lives exclusively on the user_permissions level, handled
+        # above), so cap at one row: a user with MULTIPLE roles that both grant
+        # the same permission (e.g. evaluator + ijcai_reviewer, the IJCAI demo
+        # accounts) matches several RolePermission rows here — scalar_one_or_none
+        # without the limit raised MultipleResultsFound and 500ed every
+        # permission-gated route for such users (prod incident 2026-08-17).
         role_ids = [ur.role_id for ur in user_roles]
 
         role_perm = db.session.execute(
@@ -114,7 +120,7 @@ class PermissionService:
                     RolePermission.role_id.in_(role_ids),
                     RolePermission.permission_id == permission.id
                 )
-            )
+            ).limit(1)
         ).scalar_one_or_none()
 
         # If role has permission, grant it; otherwise deny
@@ -232,6 +238,10 @@ class PermissionService:
         if role_name == 'evaluator':
             role_names.append('viewer')
 
+        # limit(1): existence check — a user holding SEVERAL of the requested
+        # roles (multi-role accounts, or evaluator+viewer via the alias above)
+        # matches multiple rows, and scalar_one_or_none without the limit would
+        # raise MultipleResultsFound (same failure mode as in check_permission).
         role_query = (
             select(Role)
             .join(UserRole, UserRole.role_id == Role.id)
@@ -241,6 +251,7 @@ class PermissionService:
                     Role.role_name.in_(role_names)
                 )
             )
+            .limit(1)
         )
 
         role = db.session.execute(role_query).scalar_one_or_none()

@@ -63,6 +63,15 @@
           </LTag>
           <LIconBtn
             v-if="selectedUser.db_record_exists"
+            :icon="selectedUser.console_logs_enabled ? 'mdi-console' : 'mdi-console-line'"
+            :tooltip="selectedUser.console_logs_enabled ? $t('admin.users.consoleLogs.disable') : $t('admin.users.consoleLogs.enable')"
+            :loading="togglingConsoleLogs === selectedUser.username"
+            :disabled="selectedUser.deleted_at"
+            :color="selectedUser.console_logs_enabled ? 'success' : undefined"
+            @click="toggleConsoleLogs(selectedUser)"
+          />
+          <LIconBtn
+            v-if="selectedUser.db_record_exists"
             :icon="selectedUser.is_active ? 'mdi-lock-open-variant' : 'mdi-lock'"
             :tooltip="selectedUser.is_active ? $t('admin.users.actions.lock') : $t('admin.users.actions.unlock')"
             :loading="togglingUser === selectedUser.username"
@@ -211,7 +220,12 @@
                 class="mr-2"
               />
               <div>
-                <span class="font-weight-medium">{{ item.username }}</span>
+                <div class="d-flex align-center gap-1">
+                  <span class="font-weight-medium">{{ item.username }}</span>
+                  <LTooltip v-if="item.console_logs_enabled" :text="$t('admin.users.consoleLogs.activeLabel')">
+                    <v-icon size="16" color="warning">mdi-console</v-icon>
+                  </LTooltip>
+                </div>
                 <!-- Show status on mobile since column is hidden -->
                 <div v-if="isMobile" class="d-flex align-center gap-1 mt-1">
                   <LTag :variant="getStatusVariant(item)" size="sm">
@@ -453,7 +467,7 @@
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text>
-          <span v-html="$t('admin.users.deleteDialog.confirm', { username: userToDelete?.username })"></span>
+          <span v-html="$t('admin.users.deleteDialog.confirm', { username: stripHtml(userToDelete?.username) })"></span>
           <div class="text-caption text-medium-emphasis mt-2">
             {{ $t('admin.users.deleteDialog.info') }}
           </div>
@@ -481,11 +495,14 @@ import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { useMobile } from '@/composables/useMobile';
+import { useSnackbar } from '@/composables/useSnackbar';
 import { logI18n } from '@/utils/logI18n';
-import { COLLAB_COLOR_PRESETS, isColorInAiReservedRange } from '@/constants/colors';
+import { COLLAB_COLOR_PRESETS } from '@/constants/colors';
+import { stripHtml } from '@/utils/sanitize';
 
 const { t } = useI18n();
 const { isMobile } = useMobile();
+const { showSuccess, showError } = useSnackbar();
 
 // State
 const searchQuery = ref('');
@@ -517,6 +534,9 @@ const creatingUser = ref(false);
 const createWarning = ref('');
 const deletingUser = ref(false);
 const togglingUser = ref(null);
+const togglingConsoleLogs = ref(null);
+const resettingUser = ref(null);
+const linkingUser = ref(null);
 const { isLoading, withLoading } = useSkeletonLoading(['table']);
 
 // Table headers - responsive for mobile
@@ -535,8 +555,8 @@ const headers = computed(() => {
   ];
 });
 
-// Use global LLARS color presets (filtered to exclude AI reserved purple/violet range)
-const collabColorPresets = COLLAB_COLOR_PRESETS.filter(c => !isColorInAiReservedRange(c));
+// Use global LLARS color presets
+const collabColorPresets = COLLAB_COLOR_PRESETS;
 
 // Role filter options
 const roleFilterOptions = computed(() => {
@@ -624,12 +644,34 @@ const getUserActions = (user) => {
       loading: loadingUser.value === user.username
     },
     {
+      key: 'toggle-console-logs',
+      icon: user.console_logs_enabled ? 'mdi-console' : 'mdi-console-line',
+      tooltip: user.console_logs_enabled ? t('admin.users.consoleLogs.disable') : t('admin.users.consoleLogs.enable'),
+      variant: user.console_logs_enabled ? 'success' : undefined,
+      loading: togglingConsoleLogs.value === user.username,
+      disabled: user.deleted_at
+    },
+    {
       key: 'toggle-lock',
       icon: user.is_active ? 'mdi-lock-open-variant' : 'mdi-lock',
       tooltip: user.is_active ? t('admin.users.actions.lock') : t('admin.users.actions.unlock'),
       variant: user.is_active ? 'success' : 'warning',
       loading: togglingUser.value === user.username,
       disabled: user.username === 'admin' || user.deleted_at
+    },
+    {
+      key: 'send-reset-email',
+      icon: 'mdi-email-arrow-right',
+      tooltip: t('admin.users.actions.sendResetEmail'),
+      loading: resettingUser.value === user.username,
+      disabled: user.deleted_at
+    },
+    {
+      key: 'generate-reset-link',
+      icon: 'mdi-link-variant',
+      tooltip: t('admin.users.actions.copyResetLink'),
+      loading: linkingUser.value === user.username,
+      disabled: user.deleted_at
     },
     {
       key: 'delete',
@@ -647,8 +689,17 @@ const handleUserAction = (actionKey, user) => {
     case 'edit':
       selectUser(user.username);
       break;
+    case 'toggle-console-logs':
+      toggleConsoleLogs(user);
+      break;
     case 'toggle-lock':
       toggleUserLock(user);
+      break;
+    case 'send-reset-email':
+      sendPasswordResetEmail(user);
+      break;
+    case 'generate-reset-link':
+      generateResetLink(user);
       break;
     case 'delete':
       confirmDelete(user);
@@ -811,6 +862,76 @@ const toggleUserLock = async (user) => {
     logI18n('error', 'logs.admin.users.toggleUserLockFailed', error);
   } finally {
     togglingUser.value = null;
+  }
+};
+
+const sendPasswordResetEmail = async (user) => {
+  if (!user?.username) return;
+  resettingUser.value = user.username;
+  try {
+    await axios.post(`/api/admin/users/${encodeURIComponent(user.username)}/send-password-reset`);
+    showSuccess(t('admin.users.passwordReset.emailSent', { username: user.username }));
+  } catch (error) {
+    // The backend returns a NO_EMAIL 400 for synthetic / email-less
+    // accounts — surface that as a clear, distinct message since the
+    // frontend has no email field to pre-check against.
+    if (error?.response?.data?.code === 'NO_EMAIL') {
+      showError(t('admin.users.passwordReset.noEmail', { username: user.username }));
+    } else {
+      showError(t('admin.users.passwordReset.emailFailed'));
+    }
+    logI18n('error', 'logs.admin.users.sendPasswordResetFailed', error);
+  } finally {
+    resettingUser.value = null;
+  }
+};
+
+const generateResetLink = async (user) => {
+  if (!user?.username) return;
+  linkingUser.value = user.username;
+  try {
+    const response = await axios.post(
+      `/api/admin/users/${encodeURIComponent(user.username)}/generate-reset-link`
+    );
+    const link = response.data?.link;
+    if (link && navigator.clipboard) {
+      await navigator.clipboard.writeText(link);
+      showSuccess(t('admin.users.passwordReset.linkCopied'));
+    } else if (link) {
+      // Clipboard API unavailable (e.g. non-secure context) — still
+      // confirm we have a link so the admin can copy it manually.
+      showSuccess(link, 10000);
+    } else {
+      showError(t('admin.users.passwordReset.linkFailed'));
+    }
+  } catch (error) {
+    showError(t('admin.users.passwordReset.linkFailed'));
+    logI18n('error', 'logs.admin.users.generateResetLinkFailed', error);
+  } finally {
+    linkingUser.value = null;
+  }
+};
+
+const toggleConsoleLogs = async (user) => {
+  if (!user?.username) return;
+  togglingConsoleLogs.value = user.username;
+  try {
+    const newEnabled = !user.console_logs_enabled;
+    const response = await axios.patch(
+      `/api/admin/users/${encodeURIComponent(user.username)}/console-logs`,
+      { enabled: newEnabled }
+    );
+
+    const updated = response.data.user;
+    const idx = users.value.findIndex(u => u.username === user.username);
+    if (idx !== -1) users.value[idx] = { ...users.value[idx], ...updated };
+    if (selectedUser.value?.username === user.username) {
+      selectedUser.value = { ...selectedUser.value, ...updated };
+    }
+  } catch (error) {
+    logI18n('error', 'logs.admin.users.toggleConsoleLogsFailed', error);
+  } finally {
+    togglingConsoleLogs.value = null;
   }
 };
 

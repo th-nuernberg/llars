@@ -2,7 +2,7 @@
 Socket.IO Crawler Event Tests.
 
 Tests for Crawler Socket.IO events.
-Test IDs: SOCK_CRAWL_001 - SOCK_CRAWL_030
+Test IDs: SOCK_CRAWL_001 - SOCK_CRAWL_032
 """
 
 import pytest
@@ -412,3 +412,67 @@ class TestSocketIOCrawlerEvents:
             assert CRAWLER_JOBS_ROOM is not None
             assert isinstance(CRAWLER_JOBS_ROOM, str)
             assert len(CRAWLER_JOBS_ROOM) > 0
+
+    def test_SOCK_CRAWL_031_get_status_returns_unavailable_status_for_missing_session(self, app):
+        """Test SOCK_CRAWL_031: Missing live sessions return a non-fatal unavailable status."""
+        with app.app_context():
+            from socketio_handlers.events_crawler import register_crawler_events
+
+            mock_socketio = Mock()
+            handlers = {}
+
+            def capture_handler(event):
+                def decorator(func):
+                    handlers[event] = func
+                    return func
+                return decorator
+
+            mock_socketio.on = capture_handler
+
+            register_crawler_events(mock_socketio)
+
+            with patch('socketio_handlers.events_crawler.emit') as mock_emit:
+                with patch('services.crawler.web_crawler.crawler_service.get_job_status', return_value=None):
+                    handlers['crawler:get_status']({'session_id': 'job-123'})
+
+            mock_emit.assert_called_once()
+            event_name, payload = mock_emit.call_args.args[:2]
+            assert event_name == 'crawler:status'
+            assert payload['session_id'] == 'job-123'
+            assert payload['status'] == 'unavailable'
+            assert payload['session_available'] is False
+            assert payload['live_updates_available'] is False
+
+    def test_SOCK_CRAWL_032_get_status_returns_live_job_status_when_available(self, app):
+        """Test SOCK_CRAWL_032: Live session status is returned unchanged when available."""
+        with app.app_context():
+            from socketio_handlers.events_crawler import register_crawler_events
+
+            mock_socketio = Mock()
+            handlers = {}
+
+            def capture_handler(event):
+                def decorator(func):
+                    handlers[event] = func
+                    return func
+                return decorator
+
+            mock_socketio.on = capture_handler
+
+            register_crawler_events(mock_socketio)
+
+            live_status = {
+                'status': 'running',
+                'stage': 'crawling',
+                'urls_total': 4,
+                'urls_completed': 1,
+            }
+
+            with patch('socketio_handlers.events_crawler.emit') as mock_emit:
+                with patch('services.crawler.web_crawler.crawler_service.get_job_status', return_value=live_status):
+                    handlers['crawler:get_status']({'session_id': 'job-456'})
+
+            mock_emit.assert_called_once()
+            event_name, payload = mock_emit.call_args.args[:2]
+            assert event_name == 'crawler:status'
+            assert payload == {'session_id': 'job-456', **live_status}

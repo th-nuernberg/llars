@@ -20,6 +20,7 @@ from db.tables import (
     OnCoCoTransitionMatrix, PillarThread, Message
 )
 from auth.decorators import authentik_required
+from auth.access_control import require_oncoco_analysis_owner
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
@@ -165,6 +166,8 @@ def get_analysis(analysis_id: int):
     if not analysis:
         raise NotFoundError(f'Analysis {analysis_id} not found')
 
+    require_oncoco_analysis_owner(analysis_id, g.authentik_user)
+
     # Get pillar statistics
     pillar_stats = OnCoCoPillarStatistics.query.filter_by(
         analysis_id=analysis_id
@@ -228,6 +231,9 @@ def start_analysis(analysis_id: int):
     analysis = OnCoCoAnalysis.query.get(analysis_id)
     if not analysis:
         raise NotFoundError(f'Analysis {analysis_id} not found')
+
+    require_oncoco_analysis_owner(analysis_id, g.authentik_user)
+
     # Handle POST with no body or non-JSON content type
     data = {}
     if request.is_json:
@@ -607,6 +613,8 @@ def delete_analysis(analysis_id: int):
     analysis = OnCoCoAnalysis.query.get(analysis_id)
     if not analysis:
         raise NotFoundError(f'Analysis {analysis_id} not found')
+
+    require_oncoco_analysis_owner(analysis_id, g.authentik_user)
 
     # Delete related data
     OnCoCoSentenceLabel.query.filter_by(analysis_id=analysis_id).delete()

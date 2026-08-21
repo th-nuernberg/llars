@@ -142,7 +142,7 @@ Wenn eine Authentik-Session im Flow erzeugt wurde, wird das
 So können andere OIDC-geschützte Apps (z. B. Matomo) die Session
 ohne erneuten Login nutzen.
 
-### 4. Token-Validierung (nur RS256)
+### 5. Token-Validierung (nur RS256)
 
 **Datei:** `app/auth/oidc_validator.py`
 

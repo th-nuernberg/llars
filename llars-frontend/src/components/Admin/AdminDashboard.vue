@@ -131,6 +131,11 @@
             <AdminReferralSection />
           </div>
 
+          <!-- Communications / Mail-Center Section -->
+          <div v-else-if="activeSection === 'communications'" key="communications" class="section-container--full">
+            <AdminMailCenterSection />
+          </div>
+
           <!-- System Health Section -->
           <div v-else-if="activeSection === 'health'" key="health" class="section-container--full">
             <AdminSystemHealthSection />
@@ -170,6 +175,16 @@
           <div v-else-if="activeSection === 'field-prompts'" key="field-prompts" class="section-container">
             <AdminFieldPromptsSection />
           </div>
+
+          <!-- Communication Section -->
+          <div v-else-if="activeSection === 'communication'" key="communication" class="section-container">
+            <AdminCommunicationSection />
+          </div>
+
+          <!-- Research Groups Section -->
+          <div v-else-if="activeSection === 'research-groups'" key="research-groups" class="section-container">
+            <AdminResearchGroupsSection />
+          </div>
         </v-fade-transition>
       </div>
     </main>
@@ -198,8 +213,11 @@ import AdminDockerMonitorSection from './sections/AdminDockerMonitorSection.vue'
 import AdminDatabaseSection from './sections/AdminDatabaseSection.vue';
 import AdminSystemSettingsSection from './sections/AdminSystemSettingsSection.vue';
 import AdminReferralSection from './sections/AdminReferralSection.vue';
+import AdminMailCenterSection from './sections/AdminMailCenterSection.vue';
 import AdminPresenceSection from './sections/AdminPresenceSection.vue';
 import AdminFieldPromptsSection from './sections/AdminFieldPromptsSection.vue';
+import AdminCommunicationSection from './sections/AdminCommunicationSection.vue';
+import AdminResearchGroupsSection from './sections/AdminResearchGroupsSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
@@ -241,14 +259,17 @@ const navItems = [
   { titleKey: 'adminDashboard.nav.db', value: 'db', icon: 'mdi-database', adminOnly: true },
   { titleKey: 'adminDashboard.nav.settings', value: 'settings', icon: 'mdi-cog', adminOnly: true },
   { titleKey: 'adminDashboard.nav.fieldPrompts', value: 'field-prompts', icon: 'mdi-auto-fix', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.communication', value: 'communication', icon: 'llars:communication', adminOnly: true },
   { titleKey: 'adminDashboard.nav.users', value: 'users', icon: 'mdi-account-group', adminOnly: true },
   { titleKey: 'adminDashboard.nav.referrals', value: 'referrals', icon: 'mdi-account-multiple-plus', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.communications', value: 'communications', icon: 'mdi-email-multiple-outline', adminOnly: true },
   { titleKey: 'adminDashboard.nav.scenarios', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
-  { titleKey: 'adminDashboard.nav.chatbots', value: 'chatbots', icon: 'llars:chatbot-manage', permission: 'feature:chatbots:view' },
+  { titleKey: 'adminDashboard.nav.chatbots', value: 'chatbots', icon: 'llars:chatbot-manage', adminOnly: true },
   { titleKey: 'adminDashboard.nav.crawler', value: 'crawler', icon: 'mdi-spider-web', adminOnly: true },
-  { titleKey: 'adminDashboard.nav.rag', value: 'rag', icon: 'mdi-database-search', permission: 'feature:rag:view' },
+  { titleKey: 'adminDashboard.nav.rag', value: 'rag', icon: 'mdi-database-search', adminOnly: true },
   { titleKey: 'adminDashboard.nav.permissions', value: 'permissions', icon: 'mdi-shield-lock', adminOnly: true },
   { titleKey: 'adminDashboard.nav.llmProviders', value: 'llm-providers', icon: 'mdi-connection', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.researchGroups', value: 'research-groups', icon: 'mdi-account-group', adminOnly: true },
 ];
 
 const filteredNavItems = computed(() => {

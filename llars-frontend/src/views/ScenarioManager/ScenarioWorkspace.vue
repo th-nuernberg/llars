@@ -21,14 +21,14 @@
         <LBtn variant="text" @click="refreshScenario" :loading="loading">
           <LIcon>mdi-refresh</LIcon>
         </LBtn>
-        <v-menu v-if="isOwner">
+        <v-menu v-if="canManage">
           <template #activator="{ props }">
             <LBtn variant="text" v-bind="props">
               <LIcon>mdi-dots-vertical</LIcon>
             </LBtn>
           </template>
           <v-list density="compact">
-            <v-list-item @click="showSettings = true">
+            <v-list-item @click="activeTab = 'settings'">
               <template #prepend>
                 <LIcon size="18" class="mr-2">mdi-cog-outline</LIcon>
               </template>
@@ -40,20 +40,28 @@
               </template>
               <v-list-item-title>{{ $t('scenarioManager.actions.duplicate') }}</v-list-item-title>
             </v-list-item>
-            <v-divider />
-            <v-list-item @click="confirmArchive" class="text-warning">
-              <template #prepend>
-                <LIcon size="18" class="mr-2" color="warning">mdi-archive-outline</LIcon>
-              </template>
-              <v-list-item-title>{{ $t('scenarioManager.actions.archive') }}</v-list-item-title>
-            </v-list-item>
+            <template v-if="isOwner">
+              <v-divider />
+              <v-list-item @click="confirmArchive" class="text-warning">
+                <template #prepend>
+                  <LIcon size="18" class="mr-2" color="warning">mdi-archive-outline</LIcon>
+                </template>
+                <v-list-item-title>{{ $t('scenarioManager.actions.archive') }}</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="confirmDelete" class="text-error">
+                <template #prepend>
+                  <LIcon size="18" class="mr-2" color="error">mdi-delete-outline</LIcon>
+                </template>
+                <v-list-item-title>{{ $t('scenarioManager.actions.delete') }}</v-list-item-title>
+              </v-list-item>
+            </template>
           </v-list>
         </v-menu>
       </div>
     </div>
 
-    <!-- Quick Stats Bar (only for owners) -->
-    <div class="stats-bar" v-if="scenario && isOwner">
+    <!-- Quick Stats Bar (for owners, managers, viewers) -->
+    <div class="stats-bar" v-if="scenario && canViewAll">
       <div class="stat-item">
         <LIcon size="18" color="grey">mdi-email-outline</LIcon>
         <span class="stat-value">{{ scenario.thread_count || 0 }}</span>
@@ -121,24 +129,26 @@
         @evaluation-complete="refreshScenario"
       />
 
-      <!-- Team Tab -->
+      <!-- Assessors Tab (formerly Team) -->
       <ScenarioTeamTab
-        v-else-if="activeTab === 'team'"
+        v-else-if="activeTab === 'assessors'"
         :scenario="scenario"
         :live-stats="liveStats"
+        :can-manage="canManage"
+        @team-updated="refreshScenario"
+        @refresh-stats="refreshStats"
+      />
+
+      <!-- Settings Tab (Owner/Manager only) -->
+      <ScenarioSettingsTab
+        v-else-if="activeTab === 'settings'"
+        :scenario="scenario"
+        :is-owner="isOwner"
+        :can-manage="canManage"
+        @saved="onSettingsSaved"
         @team-updated="refreshScenario"
       />
     </div>
-
-    <!-- Settings Dialog -->
-    <v-dialog v-model="showSettings" max-width="600">
-      <ScenarioSettingsDialog
-        v-if="showSettings"
-        :scenario="scenario"
-        @close="showSettings = false"
-        @saved="onSettingsSaved"
-      />
-    </v-dialog>
 
     <!-- Duplicate Dialog -->
     <v-dialog v-model="showDuplicateDialog" max-width="450">
@@ -194,6 +204,30 @@
       </v-card>
     </v-dialog>
 
+    <!-- Delete Dialog (irreversible — drops the scenario + all its
+         scenario_users / scenario_threads / comparison_sessions) -->
+    <v-dialog v-model="showDeleteDialog" max-width="440">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <LIcon color="error" class="mr-2">mdi-delete-outline</LIcon>
+          {{ $t('scenarioManager.delete.title') }}
+        </v-card-title>
+        <v-card-text>
+          {{ $t('scenarioManager.delete.confirm', { name: scenario?.scenario_name }) }}
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn variant="text" @click="showDeleteDialog = false" :disabled="deleting">
+            {{ $t('common.cancel') }}
+          </LBtn>
+          <LBtn variant="danger" @click="executeDelete" :loading="deleting">
+            <LIcon start>mdi-delete-outline</LIcon>
+            {{ $t('scenarioManager.actions.delete') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar for notifications -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -220,7 +254,7 @@
  *
  * Dokumentation: .claude/plans/evaluation-data-schemas.md
  */
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, provide } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { useMobile } from '@/composables/useMobile'
@@ -230,7 +264,7 @@ import ScenarioOverviewTab from './components/tabs/ScenarioOverviewTab.vue'
 import ScenarioDataTab from './components/tabs/ScenarioDataTab.vue'
 import ScenarioEvaluationTab from './components/tabs/ScenarioEvaluationTab.vue'
 import ScenarioTeamTab from './components/tabs/ScenarioTeamTab.vue'
-import ScenarioSettingsDialog from './components/ScenarioSettingsDialog.vue'
+import ScenarioSettingsTab from './components/tabs/ScenarioSettingsTab.vue'
 
 const props = defineProps({
   id: {
@@ -250,7 +284,9 @@ const {
   fetchScenario,
   updateScenario,
   duplicateScenario: duplicateScenarioApi,
-  archiveScenario: archiveScenarioApi
+  archiveScenario: archiveScenarioApi,
+  deleteScenarioById,
+  getScenarioTeam
 } = useScenarioManager()
 
 // Real-time stats subscription
@@ -271,33 +307,94 @@ const {
 
 // UI State
 const activeTab = ref('overview')
-const showSettings = ref(false)
 const showDuplicateDialog = ref(false)
 const showArchiveDialog = ref(false)
 const duplicateName = ref('')
 const duplicating = ref(false)
 const archiving = ref(false)
+const showDeleteDialog = ref(false)
+const deleting = ref(false)
 const snackbar = ref({ show: false, message: '', color: 'success' })
 
-// Access control: Check if user is owner or in evaluate mode
-const isEvaluatorMode = computed(() => {
-  return route.query.mode === 'evaluate' || scenario.value?.is_owner === false
-})
+// Access control — prefer new manager_role field, fall back to legacy fields for backwards compat
+const isOwner = computed(() =>
+  scenario.value?.manager_role === 'owner' || scenario.value?.is_owner === true
+)
+const canManage = computed(() =>
+  ['owner', 'editor'].includes(scenario.value?.manager_role) ||
+  isOwner.value || scenario.value?.can_manage === true
+)
+const canViewAll = computed(() =>
+  (scenario.value?.manager_role && scenario.value?.manager_role !== 'none') ||
+  canManage.value || scenario.value?.is_viewer || scenario.value?.user_role === 'Viewer'
+)
 
-const isOwner = computed(() => scenario.value?.is_owner === true)
+// User-origin map (keyed by username AND display_name -> origin object) shared
+// with the Overview and Evaluation tabs, which render origins by name rather
+// than from a full team payload. Loaded once here from the management-gated
+// /team endpoint; Settings + Assessors use their own team payload directly.
+// Viewers (non-managers) get a 403 on /team by design -> map stays empty -> no
+// pills render, which is the intended access boundary for "where users came from".
+const scenarioOrigins = ref({})       // name -> origin (per-user lookup)
+const scenarioOriginsList = ref([])   // one origin per member (legend, no double count)
+provide('scenarioOrigins', scenarioOrigins)
+provide('scenarioOriginsList', scenarioOriginsList)
 
-// Tabs configuration - evaluators only see the evaluation tab
-const tabs = computed(() => {
-  if (isEvaluatorMode.value) {
-    return [
-      { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' }
-    ]
+async function loadScenarioOrigins() {
+  if (!scenarioIdRef.value || !canManage.value) {
+    scenarioOrigins.value = {}
+    scenarioOriginsList.value = []
+    return
   }
-  return [
+  try {
+    const data = await getScenarioTeam(scenarioIdRef.value)
+    const map = {}
+    const list = []
+    for (const m of (data?.team || [])) {
+      if (!m.origin) continue
+      // Map is keyed by both username and display_name so name-based lookups in
+      // the Overview/Evaluation tabs hit regardless of which is shown. The list
+      // holds one entry per member so legend counts aren't doubled.
+      if (m.username) map[m.username] = m.origin
+      if (m.display_name) map[m.display_name] = m.origin
+      if (!m.is_ai) list.push(m.origin)
+    }
+    scenarioOrigins.value = map
+    scenarioOriginsList.value = list
+  } catch (err) {
+    scenarioOrigins.value = {}
+    scenarioOriginsList.value = []
+  }
+}
+
+// Tabs configuration based on manager_role:
+// - Owner/Editor (manager_role=owner|editor): Overview | Data | Evaluation | Assessors | Settings
+// - Viewer (manager_role=viewer): Overview | Data | Evaluation | Assessors (no settings)
+// - Pure Assessor/Eval-Viewer (manager_role=none or not set): redirect to evaluation
+const tabs = computed(() => {
+  const baseTabs = [
     { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
     { value: 'data', label: t('scenarioManager.tabs.data'), icon: 'mdi-database-outline' },
     { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' },
-    { value: 'team', label: t('scenarioManager.tabs.team'), icon: 'mdi-account-group-outline' }
+    { value: 'assessors', label: t('scenarioManager.tabs.assessors'), icon: 'mdi-account-group-outline' }
+  ]
+
+  if (canManage.value) {
+    // Owner/Manager: all tabs + settings
+    return [
+      ...baseTabs,
+      { value: 'settings', label: t('scenarioManager.tabs.settings'), icon: 'mdi-cog-outline' }
+    ]
+  }
+
+  if (canViewAll.value) {
+    // Viewer: all tabs except settings
+    return baseTabs
+  }
+
+  // Pure assessor: evaluation only
+  return [
+    { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' }
   ]
 })
 
@@ -307,7 +404,11 @@ const typeConfig = {
   2: { icon: 'mdi-star-outline', color: '#D1BC8A', name: 'rating', variant: 'warning' },
   3: { icon: 'mdi-email-outline', color: '#88c4c8', name: 'mailRating', variant: 'info' },
   4: { icon: 'mdi-compare-horizontal', color: '#c4a0d4', name: 'comparison', variant: 'primary' },
-  5: { icon: 'mdi-shield-search', color: '#e8a087', name: 'authenticity', variant: 'danger' }
+  5: { icon: 'mdi-shield-search', color: '#e8a087', name: 'authenticity', variant: 'danger' },
+  7: { icon: 'mdi-tag-multiple-outline', color: '#98d4bb', name: 'labeling', variant: 'success' },
+  8: { icon: 'mdi-forum-outline', color: '#88c4c8', name: 'communicationComparison', variant: 'info' },
+  // 9 = conversation_labeling: item is a conversation, the vote is a span in it
+  9: { icon: 'mdi-tag-multiple-outline', color: '#6FA8A0', name: 'conversationLabeling', variant: 'accent' }
 }
 
 // Status mapping
@@ -363,6 +464,8 @@ const liveStats = computed(() => ({
   connected: statsConnected.value,
   ratingDistribution: stats.value?.rating_distribution,
   ratingProvenanceAnalysis: stats.value?.rating_provenance_analysis,
+  conversationProvenance: stats.value?.conversation_provenance,
+  authenticityProvenance: stats.value?.authenticity_provenance,
   // Unified pairwise agreement - prefer pairwise_agreement, fallback to ranking_agreement
   pairwiseAgreement: stats.value?.pairwise_agreement || stats.value?.ranking_agreement,
   functionType: liveFunctionType.value,
@@ -383,6 +486,8 @@ async function refreshScenario() {
     fetchScenario(props.id),
     refreshStats()
   ])
+  // Team membership may have changed (invite/remove) -> refresh origin map.
+  loadScenarioOrigins()
 }
 
 function duplicateScenario() {
@@ -442,8 +547,34 @@ async function executeArchive() {
   }
 }
 
-async function onSettingsSaved(updates) {
-  showSettings.value = false
+function confirmDelete() {
+  showDeleteDialog.value = true
+}
+
+async function executeDelete() {
+  if (!scenario.value) return
+  deleting.value = true
+  try {
+    await deleteScenarioById(scenario.value.id)
+    showDeleteDialog.value = false
+    snackbar.value = {
+      show: true,
+      message: t('scenarioManager.delete.success'),
+      color: 'success'
+    }
+    router.push({ name: 'ScenarioManager' })
+  } catch (err) {
+    snackbar.value = {
+      show: true,
+      message: err.response?.data?.error || err.message || 'Failed to delete scenario',
+      color: 'error'
+    }
+  } finally {
+    deleting.value = false
+  }
+}
+
+async function onSettingsSaved() {
   await refreshScenario()
 }
 
@@ -466,10 +597,18 @@ watch(activeTab, (newTab) => {
   }
 })
 
-// Redirect non-owners to the dedicated evaluation interface
+// Redirect pure assessors/eval-viewers to the dedicated evaluation interface.
+// Users with a real manager_role (owner/editor/viewer) stay in the workspace.
 watch(scenario, (sc) => {
-  if (sc && !sc.is_owner) {
-    // Non-owners should use the evaluation items overview, not the workspace
+  if (!sc) return
+  const role = sc.manager_role
+  // New field: redirect when manager_role is 'none' or missing
+  const hasManagerAccess = role && role !== 'none'
+  // Legacy fallback: keep old checks so older backend responses still work
+  const hasLegacyAccess = sc.is_owner || sc.can_manage || sc.user_role === 'Viewer'
+
+  if (!hasManagerAccess && !hasLegacyAccess) {
+    // Pure assessors should use the evaluation items overview, not the workspace
     router.replace({ name: 'EvaluationItemsOverview', params: { scenarioId: sc.id } })
   }
 }, { immediate: true })
@@ -477,7 +616,12 @@ watch(scenario, (sc) => {
 onMounted(async () => {
   await fetchScenario(props.id)
   refreshStats()  // Also load stats initially
+  loadScenarioOrigins()  // canManage is settled now that the scenario is loaded
 })
+
+// Reload origins when navigating to a different scenario (component may be
+// reused on route param change) or once the loaded scenario settles access.
+watch(scenarioIdRef, () => loadScenarioOrigins())
 </script>
 
 <style scoped>
@@ -672,5 +816,55 @@ onMounted(async () => {
 
 .scenario-workspace.is-mobile .tab-content {
   padding: 16px;
+}
+
+/*
+ * Viewport-based responsive fixes (tablet + small screens).
+ * The .is-mobile class above is driven by JS state; these media queries
+ * cover the tablet range (e.g. ~552-960px) where the 5-item .stats-bar
+ * (~838px) overflows the viewport. Scoped to <=960px so desktop never
+ * regresses.
+ */
+@media (max-width: 960px) {
+  .workspace-header {
+    padding: 12px 16px;
+  }
+
+  /* Allow the title to shrink and ellipsis instead of pushing actions off-screen */
+  .header-text {
+    min-width: 0;
+  }
+
+  .title {
+    font-size: 1.1rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* BLOCKER: wrap the 5 stat items so they fit narrow viewports without overflow */
+  .stats-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 8px 16px;
+  }
+
+  .tab-navigation {
+    padding: 8px 12px;
+  }
+
+  .tab-navigation :deep(.l-tab) {
+    padding: 8px 14px;
+  }
+
+  .tab-content {
+    padding: 16px;
+  }
+
+  /* Keep this view's dialogs from touching screen edges on tablets/phones */
+  :deep(.v-dialog) {
+    width: 90vw;
+  }
 }
 </style>

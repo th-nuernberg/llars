@@ -1,0 +1,125 @@
+{
+  "type": "rating",
+  "items": [
+    {
+      "label_de": "Beratungsfall 1",
+      "label_en": "Counselling case 1",
+      "content_de": "Es klingt, als würde Sie der Prüfungsstress gerade völlig überrollen und Sie haben Angst, alles nicht zu schaffen. Das ist eine sehr verständliche Reaktion, wenn so viel auf einmal ansteht. Vielleicht hilft es, den Berg in kleine, machbare Schritte zu zerlegen und sich für heute nur eine Aufgabe vorzunehmen. Was wäre denn das Allerkleinste, mit dem Sie anfangen könnten?",
+      "content_en": "It sounds like the exam stress is completely overwhelming you right now and you're afraid you won't manage it all. That's a very understandable reaction when so much piles up at once. It might help to break that mountain down into small, manageable steps and to take on just one task today. What would be the very smallest thing you could start with?"
+    },
+    {
+      "label_de": "Beratungsfall 2",
+      "content_de": "Verstehe. Sie sollten einfach versuchen, positiv zu denken und nicht so viel zu grübeln. Probleme hat jeder mal. Mit etwas mehr Disziplin wird das schon wieder.",
+      "label_en": "Counselling case 2",
+      "content_en": "I understand. You should just try to think positively and not brood so much. Everyone has problems sometimes. With a bit more discipline it'll sort itself out."
+    },
+    {
+      "label_de": "Beratungsfall 3",
+      "content_de": "Der Streit mit Ihrer besten Freundin scheint Sie wirklich zu beschäftigen, und es tut weh, wenn eine so wichtige Beziehung ins Wanken gerät. Manchmal entstehen solche Konflikte aus Missverständnissen, die sich gar nicht so leicht von allein auflösen. Mögen Sie mir erzählen, was beim letzten Mal zwischen Ihnen passiert ist? Dann schauen wir gemeinsam, welcher erste Schritt sich für Sie stimmig anfühlen würde.",
+      "label_en": "Counselling case 3",
+      "content_en": "The argument with your best friend really seems to be weighing on you, and it hurts when such an important relationship starts to falter. Sometimes these conflicts arise from misunderstandings that don't easily resolve on their own. Would you like to tell me what happened between you last time? Then we can look together at which first step would feel right for you."
+    },
+    {
+      "label_de": "Beratungsfall 4",
+      "content_de": "Sich nach dem Umzug in eine neue Stadt so einsam zu fühlen, ist eine schwere Erfahrung, und es ist mutig, dass Sie das hier ansprechen. Neue Kontakte zu knüpfen braucht oft mehr Zeit, als man sich wünscht, und das sagt nichts über Ihren Wert aus. Vielleicht gibt es eine Aktivität, die Ihnen früher Freude gemacht hat und über die Sie Menschen mit ähnlichen Interessen treffen könnten. Wir können auch gern gemeinsam überlegen, wie sich erste kleine Begegnungen leichter anfühlen.",
+      "label_en": "Counselling case 4",
+      "content_en": "Feeling so lonely after moving to a new city is a hard experience, and it's brave of you to bring it up here. Making new connections often takes longer than we'd like, and that says nothing about your worth. Maybe there's an activity you used to enjoy that could also bring you into contact with people who share your interests. We can also think together about how those first small encounters could feel easier."
+    },
+    {
+      "label_de": "Beratungsfall 5",
+      "content_de": "Ja, das mit der Arbeit ist hart. Vielleicht reden Sie mal mit Ihrem Chef. Sonst kann man da wenig machen. Alles Gute weiterhin.",
+      "label_en": "Counselling case 5",
+      "content_en": "Yeah, the work situation is tough. Maybe talk to your boss sometime. Otherwise there's not much one can do. All the best to you."
+    },
+    {
+      "label_de": "Beratungsfall 6",
+      "content_de": "Es berührt mich, wie offen Sie über die Trauer um Ihren Großvater sprechen. Einen geliebten Menschen zu verlieren hinterlässt eine Lücke, die sich nicht einfach wegrationalisieren lässt, und es ist völlig in Ordnung, dass die Gefühle in Wellen kommen. Es gibt kein richtiges Tempo für Trauer. Möchten Sie mir ein wenig von ihm erzählen, von dem, was Ihnen besonders fehlt?",
+      "label_en": "Counselling case 6",
+      "content_en": "I'm touched by how openly you speak about your grief for your grandfather. Losing a loved one leaves a gap that can't simply be reasoned away, and it's completely okay that the feelings come in waves. There's no right pace for grief. Would you like to tell me a little about him, about what you miss most?"
+    },
+    {
+      "label_de": "Beratungsfall 7",
+      "content_de": "Ihre Sorge, im Studium den Anschluss zu verlieren, kann ich gut nachvollziehen. Viele Studierende erleben Phasen, in denen alles zu viel wird. Haben Sie schon einmal über eine Lerngruppe nachgedacht? Das könnte den Druck etwas verteilen. Erzählen Sie mir gern mehr, wie Ihr Alltag gerade aussieht.",
+      "label_en": "Counselling case 7",
+      "content_en": "I can well understand your worry about falling behind in your studies. Many students experience phases where everything becomes too much. Have you ever considered a study group? That could spread the pressure a bit. Feel free to tell me more about what your daily routine looks like right now."
+    },
+    {
+      "label_de": "Beratungsfall 8",
+      "content_de": "Das nächtliche Grübeln, das Sie beschreiben, raubt Ihnen offensichtlich viel Energie und Schlaf. Wenn die Gedanken abends kreisen, fühlt man sich oft hilflos ausgeliefert. Manchen Menschen hilft es, die Sorgen vor dem Schlafengehen kurz aufzuschreiben, um sie sozusagen aus dem Kopf aufs Papier zu legen. Wollen wir gemeinsam schauen, welche Gedanken besonders häufig wiederkehren?",
+      "label_en": "Counselling case 8",
+      "content_en": "The night-time rumination you describe is clearly draining a lot of your energy and your sleep. When your thoughts start circling in the evening, it's easy to feel helplessly at their mercy. Some people find it helps to briefly write down their worries before bed, to move them out of the head and onto paper, so to speak. Shall we look together at which thoughts recur most often?"
+    },
+    {
+      "label_de": "Beratungsfall 9",
+      "content_de": "Das ist eine schwierige Situation. Trennungen sind nie leicht. Sie werden schon sehen, dass es Ihnen bald besser geht. Die Zeit heilt ja bekanntlich alle Wunden.",
+      "label_en": "Counselling case 9",
+      "content_en": "That's a difficult situation. Breakups are never easy. You'll see that you'll feel better soon. As they say, time heals all wounds."
+    },
+    {
+      "label_de": "Beratungsfall 10",
+      "content_de": "Es klingt, als stünden Sie unter enormem Druck, allen gerecht zu werden, und als bliebe dabei kaum Raum für Ihre eigenen Bedürfnisse. Dieses Gefühl, sich ständig zerreißen zu müssen, ist erschöpfend. Ich frage mich, wann Sie zuletzt etwas nur für sich selbst getan haben. Vielleicht können wir gemeinsam herausfinden, wo sich kleine Grenzen setzen ließen, ohne dass Sie sich schuldig fühlen müssen.",
+      "label_en": "Counselling case 10",
+      "content_en": "It sounds like you're under enormous pressure to satisfy everyone, leaving hardly any room for your own needs. This feeling of constantly being pulled in every direction is exhausting. I wonder when you last did something just for yourself. Perhaps we can find out together where small boundaries could be set without you having to feel guilty."
+    },
+    {
+      "label_de": "Beratungsfall 11",
+      "content_de": "Die Angst vor dem ersten Arbeitstag im neuen Job ist Ihnen deutlich anzumerken, und das ist menschlich. Ein neuer Anfang bedeutet immer ein Stück Ungewissheit. Gleichzeitig hat man Sie genau für diese Stelle ausgewählt, weil man Ihnen etwas zutraut. Was wäre für den ersten Tag ein realistisches, kleines Ziel, mit dem Sie sich wohlfühlen würden?",
+      "label_en": "Counselling case 11",
+      "content_en": "I can clearly sense your anxiety about the first day in your new job, and that's only human. A new beginning always means a bit of uncertainty. At the same time, you were chosen precisely for this position because they believe in you. What would be a realistic, small goal for the first day that you'd feel comfortable with?"
+    },
+    {
+      "label_de": "Beratungsfall 12",
+      "content_de": "Okay. Das hört sich nach einem klassischen Fall von Überforderung an. Da gibt es viele Ratgeber zu. Schauen Sie mal im Internet, da finden Sie bestimmt passende Tipps.",
+      "label_en": "Counselling case 12",
+      "content_en": "Okay. This sounds like a classic case of being overwhelmed. There are plenty of self-help guides on that. Have a look online; you're bound to find some useful tips."
+    },
+    {
+      "label_de": "Beratungsfall 13",
+      "content_de": "Sich nach außen stark zu zeigen, während es innen ganz anders aussieht, kostet enorm viel Kraft. Dass Sie hier die Maske einmal ablegen, ist ein wichtiger und mutiger Schritt. Sie müssen das nicht alles allein tragen. Mögen Sie mir erzählen, seit wann sich dieses Doppelleben für Sie so anstrengend anfühlt?",
+      "label_en": "Counselling case 13",
+      "content_en": "Showing yourself as strong on the outside while it looks completely different inside takes an enormous amount of strength. Letting that mask drop here is an important and brave step. You don't have to carry all of this alone. Would you like to tell me since when this double life has felt so exhausting for you?"
+    },
+    {
+      "label_de": "Beratungsfall 14",
+      "content_de": "Der ständige Vergleich mit anderen in den sozialen Medien zieht Sie verständlicherweise runter. Was wir dort sehen, sind meist sorgfältig ausgewählte Höhepunkte, nicht das echte Leben mit seinen Tiefen. Trotzdem wirkt dieser Vergleich auf das eigene Selbstwertgefühl. Wäre es vorstellbar, für ein paar Tage bewusst weniger zu scrollen und zu beobachten, wie sich das anfühlt?",
+      "label_en": "Counselling case 14",
+      "content_en": "The constant comparison with others on social media is understandably bringing you down. What we see there is usually carefully selected highlights, not real life with its lows. Even so, that comparison takes a toll on your self-esteem. Would you be willing to scroll deliberately less for a few days and notice how that feels?"
+    },
+    {
+      "label_de": "Beratungsfall 15",
+      "content_de": "Ich höre, dass Sie sich seit Wochen antriebslos fühlen und Dinge, die Ihnen früher Freude gemacht haben, kaum noch reizen. Das ernst zu nehmen ist genau richtig, und Sie tun gut daran, sich Unterstützung zu holen. Solche Phasen können sehr belastend sein, und es ist keine Schwäche, darüber zu sprechen. Wenn die Beschwerden länger anhalten, kann auch ärztliche Begleitung sinnvoll sein. Wie ginge es Ihnen mit dem Gedanken, sich zusätzlich Unterstützung zu suchen?",
+      "label_en": "Counselling case 15",
+      "content_en": "I hear that you've felt listless for weeks and that things that used to bring you joy hardly appeal to you anymore. Taking that seriously is exactly right, and it's good that you're looking for support. Phases like this can weigh very heavily, and it's not a weakness to talk about them. If the symptoms persist longer, medical guidance can also make sense. How would you feel about the idea of seeking additional support?"
+    },
+    {
+      "label_de": "Beratungsfall 16",
+      "content_de": "Konflikte mit den eigenen Eltern, wenn man als junger Erwachsener langsam eigene Wege geht, sind oft besonders schmerzhaft. Man möchte verstanden werden und stößt doch immer wieder an alte Muster. Es klingt, als wünschten Sie sich vor allem, dass Ihre Entscheidungen respektiert werden. Was glauben Sie, würde Ihre Eltern am ehesten erreichen, wenn Sie ihnen das ruhig schildern?",
+      "label_en": "Counselling case 16",
+      "content_en": "Conflicts with one's own parents, when you slowly go your own way as a young adult, are often especially painful. You want to be understood and yet keep running into old patterns. It sounds like you wish above all that your decisions would be respected. What do you think would get through to your parents best if you described that to them calmly?"
+    },
+    {
+      "label_de": "Beratungsfall 17",
+      "content_de": "Naja, Stress im Studium ist ja ganz normal. Da müssen alle durch. Versuchen Sie einfach, einen Plan zu machen und sich besser zu organisieren, dann klappt das schon.",
+      "label_en": "Counselling case 17",
+      "content_en": "Well, stress during studies is quite normal. Everyone has to go through it. Just try to make a plan and organize yourself better, then it'll work out."
+    },
+    {
+      "label_de": "Beratungsfall 18",
+      "content_de": "Es ist nachvollziehbar, dass die Versöhnung mit Ihrem Bruder Sie hin- und herreißt. Auf der einen Seite die Verletzung von damals, auf der anderen die Sehnsucht nach Nähe. Beide Gefühle dürfen nebeneinander stehen, sie schließen sich nicht aus. Vielleicht hilft es, sich zunächst zu fragen, was Sie selbst brauchen würden, um sich auf einen ersten Schritt einlassen zu können.",
+      "label_en": "Counselling case 18",
+      "content_en": "It's understandable that the idea of reconciling with your brother pulls you back and forth. On one side the hurt from back then, on the other the longing for closeness. Both feelings can exist side by side; they don't cancel each other out. It might help to first ask yourself what you yourself would need in order to be able to take a first step."
+    },
+    {
+      "label_de": "Beratungsfall 19",
+      "content_de": "Vor anderen zu sprechen oder im Mittelpunkt zu stehen löst bei Ihnen offenbar starke Anspannung aus, bis hin zu körperlichen Symptomen. Das ist belastend und schränkt Sie im Alltag ein. Solche Reaktionen sind weiter verbreitet, als viele denken, und sie lassen sich Schritt für Schritt verändern. Erinnern Sie sich an eine Situation, in der es etwas leichter ging als sonst? Dort könnten wir ansetzen.",
+      "label_en": "Counselling case 19",
+      "content_en": "Speaking in front of others or being the center of attention apparently triggers strong tension in you, even physical symptoms. That's a heavy burden, and it limits you in everyday life. Such reactions are more common than many think, and they can be changed step by step. Do you recall a situation in which it went a bit more easily than usual? We could start from there."
+    },
+    {
+      "label_de": "Beratungsfall 20",
+      "content_de": "Danke für Ihre Nachricht. Das Gefühl, nicht zu genügen, kennen viele Menschen. Sie sind damit nicht allein. Bestimmt finden Sie bald wieder mehr Zuversicht. Melden Sie sich gern, wenn etwas ist.",
+      "label_en": "Counselling case 20",
+      "content_en": "Thank you for your message. The feeling of not being enough is something many people know. You're not alone with it. I'm sure you'll find more confidence again soon. Feel free to get in touch if anything comes up."
+    }
+  ]
+}

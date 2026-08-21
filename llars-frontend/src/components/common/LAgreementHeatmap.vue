@@ -200,6 +200,11 @@ const props = defineProps({
   emptyText: {
     type: String,
     default: ''
+  },
+  /** Cell value rendering: 'percent' (0..1 -> "NN%") or 'decimal' (e.g. κ "0.72") */
+  valueFormat: {
+    type: String,
+    default: 'percent'
   }
 })
 
@@ -290,6 +295,10 @@ function getAgreement(id1, id2) {
 
 function formatValue(value) {
   if (value === null || value === undefined) return '-'
+  if (props.valueFormat === 'decimal') {
+    // Kappa/alpha style values (-1..1); color scale clamps negatives to "low"
+    return Number(value).toFixed(2)
+  }
   return Math.round(value * 100) + '%'
 }
 

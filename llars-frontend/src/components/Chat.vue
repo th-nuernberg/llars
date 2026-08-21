@@ -247,9 +247,6 @@ onMounted(() => {
     transports: socketioTransports,
     upgrade: socketioEnableWebsocket,
     query: { username: username },
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8'
-    }
   });
 
   socket.value.on('connect', () => {

@@ -194,7 +194,7 @@ const props = defineProps({
   collapsed: { type: Boolean, default: true },
   treeCollapsed: { type: Boolean, default: false },
   canCommit: { type: Boolean, default: false },
-  apiPrefix: { type: String, default: '/api/latex-collab' },
+  apiPrefix: { type: String, default: '/api/markdown-collab' },
   // For single mode: reactive summary object
   summary: { type: Object, default: () => ({ users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }) },
   // For single mode: function to get current content

@@ -43,13 +43,20 @@ class ChatbotCreator:
         Raises:
             ValueError: If URL format is invalid
         """
-        # Validate URL
+        # Validate URL — shape + SSRF guard. ``assert_external_url_safe``
+        # raises UnsafeUrlError (subclass of ValueError) when the host is
+        # internal, on the blocklist, or DNS-resolves to private space.
+        # Same guard the v1 schema runs, so legacy/non-v1 callers (e.g.
+        # /api/chatbots/<id>/wizard/crawl) get identical protection.
         try:
             parsed = urlparse(url)
             if not parsed.scheme or not parsed.netloc:
                 raise ValueError("Invalid URL format")
         except Exception:
             raise ValueError("Invalid URL format")
+
+        from services.security.url_safety import assert_external_url_safe
+        assert_external_url_safe(url)
 
         # Generate a unique name from the URL
         domain = parsed.netloc.replace('www.', '').replace('.', '_')
@@ -136,6 +143,13 @@ class ChatbotCreator:
 
         if not chatbot.source_url:
             raise ValueError('No source URL configured')
+
+        # Defence-in-depth: re-check the source URL right before we hand
+        # it to the crawler. ``source_url`` was validated at create time,
+        # but it can also be set via direct DB access / migrations / older
+        # legacy code paths. Cheap belt-and-braces check.
+        from services.security.url_safety import assert_external_url_safe
+        assert_external_url_safe(chatbot.source_url)
 
         # Create a collection for this chatbot first (synchronously)
         collection_name = f"chatbot_{chatbot.name}"

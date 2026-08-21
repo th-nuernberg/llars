@@ -25,10 +25,23 @@ export function useChatSocket() {
     const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
     const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
+    // Auth handshake: the backend rejects socket connections without a token
+    // ("no token provided") — so we MUST pass it (same shape as socketService).
+    // Without this the chat socket was rejected and streaming silently fell back
+    // to the non-streaming REST path.
+    const query = {}
+    const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
+    if (token) query.token = token
+    if (typeof window !== 'undefined') {
+      const username = window.localStorage.getItem('username')
+      if (username) query.username = username
+    }
+
     socket.value = io(baseUrl, {
       path: '/socket.io/',
       transports: socketioTransports,
-      upgrade: socketioEnableWebsocket
+      upgrade: socketioEnableWebsocket,
+      query
     })
 
     socket.value.on('connect', () => {

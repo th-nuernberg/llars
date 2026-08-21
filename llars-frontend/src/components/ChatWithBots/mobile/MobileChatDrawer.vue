@@ -9,7 +9,7 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
     temporary
-    width="300"
+    :width="drawerWidth"
     class="mobile-chat-drawer"
   >
     <div class="mobile-drawer-header">
@@ -17,7 +17,7 @@
         variant="primary"
         prepend-icon="mdi-plus"
         block
-        :disabled="!selectedChatbot"
+        :disabled="!chatbots || chatbots.length === 0"
         @click="$emit('new-chat'); $emit('update:modelValue', false)"
       >
         {{ $t('chat.newChat') }}
@@ -106,6 +106,16 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useMobile } from '@/composables/useMobile'
+
+// Responsive drawer width: a slide-over that leaves a backdrop strip visible so
+// a tap outside closes it (Vuetify temporary drawer renders a scrim). Capped at
+// min(86vw, 330px) per the design spec — wide enough to read titles, narrow
+// enough to keep the chat peeking on the right.
+const { windowWidth } = useMobile()
+const drawerWidth = computed(() => Math.min(Math.round(windowWidth.value * 0.86), 330))
+
 defineProps({
   modelValue: {
     type: Boolean,
@@ -169,21 +179,45 @@ function handleConversationClick(bot, conv) {
   background-color: rgb(var(--v-theme-surface)) !important;
 }
 
+/* Slide-over polish: clear the notch at the top and the home indicator at the
+   bottom via safe-area insets, momentum scrolling, and a soft right-edge shadow
+   so it reads as a sheet floating above the chat. */
+.mobile-chat-drawer :deep(.v-navigation-drawer__content) {
+  padding-top: env(safe-area-inset-top, 0px);
+  -webkit-overflow-scrolling: touch;
+}
+
 .mobile-drawer-header {
-  padding: 16px;
+  padding: 14px 16px 12px;
 }
 
 .mobile-drawer-content {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mobile-chatbot-group {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
+/* Comfortable, thumb-friendly rows (>=48px) for the bot headers. */
+.mobile-chatbot-header {
+  min-height: 52px;
+}
+
 .mobile-conversations-list {
   background-color: rgba(var(--v-theme-on-surface), 0.03);
-  padding-left: 16px;
+  padding-left: 12px;
+}
+
+.mobile-conversation-item {
+  min-height: 44px;
+  border-radius: 10px 4px 10px 4px;
+}
+
+/* Bottom nav clears the home indicator. */
+.mobile-chat-drawer :deep(.v-navigation-drawer__append) {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 </style>

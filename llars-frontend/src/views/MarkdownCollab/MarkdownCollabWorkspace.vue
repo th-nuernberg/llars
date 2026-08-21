@@ -238,7 +238,7 @@
             </div>
 
             <!-- Git Panel - Workspace-Level Multi-File Commits -->
-            <LatexWorkspaceGitPanel
+            <MarkdownWorkspaceGitPanel
               ref="gitPanelRef"
               :workspace-id="workspaceId"
               :selected-document-id="selectedNodeId"
@@ -351,7 +351,7 @@ import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/compo
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import MarkdownEditorPane from '@/components/MarkdownCollab/MarkdownEditorPane.vue'
 import MarkdownPreviewPane from '@/components/MarkdownCollab/MarkdownPreviewPane.vue'
-import LatexWorkspaceGitPanel from '@/components/LatexCollab/LatexWorkspaceGitPanel.vue'
+import MarkdownWorkspaceGitPanel from '@/components/MarkdownCollab/MarkdownWorkspaceGitPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
 
@@ -868,7 +868,7 @@ async function refreshCommits() {
 }
 
 async function handleRollback(payload) {
-  // Handle payload from LatexWorkspaceGitPanel (object with documentId) or legacy (just documentId)
+  // Handle payload from MarkdownWorkspaceGitPanel (object with documentId) or legacy (just documentId)
   const documentId = typeof payload === 'object' && payload !== null ? payload.documentId : payload
   console.log('[handleRollback] Aufgerufen mit documentId:', documentId, 'selectedNodeId:', selectedNodeId.value)
 

@@ -84,7 +84,12 @@ def main():
         scenario_user = ScenarioUsers(
             scenario_id=source_scenario.id,
             user_id=admin.id,
-            role=ScenarioRoles.OWNER
+            role=ScenarioRoles.OWNER,
+            access_level='OWNER',
+            is_viewer=True,
+            is_assessor=False,
+            manager_role='owner',
+            evaluation_role='none',
         )
         db.session.add(scenario_user)
         db.session.commit()
@@ -230,7 +235,9 @@ def main():
             scenario_item = ScenarioItems(scenario_id=ranking_scenario.id, item_id=ranking_item.item_id)
             db.session.add(scenario_item)
 
-        ranking_user = ScenarioUsers(scenario_id=ranking_scenario.id, user_id=admin.id, role=ScenarioRoles.OWNER)
+        ranking_user = ScenarioUsers(scenario_id=ranking_scenario.id, user_id=admin.id, role=ScenarioRoles.OWNER,
+                                     access_level='OWNER', is_viewer=True, is_assessor=False,
+                                     manager_role='owner', evaluation_role='none')
         db.session.add(ranking_user)
         db.session.commit()
 

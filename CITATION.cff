@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: "If you use LLARS in your research, please cite the paper below."
+title: "LLARS - LLM Assisted Research System"
+abstract: >-
+  LLARS is an open-source platform for collaborative prompt engineering,
+  batch generation and hybrid (human + LLM) evaluation of LLM outputs,
+  with inter-rater reliability metrics. Built for research teams.
+type: software
+authors:
+  - family-names: Steigerwald
+    given-names: Philipp
+  - family-names: Stieler
+    given-names: Mara
+  - family-names: Burghardt
+    given-names: Jennifer
+  - family-names: Rudolph
+    given-names: Eric
+  - family-names: Albrecht
+    given-names: Jens
+repository-code: "https://github.com/th-nuernberg/llars"
+url: "https://llars.e-beratungsinstitut.de"
+license: MIT
+# Bevorzugtes Zitat: aktuell die arXiv-Version. Sobald die IJCAI-ECAI-2026-
+# Proceedings-Version erscheint, hier auf type: conference-paper mit
+# collection-title/conference/DOI umstellen.
+# REPLACE ON PUBLICATION: this describes the arXiv preprint. When the demo
+# paper appears in the IJCAI-ECAI 2026 proceedings, switch type to
+# 'conference-paper', add collection-title/publisher/pages and the DOI,
+# and mirror the change in README.md (badge, header link, About, Citation).
+preferred-citation:
+  type: article
+  title: "LLARS: Enabling Domain Expert & Developer Collaboration for LLM Prompting, Generation and Evaluation"
+  authors:
+    - family-names: Steigerwald
+      given-names: Philipp
+    - family-names: Stieler
+      given-names: Mara
+    - family-names: Burghardt
+      given-names: Jennifer
+    - family-names: Rudolph
+      given-names: Eric
+    - family-names: Albrecht
+      given-names: Jens
+  year: 2026
+  month: 5
+  journal: "arXiv preprint arXiv:2605.10593"
+  url: "https://arxiv.org/abs/2605.10593"
+  identifiers:
+    - type: other
+      value: "arXiv:2605.10593"
+      description: "arXiv preprint"

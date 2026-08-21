@@ -10,8 +10,18 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 import json
+import logging
+import os
+import time
 import numpy as np
+
+_perf_log = logging.getLogger('stats_perf')
+
+# ProcessPoolExecutor config — shared with agreement_metrics_service.py constants.
+# Use half of available cores to avoid starving Flask/Gunicorn workers.
+_MAX_STATS_WORKERS = max(1, (os.cpu_count() or 4) // 2)
 
 from db.database import db
 from db.models import (
@@ -31,9 +41,16 @@ from db.models import (
     LLMTaskResult,
     LLMModel,
     ItemDimensionRating,
+    ItemComparisonEvaluation,
     ItemLabelingEvaluation,
     UserMailHistoryRating,
+    Feature,
+    UserFeatureRanking,
+    UserFeatureRating,
+    ScenarioItems,
 )
+from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload
 from decorators.error_handler import NotFoundError, ValidationError
 from routes.HelperFunctions import (
     get_thread_progression_state,
@@ -42,6 +59,12 @@ from routes.HelperFunctions import (
     DISTRIBUTION_MODE_ALL,
 )
 from services.user_profile_service import serialize_user_brief
+from services.evaluation.dimensional_rating_service import DimensionalRatingService
+from services.evaluation.labeling_types import (
+    LABELING_FUNCTION_TYPE_IDS,
+    is_labeling_type,
+)
+from services.llm_registry_service import resolve_model_registry
 
 
 def _get_scenario_or_raise(scenario_id: int) -> RatingScenarios:
@@ -58,6 +81,7 @@ def _get_function_type_or_raise(function_type_id: int) -> FeatureFunctionType:
     if not function_type:
         raise NotFoundError("Function type does not exist")
     return function_type
+
 
 
 _DEFAULT_BUCKET_COLOR_PALETTE = [
@@ -345,8 +369,13 @@ def _calculate_unified_pairwise_agreement(scenario_id: int, function_type_name: 
     """
     if function_type_name == "ranking":
         return _calculate_ranking_agreement_heatmap(scenario_id)
-    elif function_type_name == "labeling":
+    elif is_labeling_type(function_type_name):
         return _calculate_labeling_pairwise_agreement(scenario_id)
+    elif function_type_name in ("comparison", "communication_comparison"):
+        # communication_comparison shares the comparison data model
+        # (ItemComparisonEvaluation rows), so the same agreement
+        # calculator handles both.
+        return _calculate_comparison_pairwise_agreement(scenario_id)
     elif function_type_name == "mail_rating":
         return _calculate_mail_rating_pairwise_agreement(scenario_id)
     elif function_type_name in {"rating"}:
@@ -360,99 +389,446 @@ def _calculate_ranking_agreement(
     function_type_name: str,
 ) -> Optional[float]:
     """
-    Calculate Krippendorff's Alpha for ranking/rating scenarios.
+    Calculate ranking Krippendorff's Alpha on the feature level.
 
-    For ranking: compares bucket assignments across evaluators
-    For rating: compares rating values across evaluators
+    Ranking assigns each feature to exactly one ordinal bucket. The feature is
+    therefore the unit of analysis, not the parent thread/item.
     """
-    from db.models import UserFeatureRanking, UserFeatureRating, UserMailHistoryRating
+    from db.models import UserFeatureRanking, LLMTaskResult, Feature
+    from services.evaluation.agreement_metrics_service import AgreementMetricsService
+
+    if function_type_name != "ranking":
+        return None
 
     # Get evaluators who have completed at least one thread
     active_evaluators = [e for e in evaluator_stats if e.get("done_threads", 0) > 0]
     if len(active_evaluators) < 2:
         return None
 
-    # Get all thread IDs from the scenario
+    # Get all thread IDs and features from the scenario.
     scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
     thread_ids = [st.thread_id for st in scenario_threads if st.thread_id]
-    if len(thread_ids) < 2:
+    if not thread_ids:
         return None
 
-    # Build ratings matrix based on function type
-    user_ids = []
+    features = (
+        Feature.query
+        .filter(Feature.item_id.in_(thread_ids))
+        .with_entities(Feature.feature_id, Feature.item_id)
+        .all()
+    )
+    feature_ids = [feature_id for feature_id, _ in features]
+    if len(feature_ids) < 2:
+        return None
+
+    # Build bucket ordinal map from scenario config for consistent numeric mapping.
+    scenario = RatingScenarios.query.get(scenario_id)
+    bucket_config = _extract_ranking_bucket_config(
+        scenario.config_json if scenario else {}
+    )
+    bucket_ordinal = {bucket["id"]: idx for idx, bucket in enumerate(bucket_config)}
+    resolve_bucket = _build_bucket_id_resolver(bucket_config)
+
+    # Collect active human evaluator user_ids and active LLM evaluator model_ids.
+    human_user_ids: List[int] = []
+    llm_model_ids: List[str] = []
+    raters: List[str] = []
     for e in active_evaluators:
         if e.get("is_llm"):
-            continue  # Skip LLM evaluators for now - different storage
-        # Try to get user_id from username
-        user = User.query.filter_by(username=e.get("username")).first()
-        if user:
-            user_ids.append(user.id)
+            model_id = e.get("model_id")
+            if model_id and model_id not in llm_model_ids:
+                llm_model_ids.append(model_id)
+                raters.append(f"llm:{model_id}")
+            continue
 
-    if len(user_ids) < 2:
+        user = User.query.filter_by(username=e.get("username")).first()
+        if user and user.id not in human_user_ids:
+            human_user_ids.append(user.id)
+            raters.append(f"human:{user.id}")
+
+    if len(raters) < 2:
         return None
 
-    ratings_matrix = np.full((len(user_ids), len(thread_ids)), np.nan)
+    data: Dict[int, Dict[str, float]] = {feature_id: {} for feature_id in feature_ids}
 
-    if function_type_name == "ranking":
-        # Get bucket assignments
-        for i, user_id in enumerate(user_ids):
-            rankings = UserFeatureRanking.query.filter(
-                UserFeatureRanking.user_id == user_id,
-                UserFeatureRanking.feature.has(thread_id=thread_ids[0]) if thread_ids else False
-            ).all()
-            # Map buckets to numeric values
-            bucket_map = {"gut": 0, "good": 0, "mittel": 1, "medium": 1, "schlecht": 2, "bad": 2, "poor": 2}
-            for ranking in rankings:
-                if ranking.feature and ranking.bucket:
-                    try:
-                        tid = ranking.feature.thread_id
-                        if tid in thread_ids:
-                            j = thread_ids.index(tid)
-                            bucket_val = bucket_map.get(ranking.bucket.lower())
-                            if bucket_val is not None:
-                                ratings_matrix[i, j] = bucket_val
-                    except (ValueError, AttributeError):
-                        continue
+    # Human rankings from UserFeatureRanking: feature_id -> ordinal bucket value
+    human_rankings = (
+        UserFeatureRanking.query
+        .filter(
+            UserFeatureRanking.user_id.in_(human_user_ids),
+            UserFeatureRanking.feature_id.in_(feature_ids),
+            UserFeatureRanking.bucket.isnot(None),
+        )
+        .all()
+    )
+    for ranking in human_rankings:
+        resolved = resolve_bucket(ranking.bucket)
+        if resolved and resolved in bucket_ordinal:
+            data[ranking.feature_id][f"human:{ranking.user_id}"] = bucket_ordinal[resolved]
 
-    elif function_type_name == "rating":
-        # Get rating values
-        for i, user_id in enumerate(user_ids):
-            ratings = UserFeatureRating.query.filter_by(user_id=user_id).all()
-            for rating in ratings:
-                if rating.feature and rating.rating_content is not None:
-                    try:
-                        tid = rating.feature.thread_id
-                        if tid in thread_ids:
-                            j = thread_ids.index(tid)
-                            ratings_matrix[i, j] = float(rating.rating_content)
-                    except (ValueError, AttributeError):
-                        continue
+    # LLM rankings from LLMTaskResult: payload_json = {bucket: [feature_ids]}
+    llm_results = (
+        LLMTaskResult.query
+        .filter_by(scenario_id=scenario_id, task_type="ranking")
+        .filter(LLMTaskResult.model_id.in_(llm_model_ids))
+        .filter(LLMTaskResult.error.is_(None))
+        .all()
+    )
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        if not isinstance(payload, dict):
+            continue
+        for bucket_name, ranked_feature_ids in payload.items():
+            resolved = resolve_bucket(bucket_name)
+            if not resolved or resolved not in bucket_ordinal or not isinstance(ranked_feature_ids, list):
+                continue
+            for feature_id in ranked_feature_ids:
+                try:
+                    feature_id = int(feature_id)
+                except (TypeError, ValueError):
+                    continue
+                if feature_id in data:
+                    data[feature_id][f"llm:{result.model_id}"] = bucket_ordinal[resolved]
 
-    elif function_type_name == "mail_rating":
-        # Get mail ratings (use overall_rating)
-        for i, user_id in enumerate(user_ids):
-            ratings = UserMailHistoryRating.query.filter(
-                UserMailHistoryRating.user_id == user_id,
-                UserMailHistoryRating.thread_id.in_(thread_ids)
-            ).all()
-            for rating in ratings:
-                if rating.overall_rating is not None:
-                    try:
-                        j = thread_ids.index(rating.thread_id)
-                        ratings_matrix[i, j] = float(rating.overall_rating)
-                    except (ValueError, AttributeError):
-                        continue
+    valid_feature_ids = [
+        feature_id for feature_id in feature_ids
+        if sum(1 for rater in raters if data.get(feature_id, {}).get(rater) is not None) >= 2
+    ]
+    if len(valid_feature_ids) < 2:
+        return None
 
-    # Calculate alpha using ordinal metric for ratings
-    return _calculate_krippendorff_alpha(ratings_matrix)
+    return AgreementMetricsService._krippendorff_alpha(
+        data,
+        raters,
+        valid_feature_ids,
+        "ordinal",
+    )
 
 
-def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
-    """Get detailed progress statistics for all users in a scenario."""
+def _batch_get_progression_states(
+    thread_ids: List[int],
+    user_ids: List[int],
+    function_type_id: int,
+    scenario_id: int,
+) -> Dict[tuple, ProgressionStatus]:
+    """Batch-load progression states for all (thread_id, user_id) combinations.
+
+    Returns dict of {(thread_id, user_id): ProgressionStatus}.
+    Replaces N+1 per-item calls to get_thread_progression_state().
+    """
+    if not thread_ids or not user_ids:
+        return {}
+
+    result = {}
+
+    if function_type_id == 1:
+        # RANKING: count features per item, count ranked features per (item, user)
+        feature_counts = dict(
+            db.session.query(Feature.item_id, func.count(Feature.feature_id))
+            .filter(Feature.item_id.in_(thread_ids))
+            .group_by(Feature.item_id)
+            .all()
+        )
+        for uid in user_ids:
+            ranked_counts = dict(
+                db.session.query(Feature.item_id, func.count(UserFeatureRanking.ranking_id))
+                .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
+                .filter(
+                    UserFeatureRanking.user_id == uid,
+                    Feature.item_id.in_(thread_ids),
+                )
+                .group_by(Feature.item_id)
+                .all()
+            )
+            for tid in thread_ids:
+                total = feature_counts.get(tid, 0)
+                ranked = ranked_counts.get(tid, 0)
+                if ranked == 0:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+                elif ranked < total:
+                    result[(tid, uid)] = ProgressionStatus.PROGRESSING
+                else:
+                    result[(tid, uid)] = ProgressionStatus.DONE
+
+    elif function_type_id == 2:
+        # RATING: check ItemDimensionRating first, fallback to feature ratings
+        dim_ratings = {}
+        for row in (
+            db.session.query(
+                ItemDimensionRating.item_id,
+                ItemDimensionRating.user_id,
+                ItemDimensionRating.status,
+            )
+            .filter(
+                ItemDimensionRating.scenario_id == scenario_id,
+                ItemDimensionRating.user_id.in_(user_ids),
+                ItemDimensionRating.item_id.in_(thread_ids),
+            )
+            .all()
+        ):
+            dim_ratings[(row.item_id, row.user_id)] = row.status
+
+        # Find items without dim_rating per user (for rating fallback)
+        missing_items_by_user = defaultdict(list)
+        for uid in user_ids:
+            for tid in thread_ids:
+                key = (tid, uid)
+                if key in dim_ratings:
+                    status = dim_ratings[key]
+                    result[key] = status if status else ProgressionStatus.NOT_STARTED
+                else:
+                    missing_items_by_user[uid].append(tid)
+
+        # Fallback for rating: feature-based rating check
+        if missing_items_by_user:
+            all_missing = list({tid for tids in missing_items_by_user.values() for tid in tids})
+            feature_counts = dict(
+                db.session.query(Feature.item_id, func.count(Feature.feature_id))
+                .filter(Feature.item_id.in_(all_missing))
+                .group_by(Feature.item_id)
+                .all()
+            ) if all_missing else {}
+
+            for uid, tids in missing_items_by_user.items():
+                if not tids:
+                    continue
+                rated_counts = dict(
+                    db.session.query(Feature.item_id, func.count(UserFeatureRating.rating_id))
+                    .join(Feature, UserFeatureRating.feature_id == Feature.feature_id)
+                    .filter(
+                        UserFeatureRating.user_id == uid,
+                        Feature.item_id.in_(tids),
+                    )
+                    .group_by(Feature.item_id)
+                    .all()
+                )
+                for tid in tids:
+                    total = feature_counts.get(tid, 0)
+                    rated = rated_counts.get(tid, 0)
+                    if rated == 0:
+                        result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+                    elif rated < total:
+                        result[(tid, uid)] = ProgressionStatus.PROGRESSING
+                    else:
+                        result[(tid, uid)] = ProgressionStatus.DONE
+
+    elif function_type_id in LABELING_FUNCTION_TYPE_IDS:
+        # LABELING: progress lives in ItemLabelingEvaluation, NOT
+        # ItemDimensionRating. A row with a chosen category (or is_unsure)
+        # marks the item DONE for that user — mirroring the session-view
+        # status logic (session_service._batch_get_evaluation_statuses).
+        # Reading ItemDimensionRating here (as rating does) always yielded
+        # 0/N once saving worked, so the manager/hub progress showed
+        # "0 von N" even though the labels were persisted.
+        labeled = set(
+            db.session.query(
+                ItemLabelingEvaluation.item_id,
+                ItemLabelingEvaluation.user_id,
+            )
+            .filter(
+                ItemLabelingEvaluation.scenario_id == scenario_id,
+                ItemLabelingEvaluation.user_id.in_(user_ids),
+                ItemLabelingEvaluation.item_id.in_(thread_ids),
+                or_(
+                    ItemLabelingEvaluation.category_id.isnot(None),
+                    ItemLabelingEvaluation.is_unsure.is_(True),
+                ),
+            )
+            .all()
+        )
+        for uid in user_ids:
+            for tid in thread_ids:
+                result[(tid, uid)] = (
+                    ProgressionStatus.DONE if (tid, uid) in labeled
+                    else ProgressionStatus.NOT_STARTED
+                )
+
+    elif function_type_id == 3:
+        # MAIL_RATING: check UserMailHistoryRating
+        for uid in user_ids:
+            mail_ratings = (
+                db.session.query(
+                    UserMailHistoryRating.thread_id,
+                    UserMailHistoryRating.status,
+                )
+                .filter(
+                    UserMailHistoryRating.user_id == uid,
+                    UserMailHistoryRating.thread_id.in_(thread_ids),
+                )
+                .order_by(UserMailHistoryRating.timestamp.desc())
+                .all()
+            )
+            seen = set()
+            for row in mail_ratings:
+                if row.thread_id not in seen:
+                    seen.add(row.thread_id)
+                    result[(row.thread_id, uid)] = row.status if row.status else ProgressionStatus.NOT_STARTED
+            for tid in thread_ids:
+                if (tid, uid) not in result:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+
+    elif function_type_id == 5:
+        # AUTHENTICITY: existence of vote = DONE
+        votes = set(
+            db.session.query(
+                UserAuthenticityVote.thread_id,
+                UserAuthenticityVote.user_id,
+            )
+            .filter(
+                UserAuthenticityVote.user_id.in_(user_ids),
+                UserAuthenticityVote.thread_id.in_(thread_ids),
+            )
+            .all()
+        )
+        for uid in user_ids:
+            for tid in thread_ids:
+                if (tid, uid) in votes:
+                    result[(tid, uid)] = ProgressionStatus.DONE
+                else:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+
+    elif function_type_id in (4, 8):
+        # COMPARISON (4) + COMMUNICATION_COMPARISON (8) — identical
+        # storage: existence of an ItemComparisonEvaluation row marks
+        # the item as DONE for that user. The two types differ only in
+        # the rater UI, not in persistence.
+        evals = set(
+            db.session.query(
+                ItemComparisonEvaluation.item_id,
+                ItemComparisonEvaluation.user_id,
+            )
+            .filter(
+                ItemComparisonEvaluation.user_id.in_(user_ids),
+                ItemComparisonEvaluation.item_id.in_(thread_ids),
+                ItemComparisonEvaluation.scenario_id == scenario_id,
+            )
+            .all()
+        )
+        for uid in user_ids:
+            for tid in thread_ids:
+                if (tid, uid) in evals:
+                    result[(tid, uid)] = ProgressionStatus.DONE
+                else:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+
+    return result
+
+
+def get_user_progress_counts(scenario_id: int) -> Dict[str, Dict[str, int]]:
+    """Get lightweight per-user progress counts (done/progressing/total).
+
+    Returns dict of {username: {done, progressing, total}}.
+    Much faster than get_progress_stats() — no agreement metrics computed.
+    Use this when you only need progress bars, not full stats.
+    """
     scenario = _get_scenario_or_raise(scenario_id)
     function_type = _get_function_type_or_raise(scenario.function_type_id)
+
     if function_type.name == "comparison":
-        return _get_comparison_progress_stats(scenario_id)
+        # Chat-based comparison: return empty (uses ComparisonSession)
+        has_sessions = ComparisonSession.query.filter_by(scenario_id=scenario_id).first() is not None
+        if has_sessions:
+            return {}
+        # Pairwise comparison: fall through to standard item-based flow
+
+    scenario_users = (
+        db.session.query(ScenarioUsers)
+        .join(User, ScenarioUsers.user_id == User.id)
+        .filter(
+            ScenarioUsers.scenario_id == scenario_id,
+            ScenarioUsers.membership_status == MembershipStatus.ACTIVE
+        )
+        .all()
+    )
+
+    all_scenario_threads = (
+        db.session.query(ScenarioThreads)
+        .filter(ScenarioThreads.scenario_id == scenario_id)
+        .all()
+    )
+    all_thread_ids = [st.thread_id for st in all_scenario_threads if st.thread_id]
+    all_user_ids = [su.user_id for su in scenario_users]
+
+    # Scenario-Teile: siehe get_progress_stats(). open_item_ids() = None ⇒ Teile
+    # inaktiv ⇒ bisheriges Verhalten unverändert.
+    from services.evaluation.scenario_parts_service import ScenarioPartsService
+    open_part_item_ids = ScenarioPartsService.open_item_ids(scenario)
+
+    progression_cache = _batch_get_progression_states(
+        thread_ids=all_thread_ids,
+        user_ids=all_user_ids,
+        function_type_id=scenario.function_type_id,
+        scenario_id=scenario_id,
+    )
+
+    result = {}
+    for su in scenario_users:
+        use_full = (
+            su.manager_role != 'none'
+            or (su.evaluation_role == 'assessor' and raters_receive_all_threads(scenario))
+        )
+        if use_full:
+            user_thread_ids = all_thread_ids
+        elif open_part_item_ids is not None and su.evaluation_role == 'assessor':
+            # Parts-Szenario: nur Items der offenen Teile (spiegelt Auslieferung).
+            user_thread_ids = [t for t in all_thread_ids if t in open_part_item_ids]
+        else:
+            # Ohne Teile: Distribution-Lookup wäre nötig — hier vereinfachend
+            # alle Threads (bisheriges Verhalten der schnellen Variante).
+            user_thread_ids = all_thread_ids
+
+        done = 0
+        progressing = 0
+        for tid in user_thread_ids:
+            state = progression_cache.get((tid, su.user_id), ProgressionStatus.NOT_STARTED)
+            if state == ProgressionStatus.DONE:
+                done += 1
+            elif state == ProgressionStatus.PROGRESSING:
+                progressing += 1
+
+        username = su.user.username if su.user else f"user_{su.user_id}"
+        result[username] = {
+            'done': done,
+            'progressing': progressing,
+            'total': len(user_thread_ids),
+        }
+
+    return result
+
+
+def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Dict[str, Any]:
+    """Get detailed progress statistics for all users in a scenario.
+
+    WARNING: This is expensive for large scenarios (computes agreement metrics,
+    heatmaps, etc.). Use get_user_progress_counts() when you only need
+    progress bars.
+
+    Args:
+        skip_provenance: If True, skip expensive provenance analysis.
+            Used for synchronous cold-start to avoid blocking gevent workers.
+            Background threads should call with skip_provenance=False.
+
+    Caching is handled by scenario_stats_cache_service (DB-backed + in-memory).
+    This function always performs the full computation.
+    """
+    scenario = _get_scenario_or_raise(scenario_id)
+    function_type = _get_function_type_or_raise(scenario.function_type_id)
+
+    # Chat-based comparison uses ComparisonSession; pairwise comparison
+    # (created via wizard/generation) uses ItemComparisonEvaluation and
+    # the standard item-based flow below.
+    if function_type.name == "comparison":
+        has_sessions = ComparisonSession.query.filter_by(scenario_id=scenario_id).first() is not None
+        if has_sessions:
+            return _get_comparison_progress_stats(scenario_id)
+        # Otherwise fall through to standard item-based flow
 
     rater_stats = []
     evaluator_stats = []
@@ -468,84 +844,107 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         .all()
     )
 
+    # Pre-load all scenario threads and thread objects to avoid N+1
+    all_scenario_threads = (
+        db.session.query(ScenarioThreads)
+        .options(joinedload(ScenarioItems.item))
+        .filter(ScenarioThreads.scenario_id == scenario_id)
+        .all()
+    )
+    all_thread_ids = [st.thread_id for st in all_scenario_threads if st.thread_id]
+    all_user_ids = [su.user_id for su in scenario_users]
+
+    # Scenario-Teile (Parts/Phasen): Bei aktiven Teilen werden Assessoren die
+    # Items der OFFENEN Teile ausgeliefert (session_service.session_item_order),
+    # NICHT über scenario_item_distribution. Ohne diese Awareness zählt der
+    # Fortschritt für Assessoren über die (leere) Distribution-Tabelle → 0/0,
+    # obwohl gelabelt wurde. open_item_ids() = None ⇒ Teile inaktiv ⇒ bisheriges
+    # Verhalten unverändert.
+    from services.evaluation.scenario_parts_service import (
+        ScenarioPartsService,
+        LABELING_FUNCTION_TYPE_ID,
+    )
+    open_part_item_ids = ScenarioPartsService.open_item_ids(scenario)
+    # Labeling liefert JEDEM Assessor ALLE Items (keine per-User-Distribution),
+    # siehe session_service._get_items_for_scenario. Ohne aktive Teile zählt ein
+    # Labeling-Assessor daher gegen alle Items — nicht über die (leere)
+    # Distribution-Tabelle. (Bug Szenario 758: 0/0 trotz 100 Labels.)
+    is_labeling = is_labeling_type(scenario.function_type_id)
+
+    # Batch-load all progression states in a few queries instead of per-item
+    progression_cache = _batch_get_progression_states(
+        thread_ids=all_thread_ids,
+        user_ids=all_user_ids,
+        function_type_id=scenario.function_type_id,
+        scenario_id=scenario_id,
+    )
+
+    # Build a lookup for distributed threads per user
+    distributed_thread_ids_by_user = defaultdict(set)
+    if any(
+        su.evaluation_role == 'assessor' and not raters_receive_all_threads(scenario)
+        for su in scenario_users
+    ):
+        distributions = (
+            db.session.query(
+                ScenarioUsers.user_id,
+                ScenarioThreadDistribution.scenario_thread_id,
+            )
+            .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
+            .filter(ScenarioUsers.scenario_id == scenario_id)
+            .all()
+        )
+        st_id_to_thread_id = {st.id: st.thread_id for st in all_scenario_threads}
+        for uid, st_id in distributions:
+            tid = st_id_to_thread_id.get(st_id)
+            if tid:
+                distributed_thread_ids_by_user[uid].add(tid)
+
     for scenario_user in scenario_users:
-        done_threads_list = []
-        not_started_threads_list = []
-        progressing_threads_list = []
         total_done_threads = 0
         total_progressing_threads = 0
         total_not_started_threads = 0
 
         use_full_threads = (
-            scenario_user.role == ScenarioRoles.VIEWER
-            or scenario_user.role == ScenarioRoles.OWNER
-            or (scenario_user.role == ScenarioRoles.EVALUATOR and raters_receive_all_threads(scenario))
+            scenario_user.manager_role != 'none'
+            or (scenario_user.evaluation_role == 'assessor' and raters_receive_all_threads(scenario))
         )
 
         if use_full_threads:
-            user_threads = (
-                db.session.query(ScenarioThreads)
-                .filter(ScenarioThreads.scenario_id == scenario_id)
-                .all()
-            )
+            user_threads = all_scenario_threads
+        elif open_part_item_ids is not None and scenario_user.evaluation_role == 'assessor':
+            # Parts-Szenario: Assessor bekommt die Items der offenen Teile
+            # (spiegelt die Auslieferung); die Distribution-Tabelle wird hier
+            # nicht genutzt und wäre leer.
+            user_threads = [st for st in all_scenario_threads if st.thread_id in open_part_item_ids]
+        elif is_labeling and scenario_user.evaluation_role == 'assessor':
+            # Labeling OHNE aktive Teile: die Session liefert JEDEM Assessor ALLE
+            # Items (keine per-User-Distribution; ScenarioThreadDistribution bleibt
+            # leer). Der Fortschritt muss daher gegen alle Items zählen — sonst
+            # 0/0 trotz vorhandener Labels (Bug Szenario 758). Konsistent mit
+            # session_service._get_items_for_scenario + get_user_progress_counts.
+            user_threads = all_scenario_threads
         else:
-            user_threads = (
-                db.session.query(ScenarioThreads)
-                .join(
-                    ScenarioThreadDistribution,
-                    ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id,
-                )
-                .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
-                .filter(
-                    ScenarioThreads.scenario_id == scenario_id,
-                    ScenarioUsers.user_id == scenario_user.user_id,
-                )
-                .all()
-            )
-
-        if not user_threads:
-            user_threads = []
+            user_dist_ids = distributed_thread_ids_by_user.get(scenario_user.user_id, set())
+            user_threads = [st for st in all_scenario_threads if st.thread_id in user_dist_ids]
 
         for user_thread in user_threads:
             thread = user_thread.thread
+            if not thread:
+                continue
 
-            progression_state = get_thread_progression_state(
-                thread=thread,
-                user_id=scenario_user.user_id,
-                function_type_id=scenario.function_type_id,
+            progression_state = progression_cache.get(
+                (thread.thread_id, scenario_user.user_id),
+                ProgressionStatus.NOT_STARTED,
             )
 
             if progression_state:
                 if progression_state == ProgressionStatus.PROGRESSING:
                     total_progressing_threads += 1
-                    progressing_threads_list.append(
-                        {
-                            "thread_id": thread.thread_id,
-                            "subject": thread.subject,
-                            "chat_id": thread.chat_id,
-                            "institut_id": thread.institut_id,
-                        }
-                    )
                 elif progression_state == ProgressionStatus.DONE:
                     total_done_threads += 1
-                    done_threads_list.append(
-                        {
-                            "thread_id": thread.thread_id,
-                            "subject": thread.subject,
-                            "chat_id": thread.chat_id,
-                            "institut_id": thread.institut_id,
-                        }
-                    )
                 else:
                     total_not_started_threads += 1
-                    not_started_threads_list.append(
-                        {
-                            "thread_id": thread.thread_id,
-                            "subject": thread.subject,
-                            "chat_id": thread.chat_id,
-                            "institut_id": thread.institut_id,
-                        }
-                    )
 
         avatar_data = serialize_user_brief(scenario_user.user)
         new_data = {
@@ -557,20 +956,20 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
             "done_threads": total_done_threads,
             "not_started_threads": total_not_started_threads,
             "progressing_threads": total_progressing_threads,
-            "done_threads_list": done_threads_list,
-            "not_started_threads_list": not_started_threads_list,
-            "progressing_threads_list": progressing_threads_list,
+            "done_threads_list": [],
+            "not_started_threads_list": [],
+            "progressing_threads_list": [],
         }
 
-        if scenario_user.role == ScenarioRoles.EVALUATOR:
-            # EVALUATOR can interact (rate/evaluate)
+        if scenario_user.evaluation_role == 'assessor':
+            # ASSESSOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role == ScenarioRoles.OWNER:
-            # OWNER shown in stats for overview purposes
+        elif scenario_user.can_manage and scenario_user.evaluation_role != 'assessor':
+            # OWNER/EDITOR shown in stats for overview purposes
             evaluator_stats.append(new_data)
-        # VIEWER: excluded from stats entirely (read-only, no evaluation)
+        # Viewers without assessor role: excluded from stats entirely
 
-    if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling"}:
+    if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling", "conversation_labeling", "comparison", "communication_comparison"}:
         scenario_thread_ids = [
             row.thread_id
             for row in ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
@@ -609,8 +1008,10 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     # Calculate agreement metrics for ranking/rating scenarios
     all_stats = rater_stats + evaluator_stats
     alpha = None
-    if function_type.name in {"ranking", "rating", "mail_rating"} and len(all_stats) >= 2:
+    if function_type.name == "ranking" and len(all_stats) >= 2:
+        _t = time.time()
         alpha = _calculate_ranking_agreement(all_stats, scenario_id, function_type.name)
+        _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_agreement: %.3fs", scenario_id, time.time() - _t)
 
     # Calculate distribution and agreement metrics based on scenario type
     rating_distribution = None
@@ -619,41 +1020,105 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     bucket_distribution = None
     provenance_analysis = None
     rating_provenance_analysis = None
+    conversation_provenance = None
     rating_alpha = None  # Krippendorff's Alpha split by evaluator type
+    labeling_alpha = None  # Nominal alpha + Fleiss' kappa for labeling scenarios
 
     # Calculate pairwise agreement using unified dispatcher (works for all types)
-    if function_type.name in {"rating", "mail_rating", "labeling", "ranking"}:
+    if function_type.name in {"rating", "mail_rating", "labeling", "conversation_labeling", "ranking", "comparison", "communication_comparison"}:
+        _t = time.time()
         pairwise_agreement = _calculate_unified_pairwise_agreement(scenario_id, function_type.name)
+        _perf_log.info("[StatsPerf] scenario=%s _calculate_pairwise_agreement: %.3fs", scenario_id, time.time() - _t)
 
-    if function_type.name in {"rating", "mail_rating", "labeling"}:
+    if function_type.name in {"rating", "mail_rating"}:
         rating_distribution = _calculate_rating_distribution(scenario_id)
         dimension_averages = _calculate_dimension_averages(scenario_id)
-        # Calculate Krippendorff's Alpha using new rating system (ItemDimensionRating + LLMTaskResult)
         rating_alpha = _calculate_rating_krippendorff_alpha(scenario_id)
-        if function_type.name in {"rating", "mail_rating"}:
+        if not skip_provenance:
             rating_provenance_analysis = _calculate_rating_provenance_analysis(scenario_id)
-        # Use the "all" alpha as the main alpha if no legacy alpha calculated
-        if alpha is None and rating_alpha and rating_alpha.get("all") is not None:
+        if function_type.name == "mail_rating":
+            if not skip_provenance:
+                conversation_provenance = _calculate_mail_rating_conversation_provenance(scenario_id)
+        if rating_alpha and rating_alpha.get("all") is not None:
             alpha = rating_alpha["all"]
+    elif is_labeling_type(function_type.name):
+        rating_distribution = _calculate_labeling_distribution(scenario_id)
+        # Nominal IRR.
+        #
+        # Headline = HUMANS-ONLY, falling back to the pooled value only when
+        # there are too few human raters. Inter-rater reliability describes how
+        # reproducible the human coding scheme is; an LLM assessor is a separate
+        # instrument, and its agreement with the humans is a different quantity
+        # (that one is visible in the pairwise heatmap and in labeling_alpha).
+        #
+        # This matters in practice: on the "Survey Screening" study (3 human
+        # raters + 1 Mistral assessor, 300 items) the humans reach alpha=0.595
+        # while pooling the LLM in drags the same figure down to 0.364. Showing
+        # 0.364 as "the IRR" of a 3-rater human study would be wrong.
+        #
+        # Note this deliberately differs from the rating branch above, which
+        # publishes rating_alpha["all"] — that is pre-existing behaviour.
+        _t = time.time()
+        labeling_alpha = _calculate_labeling_agreement_metrics(scenario_id)
+        _perf_log.info(
+            "[StatsPerf] scenario=%s labeling_agreement_metrics: %.3fs",
+            scenario_id, time.time() - _t,
+        )
+        alpha = labeling_alpha.get("humans")
+        if alpha is None:
+            alpha = labeling_alpha.get("all")
+    elif function_type.name in ("comparison", "communication_comparison"):
+        rating_distribution = _calculate_comparison_choice_distribution(scenario_id)
     elif function_type.name == "ranking":
+        _t = time.time()
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
-        provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
+        _perf_log.info("[StatsPerf] scenario=%s _calculate_bucket_distribution: %.3fs", scenario_id, time.time() - _t)
+        # Provenance analysis: skipped on synchronous cold-start, computed in background thread.
+        if not skip_provenance:
+            _t = time.time()
+            provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
+            _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: %.3fs", scenario_id, time.time() - _t)
+        else:
+            _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: SKIPPED (cold start)", scenario_id)
 
-    return {
+    # Build model_registry for all LLM model_ids in evaluator_stats
+    all_model_ids = [e['model_id'] for e in evaluator_stats if e.get('model_id')]
+    # Also collect LLM labels from provenance analyses
+    for analysis in (rating_provenance_analysis, provenance_analysis):
+        if analysis and isinstance(analysis, dict):
+            for segment in (analysis.get('segments') or {}).values():
+                if isinstance(segment, dict):
+                    for entry in segment.get('by_llm', []):
+                        if entry.get('id'):
+                            all_model_ids.append(entry['id'])
+    model_registry = resolve_model_registry(all_model_ids) if all_model_ids else {}
+
+    # Strip heavy pair_details from pairwise_agreement for the stats payload.
+    # pair_details contains per-item agreement data which can be 1+ MB for large scenarios.
+    # It's still available on-demand via the full pairwise_agreement endpoint.
+    pairwise_summary = pairwise_agreement
+    if isinstance(pairwise_agreement, dict) and "pair_details" in pairwise_agreement:
+        pairwise_summary = {k: v for k, v in pairwise_agreement.items() if k != "pair_details"}
+
+    result = {
         "rater_stats": rater_stats,
         "evaluator_stats": evaluator_stats,
         "viewer_stats": evaluator_stats,  # backward compatibility
         "krippendorff_alpha": alpha,
         "alpha_interpretation": _interpret_alpha(alpha),
         "rating_alpha": rating_alpha,  # split by evaluator type {all, humans, llms}
+        "labeling_alpha": labeling_alpha,  # nominal alpha + Fleiss' kappa (labeling only)
         "rating_distribution": rating_distribution,
         "dimension_averages": dimension_averages,
         "rating_provenance_analysis": rating_provenance_analysis,
-        "pairwise_agreement": pairwise_agreement,
+        "conversation_provenance": conversation_provenance,
+        "pairwise_agreement": pairwise_summary,
         "bucket_distribution": bucket_distribution,
         "provenance_analysis": provenance_analysis,
-        "ranking_agreement": pairwise_agreement,  # backward compatibility (deprecated)
+        "ranking_agreement": pairwise_summary,  # backward compatibility (deprecated)
+        "model_registry": model_registry,
     }
+    return result
 
 
 def _build_llm_progress_entries(
@@ -698,17 +1163,23 @@ def _build_llm_progress_entries(
     for model_id in all_model_ids:
         model_results = by_model.get(model_id, {})
         display_name = model_meta.get(model_id).display_name if model_meta.get(model_id) else model_id
-        done_threads_list = []
-        not_started_threads_list = []
-        total_done_threads = 0
+        total_done = 0
+        total_errors = 0
+        total_not_started = 0
+        recent_errors: List[Dict[str, Any]] = []
 
         for thread_id in thread_ids:
             result = model_results.get(thread_id)
             if result and result.payload_json and not result.error:
-                total_done_threads += 1
-                done_threads_list.append({"thread_id": thread_id})
+                total_done += 1
+            elif result and result.error:
+                total_errors += 1
+                recent_errors.append({
+                    "thread_id": thread_id,
+                    "error": (result.error or "")[:200],
+                })
             else:
-                not_started_threads_list.append({"thread_id": thread_id})
+                total_not_started += 1
 
         entries.append({
             "username": display_name,
@@ -717,11 +1188,13 @@ def _build_llm_progress_entries(
             "avatar_seed": None,
             "avatar_url": None,
             "total_threads": len(thread_ids),
-            "done_threads": total_done_threads,
-            "not_started_threads": len(thread_ids) - total_done_threads,
+            "done_threads": total_done,
+            "not_started_threads": total_not_started,
+            "error_threads": total_errors,
+            "recent_errors": recent_errors[-3:],
             "progressing_threads": 0,
-            "done_threads_list": done_threads_list,
-            "not_started_threads_list": not_started_threads_list,
+            "done_threads_list": [],
+            "not_started_threads_list": [],
             "progressing_threads_list": [],
         })
 
@@ -757,9 +1230,6 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
     for scenario_user in scenario_users:
         user_sessions = sessions_by_user.get(scenario_user.user_id, [])
 
-        done_threads_list = []
-        not_started_threads_list = []
-        progressing_threads_list = []
         total_done_threads = 0
         total_progressing_threads = 0
         total_not_started_threads = 0
@@ -776,22 +1246,12 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
             total_pairs += total_pairs_session
             total_rated_pairs += rated_pairs_session
 
-            session_info = {
-                "session_id": session.id,
-                "persona_name": session.persona_name,
-                "total_pairs": total_pairs_session,
-                "rated_pairs": rated_pairs_session,
-            }
-
             if total_pairs_session == 0 or rated_pairs_session == 0:
                 total_not_started_threads += 1
-                not_started_threads_list.append(session_info)
             elif rated_pairs_session < total_pairs_session:
                 total_progressing_threads += 1
-                progressing_threads_list.append(session_info)
             else:
                 total_done_threads += 1
-                done_threads_list.append(session_info)
 
         new_data = {
             "username": scenario_user.user.username,
@@ -800,18 +1260,18 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
             "done_threads": total_rated_pairs,
             "not_started_threads": max(total_pairs - total_rated_pairs, 0),
             "progressing_threads": total_progressing_threads,
-            "done_threads_list": done_threads_list,
-            "not_started_threads_list": not_started_threads_list,
-            "progressing_threads_list": progressing_threads_list,
+            "done_threads_list": [],
+            "not_started_threads_list": [],
+            "progressing_threads_list": [],
         }
 
-        if scenario_user.role == ScenarioRoles.EVALUATOR:
-            # EVALUATOR can interact (rate/evaluate)
+        if scenario_user.evaluation_role == 'assessor':
+            # ASSESSOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role == ScenarioRoles.OWNER:
-            # OWNER shown in stats for overview purposes
+        elif scenario_user.can_manage and scenario_user.evaluation_role != 'assessor':
+            # OWNER/EDITOR shown in stats for overview purposes
             evaluator_stats.append(new_data)
-        # VIEWER: excluded from stats entirely (read-only, no evaluation)
+        # Viewers without assessor role: excluded from stats entirely
 
     # Add LLM evaluator stats (comparison sessions)
     config = scenario.config_json or {}
@@ -878,51 +1338,41 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
 
 def _calculate_krippendorff_alpha(ratings_matrix: np.ndarray) -> Optional[float]:
-    """Calculate Krippendorff's Alpha for nominal data (binary)."""
-    if ratings_matrix.size == 0:
+    """Calculate Krippendorff's Alpha for nominal data (binary authenticity).
+
+    DELEGATES to the single benchmarked-correct implementation,
+    ``AgreementMetricsService._krippendorff_alpha`` (verified IDENTICAL to the
+    reference ``krippendorff`` package at nominal/ordinal/interval levels).
+
+    The previous inline formula here normalised observed disagreement by the
+    item COUNT instead of the (m_u-1)-weighted total of pairable values, so it
+    produced wildly wrong (large-negative) alphas — i.e. the published
+    authenticity IRR was incorrect. Verified: for data whose true nominal alpha
+    is 0.1605, this old code returned -1.5185.
+
+    Args:
+        ratings_matrix: raters x items matrix with NaN for missing ratings.
+                        Values are 0.0 (real) or 1.0 (fake).
+    """
+    if ratings_matrix is None or ratings_matrix.size == 0:
         return None
 
-    # Remove columns with all NaNs (no ratings for thread)
-    valid_cols = ~np.isnan(ratings_matrix).all(axis=0)
-    if not valid_cols.any():
-        return None
+    # Lazy import to avoid a circular import at module load.
+    from services.evaluation.agreement_metrics_service import AgreementMetricsService
 
-    ratings = ratings_matrix[:, valid_cols]
-    if ratings.shape[1] < 2:
-        return None
+    n_raters, n_items = ratings_matrix.shape
+    raters = [f"r{i}" for i in range(n_raters)]
+    items = list(range(n_items))
+    data: Dict[int, Dict[str, Any]] = {}
+    for j in range(n_items):
+        col: Dict[str, Any] = {}
+        for i in range(n_raters):
+            v = ratings_matrix[i, j]
+            if not np.isnan(v):
+                col[raters[i]] = int(v)
+        data[j] = col
 
-    # Flatten all ratings and remove NaNs
-    valid_all = ratings[~np.isnan(ratings)]
-    n_total = len(valid_all)
-    if n_total < 2:
-        return None
-
-    # Observed disagreement: average pairwise disagreement per unit
-    D_o = 0.0
-    for col in range(ratings.shape[1]):
-        col_ratings = ratings[:, col]
-        col_ratings = col_ratings[~np.isnan(col_ratings)]
-        if len(col_ratings) < 2:
-            continue
-        for i in range(len(col_ratings)):
-            for j in range(i + 1, len(col_ratings)):
-                if col_ratings[i] != col_ratings[j]:
-                    D_o += 1
-    if ratings.shape[1] > 0:
-        D_o = D_o / ratings.shape[1]
-
-    # Count category frequencies
-    n_real = np.sum(valid_all == 0)
-    n_fake = np.sum(valid_all == 1)
-
-    # Expected disagreement for nominal data
-    D_e = (2 * n_real * n_fake) / (n_total * (n_total - 1))
-
-    if D_e == 0:
-        return 1.0 if D_o == 0 else None
-
-    alpha = 1.0 - (D_o / D_e)
-    return round(alpha, 4)
+    return AgreementMetricsService._krippendorff_alpha(data, raters, items, level="nominal")
 
 
 def _interpret_alpha(alpha: Optional[float]) -> str:
@@ -936,6 +1386,63 @@ def _interpret_alpha(alpha: Optional[float]) -> str:
     if alpha >= 0.4:
         return "Moderat"
     return "Gering"
+
+
+def _compute_alpha_for_ratings_dict(
+    task: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Top-level picklable function for ProcessPoolExecutor.
+
+    Computes Krippendorff's Alpha for a single ratings dict (no Flask context needed).
+    Used to parallelize the 'all', 'humans', 'llms' alpha computations.
+
+    Args:
+        task: {'key': str, 'ratings': {thread_id: {evaluator_id: score}}}
+
+    Returns:
+        {'key': str, 'alpha': float or None}
+    """
+    ratings_dict = task["ratings"]
+
+    # Correct interval Krippendorff with the 1/(m_u-1) per-unit weighting so
+    # MISSING ratings (variable raters per unit — the common case) are handled
+    # correctly. The previous formula divided observed disagreement by the raw
+    # within-unit pair count WITHOUT this weighting, so it was right only when
+    # every unit had the same number of raters; with missing data it diverged
+    # from the reference (returned e.g. 0.1772 where the true alpha is 0.1336).
+    # Verified IDENTICAL to the reference `krippendorff` package and to
+    # AgreementMetricsService._krippendorff_alpha(level='interval').
+    units = []
+    all_values = []
+    for evaluator_scores in ratings_dict.values():
+        vals = [float(v) for v in evaluator_scores.values() if v is not None]
+        if len(vals) >= 2:
+            units.append(np.array(vals, dtype=np.float64))
+            all_values.extend(vals)
+
+    n = len(all_values)
+    if len(units) < 2 or n < 4:
+        return {"key": task["key"], "alpha": None}
+
+    # Observed disagreement: Do = (1/n) * sum_u [ sum_{i!=j}(v_i-v_j)^2 / (m_u-1) ]
+    do_num = 0.0
+    for vals in units:
+        m_u = len(vals)
+        diffs = vals[:, None] - vals[None, :]
+        do_num += np.sum(diffs ** 2) / (m_u - 1)
+    do = do_num / n
+
+    # Expected disagreement over all values:
+    # sum over all ordered pairs (v_i-v_j)^2 == 2*(n*sum(v^2) - (sum v)^2)
+    arr = np.array(all_values, dtype=np.float64)
+    de = (2.0 * (n * np.sum(arr ** 2) - np.sum(arr) ** 2)) / (n * (n - 1))
+
+    if de == 0:
+        alpha = 1.0 if do == 0 else None
+    else:
+        alpha = round(1.0 - (do / de), 4)
+
+    return {"key": task["key"], "alpha": alpha}
 
 
 def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
@@ -963,9 +1470,13 @@ def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
     llm_ratings: Dict[int, Dict[str, float]] = {tid: {} for tid in thread_ids}
 
     # 1. Get human ratings from ItemDimensionRating
+    # Only COMPLETED ratings count toward the published IRR. PROGRESSING rows
+    # carry a partial weighted overall_score (some dimensions still unrated), so
+    # including them would bias Krippendorff's alpha with incomplete data.
     human_rating_records = (
         ItemDimensionRating.query
-        .filter_by(scenario_id=scenario_id).filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
+        .filter_by(scenario_id=scenario_id)
+        .filter(ItemDimensionRating.status == ProgressionStatus.DONE)
         .all()
     )
 
@@ -1012,52 +1523,58 @@ def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
                 pass
 
     def calculate_alpha(ratings_dict: Dict[int, Dict[str, float]]) -> Optional[float]:
-        """Calculate Krippendorff's Alpha for interval data."""
-        # Collect all values per unit (thread)
+        """Calculate Krippendorff's Alpha for interval data.
+
+        Uses NumPy broadcasting for vectorized pairwise squared-difference
+        computation. Mathematically identical to the original O(n^2) loop version.
+        """
+        # Collect all values per unit (thread) — only units with 2+ raters
         units_with_values = []
-        all_values = []
+        all_values_list = []
 
         for thread_id, evaluator_scores in ratings_dict.items():
             values = list(evaluator_scores.values())
-            if len(values) >= 2:  # Need at least 2 raters per unit
-                units_with_values.append(values)
-                all_values.extend(values)
+            if len(values) >= 2:
+                units_with_values.append(np.array(values, dtype=np.float64))
+                all_values_list.extend(values)
 
-        if len(units_with_values) < 2 or len(all_values) < 4:
+        if len(units_with_values) < 2 or len(all_values_list) < 4:
             return None
 
-        # Calculate observed disagreement (Do)
-        # Sum of squared differences within each unit, normalized
+        # Calculate observed disagreement (Do) via broadcasting per unit
         do_sum = 0.0
         pair_count_observed = 0
 
-        for values in units_with_values:
-            n = len(values)
-            for i in range(n):
-                for j in range(i + 1, n):
-                    do_sum += (values[i] - values[j]) ** 2
-                    pair_count_observed += 1
+        for vals in units_with_values:
+            n = len(vals)
+            if n < 2:
+                continue
+            # Broadcasting: (vi - vj)^2 for all i < j
+            diffs = vals[:, None] - vals[None, :]
+            sq_diffs = diffs ** 2
+            triu_idx = np.triu_indices(n, k=1)
+            do_sum += np.sum(sq_diffs[triu_idx])
+            pair_count_observed += n * (n - 1) // 2
 
         if pair_count_observed == 0:
             return None
 
         do = do_sum / pair_count_observed
 
-        # Calculate expected disagreement (De)
-        # Sum of squared differences across all values
-        de_sum = 0.0
+        # Calculate expected disagreement (De) via efficient formula:
+        # sum((vi - vj)^2) for all i<j = n*sum(vi^2) - sum(vi)^2
+        all_values = np.array(all_values_list, dtype=np.float64)
         n_total = len(all_values)
-        pair_count_expected = 0
+        total_pairs = n_total * (n_total - 1) // 2
 
-        for i in range(n_total):
-            for j in range(i + 1, n_total):
-                de_sum += (all_values[i] - all_values[j]) ** 2
-                pair_count_expected += 1
-
-        if pair_count_expected == 0:
+        if total_pairs == 0:
             return None
 
-        de = de_sum / pair_count_expected
+        sum_sq = np.sum(all_values ** 2)
+        sum_v = np.sum(all_values)
+        de_numerator = n_total * sum_sq - sum_v ** 2
+        # n*sum(vi^2) - (sum vi)^2 = sum_{i<j} (vi - vj)^2  (upper triangle only)
+        de = de_numerator / total_pairs
 
         # Calculate alpha
         if de == 0:
@@ -1072,11 +1589,31 @@ def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
         all_ratings[tid].update(human_ratings.get(tid, {}))
         all_ratings[tid].update(llm_ratings.get(tid, {}))
 
-    return {
-        "all": calculate_alpha(all_ratings),
-        "humans": calculate_alpha(human_ratings),
-        "llms": calculate_alpha(llm_ratings),
-    }
+    # Compute three independent alpha values in parallel via ProcessPoolExecutor.
+    # Each task contains only plain dicts (serializable, no Flask context needed).
+    t0 = time.time()
+    tasks = [
+        {"key": "all", "ratings": dict(all_ratings)},
+        {"key": "humans", "ratings": dict(human_ratings)},
+        {"key": "llms", "ratings": dict(llm_ratings)},
+    ]
+
+    result = {"all": None, "humans": None, "llms": None}
+    try:
+        with ProcessPoolExecutor(max_workers=min(_MAX_STATS_WORKERS, 3)) as pool:
+            for res in pool.map(_compute_alpha_for_ratings_dict, tasks):
+                result[res["key"]] = res["alpha"]
+    except (RuntimeError, OSError):
+        # Fallback to sequential if process spawning fails (daemonized workers etc.)
+        for task in tasks:
+            res = _compute_alpha_for_ratings_dict(task)
+            result[res["key"]] = res["alpha"]
+
+    _perf_log.info(
+        "[StatsPerf] scenario=%s rating_krippendorff_alpha (parallel): %.3fs",
+        scenario_id, time.time() - t0,
+    )
+    return result
 
 
 def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
@@ -1091,31 +1628,18 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
     - 'by_dimension': per-dimension distributions (for mixed scales)
     - 'has_mixed_scales': boolean indicating if dimensions have different scales
     """
-    # Get scenario config first to determine scales
-    scenario = RatingScenarios.query.get(scenario_id)
-    config = scenario.config_json if scenario else {}
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
-    if not isinstance(config, dict):
+    # Use DimensionalRatingService.get_scenario_config() for consistent dimension resolution.
+    # This ensures the same dimension IDs used by the rating UI are used for stats.
+    # Without this, wizard-created scenarios can have mismatched dimension IDs
+    # (eval_config.dimensions vs DEFAULT_DIMENSIONS) causing all-zero distributions.
+    config = DimensionalRatingService.get_scenario_config(scenario_id)
+    if not isinstance(config, dict) or 'error' in config:
         config = {}
 
-    # Get scale configuration - check root level, eval_config, and eval_config.config
-    eval_config = config.get("eval_config", {})
-    if not isinstance(eval_config, dict):
-        eval_config = {}
-
-    eval_config_inner = eval_config.get("config", {})
-    if not isinstance(eval_config_inner, dict):
-        eval_config_inner = {}
-
-    # Scale can be at root level, eval_config, or eval_config.config (from wizard)
-    global_min = config.get("min", eval_config.get("min", eval_config_inner.get("min", 1)))
-    global_max = config.get("max", eval_config.get("max", eval_config_inner.get("max", 5)))
-    global_labels = config.get("labels", eval_config.get("labels", eval_config_inner.get("labels", {})))
-    dimensions = config.get("dimensions", eval_config.get("dimensions", eval_config_inner.get("dimensions", [])))
+    global_min = config.get("min", 1)
+    global_max = config.get("max", 5)
+    global_labels = config.get("labels", {})
+    dimensions = config.get("dimensions", [])
 
     # Check if we have mixed scales (per-dimension scales)
     has_mixed_scales = False
@@ -1341,19 +1865,17 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
     }
 
 
-def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
+def _calculate_labeling_distribution(scenario_id: int) -> Dict[str, Any]:
     """
-    Calculate average scores per dimension for a rating scenario.
+    Calculate label distribution for a labeling scenario.
 
-    Returns dimension averages split by evaluator type (all, humans, LLMs).
-    Includes both human ratings from ItemDimensionRating and LLM ratings from LLMTaskResult.
+    Returns distribution of category labels from both human and LLM evaluations.
     """
-    # Get scenario config for dimension info
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         return {}
 
-    config = scenario.config_json if scenario else {}
+    config = scenario.config_json or {}
     if isinstance(config, str):
         try:
             config = json.loads(config)
@@ -1362,24 +1884,198 @@ def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
     if not isinstance(config, dict):
         config = {}
 
-    # Get dimensions and eval_config from config
-    # Dimensions can be at multiple locations:
-    # 1. config.dimensions (direct)
-    # 2. config.eval_config.dimensions (nested in eval_config)
-    # 3. config.eval_config.config.dimensions (nested in eval_config.config - from wizard)
-    eval_config = config.get("eval_config", {})
-    if not isinstance(eval_config, dict):
-        eval_config = {}
+    # Categories may be top-level (manual scenarios) or nested under
+    # eval_config.config (api_v1/wizard scenarios). Without the nested lookup
+    # the labeling distribution was empty for every api_v1-created scenario.
+    inner = config
+    eval_config = config.get("eval_config")
+    if isinstance(eval_config, dict) and isinstance(eval_config.get("config"), dict):
+        inner = eval_config["config"]
+    elif isinstance(config.get("config"), dict):
+        inner = config["config"]
+    categories = inner.get("categories") or inner.get("labels") or config.get("categories", [])
+    if not categories:
+        return {}
 
-    eval_config_inner = eval_config.get("config", {})
-    if not isinstance(eval_config_inner, dict):
-        eval_config_inner = {}
+    # Build category lookup
+    cat_lookup = {c.get("id"): c for c in categories if c.get("id")}
+
+    # Count human labels from ItemLabelingEvaluation
+    human_counts: Dict[str, int] = {}
+    human_evals = (
+        ItemLabelingEvaluation.query
+        .filter(
+            ItemLabelingEvaluation.scenario_id == scenario_id,
+            ItemLabelingEvaluation.category_id.isnot(None)
+        )
+        .all()
+    )
+    for ev in human_evals:
+        cat_id = ev.category_id
+        if cat_id:
+            human_counts[cat_id] = human_counts.get(cat_id, 0) + 1
+
+    # Count LLM labels from LLMTaskResult
+    llm_counts: Dict[str, int] = {}
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="labeling"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        label = payload.get("label")
+        if label:
+            llm_counts[label] = llm_counts.get(label, 0) + 1
+
+    def build_dist(counts: Dict[str, int]) -> List[Dict[str, Any]]:
+        total = sum(counts.values()) if counts else 0
+        distribution = []
+        for cat in categories:
+            cat_id = cat.get("id", "")
+            cat_name = cat.get("name", cat_id)
+            if isinstance(cat_name, dict):
+                cat_name = cat_name.get("en", cat_name.get("de", cat_id))
+            count = counts.get(cat_id, 0)
+            distribution.append({
+                "label": cat_name,
+                "value": cat_id,
+                "count": count,
+                "percentage": round((count / total) * 100) if total > 0 else 0
+            })
+        return distribution
+
+    # Combine for "all"
+    all_counts: Dict[str, int] = {}
+    for cat_id, count in human_counts.items():
+        all_counts[cat_id] = all_counts.get(cat_id, 0) + count
+    for cat_id, count in llm_counts.items():
+        all_counts[cat_id] = all_counts.get(cat_id, 0) + count
+
+    return {
+        "all": build_dist(all_counts),
+        "humans": build_dist(human_counts),
+        "llms": build_dist(llm_counts),
+    }
+
+
+def _calculate_comparison_choice_distribution(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate choice distribution for a comparison scenario.
+
+    Counts A/B/tie choices from both human (ItemComparisonEvaluation)
+    and LLM (LLMTaskResult with task_type="comparison") evaluations.
+    """
+    # Fixed categories for comparison
+    categories = [
+        {"id": "A", "label": "A"},
+        {"id": "B", "label": "B"},
+        {"id": "tie", "label": "Tie"},
+    ]
+
+    # 1. Count human choices from ItemComparisonEvaluation
+    human_counts: Dict[str, int] = {}
+    human_evals = (
+        ItemComparisonEvaluation.query
+        .filter(
+            ItemComparisonEvaluation.scenario_id == scenario_id,
+            ItemComparisonEvaluation.choice.isnot(None)
+        )
+        .all()
+    )
+    for ev in human_evals:
+        choice = ev.choice.upper() if ev.choice else None
+        if choice == "TIE":
+            choice = "tie"
+        if choice in {"A", "B", "tie"}:
+            human_counts[choice] = human_counts.get(choice, 0) + 1
+
+    # 2. Count LLM choices from LLMTaskResult
+    llm_counts: Dict[str, int] = {}
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="comparison"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # Item-based comparison: payload has direct "winner" field
+        winner = payload.get("winner")
+        if winner:
+            w = winner.upper() if isinstance(winner, str) else None
+            if w == "TIE":
+                w = "tie"
+            if w in {"A", "B", "tie"}:
+                llm_counts[w] = llm_counts.get(w, 0) + 1
+
+        # Session-based comparison: payload has "results" array with per-pair winners
+        for sub in (payload.get("results") or []):
+            if isinstance(sub, dict):
+                sw = sub.get("winner")
+                if sw:
+                    sw = sw.upper() if isinstance(sw, str) else None
+                    if sw == "TIE":
+                        sw = "tie"
+                    if sw in {"A", "B", "tie"}:
+                        llm_counts[sw] = llm_counts.get(sw, 0) + 1
+
+    def build_dist(counts: Dict[str, int]) -> List[Dict[str, Any]]:
+        total = sum(counts.values()) if counts else 0
+        distribution = []
+        for cat in categories:
+            cat_id = cat["id"]
+            count = counts.get(cat_id, 0)
+            distribution.append({
+                "label": cat["label"],
+                "value": cat_id,
+                "count": count,
+                "percentage": round((count / total) * 100) if total > 0 else 0
+            })
+        return distribution
+
+    # Combine for "all"
+    all_counts: Dict[str, int] = {}
+    for cat_id, count in human_counts.items():
+        all_counts[cat_id] = all_counts.get(cat_id, 0) + count
+    for cat_id, count in llm_counts.items():
+        all_counts[cat_id] = all_counts.get(cat_id, 0) + count
+
+    return {
+        "all": build_dist(all_counts),
+        "humans": build_dist(human_counts),
+        "llms": build_dist(llm_counts),
+    }
+
+
+def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate average scores per dimension for a rating scenario.
+
+    Returns dimension averages split by evaluator type (all, humans, LLMs).
+    Includes both human ratings from ItemDimensionRating and LLM ratings from LLMTaskResult.
+    """
+    # Use DimensionalRatingService.get_scenario_config() for consistent dimension resolution.
+    # This ensures the same dimension IDs used by the rating UI are used for averages.
+    config = DimensionalRatingService.get_scenario_config(scenario_id)
+    if not isinstance(config, dict) or 'error' in config:
+        return {}
 
     dimensions = config.get("dimensions", [])
-    if not dimensions:
-        dimensions = eval_config.get("dimensions", [])
-    if not dimensions:
-        dimensions = eval_config_inner.get("dimensions", [])
     if not dimensions:
         return {}
 
@@ -1487,8 +2183,30 @@ def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
             "color": "accent"
         })
 
-    # Get maxValue from config (can be at root level or in eval_config)
-    max_value = config.get("max") or eval_config.get("max", 5)
+    # Get maxValue from config (can be at root level or in eval_config).
+    # `eval_config` was previously referenced as an unbound name here — a
+    # hard NameError 500 the moment a scenario's config_json had no top-
+    # level `max` key (which is the case for any wizard-generated rating
+    # scenario where the scale lives under `eval_config.config.scale`).
+    eval_config = config.get("eval_config") if isinstance(config.get("eval_config"), dict) else {}
+    nested_eval_config = (
+        eval_config.get("config")
+        if isinstance(eval_config.get("config"), dict)
+        else {}
+    )
+    scale_block = (
+        config.get("scale")
+        or eval_config.get("scale")
+        or nested_eval_config.get("scale")
+        or {}
+    )
+    max_value = (
+        config.get("max")
+        or scale_block.get("max")
+        or eval_config.get("max")
+        or nested_eval_config.get("max")
+        or 5
+    )
 
     return {
         "dimensions": [
@@ -1747,6 +2465,14 @@ def _calculate_rating_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
 
         item_provenance.update(fallback_by_item)
 
+    # Provenance analysis only makes sense with 2+ distinct generators OR 2+ distinct prompts.
+    # With a single source, there is nothing to compare.
+    if item_provenance:
+        distinct_llms = {entry.get("llm_key") for entry in item_provenance.values()}
+        distinct_prompts = {entry.get("prompt_key") for entry in item_provenance.values()}
+        if len(distinct_llms) < 2 and len(distinct_prompts) < 2:
+            return response
+
     assignments: List[tuple] = []
 
     human_ratings = (
@@ -1932,6 +2658,266 @@ def _calculate_rating_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     return response
 
 
+def _calculate_mail_rating_conversation_provenance(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate conversation partner provenance analysis for mail_rating scenarios.
+
+    Derives counselor and client source (Human, Claude, Mistral, etc.)
+    from Message.generated_by for each thread, then aggregates ratings
+    by counselor source, client source, and their combination.
+    """
+    from db.models import ScenarioItems, Message
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        return {}
+
+    config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    scale_bounds = _extract_rating_scale_bounds(config)
+    scale_min = scale_bounds["min"]
+    scale_max = scale_bounds["max"]
+    scale_span = scale_max - scale_min
+    high_score_threshold_normalized = 0.8
+    high_score_threshold_percent = round(high_score_threshold_normalized * 100, 1)
+
+    def _normalize_score(raw_score):
+        if raw_score is None:
+            return None
+        try:
+            score = float(raw_score)
+        except (TypeError, ValueError):
+            return None
+        if scale_span <= 0:
+            return None
+        return max(0.0, min(1.0, (score - scale_min) / scale_span))
+
+    response = {
+        "scale": {"min": scale_min, "max": scale_max},
+        "metric_definition": {
+            "primary": "avg_normalized_score",
+            "secondary": "high_score_rate",
+            "high_score_threshold_normalized": high_score_threshold_normalized,
+            "high_score_threshold_percent": high_score_threshold_percent,
+            "normalization_formula": "((score - min) / (max - min)) * 100",
+        },
+        "total_items": 0,
+        "segments": {},
+    }
+
+    # Get all items (threads) in this scenario
+    scenario_items = (
+        ScenarioItems.query
+        .filter_by(scenario_id=scenario_id)
+        .order_by(ScenarioItems.id.asc())
+        .all()
+    )
+    item_ids = [row.item_id for row in scenario_items if row.item_id is not None]
+    response["total_items"] = len(item_ids)
+    if not item_ids:
+        return response
+
+    # Derive counselor_source and client_source per thread from Message.generated_by
+    messages = (
+        Message.query
+        .filter(Message.thread_id.in_(item_ids))
+        .order_by(Message.thread_id.asc(), Message.message_id.asc())
+        .all()
+    )
+
+    counselor_senders = {"berater", "beratende person", "counselor", "counsellor"}
+    client_senders = {"klient", "ratsuchende person", "client"}
+
+    thread_provenance = {}  # item_id -> {counselor_source, client_source}
+    from collections import Counter
+    thread_messages = defaultdict(list)
+    for msg in messages:
+        thread_messages[msg.thread_id].append(msg)
+
+    for item_id in item_ids:
+        msgs = thread_messages.get(item_id, [])
+        counselor_sources = []
+        client_sources = []
+        for msg in msgs:
+            sender_lower = (msg.sender or "").strip().lower()
+            generated_by = (msg.generated_by or "Human").strip()
+            if sender_lower in counselor_senders:
+                counselor_sources.append(generated_by)
+            elif sender_lower in client_senders:
+                client_sources.append(generated_by)
+
+        # Most common source for each role
+        counselor_source = Counter(counselor_sources).most_common(1)[0][0] if counselor_sources else "Human"
+        client_source = Counter(client_sources).most_common(1)[0][0] if client_sources else "Human"
+        thread_provenance[item_id] = {
+            "counselor_source": counselor_source,
+            "client_source": client_source,
+        }
+
+    # Provenance analysis only makes sense with 2+ distinct counselor OR 2+ distinct client sources.
+    if thread_provenance:
+        distinct_counselors = {entry["counselor_source"] for entry in thread_provenance.values()}
+        distinct_clients = {entry["client_source"] for entry in thread_provenance.values()}
+        if len(distinct_counselors) < 2 and len(distinct_clients) < 2:
+            return response
+
+    # Collect all ratings (human + LLM) per thread
+    assignments = []  # (item_id, score, normalized_score, evaluator_type)
+
+    # Human ratings from UserMailHistoryRating
+    human_ratings = (
+        UserMailHistoryRating.query
+        .filter(UserMailHistoryRating.thread_id.in_(item_ids))
+        .all()
+    )
+    for rating in human_ratings:
+        score = rating.overall_rating
+        if score is None:
+            # Average from individual dimensions
+            dims = [rating.counsellor_coherence_rating, rating.client_coherence_rating, rating.quality_rating]
+            valid_dims = [d for d in dims if d is not None]
+            if valid_dims:
+                score = sum(valid_dims) / len(valid_dims)
+        normalized = _normalize_score(score)
+        if normalized is not None:
+            assignments.append((rating.thread_id, float(score), normalized, "human"))
+
+    # Human ratings from ItemDimensionRating (if used for mail_rating)
+    human_dim_ratings = (
+        ItemDimensionRating.query
+        .filter_by(scenario_id=scenario_id)
+        .filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
+        .all()
+    )
+    for rating in human_dim_ratings:
+        score = rating.overall_score
+        if score is None:
+            dim_scores = rating.dimension_ratings or {}
+            if isinstance(dim_scores, str):
+                try:
+                    dim_scores = json.loads(dim_scores)
+                except (json.JSONDecodeError, TypeError):
+                    dim_scores = {}
+            if isinstance(dim_scores, dict) and dim_scores:
+                numeric = [float(v) for v in dim_scores.values() if v is not None]
+                if numeric:
+                    score = sum(numeric) / len(numeric)
+        normalized = _normalize_score(score)
+        if normalized is not None:
+            assignments.append((rating.item_id, float(score), normalized, "human"))
+
+    # LLM ratings from LLMTaskResult
+    llm_results = (
+        LLMTaskResult.query
+        .filter_by(scenario_id=scenario_id)
+        .filter(
+            LLMTaskResult.task_type.in_(["rating", "mail_rating"]),
+            LLMTaskResult.error.is_(None),
+        )
+        .all()
+    )
+    for result in llm_results:
+        score = _extract_overall_rating_from_payload(result.payload_json)
+        normalized = _normalize_score(score)
+        if normalized is not None:
+            assignments.append((result.item_id, float(score), normalized, "llm"))
+
+    if not assignments:
+        return response
+
+    # Aggregate by counselor_source, client_source, and combination
+    def _new_entity(entity_id, label):
+        return {
+            "id": str(entity_id),
+            "label": label,
+            "total": 0,
+            "sum_score": 0.0,
+            "avg_score": 0.0,
+            "sum_normalized_score": 0.0,
+            "avg_normalized_score": 0.0,
+            "high_score_count": 0,
+            "high_score_rate": 0.0,
+        }
+
+    segments_internal = {
+        "all": {"total_assignments": 0, "by_counselor_source": {}, "by_client_source": {}, "by_combination": {}},
+        "human": {"total_assignments": 0, "by_counselor_source": {}, "by_client_source": {}, "by_combination": {}},
+        "llm": {"total_assignments": 0, "by_counselor_source": {}, "by_client_source": {}, "by_combination": {}},
+    }
+
+    def _increment(segment, key_name, entity_id, label, score, normalized, meta=None):
+        entity_map = segment[key_name]
+        row = entity_map.get(entity_id)
+        if row is None:
+            row = _new_entity(entity_id, label)
+            if meta:
+                row.update(meta)
+            entity_map[entity_id] = row
+        row["total"] += 1
+        row["sum_score"] += score
+        row["sum_normalized_score"] += normalized
+        if normalized >= high_score_threshold_normalized:
+            row["high_score_count"] += 1
+
+    for item_id, score, normalized, evaluator_type in assignments:
+        prov = thread_provenance.get(item_id)
+        if not prov:
+            continue
+
+        counselor = prov["counselor_source"]
+        client = prov["client_source"]
+        combo_key = f"{counselor}|||{client}"
+        combo_label = f"{counselor} \u00d7 {client}"
+
+        for seg_key in ("all", evaluator_type):
+            segment = segments_internal[seg_key]
+            segment["total_assignments"] += 1
+            _increment(segment, "by_counselor_source", counselor, counselor, score, normalized)
+            _increment(segment, "by_client_source", client, client, score, normalized)
+            _increment(segment, "by_combination", combo_key, combo_label, score, normalized, meta={
+                "counselor_source": counselor,
+                "client_source": client,
+            })
+
+    def _finalize(entity_map):
+        rows = list(entity_map.values())
+        for row in rows:
+            total = row["total"]
+            if total > 0:
+                row["avg_score"] = round(row["sum_score"] / total, 2)
+                row["avg_normalized_score"] = round((row["sum_normalized_score"] / total) * 100, 1)
+                row["high_score_rate"] = round((row["high_score_count"] / total) * 100, 1)
+            row["sum_score"] = round(row["sum_score"], 3)
+            row.pop("sum_normalized_score", None)
+        rows.sort(key=lambda e: (-e["avg_normalized_score"], -e["total"], (e["label"] or "").lower()))
+        return rows
+
+    finalized = {}
+    for seg_key, seg_data in segments_internal.items():
+        by_counselor = _finalize(seg_data["by_counselor_source"])
+        by_client = _finalize(seg_data["by_client_source"])
+        by_combo = _finalize(seg_data["by_combination"])
+        finalized[seg_key] = {
+            "total_assignments": seg_data["total_assignments"],
+            "by_counselor_source": by_counselor,
+            "by_client_source": by_client,
+            "by_combination": by_combo,
+            "best_counselor_source": by_counselor[0] if by_counselor else None,
+            "best_client_source": by_client[0] if by_client else None,
+            "best_combination": by_combo[0] if by_combo else None,
+        }
+
+    response["segments"] = finalized
+    return response
+
+
 def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
     """
     Calculate pairwise agreement between evaluators.
@@ -2019,27 +3005,37 @@ def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
     # Build evaluator list
     evaluators = list(user_info.values())
 
-    # Calculate pairwise agreement (exact match after rounding)
-    agreements = {}
+    # Vectorized pairwise agreement (exact match after rounding).
+    # Build items x evaluators matrix, then use NumPy broadcasting for all pairs.
     user_list = list(users_set)
+    n_users = len(user_list)
+    user_idx = {uid: idx for idx, uid in enumerate(user_list)}
 
-    for i, user1 in enumerate(user_list):
-        for user2 in user_list[i+1:]:
-            # Find common items
-            common_items = []
-            for item_id, user_scores in item_ratings.items():
-                if user1 in user_scores and user2 in user_scores:
-                    common_items.append((user_scores[user1], user_scores[user2]))
+    all_item_ids = list(item_ratings.keys())
+    n_items = len(all_item_ids)
 
-            if len(common_items) >= 1:
-                # Calculate agreement (percentage of exact matches, rounded to integers)
-                agreements_count = sum(
-                    1 for s1, s2 in common_items if round(s1) == round(s2)
-                )
-                agreement = agreements_count / len(common_items)
+    # Build matrix: items x evaluators (NaN = missing)
+    rating_matrix = np.full((n_items, n_users), np.nan)
+    for i_idx, item_id in enumerate(all_item_ids):
+        for uid, score in item_ratings[item_id].items():
+            if uid in user_idx:
+                rating_matrix[i_idx, user_idx[uid]] = score
 
-                # Store with sorted key for consistency
-                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+    # Round for agreement comparison (matching original behavior)
+    rounded_matrix = np.round(rating_matrix)
+
+    agreements = {}
+    for i in range(n_users):
+        for j in range(i + 1, n_users):
+            # Mask: both evaluators have rated this item
+            both_rated = ~np.isnan(rating_matrix[:, i]) & ~np.isnan(rating_matrix[:, j])
+            n_common = int(np.sum(both_rated))
+            if n_common >= 1:
+                agree_count = int(np.sum(
+                    rounded_matrix[both_rated, i] == rounded_matrix[both_rated, j]
+                ))
+                agreement = agree_count / n_common
+                key = f"{min(str(user_list[i]), str(user_list[j]))}-{max(str(user_list[i]), str(user_list[j]))}"
                 agreements[key] = round(agreement, 3)
 
     return {
@@ -2089,12 +3085,20 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
     if not item_ids:
         return []
 
-    # 1. Get human rankings
+    # 1. Get human rankings (only from active scenario members)
+    active_user_ids = {
+        su.user_id for su in
+        ScenarioUsers.query.filter_by(
+            scenario_id=scenario_id,
+            membership_status=MembershipStatus.ACTIVE,
+        ).all()
+    }
     human_rankings = (
         UserFeatureRanking.query
         .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
         .filter(Feature.thread_id.in_(item_ids))
         .filter(UserFeatureRanking.bucket.isnot(None))
+        .filter(UserFeatureRanking.user_id.in_(active_user_ids))
         .all()
     )
 
@@ -2156,7 +3160,6 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     (origin LLM + prompt) and reports which origins appear most frequently in the
     top bucket.
     """
-    from sqlalchemy.orm import joinedload
     from db.models import (
         ScenarioItems,
         UserFeatureRanking,
@@ -2358,7 +3361,7 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
 
     features = (
         Feature.query
-        .options(joinedload(Feature.llm), joinedload(Feature.feature_type))
+        .options(joinedload(Feature.feature_type))
         .filter(Feature.item_id.in_(item_ids))
         .all()
     )
@@ -2395,7 +3398,7 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         if unused_candidates:
             candidates = unused_candidates
 
-        feature_model_key = _normalize_model_identity(feature.llm.name if feature.llm else "")
+        feature_model_key = _normalize_model_identity(feature.model_id or "")
         if feature_model_key:
             model_matches = [
                 candidate
@@ -2454,7 +3457,7 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
             }
             continue
 
-        llm_name = feature.llm.name if feature.llm else "Unknown LLM"
+        llm_name = feature.model_id or "Unknown LLM"
         prompt_name = feature.feature_type.name if feature.feature_type else "Unknown prompt"
         combination_key = f"{prompt_name}|||{llm_name}"
         combination_label = f"{prompt_name} x {llm_name}"
@@ -2470,12 +3473,28 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     if not feature_provenance:
         return response
 
+    # Track whether we have multiple generators for the ranking tables.
+    # Even with a single source, we still collect assignments for the top-bucket
+    # summary — provenance breakdown by LLM/prompt is only shown when 2+ exist.
+    distinct_llms = {entry.get("llm_key") for entry in feature_provenance.values()}
+    distinct_prompts = {entry.get("prompt_key") for entry in feature_provenance.values()}
+    has_multiple_sources = len(distinct_llms) >= 2 or len(distinct_prompts) >= 2
+
     assignments: List[tuple] = []
 
+    # Only include rankings from active scenario members
+    active_user_ids = {
+        su.user_id for su in
+        ScenarioUsers.query.filter_by(
+            scenario_id=scenario_id,
+            membership_status=MembershipStatus.ACTIVE,
+        ).all()
+    }
     human_rankings = (
         UserFeatureRanking.query
         .filter(UserFeatureRanking.feature_id.in_(list(feature_provenance.keys())))
         .filter(UserFeatureRanking.bucket.isnot(None))
+        .filter(UserFeatureRanking.user_id.in_(active_user_ids))
         .all()
     )
     for ranking in human_rankings:
@@ -2648,7 +3667,7 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
 
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
-        return {"evaluators": [], "agreements": {}, "pair_details": {}}
+        return {"evaluators": [], "agreements": {}}
 
     config = scenario.config_json or {}
     if isinstance(config, str):
@@ -2661,7 +3680,7 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
 
     bucket_order = _extract_ranking_bucket_config(config)
     if not bucket_order:
-        return {"evaluators": [], "agreements": {}, "pair_details": {}}
+        return {"evaluators": [], "agreements": {}}
 
     resolve_bucket_id = _build_bucket_id_resolver(bucket_order)
 
@@ -2670,32 +3689,12 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     item_ids = [si.item_id for si in scenario_items]
 
     if not item_ids:
-        return {"evaluators": [], "agreements": {}, "pair_details": {}}
+        return {"evaluators": [], "agreements": {}}
 
     # feature_id -> {evaluator_id: bucket}
     feature_buckets = defaultdict(dict)
     users_set = set()
     user_info = {}
-
-    detail_item_limit = 250
-
-    def _to_preview(value: Any, max_length: int = 220) -> str:
-        if value is None:
-            return ""
-        text = " ".join(str(value).split())
-        if not text:
-            return ""
-        if len(text) <= max_length:
-            return text
-        return f"{text[:max_length - 3]}..."
-
-    def _to_short_label(preview: str, fallback: str) -> str:
-        if not preview:
-            return fallback
-        max_label = 90
-        if len(preview) <= max_label:
-            return preview
-        return f"{preview[:max_label - 3]}..."
 
     def _normalize_id(value: Any) -> Any:
         try:
@@ -2703,23 +3702,20 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
         except (TypeError, ValueError):
             return value
 
-    feature_meta: Dict[Any, Dict[str, Any]] = {}
-    ranking_features = Feature.query.filter(Feature.item_id.in_(item_ids)).all()
-    for feature in ranking_features:
-        preview = _to_preview(feature.content)
-        feature_meta[feature.feature_id] = {
-            "feature_id": _normalize_id(feature.feature_id),
-            "item_id": _normalize_id(feature.item_id),
-            "label": _to_short_label(preview, f"Feature {feature.feature_id}"),
-            "preview": preview,
-        }
-
-    # 1. Get human rankings - each row is one feature → one bucket
+    # 1. Get human rankings - each row is one feature → one bucket (active members only)
+    active_user_ids = {
+        su.user_id for su in
+        ScenarioUsers.query.filter_by(
+            scenario_id=scenario_id,
+            membership_status=MembershipStatus.ACTIVE,
+        ).all()
+    }
     human_rankings = (
         UserFeatureRanking.query
         .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
         .filter(Feature.item_id.in_(item_ids))
         .filter(UserFeatureRanking.bucket.isnot(None))
+        .filter(UserFeatureRanking.user_id.in_(active_user_ids))
         .all()
     )
 
@@ -2772,85 +3768,71 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
                 feature_buckets[_normalize_id(fid)][llm_user_id] = normalized_bucket
 
     if not users_set:
-        return {"evaluators": [], "agreements": {}, "pair_details": {}}
+        return {"evaluators": [], "agreements": {}}
 
     evaluators = list(user_info.values())
 
-    # Calculate pairwise agreement at feature level
-    # For each pair: % of features where both assigned the same bucket
-    agreements = {}
-    pair_details = {}
+    # Vectorized pairwise agreement at feature level.
+    # Build a features x evaluators matrix mapping bucket → integer.
+    # NaN where evaluator did not rate a feature. Then use NumPy broadcasting
+    # to compute agreement for all evaluator pairs at once.
     user_list = list(users_set)
+    n_users = len(user_list)
+    user_idx = {uid: idx for idx, uid in enumerate(user_list)}
 
-    for i, user1 in enumerate(user_list):
-        for user2 in user_list[i + 1:]:
-            shared_count = 0
-            agree_count = 0
-            agreed_items = []
-            disagreed_items = []
-            agreed_omitted_count = 0
-            disagreed_omitted_count = 0
-            for feature_id, evaluator_buckets in feature_buckets.items():
-                if user1 in evaluator_buckets and user2 in evaluator_buckets:
-                    shared_count += 1
-                    bucket_1 = evaluator_buckets[user1]
-                    bucket_2 = evaluator_buckets[user2]
-                    same_bucket = bucket_1 == bucket_2
+    all_feature_ids = list(feature_buckets.keys())
+    n_features = len(all_feature_ids)
 
-                    if same_bucket:
-                        agree_count += 1
+    # Map bucket IDs to integers for efficient matrix comparison
+    all_buckets = set()
+    for fb in feature_buckets.values():
+        all_buckets.update(fb.values())
+    bucket_to_int = {b: idx for idx, b in enumerate(sorted(all_buckets, key=str))}
 
-                    normalized_feature_id = _normalize_id(feature_id)
-                    metadata = feature_meta.get(feature_id) or feature_meta.get(normalized_feature_id, {})
-                    detail_entry = {
-                        "feature_id": metadata.get("feature_id", normalized_feature_id),
-                        "item_id": metadata.get("item_id"),
-                        "label": metadata.get("label", f"Feature {feature_id}"),
-                        "preview": metadata.get("preview", ""),
-                        "values": {
-                            str(user1): bucket_1,
-                            str(user2): bucket_2,
-                        }
-                    }
+    # Build matrix: features x evaluators (NaN = missing)
+    feat_matrix = np.full((n_features, n_users), np.nan)
+    for f_idx, fid in enumerate(all_feature_ids):
+        for uid, bucket_val in feature_buckets[fid].items():
+            if uid in user_idx:
+                feat_matrix[f_idx, user_idx[uid]] = bucket_to_int[bucket_val]
 
-                    if same_bucket:
-                        if len(agreed_items) < detail_item_limit:
-                            agreed_items.append(detail_entry)
-                        else:
-                            agreed_omitted_count += 1
-                    else:
-                        if len(disagreed_items) < detail_item_limit:
-                            disagreed_items.append(detail_entry)
-                        else:
-                            disagreed_omitted_count += 1
-
+    # For each evaluator pair: count features where both rated, and where they agree
+    agreements = {}
+    for i in range(n_users):
+        for j in range(i + 1, n_users):
+            # Mask: both have rated (neither is NaN)
+            both_rated = ~np.isnan(feat_matrix[:, i]) & ~np.isnan(feat_matrix[:, j])
+            shared_count = int(np.sum(both_rated))
             if shared_count >= 1:
+                agree_count = int(np.sum(
+                    feat_matrix[both_rated, i] == feat_matrix[both_rated, j]
+                ))
                 agreement = agree_count / shared_count
-                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                key = f"{min(str(user_list[i]), str(user_list[j]))}-{max(str(user_list[i]), str(user_list[j]))}"
                 agreements[key] = round(agreement, 3)
-                pair_details[key] = {
-                    "shared_count": shared_count,
-                    "agreed_count": agree_count,
-                    "disagreed_count": shared_count - agree_count,
-                    "agreed_items": agreed_items,
-                    "disagreed_items": disagreed_items,
-                    "agreed_omitted_count": agreed_omitted_count,
-                    "disagreed_omitted_count": disagreed_omitted_count,
-                    "truncated": (agreed_omitted_count + disagreed_omitted_count) > 0,
-                }
 
     return {
         "evaluators": evaluators,
         "agreements": agreements,
-        "pair_details": pair_details,
     }
 
 
-def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
-    """
-    Calculate pairwise agreement between evaluators for labeling scenarios.
+def _collect_labeling_categories(scenario_id: int):
+    """Collect the raw label matrix for a labeling scenario.
 
-    Agreement is measured by how often evaluators assign the same category to an item.
+    Shared by the pairwise-agreement heatmap and the Krippendorff/Fleiss IRR
+    computation so both always report on the SAME underlying assignments —
+    previously only the heatmap existed and any second consumer would have had
+    to re-implement (and eventually drift from) this collection logic.
+
+    Rows with ``category_id IS NULL`` are excluded: those are "unsure" markers,
+    which are an absence of a category decision, not a category of their own.
+    Counting them as a shared label would inflate agreement.
+
+    Returns:
+        ``(item_categories, user_info, item_ids)`` where ``item_categories`` is
+        ``{item_id: {evaluator_key: category_id}}``. ``evaluator_key`` is the
+        raw ``user_id`` (int) for humans and ``"llm:<model_id>"`` for LLMs.
     """
     from collections import defaultdict
 
@@ -2858,13 +3840,12 @@ def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
     scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
     item_ids = [st.thread_id for st in scenario_threads if st.thread_id]
 
-    if not item_ids:
-        return {"evaluators": [], "agreements": {}}
-
     # item_id -> {evaluator_id: category_id}
     item_categories = defaultdict(dict)
-    users_set = set()
     user_info = {}
+
+    if not item_ids:
+        return item_categories, user_info, item_ids
 
     # 1. Get human labeling evaluations
     human_labelings = (
@@ -2885,7 +3866,6 @@ def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
         if not item_id or not category_id:
             continue
 
-        users_set.add(user_id)
         if user_id not in user_info:
             user = User.query.get(user_id)
             name = user.username if user else f"User {user_id}"
@@ -2921,7 +3901,6 @@ def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
         if not category_id:
             continue
 
-        users_set.add(llm_user_id)
         if llm_user_id not in user_info:
             llm_model = LLMModel.query.filter_by(model_id=model_id).first()
             name = llm_model.display_name if llm_model else model_id.split("/")[-1]
@@ -2929,14 +3908,25 @@ def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
 
         item_categories[item_id][llm_user_id] = category_id
 
-    if not users_set:
+    return item_categories, user_info, item_ids
+
+
+def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement between evaluators for labeling scenarios.
+
+    Agreement is measured by how often evaluators assign the same category to an item.
+    """
+    item_categories, user_info, item_ids = _collect_labeling_categories(scenario_id)
+
+    if not item_ids or not user_info:
         return {"evaluators": [], "agreements": {}}
 
     evaluators = list(user_info.values())
 
     # Calculate pairwise agreement (percentage of items with same category)
     agreements = {}
-    user_list = list(users_set)
+    user_list = list(user_info.keys())
 
     for i, user1 in enumerate(user_list):
         for user2 in user_list[i+1:]:
@@ -2956,6 +3946,206 @@ def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
     return {
         "evaluators": evaluators,
         "agreements": agreements
+    }
+
+
+def _calculate_labeling_agreement_metrics(scenario_id: int) -> Dict[str, Any]:
+    """Inter-rater reliability for labeling scenarios (nominal categories).
+
+    Labeling was the only evaluation type without a chance-corrected IRR
+    coefficient: ``get_progress_stats`` computed alpha for ranking (ordinal)
+    and rating (interval) only, so a labeling scenario reported
+    ``krippendorff_alpha = None`` and the Scenario Manager's agreement section
+    (``ScenarioOverviewTab.vue``, ``v-if="agreementMetrics?.alpha != null"``)
+    hid itself entirely. Only the raw pairwise-percentage heatmap was shown,
+    which is not chance-corrected and therefore not publishable as IRR.
+
+    Labels are unordered categories, so the metric level is NOMINAL — unlike
+    ranking buckets (ordinal) or rating scores (interval). Fleiss' kappa is
+    reported alongside because it is the conventional coefficient for k raters
+    on nominal data; alpha remains the headline number since it tolerates
+    missing assignments, which kappa does not.
+
+    Values are split by evaluator type so a low human/LLM alpha cannot be
+    masked by a high human/human one:
+      - ``all``    : humans + LLM assessors pooled
+      - ``humans`` : human raters only  (the number to publish)
+      - ``llms``   : LLM assessors only (only meaningful with >= 2 models)
+
+    Returns:
+        ``{"all": .., "humans": .., "llms": .., "fleiss": .., "n_items": ..,
+           "n_humans": .., "n_llms": ..}`` with None for any subset that has
+        fewer than 2 raters or 2 items. ``fleiss`` refers to the human subset.
+    """
+    from services.evaluation.agreement_metrics_service import AgreementMetricsService
+
+    item_categories, user_info, item_ids = _collect_labeling_categories(scenario_id)
+
+    empty = {
+        "all": None, "humans": None, "llms": None, "fleiss": None,
+        "n_items": 0, "n_humans": 0, "n_llms": 0,
+    }
+    if not item_ids or not user_info:
+        return empty
+
+    human_keys = [k for k, info in user_info.items() if not info.get("isLLM")]
+    llm_keys = [k for k, info in user_info.items() if info.get("isLLM")]
+
+    # AgreementMetricsService expects rater keys as strings.
+    def _subset(rater_keys):
+        """Project the label matrix onto a rater subset, dropping empty items."""
+        keys = [str(k) for k in rater_keys]
+        data = {}
+        for item_id in item_ids:
+            cats = item_categories.get(item_id) or {}
+            col = {str(k): cats[k] for k in rater_keys if k in cats}
+            # An item rated by a single rater carries no agreement information
+            # but still contributes to alpha's expected disagreement, so keep
+            # the standard Krippendorff behaviour and let the service drop it.
+            if col:
+                data[item_id] = col
+        return data, keys, list(data.keys())
+
+    def _alpha(rater_keys):
+        if len(rater_keys) < 2:
+            return None
+        data, keys, items = _subset(rater_keys)
+        if len(items) < 2:
+            return None
+        return AgreementMetricsService._krippendorff_alpha(
+            data, keys, items, level="nominal"
+        )
+
+    all_keys = list(user_info.keys())
+    result = {
+        "all": _alpha(all_keys),
+        "humans": _alpha(human_keys),
+        "llms": _alpha(llm_keys),
+        "fleiss": None,
+        "n_items": len(item_ids),
+        "n_humans": len(human_keys),
+        "n_llms": len(llm_keys),
+    }
+
+    if len(human_keys) >= 2:
+        data, keys, items = _subset(human_keys)
+        result["fleiss"] = AgreementMetricsService._fleiss_kappa(data, keys, items)
+
+    return result
+
+
+def _calculate_comparison_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement between evaluators for comparison scenarios.
+
+    Agreement is measured by how often evaluators choose the same option (A/B/tie) for an item.
+    Handles both item-based (ItemComparisonEvaluation) and session-based (LLMTaskResult) comparisons.
+    """
+    from collections import defaultdict
+
+    # Get all items for this scenario
+    scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
+    item_ids = [st.thread_id for st in scenario_threads if st.thread_id]
+
+    if not item_ids:
+        return {"evaluators": [], "agreements": {}}
+
+    # item_id -> {evaluator_id: choice}
+    item_choices = defaultdict(dict)
+    users_set = set()
+    user_info = {}
+
+    # 1. Human evaluations from ItemComparisonEvaluation
+    human_evals = (
+        ItemComparisonEvaluation.query
+        .filter(
+            ItemComparisonEvaluation.scenario_id == scenario_id,
+            ItemComparisonEvaluation.item_id.in_(item_ids),
+            ItemComparisonEvaluation.choice.isnot(None)
+        )
+        .all()
+    )
+
+    for ev in human_evals:
+        item_id = ev.item_id
+        user_id = ev.user_id
+        choice = ev.choice.upper() if ev.choice else None
+        if choice == "TIE":
+            choice = "tie"
+        if not choice or choice not in {"A", "B", "tie"}:
+            continue
+
+        users_set.add(user_id)
+        if user_id not in user_info:
+            user = User.query.get(user_id)
+            name = user.username if user else f"User {user_id}"
+            user_info[user_id] = {"id": user_id, "name": name, "isLLM": False}
+
+        item_choices[item_id][user_id] = choice
+
+    # 2. LLM evaluations from LLMTaskResult
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="comparison"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        model_id = result.model_id
+        llm_user_id = f"llm:{model_id}"
+        item_id = result.thread_id
+
+        if item_id not in item_ids:
+            continue
+
+        # Item-based: direct winner field
+        winner = payload.get("winner")
+        if winner:
+            w = winner.upper() if isinstance(winner, str) else None
+            if w == "TIE":
+                w = "tie"
+            if w in {"A", "B", "tie"}:
+                users_set.add(llm_user_id)
+                if llm_user_id not in user_info:
+                    llm_model = LLMModel.query.filter_by(model_id=model_id).first()
+                    name = llm_model.display_name if llm_model else model_id.split("/")[-1]
+                    user_info[llm_user_id] = {"id": llm_user_id, "name": name, "isLLM": True}
+                item_choices[item_id][llm_user_id] = w
+
+    if not users_set:
+        return {"evaluators": [], "agreements": {}}
+
+    evaluators = list(user_info.values())
+
+    # Calculate pairwise agreement (percentage of items with same choice)
+    agreements = {}
+    user_list = list(users_set)
+
+    for i, user1 in enumerate(user_list):
+        for user2 in user_list[i+1:]:
+            common_items = []
+            for item_id, user_cats in item_choices.items():
+                if user1 in user_cats and user2 in user_cats:
+                    common_items.append((user_cats[user1], user_cats[user2]))
+
+            if len(common_items) >= 1:
+                agreements_count = sum(1 for c1, c2 in common_items if c1 == c2)
+                agreement = agreements_count / len(common_items)
+
+                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                agreements[key] = round(agreement, 3)
+
+    return {
+        "evaluators": evaluators,
+        "agreements": agreements,
     }
 
 
@@ -3255,8 +4445,8 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
         user = su.user
         user_id = user.id
 
-        # Get threads assigned to this user (for RATER role) or all threads (for EVALUATOR)
-        if su.role == ScenarioRoles.EVALUATOR and distribution_mode != DISTRIBUTION_MODE_ALL:
+        # Get threads assigned to this user (distributed assessors) or all threads
+        if su.evaluation_role == 'assessor' and distribution_mode != DISTRIBUTION_MODE_ALL:
             user_thread_ids = [
                 dist.scenario_thread.thread.thread_id
                 for dist in (
@@ -3496,6 +4686,13 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
             "real_count": real_count,
         },
         "pairwise_agreement": pairwise_agreement,
+        "authenticity_provenance": _calculate_authenticity_provenance(
+            thread_ids=thread_ids,
+            ground_truth=ground_truth,
+            user_stats=user_stats,
+            user_vote_map=user_vote_map,
+            llm_vote_map=llm_vote_map,
+        ),
     }
 
 
@@ -3506,7 +4703,8 @@ def get_scenario_stats_payload(scenario_id: int) -> Dict[str, Any]:
         stats = get_authenticity_stats(scenario_id)
         kind = "authenticity"
     else:
-        stats = get_progress_stats(scenario_id)
+        from services.scenario_stats_cache_service import get_cached_stats
+        stats = get_cached_stats(scenario_id)
         kind = "progress"
     return {
         "scenario_id": scenario_id,
@@ -3654,3 +4852,132 @@ def _build_llm_authenticity_stats(
 
     user_stats.sort(key=lambda entry: entry["username"].lower())
     return user_stats
+
+
+def _calculate_authenticity_provenance(
+    *,
+    thread_ids: List[int],
+    ground_truth: Dict[int, bool],
+    user_stats: List[Dict[str, Any]],
+    user_vote_map: Dict[int, Dict],
+    llm_vote_map: Dict[str, Dict],
+) -> Optional[Dict[str, Any]]:
+    """Calculate provenance analysis for authenticity scenarios.
+
+    Groups threads by their generation source (Human vs each LLM model) and
+    calculates:
+    - For fake sources: fool_rate (% of evaluator votes that said "real")
+    - For real sources: false_positive_rate (% of votes that said "fake")
+    """
+    if not thread_ids:
+        return None
+
+    # Load AuthenticityConversation rows to get model per thread
+    auth_convs = AuthenticityConversation.query.filter(
+        AuthenticityConversation.thread_id.in_(thread_ids)
+    ).all()
+
+    if not auth_convs:
+        return None
+
+    # Map thread_id -> source model (None = Human)
+    thread_source = {}
+    for ac in auth_convs:
+        thread_source[ac.thread_id] = ac.model  # None for real, model name for fake
+
+    # Group thread_ids by source
+    source_threads: Dict[str, List[int]] = defaultdict(list)
+    for tid in thread_ids:
+        source = thread_source.get(tid)
+        label = source if source else "Human"
+        source_threads[label].append(tid)
+
+    # Collect all evaluator votes per thread (human + LLM)
+    def _get_vote_string(vote_obj) -> Optional[str]:
+        if vote_obj is None:
+            return None
+        if isinstance(vote_obj, str):
+            return vote_obj.lower()
+        if hasattr(vote_obj, 'vote') and vote_obj.vote:
+            return vote_obj.vote.lower()
+        return None
+
+    # Build unified vote list: [(thread_id, vote_string), ...]
+    all_votes_by_thread: Dict[int, List[str]] = defaultdict(list)
+
+    for uid, votes_dict in user_vote_map.items():
+        for tid, vote_obj in votes_dict.items():
+            vote_str = _get_vote_string(vote_obj)
+            if vote_str:
+                all_votes_by_thread[tid].append(vote_str)
+
+    for model_id, votes_dict in llm_vote_map.items():
+        for tid, vote_str in votes_dict.items():
+            if vote_str:
+                all_votes_by_thread[tid].append(vote_str.lower())
+
+    by_source = []
+    for source_label, tids in source_threads.items():
+        is_fake = source_label != "Human"
+        source_type = "llm" if is_fake else "human"
+        total_votes = 0
+        fooled_votes = 0  # said "real" on fake content
+        detected_votes = 0  # said "fake" on fake content
+        correct_votes = 0  # said "real" on real content
+        false_positive_votes = 0  # said "fake" on real content
+
+        for tid in tids:
+            for vote_str in all_votes_by_thread.get(tid, []):
+                total_votes += 1
+                if is_fake:
+                    if vote_str == "real":
+                        fooled_votes += 1
+                    else:
+                        detected_votes += 1
+                else:
+                    if vote_str == "real":
+                        correct_votes += 1
+                    else:
+                        false_positive_votes += 1
+
+        entry = {
+            "source": source_label,
+            "source_type": source_type,
+            "is_fake": is_fake,
+            "thread_count": len(tids),
+            "total_votes": total_votes,
+        }
+
+        if is_fake:
+            entry["fooled_votes"] = fooled_votes
+            entry["detected_votes"] = detected_votes
+            entry["fool_rate"] = round(fooled_votes / total_votes * 100, 1) if total_votes > 0 else 0.0
+        else:
+            entry["correct_votes"] = correct_votes
+            entry["false_positive_votes"] = false_positive_votes
+            entry["false_positive_rate"] = round(false_positive_votes / total_votes * 100, 1) if total_votes > 0 else 0.0
+
+        by_source.append(entry)
+
+    # Sort: fake sources by fool_rate descending, human sources at end
+    fake_sources = sorted(
+        [s for s in by_source if s["is_fake"]],
+        key=lambda s: s.get("fool_rate", 0),
+        reverse=True,
+    )
+    human_sources = [s for s in by_source if not s["is_fake"]]
+    by_source_sorted = fake_sources + human_sources
+
+    # Summary
+    best_fooling = fake_sources[0] if fake_sources else None
+    human_fp_rate = human_sources[0].get("false_positive_rate") if human_sources else None
+
+    return {
+        "by_source": by_source_sorted,
+        "summary": {
+            "best_fooling_source": best_fooling["source"] if best_fooling else None,
+            "best_fool_rate": best_fooling.get("fool_rate") if best_fooling else None,
+            "human_false_positive_rate": human_fp_rate,
+            "total_sources": len(by_source_sorted),
+        },
+    }

@@ -91,7 +91,10 @@ class RankingService:
         Returns a structure like:
         {
             "situation_summary": {
-                "details": [{ ..., "bucket": "Gut" }, ...],
+                "goodList": [...],
+                "averageList": [...],
+                "badList": [...],
+                "details": [{ ..., "bucket": "Gut" }, ...],  # backwards-compatible aggregate
                 "neutralList": [...]
             }
         }
@@ -114,16 +117,25 @@ class RankingService:
         # Initialize structure
         rankings_data = {
             feature_type.name: {
+                "goodList": [],
+                "averageList": [],
+                "badList": [],
                 "details": [],
                 "neutralList": []
             }
             for feature_type in feature_types
         }
 
+        bucket_key_map = {
+            'gut': 'goodList',
+            'mittel': 'averageList',
+            'schlecht': 'badList'
+        }
+
         # Populate with ranked features
         for ranking in rankings:
             feature_data = {
-                'model_name': ranking.llm.name,
+                'model_name': ranking.model_id or 'Unknown',
                 'content': ranking.feature.content,
                 'feature_id': ranking.feature_id,
                 'position': int(ranking.ranking_content),
@@ -135,6 +147,9 @@ class RankingService:
 
             if feature_type in rankings_data:
                 rankings_data[feature_type]['details'].append(feature_data)
+                bucket_key = bucket_key_map.get((ranking.bucket or '').strip().lower())
+                if bucket_key:
+                    rankings_data[feature_type][bucket_key].append(feature_data)
 
         # Add unranked features to neutralList
         ranked_feature_ids = [ranking.feature_id for ranking in rankings]
@@ -143,7 +158,7 @@ class RankingService:
         for feature in all_features:
             if feature.feature_id not in ranked_feature_ids:
                 feature_data = {
-                    'model_name': feature.llm.name,
+                    'model_name': feature.model_id or 'Unknown',
                     'content': feature.content,
                     'feature_id': feature.feature_id,
                     'position': None,
@@ -160,9 +175,14 @@ class RankingService:
                 data['details'],
                 key=lambda x: x['position'] if x['position'] is not None else float('inf')
             )
+            for bucket_key in ('goodList', 'averageList', 'badList'):
+                data[bucket_key] = sorted(
+                    data[bucket_key],
+                    key=lambda x: x['position'] if x['position'] is not None else float('inf')
+                )
             data['neutralList'] = sorted(
                 data['neutralList'],
-                key=lambda x: x['position'] if x['position'] is not None else float('inf')
+                key=lambda x: x['feature_id']
             )
 
         return rankings_data
@@ -173,7 +193,7 @@ class RankingService:
         thread_id: int,
         feature_id: int,
         type_id: int,
-        llm_id: int,
+        model_id: str,
         position: int,
         bucket: str,
         commit: bool = True
@@ -186,7 +206,7 @@ class RankingService:
             thread_id: The thread ID (used for validation)
             feature_id: The feature ID
             type_id: The feature type ID
-            llm_id: The LLM ID
+            model_id: The model identifier string
             position: Position in the ranking
             bucket: Bucket name ("Gut", "Mittel", "Schlecht")
 
@@ -203,7 +223,7 @@ class RankingService:
                 user_id=user_id,
                 feature_id=feature_id,
                 type_id=type_id,
-                llm_id=llm_id
+                model_id=model_id
             ).first()
 
             if existing_ranking:
@@ -218,7 +238,7 @@ class RankingService:
                     ranking_content=position,
                     bucket=bucket,
                     type_id=type_id,
-                    llm_id=llm_id
+                    model_id=model_id
                 )
                 db.session.add(new_ranking)
 
@@ -273,51 +293,56 @@ class RankingService:
             List of user statistics dictionaries
         """
         from db.models import User, EmailThread, Feature, UserFeatureRanking
+        from sqlalchemy import func
 
         user_stats = []
 
-        # Get total threads with function_type_id = 1 (ranking)
-        total_threads = db.session.query(EmailThread).filter_by(function_type_id=1).count()
+        threads = EmailThread.query.filter_by(function_type_id=1).all()
+        total_threads = len(threads)
+        users = User.query.all()
 
-        for user in User.query.all():
+        # Batch: feature counts per thread (1 query instead of N*M)
+        feature_counts_q = db.session.query(
+            Feature.thread_id,
+            func.count(Feature.feature_id).label('cnt')
+        ).group_by(Feature.thread_id).all()
+        features_per_thread = {tid: cnt for tid, cnt in feature_counts_q}
+
+        # Batch: ranked feature counts per (user, thread) (1 query instead of N*M)
+        ranked_counts_q = db.session.query(
+            UserFeatureRanking.user_id,
+            Feature.thread_id,
+            func.count(UserFeatureRanking.ranking_id).label('cnt')
+        ).join(Feature).group_by(
+            UserFeatureRanking.user_id, Feature.thread_id
+        ).all()
+        ranked_per_user_thread = {}
+        for uid, tid, cnt in ranked_counts_q:
+            ranked_per_user_thread[(uid, tid)] = cnt
+
+        for user in users:
             ranked_threads_list = []
             unranked_threads_list = []
             total_ranked_threads = 0
 
-            # Iterate through ranking threads
-            for thread in EmailThread.query.filter_by(function_type_id=1).all():
-                # Count total features in thread
-                total_features_in_thread = db.session.query(Feature).filter_by(
-                    thread_id=thread.thread_id
-                ).count()
+            for thread in threads:
+                total_features = features_per_thread.get(thread.thread_id, 0)
+                ranked_count = ranked_per_user_thread.get((user.id, thread.thread_id), 0)
 
-                # Count ranked features by user in thread
-                ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
-                    UserFeatureRanking.user_id == user.id,
-                    Feature.thread_id == thread.thread_id
-                ).count()
+                thread_data = {
+                    'thread_id': thread.thread_id,
+                    'chat_id': thread.chat_id,
+                    'institut_id': thread.institut_id,
+                    'subject': thread.subject,
+                    'ranked_features_count': ranked_count,
+                    'total_features_in_thread': total_features
+                }
 
-                if ranked_features_count == total_features_in_thread and total_features_in_thread > 0:
-                    # Fully ranked
+                if ranked_count == total_features and total_features > 0:
                     total_ranked_threads += 1
-                    ranked_threads_list.append({
-                        'thread_id': thread.thread_id,
-                        'chat_id': thread.chat_id,
-                        'institut_id': thread.institut_id,
-                        'subject': thread.subject,
-                        'ranked_features_count': ranked_features_count,
-                        'total_features_in_thread': total_features_in_thread
-                    })
+                    ranked_threads_list.append(thread_data)
                 else:
-                    # Partially or not ranked
-                    unranked_threads_list.append({
-                        'thread_id': thread.thread_id,
-                        'chat_id': thread.chat_id,
-                        'institut_id': thread.institut_id,
-                        'subject': thread.subject,
-                        'ranked_features_count': ranked_features_count,
-                        'total_features_in_thread': total_features_in_thread
-                    })
+                    unranked_threads_list.append(thread_data)
 
             user_stats.append({
                 'username': user.username,
@@ -365,8 +390,9 @@ class RankingService:
         feature_type_rankings = {}
 
         for ranking in rankings:
+            item = getattr(ranking.feature, 'evaluation_item', None)
             key = (
-                ranking.feature.email_thread.thread_id,
+                (item.thread_id if item else ranking.feature.thread_id),
                 ranking.feature_type.name,
                 ranking.user.username
             )
@@ -394,6 +420,7 @@ class RankingService:
 
                 # Add rows
                 for bucket_position, ranking in enumerate(bucket_rankings[bucket], start=1):
+                    item = getattr(ranking.feature, 'evaluation_item', None)
                     csv_rows.append([
                         thread_id,
                         feature_type_name,
@@ -402,9 +429,9 @@ class RankingService:
                         bucket,
                         bucket_position,
                         ranking.feature_id,
-                        ranking.feature.email_thread.chat_id,
-                        ranking.feature.email_thread.institut_id,
-                        ranking.llm.name
+                        item.chat_id if item else None,
+                        item.institut_id if item else None,
+                        ranking.model_id or 'Unknown'
                     ])
                     complete_ranking_position += 1
 

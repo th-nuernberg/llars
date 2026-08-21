@@ -1,12 +1,12 @@
 # Splitting & Refactoring - Progress
 
-!!! warning "📋 Status: Konzept"
-    **Fortschritt:** 0 / 6 Phasen abgeschlossen (0%)
+!!! success "📋 Status: Weitgehend abgeschlossen"
+    **Fortschritt:** 14 Major-Refactorings abgeschlossen (siehe CLAUDE.md)
 
 **Konzept:** [Splitting & Refactoring Konzept](konzept.md)
 **Umsetzung:** [Splitting & Refactoring Umsetzung](umsetzung.md)
-**Gestartet:** -
-**Ziel:** -
+**Gestartet:** November 2025
+**Stand:** März 2026
 
 ---
 
@@ -152,8 +152,30 @@ gantt
 
 ---
 
+## Abgeschlossene Refactorings (Stand: März 2026)
+
+| Datei | Vorher | Nachher | Reduktion |
+|-------|--------|---------|-----------|
+| ChatWithBots.vue | 3299 | 774 | -77% |
+| LatexCollabWorkspace.vue | 3085 | 1259 | -59% |
+| JudgeSession.vue | 2174 | 579 | -73% |
+| ChatbotEditor.vue | 1967 | 507 | -74% |
+| chat_service.py | 1657 | 590 | -64% |
+| latex_collab_routes.py | 1514 | 56 | -96% |
+| crawler_service.py | 1415 | 666 | -53% |
+| chatbot_routes.py | 1273 | 35 | -97% |
+| anonymize_service.py | 1275 | 445 | -65% |
+| agent_chat_service.py | 1263 | 301 | -76% |
+| judge_worker_pool.py | 1067 | 618 | -42% |
+| collection_embedding_service.py | 1046 | 606 | -42% |
+| embedding_worker.py | 825 | 67 | -92% |
+| markdown_collab_routes.py | 798 | 24 | -97% |
+
+---
+
 ## Notizen
 
 > Hier werden wichtige Entscheidungen während der Umsetzung dokumentiert.
 
 - **2025-11-28:** Projekt initialisiert. Warten auf Review des Konzepts.
+- **2026-01-27:** 14 Major-Refactorings abgeschlossen. Backend: 425 Dateien, ~126.000 Zeilen. Frontend: 577 Dateien, ~193.000 Zeilen.

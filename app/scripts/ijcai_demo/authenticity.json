@@ -1,0 +1,185 @@
+{
+  "type": "authenticity",
+  "items": [
+    {
+      "label_de": "Beratungsfall 1",
+      "label_en": "Counselling case 1",
+      "content_de": "Das klingt nach einer wirklich anstrengenden Woche fuer Sie. Ich verstehe gut, dass Sie sich von all den Anforderungen ueberfordert fuehlen. Es ist voellig in Ordnung, sich in einer solchen Situation Unterstuetzung zu holen. Vielleicht koennen wir gemeinsam schauen, welche Aufgaben gerade wirklich dringend sind und welche warten koennen. Sie muessen das nicht alles auf einmal schaffen.",
+      "content_en": "That sounds like a really exhausting week for you. It's completely understandable that you feel overwhelmed by all these demands. It's absolutely okay to look for support in a situation like this. Perhaps we can look together at which tasks are genuinely urgent right now and which ones can wait. You don't have to manage all of it at once.",
+      "source_type": "llm",
+      "source_name": "GPT-4o",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 2",
+      "content_de": "Puh, das mit deinem Mitbewohner und der Kueche - kenn ich. Bei mir war's frueher der gemeinsame Kuehlschrank, da ist auch staendig was verschwunden. Ehrlich gesagt: schreib ihm einfach mal direkt, aber nicht abends wenn beide muede sind. Klingt blöd, aber morgens beim Kaffee laeuft sowas oft entspannter. Und wenn's nix wird, reden wir nochmal.",
+      "label_en": "Counselling case 2",
+      "content_en": "Ugh, the thing with your flatmate and the kitchen - I know that one. For me it was the shared fridge, stuff kept disappearing there too. Honestly: just message him directly, but not in the evening when you're both tired. Sounds silly, but over coffee in the morning these things usually go a lot more smoothly. And if it comes to nothing, we'll talk again.",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    },
+    {
+      "label_de": "Beratungsfall 3",
+      "content_de": "Es tut mir leid zu hoeren, dass Sie sich so einsam fuehlen, seit Ihre Freunde weggezogen sind. Einsamkeit ist ein Gefuehl, das viele Menschen kennen, und Sie sind damit nicht allein. Es kann hilfreich sein, kleine Schritte zu gehen, zum Beispiel einem Verein oder einer Gruppe beizutreten. Gleichzeitig duerfen Sie sich Zeit lassen. Was denken Sie, koennte ein erster kleiner Schritt fuer Sie sein?",
+      "label_en": "Counselling case 3",
+      "content_en": "I'm sorry to hear that you've felt so lonely since your friends moved away. Loneliness is something a great many people experience, and you're not alone with it. It can help to take small steps, for example joining a club or a local group. At the same time, there's no rush. What do you think a first small step could look like for you?",
+      "source_type": "llm",
+      "source_name": "Mistral-Small",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 4",
+      "content_de": "Diese Pruefungsangst, die Sie beschreiben, kenne ich aus vielen Gespraechen. Der Kopf wird leer, das Herz rast - und je mehr man dagegen ankaempft, desto schlimmer wird es. Mir ist aufgefallen, dass Sie geschrieben haben, in der Lerngruppe sei es leichter. Das ist ein wichtiger Hinweis. Vielleicht ist es nicht der Stoff, der Angst macht, sondern das Alleinsein damit.",
+      "label_en": "Counselling case 4",
+      "content_en": "That exam anxiety you describe - I know it from a lot of conversations. The mind goes blank, the heart races, and the harder you fight it, the worse it gets. I noticed you wrote that it's easier in the study group. That's an important clue. Perhaps it isn't the material that frightens you, but being alone with it.",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    },
+    {
+      "label_de": "Beratungsfall 5",
+      "content_de": "Vielen Dank, dass Sie sich mir anvertrauen. Der Verlust eines geliebten Menschen ist eine der schwersten Erfahrungen im Leben. Trauer hat kein festes Zeitfenster, und es ist normal, dass die Gefuehle in Wellen kommen. Erlauben Sie sich, zu trauern, so wie es fuer Sie richtig ist. Gibt es Menschen in Ihrem Umfeld, mit denen Sie ueber Ihre Grossmutter sprechen koennen?",
+      "label_en": "Counselling case 5",
+      "content_en": "Thank you for confiding in me. Losing someone you love is one of the hardest experiences there is. Grief has no fixed timeframe, and it's completely normal for the feelings to come in waves. Allow yourself to grieve in whatever way is right for you. Are there people around you with whom you can talk about your grandmother?",
+      "source_type": "llm",
+      "source_name": "GPT-4o",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 6",
+      "content_de": "Was Sie da ueber den Streit mit Ihrer Schwester schreiben - da steckt so viel alte Geschichte drin, oder? Dieses 'sie war immer die Vernuenftige' habe ich beim Lesen gleich gespuert. Manchmal streiten wir gar nicht ueber das, was gerade passiert ist, sondern ueber Dinge von vor zwanzig Jahren. Wuerde es Ihnen helfen, mal aufzuschreiben, was Sie sich als Kind von ihr gewuenscht haetten?",
+      "label_en": "Counselling case 6",
+      "content_en": "What you write about the argument with your sister - there's so much old history in it, isn't there? That line, 'she was always the sensible one', hit me straight away as I read. Sometimes we aren't arguing about what just happened at all, but about something from twenty years ago. Would it help you to write down what you would have wanted from her as a child?",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    },
+    {
+      "label_de": "Beratungsfall 7",
+      "content_de": "Es ist verstaendlich, dass die Entscheidung zwischen dem Studienplatz und dem Jobangebot Sie belastet. Beide Wege haben ihre Vor- und Nachteile. Wichtig ist, dass Sie auf Ihre eigenen Beduerfnisse und Werte hoeren. Vielleicht hilft es, eine Liste mit Pro und Contra zu erstellen. Letztlich gibt es kein richtig oder falsch - es geht darum, was sich fuer Sie stimmig anfuehlt.",
+      "label_en": "Counselling case 7",
+      "content_en": "It's understandable that the choice between the university place and the job offer is weighing on you. Both paths have their advantages and disadvantages. What matters is that you listen to your own needs and values. It might help to draw up a list of pros and cons. In the end there's no right or wrong - it's about what feels right for you.",
+      "source_type": "llm",
+      "source_name": "Mistral-Small",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 8",
+      "content_de": "Sie schreiben, dass Sie seit dem Umzug schlecht schlafen und nachts oft gruebeln. Das klingt sehr belastend. Schlafprobleme und Sorgen verstaerken sich leider oft gegenseitig. Eine feste Abendroutine und das bewusste Weglegen des Handys koennen erste kleine Hilfen sein. Falls die Schlaflosigkeit anhaelt, waere auch ein Gespraech mit Ihrem Hausarzt sinnvoll. Was beschaeftigt Sie denn nachts am meisten?",
+      "label_en": "Counselling case 8",
+      "content_en": "You write that you've been sleeping badly since the move and often lie awake going over things. That sounds really draining. Sleep problems and worries unfortunately tend to reinforce each other. A fixed evening routine and deliberately putting the phone away can be small first steps. If the sleeplessness persists, it would also be worth talking to your GP. What is on your mind most at night?",
+      "source_type": "llm",
+      "source_name": "GPT-4o",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 9",
+      "content_de": "Hey, danke dass du dich nochmal meldest. Das letzte Mal hattest du ja erzaehlt, dass du dich bei der neuen Arbeit wie ein Hochstapler fuehlst. Und jetzt schreibst du, dass du beim Meeting kein Wort gesagt hast - aber weisst du was mir auffaellt? Du hast trotzdem hingehen koennen. Das ist nicht nichts. Letzte Woche wolltest du noch absagen.",
+      "label_en": "Counselling case 9",
+      "content_en": "Hey, thanks for getting in touch again. Last time you told me you feel like an impostor at the new job. And now you write that you didn't say a word in the meeting - but do you know what strikes me? You still managed to go. That's not nothing. Last week you wanted to cancel.",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    },
+    {
+      "label_de": "Beratungsfall 10",
+      "content_de": "Ich hoere heraus, dass die staendigen Konflikte mit Ihrem Partner Sie sehr erschoepfen. In Beziehungen ist es normal, dass es unterschiedliche Beduerfnisse gibt. Entscheidend ist oft, wie wir miteinander kommunizieren. Ich-Botschaften koennen helfen, Vorwuerfe zu vermeiden. Moechten Sie mir mehr darueber erzaehlen, worum es bei Ihren letzten Auseinandersetzungen ging?",
+      "label_en": "Counselling case 10",
+      "content_en": "I can hear how much the constant conflicts with your partner are exhausting you. Differing needs are normal in any relationship; what often makes the difference is how we talk to each other about them. I-statements can help to avoid blame. Would you like to tell me more about what your recent arguments were about?",
+      "source_type": "llm",
+      "source_name": "Mistral-Small",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 11",
+      "content_de": "Das mit dem Praktikum und dem Chef, der dich vor allen blossgestellt hat - ich hab das zweimal gelesen, weil mich dieser Satz nicht losgelassen hat: 'ich hab nur genickt und bin aufs Klo'. Da war so viel drin. Du warst gar nicht still, weil du nichts zu sagen hattest. Du hast dich geschuetzt. Das ist ein Unterschied, finde ich.",
+      "label_en": "Counselling case 11",
+      "content_en": "The thing with the internship and the boss who humiliated you in front of everyone - I read it twice, because one sentence wouldn't let go of me: 'I just nodded and went to the toilet'. There's so much in that. You weren't quiet because you had nothing to say. You were protecting yourself. That's a difference, I think.",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    },
+    {
+      "label_de": "Beratungsfall 12",
+      "content_de": "Vielen Dank fuer Ihre offenen Worte. Es erfordert Mut, ueber Geldsorgen zu sprechen, da dieses Thema oft schambehaftet ist. Finanzielle Belastungen koennen sich stark auf das Wohlbefinden auswirken. Es gibt verschiedene Beratungsstellen, die kostenlos bei Schuldenfragen unterstuetzen. Sie muessen diesen Weg nicht allein gehen. Wie geht es Ihnen denn aktuell mit dieser Situation?",
+      "label_en": "Counselling case 12",
+      "content_en": "Thank you for being so open. It takes courage to talk about money worries, because the topic is so often bound up with shame. Financial pressure can have a real effect on your well-being. There are various advice centres that offer free support with debt. You don't have to go through this on your own. How are you coping with the situation at the moment?",
+      "source_type": "llm",
+      "source_name": "GPT-4o",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 13",
+      "content_de": "Was du ueber das Gefuehl beschreibst, in der Uni 'nirgends richtig dazuzugehoeren', das beruehrt mich. Ich erinnere mich, eine Studentin sagte mal fast genau dasselbe und ergaenzte: 'alle anderen scheinen ein Handbuch bekommen zu haben, das ich verpasst habe.' Vielleicht trifft das auf dich auch zu? Niemand bekommt dieses Handbuch. Wir tun nur alle so.",
+      "label_en": "Counselling case 13",
+      "content_en": "What you describe about feeling like you 'don't really belong anywhere' at university moves me. I remember a student saying almost exactly the same thing, and she added: 'everyone else seems to have been given a manual that I missed.' Maybe that fits for you too? Nobody gets that manual. We all just act as if we did.",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    },
+    {
+      "label_de": "Beratungsfall 14",
+      "content_de": "Es freut mich, dass Sie den Schritt gewagt haben, sich zu melden. Stress am Arbeitsplatz ist eine haeufige Belastung in der heutigen Zeit. Wichtig ist, auf die eigenen Grenzen zu achten und sich bewusst Pausen zu goennen. Achtsamkeitsuebungen oder ein kurzer Spaziergang koennen helfen, den Kopf freizubekommen. Welche kleinen Auszeiten koennten Sie in Ihren Alltag einbauen?",
+      "label_en": "Counselling case 14",
+      "content_en": "I'm glad you took the step of reaching out. Stress at work is a very common strain these days. It's important to pay attention to your own limits and to allow yourself deliberate breaks. Mindfulness exercises or a short walk can help to clear your head. What small time-outs could you build into your day?",
+      "source_type": "llm",
+      "source_name": "Mistral-Small",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 15",
+      "content_de": "Ich kann nachvollziehen, dass die Vorstellung, vor anderen zu sprechen, Ihnen Angst macht. Soziale Aengste sind weit verbreitet und gut behandelbar. Oft hilft es, sich in kleinen, sicheren Situationen langsam heranzutasten. Sie haben bereits einen wichtigen Schritt getan, indem Sie darueber sprechen. Moechten wir gemeinsam ueberlegen, welche Situation fuer Sie ein guter Anfang waere?",
+      "label_en": "Counselling case 15",
+      "content_en": "I can understand that the thought of speaking in front of others frightens you. Social anxiety is widespread and responds well to treatment. It often helps to approach it gradually, in small and safe situations. You've already taken an important step by talking about it. Shall we think together about which situation would make a good starting point for you?",
+      "source_type": "llm",
+      "source_name": "GPT-4o",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 16",
+      "content_de": "Also dieses 'ich funktioniere nur noch' - das ist so ein Satz, bei dem ich immer hellhoerig werde. Funktionieren ist ja was fuer Maschinen, nicht fuer Menschen. Sie haben geschrieben, dass Sie sonntags manchmal weinen muessen und nicht wissen warum. Ich glaube, Ihr Koerper weiss es schon, auch wenn der Kopf noch nicht mitkommt. Lassen Sie uns das mal langsam angehen.",
+      "label_en": "Counselling case 16",
+      "content_en": "That phrase - 'I'm just functioning' - is the kind of sentence that always makes me prick up my ears. Functioning is what machines do, not people. You wrote that on Sundays you sometimes find yourself crying and don't know why. I think your body already knows, even if your head hasn't caught up yet. Let's take this slowly.",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    },
+    {
+      "label_de": "Beratungsfall 17",
+      "content_de": "Es ist gut, dass Sie sich Gedanken um Ihre Zukunft machen. Die Unsicherheit nach dem Schulabschluss kennen viele junge Menschen. Es ist voellig normal, noch nicht genau zu wissen, welcher Weg der richtige ist. Nehmen Sie sich die Zeit, verschiedene Moeglichkeiten zu erkunden. Ein Orientierungsjahr oder ein Praktikum koennen dabei wertvolle Erfahrungen bieten. Was interessiert Sie denn grundsaetzlich?",
+      "label_en": "Counselling case 17",
+      "content_en": "It's good that you're thinking about your future. The uncertainty after finishing school is familiar to a lot of young people. It's completely normal not to know yet which path is the right one. Take your time to explore different options. A gap year or an internship can offer valuable experience. What sort of things interest you generally?",
+      "source_type": "llm",
+      "source_name": "Mistral-Small",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 18",
+      "content_de": "Ihre Nachricht ueber das schlechte Gewissen den Eltern gegenueber, weil Sie wegziehen wollen - oh ja. Mir faellt auf, dass Sie dreimal 'eigentlich' geschrieben haben. 'Eigentlich freuen sie sich fuer mich.' 'Eigentlich ist es meine Entscheidung.' Dieses kleine Woertchen verraet oft, dass da noch ein Aber im Raum steht, das sich nicht traut, laut zu werden. Was waere Ihr Aber?",
+      "label_en": "Counselling case 18",
+      "content_en": "Your message about feeling guilty towards your parents because you want to move away - oh yes. I noticed you wrote 'actually' three times. 'Actually they're happy for me.' 'Actually it's my decision.' That little word usually means there's still a 'but' in the room that doesn't dare say itself out loud. What would your 'but' be?",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    },
+    {
+      "label_de": "Beratungsfall 19",
+      "content_de": "Vielen Dank, dass Sie sich die Zeit genommen haben, mir zu schreiben. Was Sie schildern, zeigt, dass Sie sich in einer herausfordernden Lebensphase befinden. Veraenderungen bringen oft gemischte Gefuehle mit sich - Vorfreude und Angst zugleich. Das ist menschlich und voellig in Ordnung. Erlauben Sie sich, beide Gefuehle wahrzunehmen. Gemeinsam koennen wir schauen, was Sie gerade am meisten brauchen.",
+      "label_en": "Counselling case 19",
+      "content_en": "Thank you for taking the time to write to me. What you describe shows that you're in a challenging phase of life. Change often brings mixed feelings - anticipation and fear at the same time. That's human and completely okay. Allow yourself to notice both of them. Together we can look at what you need most right now.",
+      "source_type": "llm",
+      "source_name": "GPT-4o",
+      "ground_truth": "llm"
+    },
+    {
+      "label_de": "Beratungsfall 20",
+      "content_de": "Der Satz mit dem leeren Zimmer Ihres Sohnes, der jetzt ausgezogen ist - der ist haengengeblieben. Sie schreiben, Sie gehen abends manchmal rein und richten nur die Kissen. Wissen Sie, das ist gar nicht albern, wie Sie befuerchten. Das ist eine Art, weiter fuer ihn da zu sein, auch wenn er nicht mehr da ist. Vielleicht duerfen Sie das eine Weile noch.",
+      "label_en": "Counselling case 20",
+      "content_en": "The sentence about your son's empty room, now that he's moved out - that one stayed with me. You write that in the evenings you sometimes go in and just straighten the pillows. You know, that isn't silly at all, whatever you fear. It's a way of still being there for him, even though he isn't. Maybe you're allowed to keep doing that for a while.",
+      "source_type": "human",
+      "source_name": "human",
+      "ground_truth": "human"
+    }
+  ]
+}

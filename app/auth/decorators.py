@@ -3,6 +3,7 @@ OIDC Authentication Decorators for Flask (Authentik-backed)
 Provides decorators for protecting routes with bearer tokens
 """
 
+import hmac
 import os
 import uuid
 import logging
@@ -112,14 +113,15 @@ def get_or_create_user(username: str):
         # Assign unique collab color - prefer one that's not already in use
         collab_color = pick_collab_color()
 
-        # Create new user
+        # Create new user - API key is hashed with argon2, plaintext is never stored
+        api_key_plaintext = str(uuid.uuid4())
         user = User(
             username=username,
             password_hash='',  # Auth via Authentik, no local password
-            api_key=str(uuid.uuid4()),
             group_id=group_id,
             collab_color=collab_color
         )
+        user.set_api_key_hashed(api_key_plaintext)
         db.session.add(user)
         db.session.commit()
         logger.info(f"Created new user from Authentik login: {username} with collab_color={collab_color}")
@@ -217,10 +219,14 @@ def admin_required(f):
     @wraps(f)
     @authentik_required  # First check if authenticated
     def decorated_function(*args, **kwargs):
-        token_payload = g.authentik_token
-
-        # Check for admin role
-        if not has_role(token_payload, 'admin'):
+        # SECURITY: authorize on the LLARS DB role, NOT the signed JWT 'groups'
+        # claim. The token role is fixed until expiry, so a user demoted from
+        # admin in LLARS would otherwise retain admin access to admin_required
+        # routes. The DB is the single source of truth (same as
+        # @require_permission and auth/access_control).
+        from decorators.permission_decorator import has_role as _db_has_role
+        user = getattr(g, 'authentik_user', None)
+        if user is None or not _db_has_role(user, 'admin'):
             return jsonify({
                 'error': 'Insufficient permissions',
                 'message': 'Admin role required'
@@ -313,12 +319,9 @@ def system_api_key_required(f):
     """
     Decorator to require valid System Admin API Key for debug/admin endpoints.
 
-    The API key should be passed via:
-    - Header: X-API-Key: <key>
-    - Or Query param: ?api_key=<key>
-
-    This decorator sets g.authentik_user to 'admin' for compatibility
-    with existing code that uses the username.
+    The API key must be passed via the X-API-Key header.
+    Query parameter authentication is NOT supported (keys would leak in
+    server logs, browser history, and referrer headers).
 
     Usage:
         @app.route('/debug/something')
@@ -336,17 +339,17 @@ def system_api_key_required(f):
                 'message': 'System API key not configured'
             }), 500
 
-        # Get API key from request (header or query param)
-        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+        # API key only via header (never via URL query parameter)
+        api_key = request.headers.get('X-API-Key') or ''
 
         if not api_key:
             return jsonify({
                 'error': 'Missing API key',
-                'message': 'X-API-Key header or api_key query parameter is required'
+                'message': 'X-API-Key header is required'
             }), 401
 
-        # Validate API key
-        if api_key != SYSTEM_ADMIN_API_KEY:
+        # Timing-safe comparison to prevent timing attacks
+        if not hmac.compare_digest(api_key, SYSTEM_ADMIN_API_KEY):
             logger.warning(f"Invalid API key attempt from {request.remote_addr}")
             return jsonify({
                 'error': 'Invalid API key',
@@ -400,13 +403,12 @@ def debug_route_protected(f):
 def api_key_or_token_required(f):
     """
     Decorator that accepts either:
-    1. User's personal API key (X-API-Key header or api_key query param)
-    2. System Admin API key
-    3. OAuth Bearer token
+    1. User's personal API key (X-API-Key header)
+    2. System Admin API key (X-API-Key header)
+    3. OAuth Bearer token (Authorization header)
 
-    This is useful for programmatic access to the API.
-
-    The user's API key is stored in the users.api_key field.
+    API keys must be passed via the X-API-Key header.
+    Query parameter authentication is NOT supported for security reasons.
 
     Usage:
         @app.route('/api/something')
@@ -419,16 +421,18 @@ def api_key_or_token_required(f):
     def decorated_function(*args, **kwargs):
         from db.models import User
 
-        # 1. Try API Key first (header or query param)
-        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+        # 1. Try API Key from header only (never from URL query parameter)
+        api_key = request.headers.get('X-API-Key') or ''
 
         if api_key:
-            # Check if it's the System Admin API Key
-            if SYSTEM_ADMIN_API_KEY and api_key == SYSTEM_ADMIN_API_KEY:
+            # Check if it's the System Admin API Key (timing-safe comparison)
+            if SYSTEM_ADMIN_API_KEY and hmac.compare_digest(api_key, SYSTEM_ADMIN_API_KEY):
                 g.authentik_user = get_or_create_user(SYSTEM_ADMIN_USERNAME)
                 g.authentik_user_id = SYSTEM_ADMIN_USERNAME
                 g.is_system_api_key = True
                 g.auth_method = 'system_api_key'
+                # System key is unconstrained — equivalent to admin:*.
+                g.api_key_scopes = ['admin:*']
 
                 denied = _check_user_account_state(g.authentik_user)
                 if denied is not None:
@@ -437,8 +441,26 @@ def api_key_or_token_required(f):
                 logger.debug(f"System API key authenticated for {request.path}")
                 return f(*args, **kwargs)
 
-            # Check if it's a user's personal API key
-            user = User.query.filter_by(api_key=api_key).first()
+            # Check user's personal API keys in order:
+            # 1. Modern UserApiKey table (SHA-256 hashed, multiple keys per user)
+            # 2. Argon2-hashed legacy key (api_key_hash column on User)
+            # 3. Plaintext legacy key fallback (api_key column, migration period only)
+            from db.models import UserApiKey
+
+            user_api_key = UserApiKey.find_by_key(api_key)
+            if user_api_key:
+                user = user_api_key.user
+                user_api_key.update_last_used()
+                from db.database import db as _db
+                _db.session.commit()
+            else:
+                # Try argon2-hashed legacy key
+                user = User.find_by_api_key_hash(api_key)
+
+            if not user:
+                # Plaintext fallback for migration period (keys not yet hashed)
+                user = User.query.filter_by(api_key=api_key).first()
+
             if user:
                 denied = _check_user_account_state(user)
                 if denied is not None:
@@ -448,6 +470,16 @@ def api_key_or_token_required(f):
                 g.authentik_user_id = user.id
                 g.is_system_api_key = False
                 g.auth_method = 'user_api_key'
+                # Parse scopes off the UserApiKey row (CSV string in DB).
+                # Empty list means "no explicit scope, fall back to the
+                # owner's permissions" — see require_api_scope below.
+                if user_api_key is not None:
+                    raw = (user_api_key.scopes or '').strip()
+                    g.api_key_scopes = [s.strip() for s in raw.split(',') if s.strip()]
+                else:
+                    # Legacy User.api_key path: no scope info available; treat
+                    # as full owner-permissions to preserve old behaviour.
+                    g.api_key_scopes = []
 
                 logger.debug(f"User API key authenticated: {user.username} for {request.path}")
                 return f(*args, **kwargs)
@@ -470,6 +502,9 @@ def api_key_or_token_required(f):
                 g.authentik_user = get_or_create_user(username)
                 g.authentik_user_id = get_user_id(token_payload)
                 g.auth_method = 'oauth_token'
+                # Sentinel: OAuth has no scope list — require_api_scope
+                # falls back to the existing role/permission system.
+                g.api_key_scopes = None
 
                 denied = _check_user_account_state(g.authentik_user)
                 if denied is not None:
@@ -480,7 +515,113 @@ def api_key_or_token_required(f):
         # 3. No valid authentication provided
         return jsonify({
             'error': 'Authentication required',
-            'message': 'Provide either X-API-Key header, api_key query param, or Authorization Bearer token'
+            'message': 'Provide either X-API-Key header or Authorization Bearer token'
         }), 401
 
     return decorated_function
+
+
+# ---------------------------------------------------------------------------
+# Scope enforcement for the public v1 API
+# ---------------------------------------------------------------------------
+
+# Coarse-grained scope vocabulary used by user-issued API keys. Each scope
+# maps to one or more permissions in the existing RBAC system so OAuth users
+# (who don't carry an explicit scope list) fall through to the same gate
+# without needing scope strings on their token.
+_API_SCOPE_PERMISSION_MAP = {
+    'scenario:read': ('feature:rating:view', 'feature:ranking:view',
+                       'data:manage_scenarios'),
+    'scenario:write': ('data:manage_scenarios',),
+    # Chatbot v1 surface — strictly separate from scenario scopes so a
+    # study-pipeline key can't accidentally manage chatbots.
+    'chatbot:read':  ('feature:chatbots:view',),
+    'chatbot:write': ('feature:chatbots:edit', 'feature:chatbots:delete'),
+    'admin:*':       ('admin:permissions:manage',),
+}
+
+
+def require_api_scope(*required_scopes):
+    """
+    Gate a route on one of the listed scopes.
+
+    Must be applied **after** ``@api_key_or_token_required`` (the chain
+    populates ``g.api_key_scopes``). Resolves access in this order:
+
+    1. Key-based: when ``g.api_key_scopes`` is a list, allow if it
+       contains ``admin:*`` OR any of ``required_scopes``. Empty list
+       means "no explicit scopes" — falls through to the OAuth path
+       below so legacy keys keep their old owner-permission semantics.
+    2. OAuth / no-scopes path: allow if the authenticated user holds the
+       admin role OR any permission mapped to one of the required scopes
+       in ``_API_SCOPE_PERMISSION_MAP``.
+
+    Returns 403 with a structured payload otherwise.
+    """
+    from services.permission_service import PermissionService
+
+    def _decorator(f):
+        @wraps(f)
+        def _wrapped(*args, **kwargs):
+            scopes = getattr(g, 'api_key_scopes', None)
+            user = getattr(g, 'authentik_user', None)
+
+            if user is None:
+                return jsonify({
+                    'error': 'Authentication required',
+                    'message': 'require_api_scope must follow api_key_or_token_required',
+                }), 401
+
+            # Path 1: explicit scope list on the auth context.
+            if isinstance(scopes, list) and scopes:
+                if 'admin:*' in scopes:
+                    return f(*args, **kwargs)
+                # Direct match
+                for need in required_scopes:
+                    if need in scopes:
+                        return f(*args, **kwargs)
+                # Implicit "write implies read" — a `chatbot:write` key
+                # should be able to GET /chatbots/{id} without being
+                # forced to also carry `chatbot:read`. Symmetric for
+                # scenario:* and any future ``<resource>:write`` scope.
+                # We only collapse the read-side, never the other way.
+                for need in required_scopes:
+                    if need.endswith(':read'):
+                        write_alias = need[:-len(':read')] + ':write'
+                        if write_alias in scopes:
+                            return f(*args, **kwargs)
+                return jsonify({
+                    'error': 'Forbidden',
+                    'message': (
+                        'API key is missing the required scope. '
+                        f'Need one of: {list(required_scopes)}'
+                    ),
+                    'required_scopes': list(required_scopes),
+                    'present_scopes': scopes,
+                }), 403
+
+            # Path 2: scopes is None (OAuth) or empty list (legacy key).
+            # Defer to the existing role / permission system.
+            username = getattr(user, 'username', None)
+            if not username:
+                return jsonify({'error': 'Forbidden'}), 403
+
+            if PermissionService.user_has_role(username, 'admin'):
+                return f(*args, **kwargs)
+
+            for need in required_scopes:
+                for perm in _API_SCOPE_PERMISSION_MAP.get(need, ()):
+                    if PermissionService.check_permission(username, perm):
+                        return f(*args, **kwargs)
+
+            return jsonify({
+                'error': 'Forbidden',
+                'message': (
+                    'Account is missing the permissions required for this '
+                    f'endpoint (scopes: {list(required_scopes)})'
+                ),
+                'required_scopes': list(required_scopes),
+            }), 403
+
+        return _wrapped
+    return _decorator

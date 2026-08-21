@@ -93,8 +93,9 @@ test.describe('Ranking Overview', () => {
     await quickLogin(page, TEST_USERS.rater)
     await goToRanker(page)
 
+    // Stats may not always be visible if no evaluation data exists - use soft assertion
     const hasStats = await page.locator('.header-stats, [class*="stats"], text=/\\d+\\s*\\/\\s*\\d+/').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasStats || true).toBeTruthy()
+    expect.soft(hasStats).toBeTruthy()
   })
 
   test('E2E_RANKING_005: thread cards show completion status', async ({ page }) => {
@@ -103,7 +104,7 @@ test.describe('Ranking Overview', () => {
 
     if (await getThreadCards(page).count() > 0) {
       const hasStatus = await page.locator('.card-status, .evaluation-status, [class*="status"]').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasStatus || true).toBeTruthy()
+      expect.soft(hasStatus).toBeTruthy()
     }
   })
 })
@@ -236,8 +237,7 @@ test.describe('Ranking Buckets', () => {
       await expandFirstPanel(page)
 
       const neutralBucket = page.locator(BUCKETS.neutral).first()
-      const isVisible = await neutralBucket.isVisible({ timeout: 3000 }).catch(() => false)
-      expect(isVisible || true).toBeTruthy()
+      await expect(neutralBucket).toBeVisible({ timeout: 3000 })
     }
   })
 })
@@ -277,8 +277,8 @@ test.describe('Drag and Drop', () => {
       await expandFirstPanel(page)
 
       const bucketItems = page.locator('.bucket-item')
-      const hasItems = await bucketItems.count() > 0
-      expect(hasItems || true).toBeTruthy()
+      const itemCount = await bucketItems.count()
+      expect(itemCount).toBeGreaterThan(0)
     }
   })
 })
@@ -292,8 +292,7 @@ test.describe('Auto-Save Functionality', () => {
 
     if (await clickFirstThread(page)) {
       await waitForLoading(page)
-      const hasActionBar = await page.locator('.evaluation-action-bar, .action-bar').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasActionBar || true).toBeTruthy()
+      await expect(page.locator('.evaluation-action-bar, .action-bar').first()).toBeVisible({ timeout: 3000 })
     }
   })
 
@@ -305,7 +304,7 @@ test.describe('Auto-Save Functionality', () => {
       await waitForLoading(page)
       const hasProgress = await page.locator('.progress-indicator, text=/\\d+\\s*\\/\\s*\\d+/').first().isVisible({ timeout: 3000 }).catch(() => false)
       const hasNavButtons = await page.locator('button:has-text("Vorheriger"), button:has-text("Nächster")').first().isVisible({ timeout: 2000 }).catch(() => false)
-      expect(hasProgress || hasNavButtons || true).toBeTruthy()
+      expect(hasProgress || hasNavButtons).toBeTruthy()
     }
   })
 })
@@ -378,8 +377,7 @@ test.describe('Feature Type Expansion', () => {
         await page.waitForTimeout(300)
 
         const panelContent = page.locator('.v-expansion-panel-text, .buckets-row').first()
-        const isExpanded = await panelContent.isVisible({ timeout: 2000 }).catch(() => false)
-        expect(isExpanded || true).toBeTruthy()
+        await expect(panelContent).toBeVisible({ timeout: 2000 })
       }
     }
   })
@@ -400,7 +398,7 @@ test.describe('Feature Type Expansion', () => {
           break
         }
       }
-      expect(foundAny || true).toBeTruthy()
+      expect(foundAny).toBeTruthy()
     }
   })
 })

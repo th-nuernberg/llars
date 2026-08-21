@@ -44,7 +44,7 @@ class SystemEventService:
             _THROTTLE_STATE[throttle_key] = now
 
         severity_normalized = (severity or "info").strip().lower()
-        if severity_normalized not in {"debug", "info", "warning", "error", "critical", "success"}:
+        if severity_normalized not in {"debug", "info", "warning", "error", "critical", "success", "ci_cd"}:
             severity_normalized = "info"
 
         try:
@@ -93,4 +93,3 @@ class SystemEventService:
                 current_app.logger.debug(f"SystemEventService failed: {exc}")
             except Exception:
                 pass
-

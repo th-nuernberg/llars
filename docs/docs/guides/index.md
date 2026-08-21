@@ -43,7 +43,6 @@ Werkzeuge für gemeinsames Arbeiten:
 
 | Guide | Beschreibung |
 |-------|--------------|
-| [LaTeX Collaboration](latex-collaboration.md) | Echtzeit-Kollaboration für wissenschaftliche Dokumente |
 
 ---
 
@@ -57,6 +56,16 @@ Persönliche Konfiguration:
 
 ---
 
+## Programmatischer Zugriff
+
+REST-APIs für externe Clients und Automation:
+
+| Guide | Beschreibung |
+|-------|--------------|
+| [v1 Scenario API](api-v1-scenarios.md) | Szenarien, Items, Bewerter und Referral-Links per `/api/v1/*` programmatisch verwalten |
+
+---
+
 ## Administration
 
 Systemverwaltung und Konfiguration:
@@ -64,6 +73,7 @@ Systemverwaltung und Konfiguration:
 | Guide | Beschreibung |
 |-------|--------------|
 | [Admin Dashboard](admin-dashboard.md) | Benutzer, LLMs und System verwalten |
+| [Referral & Einladungen](referral-invitations.md) | Einladungslinks, QR-Codes, Auto-Enroll, Funnel |
 | [Berechtigungssystem](permission-system.md) | RBAC-Rechtemodell |
 
 ---

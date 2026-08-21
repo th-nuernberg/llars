@@ -146,7 +146,7 @@ Each tile is checked per role:
 | No 5xx | No backend API errors during navigation |
 | Safe Button Sweep | Non-destructive buttons on the target page are clicked |
 
-**Covered tiles:** Prompt Engineering, Batch Generation, Evaluation, Scenario Manager, Chatbot, Video, Markdown Collab, Chatbot Arena, Anonymization, Anonymization Pipeline, KAIMO, OnCoCo, DB Preisagent, Admin Dashboard, Chatbot Admin, RAG Admin, Conference Manager, Pipeline, User Settings
+**Covered tiles:** Prompt Engineering, Batch Generation, Evaluation, Scenario Manager, Chatbot, Video, Markdown Collab, Chatbot Arena, Anonymization, Anonymization Pipeline, KAIMO, OnCoCo, Admin Dashboard, Chatbot Admin, RAG Admin, Conference Manager, Pipeline, User Settings
 
 **Roles:** evaluator, researcher, chatbot_manager, admin
 

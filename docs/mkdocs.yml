@@ -68,6 +68,7 @@ nav:
       - Login Anleitung: guides/login-anleitung.md
       - Projektstatus: guides/project-state.md
       - Berechtigungssystem: guides/permission-system.md
+      - LLARS zitieren: guides/citing-llars.md
   - Projekte:
       - Übersicht: projekte/index.md
       - How-To: projekte/how-to-project.md
@@ -228,6 +229,7 @@ plugins:
           Nightly Test Activities: Nightly Test Activities
           Projektstatus: Project State
           Berechtigungssystem: Permission System
+          LLARS zitieren: Citing LLARS
           Szenario Wizard: Scenario Wizard
           Szenario Manager: Scenario Manager
           Authentik Setup: Authentik Setup

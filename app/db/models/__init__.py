@@ -254,9 +254,6 @@ from db.models.messaging import (
 from db.models.scenario_stats_cache import ScenarioStatsCache
 from db.models.scenario_stats_job import ScenarioStatsJob
 
-# DB Price Agent
-from db.models.db_agent import DbPriceScan, DbPriceEntry, DbTripSearch
-
 __all__ = [
     # User
     'User',
@@ -448,8 +445,4 @@ __all__ = [
     # Scenario Stats Cache
     'ScenarioStatsCache',
     'ScenarioStatsJob',
-    # DB Price Agent
-    'DbPriceScan',
-    'DbPriceEntry',
-    'DbTripSearch',
 ]

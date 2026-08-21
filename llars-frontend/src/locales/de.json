@@ -219,6 +219,17 @@
     "contact": "Kontakt",
     "legal": "Rechtliches"
   },
+  "citation": {
+    "link": "LLARS zitieren",
+    "title": "LLARS zitieren",
+    "ask": "Wenn Sie LLARS in Ihrer Forschung verwenden, zitieren Sie bitte:",
+    "copy": "BibTeX kopieren",
+    "copied": "Kopiert!",
+    "copyFailed": "Kopieren fehlgeschlagen — bitte den Text manuell markieren.",
+    "close": "Schließen",
+    "licenseNote": "Für akademische Arbeiten ist die Zitation eine Lizenzbedingung (PolyForm Noncommercial 1.0.0).",
+    "licenseLink": "Lizenz ansehen"
+  },
   "consent": {
     "title": "Datenschutz-Einstellungen",
     "body": "Wir verwenden technisch notwendige Cookies für den Betrieb der Plattform. Zusätzlich möchten wir mit Matomo – anonymisiert und selbst gehostet – die Nutzung auswerten, um die Plattform zu verbessern. Diese Analyse erfolgt nur mit Ihrer Zustimmung.",
@@ -715,7 +726,7 @@
       "title": "LLARS",
       "subtitle": "LLM Assisted Research System",
       "version": "v3.0",
-      "openSource": "Open Source",
+      "openSource": "Quelloffen",
       "organization": "TH Nürnberg"
     },
     "overview": {
@@ -2797,10 +2808,6 @@
       "oncoco": {
         "title": "OnCoCo Analyse",
         "description": "Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)"
-      },
-      "dbAgent": {
-        "title": "DB Preisagent",
-        "description": "Deutsche Bahn Preise überwachen und günstige Verbindungen finden"
       },
       "adminDashboard": {
         "title": "Admin Dashboard",
@@ -7090,148 +7097,19 @@
       }
     }
   },
-  "dbAgent": {
-    "title": "DB Preisagent",
-    "subtitle": "Dortmund Hbf ↔ Nürnberg Hbf · BahnCard 25 · 2. Klasse",
-    "loading": "Lade Daten...",
-    "status": {
-      "active": "Agent aktiv",
-      "inactive": "Agent inaktiv"
-    },
-    "actions": {
-      "startAgent": "Agent starten",
-      "stopAgent": "Agent stoppen",
-      "scanNow": "Jetzt scannen",
-      "deleteData": "Daten löschen"
-    },
-    "tabs": {
-      "search": "Reise suchen",
-      "deals": "Top Deals",
-      "calendar": "Kalender",
-      "timing": "Timing",
-      "analysis": "Analyse"
-    },
-    "overview": {
-      "loading": "Aktuelle Preise werden geladen...",
-      "topDeals": "Aktuelle Top-Deals",
-      "fromScans": "Aus Scans"
-    },
-    "search": {
-      "title": "Reise suchen",
-      "stationFrom": "Von",
-      "stationTo": "Nach",
-      "dateFrom": "Hinfahrt am",
-      "dateTo": "Rückfahrt am",
-      "outbound": "Hinfahrt",
-      "returnTrip": "Rückfahrt",
-      "flexibility": "Flexibilität",
-      "go": "Suchen",
-      "newSearch": "Neue Suche",
-      "results": "{count} Verbindungen gefunden",
-      "bookOnBahn": "Auf bahn.de buchen",
-      "selectOutbound": "Hinfahrt wählen",
-      "selectReturn": "Rückfahrt wählen",
-      "totalPrice": "Gesamtpreis",
-      "directOnly": "Nur Direktverbindungen",
-      "directConnections": "Direktverbindungen",
-      "noDirectConnections": "Keine Direktverbindungen verfügbar"
-    },
-    "suggestions": {
-      "title": "Vorschläge",
-      "found": "gefunden"
-    },
-    "followup": {
-      "title": "Reiseberater",
-      "placeholder": "z.B. Vorschlag #3 passt, aber ich kann erst einen Tag später..."
-    },
-    "history": {
-      "title": "Letzte Suchen"
-    },
-    "deals": {
-      "title": "Günstigste Verbindungen"
-    },
-    "calendar": {
-      "title": "Preiskalender",
-      "viewYear": "Jahr",
-      "viewMonth": "Monat",
-      "viewDay": "Tag",
-      "roundTrip": "Hin + Rück",
-      "tripSuggestions": "Reise-Empfehlungen",
-      "days": "Tage",
-      "cheapestShort": "ab",
-      "connections": "Verbindungen",
-      "noDataForDay": "Keine Daten für diesen Tag. Starte einen Scan oder suche eine Reise.",
-      "legend": {
-        "cheap": "Günstig (< 30€)",
-        "medium": "Mittel (30–60€)",
-        "expensive": "Teuer (60–100€)",
-        "veryExpensive": "Sehr teuer (> 100€)",
-        "stddev": "±σ = Standardabweichung",
-        "highVolatility": "Hohe Preisschwankung",
-        "tripStrip": "Reise-Empfehlung (Hin + Rück)"
-      }
-    },
-    "stats": {
-      "title": "Preisstatistik",
-      "outbound": "Hinfahrt (DO → N)",
-      "return": "Rückfahrt (N → DO)",
-      "totalEntries": "Gesamteinträge",
-      "noData": "Noch keine Preisdaten vorhanden. Starte einen Scan."
-    },
-    "weekday": {
-      "title": "Wochentag-Analyse"
-    },
-    "timing": {
-      "title": "Wann buchen?",
-      "departureTime": "Abfahrtszeit",
-      "departureTimeHint": "Durchschnittspreise nach Abfahrtszeit",
-      "leadTime": "Buchungsvorlauf",
-      "leadTimeHint": "Durchschnittspreise nach Buchungszeitpunkt vor Abreise",
-      "transfers": "Direkt vs. Umstieg",
-      "transfersHint": "Preisvergleich nach Anzahl Umstiege",
-      "priceTrend": "Preisentwicklung",
-      "priceTrendHint": "Wie sich der günstigste Preis ändert, je näher der Reisetag rückt",
-      "avgPrice": "Ø Preis",
-      "minPrice": "Min",
-      "medianPrice": "Median",
-      "connections": "Verbindungen",
-      "avgCheapest": "Ø Günstigster",
-      "datesWithData": "Reisetage",
-      "cheapest": "Am günstigsten",
-      "noData": "Noch keine Daten. Starte einen Scan, damit die Timing-Analyse gefüllt wird.",
-      "tip": "Tipp",
-      "tipLeadTime": "Am günstigsten bei {bucket} Vorlauf (Ø {price}€)",
-      "tipDeparture": "Günstigste Abfahrtszeit: {slot} (Ø {price}€)",
-      "tipTransfers": "{label} spart im Schnitt {percent}% gegenüber Direktverbindungen"
-    },
-    "analysis": {
-      "title": "KI-Analyse",
-      "run": "Analyse starten",
-      "hint": "Klicke auf 'Analyse starten' um eine KI-gestützte Preisanalyse zu erhalten."
-    },
-    "table": {
-      "date": "Datum",
-      "direction": "Richtung",
-      "departure": "Abfahrt",
-      "arrival": "Ankunft",
-      "price": "Preis",
-      "transfers": "Umstiege",
-      "trains": "Züge"
-    }
-  },
   "landing": {
     "skipLink": "Zum Inhalt springen",
     "nav": {
       "features": "Funktionen",
       "demo": "Live-Demo",
       "evalTypes": "Evaluationstypen",
-      "openSource": "Open Source"
+      "openSource": "Quelloffen"
     },
     "hero": {
       "badge": "Vorgestellt auf der IJCAI 2026",
-      "openSource": "100 % Open Source · MIT",
+      "openSource": "Quelloffen · kostenlos für Forschung",
       "headline": "Kollaboratives Prompt Engineering, Batch-Generierung & Hybride Evaluation",
-      "subtitle": "Die Open-Source-Plattform für Evaluationsstudien mit LLM-Ausgaben — menschliche Urteile und LLM-Assessoren in einem Workflow, von jedem Forschungsteam frei nutzbar.",
+      "subtitle": "Die quelloffene Plattform für Evaluationsstudien mit LLM-Ausgaben — menschliche Urteile und LLM-Assessoren in einem Workflow, für Forschungsteams kostenlos nutzbar.",
       "cta": "Jetzt starten",
       "demo": "Demo ansehen",
       "github": "Quellcode auf GitHub",
@@ -7386,7 +7264,7 @@
       }
     },
     "tech": {
-      "title": "Open Source & produktionsbereit",
+      "title": "Quelloffen & produktionsbereit",
       "counters": {
         "components": "Eigene Komponenten",
         "evalTypes": "Evaluationstypen",
@@ -7396,10 +7274,10 @@
     },
     "research": {
       "title": "Von Forschenden, für Forschende",
-      "text1": "LLARS ist aus der Forschung entstanden — für Evaluationsstudien, in denen menschliche Urteile und LLM-Assessoren zusammenkommen. Die Plattform ist Open Source unter MIT-Lizenz und bleibt es.",
-      "text2": "Jede Forschungsgruppe kann LLARS frei einsetzen, selbst hosten und an die eigene Studie anpassen — ohne Lizenzkosten, ohne Vendor-Lock-in, mit voller Kontrolle über die eigenen Daten.",
+      "text1": "LLARS ist aus der Forschung entstanden — für Evaluationsstudien, in denen menschliche Urteile und LLM-Assessoren zusammenkommen. Der Quellcode ist einsehbar und für Forschung kostenlos — und bleibt es.",
+      "text2": "Jede Forschungsgruppe kann LLARS frei einsetzen, selbst hosten und an die eigene Studie anpassen — ohne Lizenzkosten für Forschung, ohne Vendor-Lock-in, mit voller Kontrolle über die eigenen Daten.",
       "points": {
-        "license": "MIT-Lizenz — dauerhaft frei für Forschung und Lehre",
+        "license": "PolyForm Noncommercial 1.0.0 — dauerhaft kostenlos für Forschung und Lehre, kommerzielle Nutzung auf Anfrage",
         "selfHost": "Self-Hosting per Docker Compose — Ihre Daten bleiben auf Ihrer Infrastruktur",
         "reproducible": "Reproduzierbare Studien: Exporte, Versionierung und dokumentierte Metriken wie Krippendorff's Alpha"
       },
@@ -7413,7 +7291,9 @@
     },
     "footer": {
       "demo": "Demo-Video",
-      "docs": "Dokumentation"
+      "docs": "Dokumentation",
+      "license": "Kostenlos für Forschung (PolyForm Noncommercial) — kommerzielle Nutzung auf Anfrage.",
+      "licenseLink": "Lizenz"
     }
   },
   "evaluationAssistant": {
@@ -7601,8 +7481,8 @@
         "text": "Für die von Ihnen eingegebenen Inhalte sind Sie selbst verantwortlich. LLARS ist eine Forschungsplattform: Die von Ihnen eingegebenen sowie im Rahmen von Evaluationen erhobenen Daten werden zu wissenschaftlichen Forschungszwecken verarbeitet (Datenspende für die Forschung) und – soweit möglich – pseudonymisiert oder anonymisiert. Einzelheiten regelt die Datenschutzerklärung sowie – bei Studienteilnahmen – die jeweilige Einwilligungserklärung. Sie räumen dem Projekt das für Betrieb, Auswertung und Forschung erforderliche, einfache Nutzungsrecht an den eingegebenen Inhalten ein."
       },
       "openSource": {
-        "title": "5. Open Source",
-        "text": "Die LLARS-Software ist quelloffen und unter der MIT-Lizenz verfügbar. Für die Nutzung des von uns betriebenen Dienstes gelten ergänzend diese Nutzungsbedingungen. Der Quellcode kann unabhängig davon gemäß den Lizenzbedingungen verwendet werden."
+        "title": "5. Quelloffenheit & Lizenz",
+        "text": "Der Quellcode der LLARS-Software ist einsehbar und unter der PolyForm Noncommercial License 1.0.0 verfügbar: kostenlos für Forschung und andere nicht-kommerzielle Zwecke, für akademische Arbeiten mit Zitationspflicht; kommerzielle Nutzung erfordert eine gesonderte Lizenz. Für die Nutzung des von uns betriebenen Dienstes gelten ergänzend diese Nutzungsbedingungen. Der Quellcode kann unabhängig davon gemäß den Lizenzbedingungen verwendet werden."
       },
       "availability": {
         "title": "6. Verfügbarkeit und Änderungen",

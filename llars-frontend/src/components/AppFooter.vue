@@ -23,6 +23,11 @@
               {{ item.title }}
             </router-link>
           </template>
+
+          <!-- Citation is a license condition for academic use -> always reachable -->
+          <button type="button" class="footer-link mx-2" @click="citationOpen = true">
+            {{ t('citation.link') }}
+          </button>
         </v-col>
 
         <!-- Right Section: Copyright -->
@@ -33,15 +38,22 @@
         </v-col>
       </v-row>
     </v-container>
+
+    <LCitationDialog v-model="citationOpen" />
   </v-footer>
 </template>
 
 <script setup>
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import LCitationDialog from '@/components/common/LCitationDialog.vue'
   import { docsUrlForLocale } from '@/utils/docsUrl'
 
   const { t, locale } = useI18n()
+
+  // "Cite LLARS" dialog (see LCitationDialog docstring: citation is a license
+  // condition under PolyForm Noncommercial, not just a nicety).
+  const citationOpen = ref(false)
 
   // Doku in der aktuellen UI-Sprache (DE -> /mkdocs/, EN -> /mkdocs/en/).
   const docsUrl = computed(() => docsUrlForLocale(locale.value))
@@ -77,6 +89,12 @@
     text-decoration: none
     font-size: 0.875rem
     transition: color 0.2s ease-in-out
+    // Reset so the citation <button> renders identically to the <a>/<router-link> siblings
+    background: none
+    border: none
+    padding: 0
+    font-family: inherit
+    cursor: pointer
 
     &:hover
       color: rgba(var(--v-theme-primary))

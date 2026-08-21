@@ -3396,13 +3396,19 @@ def export_scenario_results(scenario_id):
         )
 
     if export_format == 'json':
+        from services.evaluation.results_export_service import citation_block
+
         payload = {
             'scenario_id': scenario_id,
             'scenario_name': scenario.scenario_name,
             'function_type': func_type_name,
             'total_results': len(results),
             'results': results,
-            'exported_at': datetime.utcnow().isoformat()
+            'exported_at': datetime.utcnow().isoformat(),
+            # Citation requirement of the PolyForm Noncommercial license.
+            # Envelope only — the CSV branch below must stay strictly parseable
+            # (see CITATION_BLOCK in results_export_service for the rationale).
+            'citation': citation_block()
         }
         if timing_metrics is not None:
             payload['timing_metrics'] = timing_metrics

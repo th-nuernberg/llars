@@ -859,35 +859,6 @@ if _should_run_one_time_startup_tasks():
     sync_documentation_collection()
 
 
-# Auto-start DB Price Agent scheduler for periodic price monitoring.
-# Disabled by default (DB_AGENT_SCHEDULER_ENABLED=false) — bahn.de currently
-# returns 403 Forbidden for the public API and the scheduler was filling the
-# log with hundreds of error lines per scan cycle, drowning the actual
-# Flask logs. Set DB_AGENT_SCHEDULER_ENABLED=true to opt back in once the
-# upstream API is reachable again.
-def start_db_agent_scheduler():
-    """Start the DB Agent background scheduler on boot (opt-in)."""
-    if _skip_startup_tasks():
-        print("[Startup] Skipping DB Agent scheduler (LLARS_SKIP_STARTUP_TASKS=true)")
-        return
-    if os.environ.get('DB_AGENT_SCHEDULER_ENABLED', 'false').lower() != 'true':
-        print("[Startup] DB Agent scheduler disabled (set DB_AGENT_SCHEDULER_ENABLED=true to enable)")
-        return
-    from services.db_agent.db_agent_scheduler import start_scheduler
-    try:
-        started = start_scheduler(app)
-        if started:
-            print("[Startup] DB Agent scheduler started (6h interval)")
-        else:
-            print("[Startup] DB Agent scheduler already running")
-    except Exception as e:
-        print(f"[Startup] Error starting DB Agent scheduler: {e}")
-
-
-if _should_start_background_threads():
-    start_db_agent_scheduler()
-
-
 if __name__ == '__main__':
     # Debug mode nur in development aktivieren
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'

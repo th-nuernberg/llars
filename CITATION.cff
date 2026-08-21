@@ -2,9 +2,11 @@ cff-version: 1.2.0
 message: "If you use LLARS in your research, please cite the paper below."
 title: "LLARS - LLM Assisted Research System"
 abstract: >-
-  LLARS is an open-source platform for collaborative prompt engineering,
-  batch generation and hybrid (human + LLM) evaluation of LLM outputs,
-  with inter-rater reliability metrics. Built for research teams.
+  LLARS is a source-available platform (free for research) for collaborative
+  prompt engineering, batch generation and hybrid (human + LLM) evaluation
+  of LLM outputs, with inter-rater reliability metrics. Built for research
+  teams.
+license: PolyForm-Noncommercial-1.0.0
 type: software
 authors:
   - family-names: Steigerwald
@@ -19,7 +21,6 @@ authors:
     given-names: Jens
 repository-code: "https://github.com/th-nuernberg/llars"
 url: "https://llars.e-beratungsinstitut.de"
-license: MIT
 # Bevorzugtes Zitat: aktuell die arXiv-Version. Sobald die IJCAI-ECAI-2026-
 # Proceedings-Version erscheint, hier auf type: conference-paper mit
 # collection-title/conference/DOI umstellen.

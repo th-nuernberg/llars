@@ -7,7 +7,9 @@
         <p class="hero-subtitle">{{ $t('docs.hero.subtitle') }}</p>
         <div class="hero-badges">
           <LTag variant="primary" prepend-icon="mdi-tag">{{ $t('docs.hero.version') }}</LTag>
-          <LTag variant="accent" prepend-icon="mdi-open-source-initiative">{{ $t('docs.hero.openSource') }}</LTag>
+          <!-- mdi-license, nicht mdi-open-source-initiative: LLARS steht unter der
+               PolyForm Noncommercial 1.0.0 (quelloffen, aber nicht OSI-approved). -->
+          <LTag variant="accent" prepend-icon="mdi-license">{{ $t('docs.hero.openSource') }}</LTag>
           <LTag variant="success" prepend-icon="mdi-school">{{ $t('docs.hero.organization') }}</LTag>
         </div>
       </div>

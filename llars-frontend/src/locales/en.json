@@ -219,6 +219,17 @@
     "contact": "Contact",
     "legal": "Legal"
   },
+  "citation": {
+    "link": "Cite LLARS",
+    "title": "Cite LLARS",
+    "ask": "If you use LLARS in your research, please cite:",
+    "copy": "Copy BibTeX",
+    "copied": "Copied!",
+    "copyFailed": "Copy failed — please select the text manually.",
+    "close": "Close",
+    "licenseNote": "For academic work, citation is a condition of the license (PolyForm Noncommercial 1.0.0).",
+    "licenseLink": "View license"
+  },
   "consent": {
     "title": "Privacy settings",
     "body": "We use technically necessary cookies to operate the platform. In addition, we would like to analyse usage with Matomo – anonymised and self-hosted – to improve the platform. This analysis only takes place with your consent.",
@@ -715,7 +726,7 @@
       "title": "LLARS",
       "subtitle": "LLM Assisted Research System",
       "version": "v3.0",
-      "openSource": "Open Source",
+      "openSource": "Source-available",
       "organization": "TH Nuremberg"
     },
     "overview": {
@@ -2797,10 +2808,6 @@
       "oncoco": {
         "title": "OnCoCo Analysis",
         "description": "Classify counseling sessions at sentence level (68 categories)"
-      },
-      "dbAgent": {
-        "title": "DB Price Agent",
-        "description": "Monitor Deutsche Bahn prices and find cheap connections"
       },
       "adminDashboard": {
         "title": "Admin Dashboard",
@@ -7248,148 +7255,19 @@
       }
     }
   },
-  "dbAgent": {
-    "title": "DB Price Agent",
-    "subtitle": "Dortmund Hbf ↔ Nürnberg Hbf · BahnCard 25 · 2nd Class",
-    "loading": "Loading data...",
-    "status": {
-      "active": "Agent active",
-      "inactive": "Agent inactive"
-    },
-    "actions": {
-      "startAgent": "Start Agent",
-      "stopAgent": "Stop Agent",
-      "scanNow": "Scan Now",
-      "deleteData": "Delete Data"
-    },
-    "tabs": {
-      "search": "Search Trip",
-      "deals": "Top Deals",
-      "calendar": "Calendar",
-      "timing": "Timing",
-      "analysis": "Analysis"
-    },
-    "overview": {
-      "loading": "Loading current prices...",
-      "topDeals": "Current Top Deals",
-      "fromScans": "From Scans"
-    },
-    "search": {
-      "title": "Search Trip",
-      "stationFrom": "From",
-      "stationTo": "To",
-      "dateFrom": "Outbound on",
-      "dateTo": "Return on",
-      "outbound": "Outbound",
-      "returnTrip": "Return",
-      "flexibility": "Flexibility",
-      "go": "Search",
-      "newSearch": "New Search",
-      "results": "{count} connections found",
-      "bookOnBahn": "Book on bahn.de",
-      "selectOutbound": "Select outbound",
-      "selectReturn": "Select return",
-      "totalPrice": "Total price",
-      "directOnly": "Direct connections only",
-      "directConnections": "direct connections",
-      "noDirectConnections": "No direct connections available"
-    },
-    "suggestions": {
-      "title": "Suggestions",
-      "found": "found"
-    },
-    "followup": {
-      "title": "Travel Advisor",
-      "placeholder": "e.g. Suggestion #3 looks good, but I can only travel a day later..."
-    },
-    "history": {
-      "title": "Recent Searches"
-    },
-    "deals": {
-      "title": "Cheapest Connections"
-    },
-    "calendar": {
-      "title": "Price Calendar",
-      "viewYear": "Year",
-      "viewMonth": "Month",
-      "viewDay": "Day",
-      "roundTrip": "Round Trip",
-      "tripSuggestions": "Trip Recommendations",
-      "days": "days",
-      "cheapestShort": "from",
-      "connections": "connections",
-      "noDataForDay": "No data for this day. Start a scan or search a trip.",
-      "legend": {
-        "cheap": "Cheap (< 30€)",
-        "medium": "Medium (30-60€)",
-        "expensive": "Expensive (60-100€)",
-        "veryExpensive": "Very expensive (> 100€)",
-        "stddev": "±σ = Standard deviation",
-        "highVolatility": "High price volatility",
-        "tripStrip": "Trip suggestion (round trip)"
-      }
-    },
-    "stats": {
-      "title": "Price Statistics",
-      "outbound": "Outbound (DO → N)",
-      "return": "Return (N → DO)",
-      "totalEntries": "Total entries",
-      "noData": "No price data yet. Start a scan."
-    },
-    "weekday": {
-      "title": "Weekday Analysis"
-    },
-    "timing": {
-      "title": "When to book?",
-      "departureTime": "Departure Time",
-      "departureTimeHint": "Average prices by departure time of day",
-      "leadTime": "Booking Lead Time",
-      "leadTimeHint": "Average prices by how far in advance you book",
-      "transfers": "Direct vs. Transfers",
-      "transfersHint": "Price comparison by number of transfers",
-      "priceTrend": "Price Trend",
-      "priceTrendHint": "How the cheapest price changes as travel date approaches",
-      "avgPrice": "Avg Price",
-      "minPrice": "Min",
-      "medianPrice": "Median",
-      "connections": "Connections",
-      "avgCheapest": "Avg Cheapest",
-      "datesWithData": "Travel dates",
-      "cheapest": "Cheapest",
-      "noData": "No data yet. Start a scan to populate the timing analysis.",
-      "tip": "Tip",
-      "tipLeadTime": "Cheapest at {bucket} lead time (avg {price}€)",
-      "tipDeparture": "Cheapest departure time: {slot} (avg {price}€)",
-      "tipTransfers": "{label} saves on average {percent}% vs direct connections"
-    },
-    "analysis": {
-      "title": "AI Analysis",
-      "run": "Run Analysis",
-      "hint": "Click 'Run Analysis' to get an AI-powered price analysis."
-    },
-    "table": {
-      "date": "Date",
-      "direction": "Direction",
-      "departure": "Departure",
-      "arrival": "Arrival",
-      "price": "Price",
-      "transfers": "Transfers",
-      "trains": "Trains"
-    }
-  },
   "landing": {
     "skipLink": "Skip to content",
     "nav": {
       "features": "Features",
       "demo": "Live Demo",
       "evalTypes": "Evaluation Types",
-      "openSource": "Open Source"
+      "openSource": "Source-available"
     },
     "hero": {
       "badge": "Presented at IJCAI 2026",
-      "openSource": "100% Open Source · MIT",
+      "openSource": "Source-available · free for research",
       "headline": "Collaborative Prompt Engineering, Batch Generation & Hybrid Evaluation",
-      "subtitle": "The open-source platform for evaluation studies on LLM outputs — human judgments and LLM assessors in one workflow, freely usable by any research team.",
+      "subtitle": "The source-available platform for evaluation studies on LLM outputs — human judgments and LLM assessors in one workflow, free to use for any research team.",
       "cta": "Get Started",
       "demo": "Watch Demo",
       "github": "Source code on GitHub",
@@ -7544,7 +7422,7 @@
       }
     },
     "tech": {
-      "title": "Open Source & Production-Ready",
+      "title": "Source-Available & Production-Ready",
       "counters": {
         "components": "Custom Components",
         "evalTypes": "Evaluation Types",
@@ -7554,10 +7432,10 @@
     },
     "research": {
       "title": "By researchers, for researchers",
-      "text1": "LLARS was born in research — for evaluation studies where human judgments and LLM assessors come together. The platform is open source under the MIT license, and it stays that way.",
-      "text2": "Any research group can freely use LLARS, self-host it, and adapt it to their own study — no license fees, no vendor lock-in, full control over your own data.",
+      "text1": "LLARS was born in research — for evaluation studies where human judgments and LLM assessors come together. The source code is available to read and free for research — and it stays that way.",
+      "text2": "Any research group can freely use LLARS, self-host it, and adapt it to their own study — no license fees for research, no vendor lock-in, full control over your own data.",
       "points": {
-        "license": "MIT license — permanently free for research and teaching",
+        "license": "PolyForm Noncommercial 1.0.0 — permanently free for research and teaching, commercial use on request",
         "selfHost": "Self-hosting via Docker Compose — your data stays on your infrastructure",
         "reproducible": "Reproducible studies: exports, versioning, and documented metrics such as Krippendorff's Alpha"
       },
@@ -7571,7 +7449,9 @@
     },
     "footer": {
       "demo": "Demo Video",
-      "docs": "Documentation"
+      "docs": "Documentation",
+      "license": "Free for research (PolyForm Noncommercial) — commercial use on request.",
+      "licenseLink": "License"
     }
   },
   "autoLogin": {
@@ -7601,8 +7481,8 @@
         "text": "You are responsible for the content you enter. LLARS is a research platform: the data you enter and the data collected during evaluations is processed for scientific research purposes (data donation for research) and – where possible – pseudonymised or anonymised. Details are governed by the privacy policy and – for study participation – the respective consent declaration. You grant the project the simple right of use to the entered content required for operation, analysis and research."
       },
       "openSource": {
-        "title": "5. Open source",
-        "text": "The LLARS software is open source and available under the MIT license. These Terms of Use additionally apply to the use of the service operated by us. Independently of this, the source code may be used in accordance with the license terms."
+        "title": "5. Source-available & license",
+        "text": "The LLARS source code is available to read and licensed under the PolyForm Noncommercial License 1.0.0: free for research and other noncommercial purposes, with a citation requirement for academic work; commercial use requires a separate license. These Terms of Use additionally apply to the use of the service operated by us. Independently of this, the source code may be used in accordance with the license terms."
       },
       "availability": {
         "title": "6. Availability and changes",

@@ -26,24 +26,43 @@
         <router-link to="/Datenschutz" class="footer-link">{{ $t('footer.privacy') }}</router-link>
         <router-link to="/Nutzungsbedingungen" class="footer-link">{{ $t('footer.terms') }}</router-link>
         <router-link to="/Kontakt" class="footer-link">{{ $t('footer.contact') }}</router-link>
+        <!-- Citation is a license condition for academic use -> always reachable -->
+        <button type="button" class="footer-link footer-link-button" @click="citationOpen = true">
+          {{ $t('citation.link') }}
+        </button>
       </div>
 
       <div class="footer-copy">
-        &copy; {{ new Date().getFullYear() }} LLARS &mdash; MIT License
+        <div>&copy; {{ new Date().getFullYear() }} LLARS</div>
+        <div class="footer-license">
+          {{ $t('landing.footer.license') }}
+          <a
+            href="https://github.com/th-nuernberg/llars/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="footer-license-link"
+          >{{ $t('landing.footer.licenseLink') }}</a>
+        </div>
       </div>
     </div>
+
+    <LCitationDialog v-model="citationOpen" />
   </footer>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useTheme } from 'vuetify'
 import { useI18n } from 'vue-i18n'
+import LCitationDialog from '@/components/common/LCitationDialog.vue'
 import { docsUrlForLocale } from '@/utils/docsUrl'
 
 const theme = useTheme()
 const isDarkMode = computed(() => theme.global.current.value.dark)
 const { locale } = useI18n()
+
+// "Cite LLARS" dialog — shared with AppFooter (see LCitationDialog docstring).
+const citationOpen = ref(false)
 
 // Doku in der aktuellen UI-Sprache (DE -> /mkdocs/, EN -> /mkdocs/en/).
 const mkdocsUrl = computed(() => docsUrlForLocale(locale.value))
@@ -103,9 +122,29 @@ const mkdocsUrl = computed(() => docsUrlForLocale(locale.value))
   gap: 4px;
 }
 
+/* Reset so the citation <button> renders identically to its <a> siblings */
+.footer-link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .footer-copy {
   font-size: 0.75rem;
   opacity: 0.65;
+  text-align: right;
+  line-height: 1.6;
+}
+
+.footer-license-link {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.footer-license-link:hover {
+  color: #fff;
 }
 
 @media (max-width: 600px) {
@@ -116,6 +155,10 @@ const mkdocsUrl = computed(() => docsUrlForLocale(locale.value))
 
   .footer-links {
     justify-content: center;
+  }
+
+  .footer-copy {
+    text-align: center;
   }
 
   .landing-footer {

@@ -76,6 +76,47 @@ _FUNCTION_TYPE_NAME = {
 
 
 # ---------------------------------------------------------------------------
+# Citation block (JSON envelopes only)
+# ---------------------------------------------------------------------------
+#
+# LLARS is licensed under the PolyForm Noncommercial License 1.0.0 with an
+# additional citation requirement: academic work that uses LLARS — or data
+# produced with it — must cite the LLARS paper. Shipping the reference inside
+# every JSON export means a researcher who only ever sees the exported file
+# still has the citation at hand.
+#
+# Deliberately NOT added to CSV/JSONL exports: a comment/preamble line would
+# break strict CSV parsers (pandas.read_csv, R read.csv) and JSONL consumers
+# that expect one homogeneous record per line.
+#
+# Single source of truth — also consumed by the v1 API route
+# (app/routes/api_v1/scenario_results_routes.py) and the GUI export route
+# (app/routes/scenarios/scenario_manager_api.py). Keep in sync with the root
+# CITATION.cff / README.md when the paper reference is updated.
+CITATION_BLOCK = {
+    "message": (
+        "If you use data produced with LLARS in academic work, "
+        "please cite the LLARS paper."
+    ),
+    "paper": (
+        "Steigerwald et al. (2026). LLARS: Enabling Domain Expert & Developer "
+        "Collaboration for LLM Prompting, Generation and Evaluation. arXiv:2605.10593"
+    ),
+    "bibtex_url": "https://github.com/th-nuernberg/llars/blob/main/CITATION.cff",
+}
+
+
+def citation_block() -> Dict[str, str]:
+    """Return a fresh copy of :data:`CITATION_BLOCK`.
+
+    Callers embed the result in a JSON response envelope; handing out a copy
+    stops an accidental downstream mutation from poisoning the module-level
+    constant for every subsequent export in the same worker process.
+    """
+    return dict(CITATION_BLOCK)
+
+
+# ---------------------------------------------------------------------------
 # Stable column ordering (CSV header / row keys)
 # ---------------------------------------------------------------------------
 
@@ -311,6 +352,7 @@ def collect_results(
             "row_count": int,
             "rows": [...],
             "exported_at": str (iso),
+            "citation": {"message": ..., "paper": ..., "bibtex_url": ...},
         }``
     """
     func_type = _FUNCTION_TYPE_NAME.get(scenario.function_type_id, "unknown")
@@ -389,6 +431,9 @@ def collect_results(
         "row_count": len(rows),
         "rows": rows,
         "exported_at": datetime.utcnow().isoformat(),
+        # Citation requirement of the PolyForm Noncommercial license — see
+        # CITATION_BLOCK above. Envelope only; never written to CSV/JSONL.
+        "citation": citation_block(),
     }
 
     # Per-voter timing aggregates (n / mean / median / min / max / std / total per

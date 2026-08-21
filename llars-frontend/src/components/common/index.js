@@ -42,6 +42,7 @@ export { default as LCardSkeleton } from './LCardSkeleton.vue'
 export { default as LlarsBrand } from './LlarsBrand.vue'
 export { default as LUserOrigin } from './LUserOrigin.vue'
 export { default as LOriginLegend } from './LOriginLegend.vue'
+export { default as LCitationDialog } from './LCitationDialog.vue'
 
 /**
  * Plugin for global registration

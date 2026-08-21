@@ -31,14 +31,14 @@
   <!-- ============================================================
        SEO / Social — statische Basis (Standardsprache Deutsch). Das ist,
        was Crawler VOR dem JS-Rendering sehen; einzelne Routen aktualisieren
-       Titel/Description zur Laufzeit (src/composables/useDocumentSeo.js).
+       Titel/Description zur Laufzeit (src/router.js, DEFAULT_TITLE + Route-Meta).
        Bei Textänderungen hier UND dort nachziehen.
        Acronym in plain caps: der Small-Caps-Schriftzug ist HTML/CSS-only,
        ein Tab-Titel kann kein Small-Caps — daher "LLARS".
        ============================================================ -->
-  <title>LLARS – Open-Source-Plattform für LLM-Evaluation & Labeling</title>
-  <meta name="description" content="LLARS ist eine kostenlose Open-Source-Plattform zur kollaborativen Evaluation und zum Labeling von LLM-Ausgaben: menschliche Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität (Krippendorff's Alpha). Für Forschungsteams." />
-  <meta name="keywords" content="LLM-Evaluation, LLM evaluation software, Labeling-Software, label software, Annotation, Inter-Rater-Reliabilität, Krippendorff's Alpha, LLM-as-a-judge, Prompt Engineering, RAG, Open Source, Forschungsplattform, LLARS" />
+  <title>LLARS – Quelloffene Plattform für LLM-Evaluation & Labeling</title>
+  <meta name="description" content="LLARS ist eine quelloffene, für Forschung kostenlose Plattform zur kollaborativen Evaluation und zum Labeling von LLM-Ausgaben: menschliche Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität (Krippendorff's Alpha). Für Forschungsteams." />
+  <meta name="keywords" content="LLM-Evaluation, LLM evaluation software, Labeling-Software, label software, Annotation, Inter-Rater-Reliabilität, Krippendorff's Alpha, LLM-as-a-judge, Prompt Engineering, RAG, quelloffen, source-available, Forschungsplattform, LLARS" />
   <meta name="author" content="Institut für E-Beratung, Technische Hochschule Nürnberg" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <link rel="canonical" href="https://llars.e-beratungsinstitut.de/" />
@@ -46,8 +46,8 @@
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="LLARS" />
-  <meta property="og:title" content="LLARS – Open-Source-Plattform für LLM-Evaluation & Labeling" />
-  <meta property="og:description" content="Kostenlose Open-Source-Plattform zur Evaluation und zum Labeling von LLM-Ausgaben — menschliche Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität. Für Forschende." />
+  <meta property="og:title" content="LLARS – Quelloffene Plattform für LLM-Evaluation & Labeling" />
+  <meta property="og:description" content="Quelloffene, für Forschung kostenlose Plattform zur Evaluation und zum Labeling von LLM-Ausgaben — menschliche Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität. Für Forschende." />
   <meta property="og:url" content="https://llars.e-beratungsinstitut.de/" />
   <meta property="og:image" content="https://llars.e-beratungsinstitut.de/android-chrome-512x512.png" />
   <meta property="og:locale" content="de_DE" />
@@ -55,8 +55,8 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="LLARS – LLM-Evaluation & Labeling (Open Source)" />
-  <meta name="twitter:description" content="Kostenlose Open-Source-Plattform zur Evaluation und zum Labeling von LLM-Ausgaben. Für Forschungsteams." />
+  <meta name="twitter:title" content="LLARS – LLM-Evaluation & Labeling (quelloffen)" />
+  <meta name="twitter:description" content="Quelloffene Plattform zur Evaluation und zum Labeling von LLM-Ausgaben — kostenlos für Forschung." />
   <meta name="twitter:image" content="https://llars.e-beratungsinstitut.de/android-chrome-512x512.png" />
 
   <!-- Structured data: Software + Organisation (Rich Results) -->
@@ -66,12 +66,12 @@
     "@type": "SoftwareApplication",
     "name": "LLARS",
     "alternateName": "LLM Assisted Research System",
-    "description": "Open-Source-Plattform zur kollaborativen Evaluation und zum Labeling von LLM-Ausgaben mit menschlichen Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität.",
+    "description": "Quelloffene, für Forschung kostenlose Plattform zur kollaborativen Evaluation und zum Labeling von LLM-Ausgaben mit menschlichen Bewertungen, LLM-Assessoren und Inter-Rater-Reliabilität.",
     "applicationCategory": "ResearchApplication",
     "operatingSystem": "Web",
     "url": "https://llars.e-beratungsinstitut.de/",
     "isAccessibleForFree": true,
-    "license": "https://opensource.org/licenses/MIT",
+    "license": "https://polyformproject.org/licenses/noncommercial/1.0.0",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
     "author": {
       "@type": "Organization",
@@ -93,10 +93,11 @@
   -->
   <noscript>
     <main style="max-width:820px;margin:0 auto;padding:32px 24px;font-family:system-ui,Arial,sans-serif;line-height:1.6;color:#2c3e2d;">
-      <h1>LLARS – Open-Source-Plattform für LLM-Evaluation &amp; Labeling</h1>
+      <h1>LLARS – Quelloffene Plattform für LLM-Evaluation &amp; Labeling</h1>
       <p>
-        LLARS (LLM Assisted Research System) ist eine kostenlose, quelloffene
-        Plattform (MIT-Lizenz) zur kollaborativen Evaluation und zum Labeling
+        LLARS (LLM Assisted Research System) ist eine quelloffene, für
+        Forschung kostenlose Plattform (PolyForm Noncommercial 1.0.0) zur
+        kollaborativen Evaluation und zum Labeling
         von LLM-Ausgaben. Sie verbindet menschliche Bewertungen mit
         LLM-Assessoren und misst die Inter-Rater-Reliabilität (u. a. ordinales
         Krippendorff's Alpha). Entwickelt für Forschungsteams.

@@ -5,7 +5,7 @@
 <h1 align="center">LLARS - LLM Assisted Research System</h1>
 
 <p align="center">
-  <strong>An open-source platform for collaborative prompt engineering, batch generation and hybrid evaluation of LLM outputs</strong>
+  <strong>A source-available platform — free for research — for collaborative prompt engineering, batch generation and hybrid evaluation of LLM outputs</strong>
 </p>
 
 <!-- PAPER LINK: arXiv preprint. Replace with the official IJCAI-ECAI 2026
@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/Version-3.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/Flask-3.0-green" alt="Flask">
   <img src="https://img.shields.io/badge/Vue-3.4-brightgreen" alt="Vue">
-  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
+  <img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue" alt="License">
   <a href="https://arxiv.org/abs/2605.10593"><img src="https://img.shields.io/badge/arXiv-2605.10593-b31b1b.svg" alt="arXiv"></a>
 </p>
 
@@ -221,7 +221,14 @@ A demo paper is under review for **IJCAI-ECAI 2026 (Demo Track)**; this citation
 
 ## License
 
-This project is licensed under the MIT License.
+LLARS is **free for research and any other noncommercial use** under the
+[PolyForm Noncommercial License 1.0.0](LICENSE), with one additional
+condition: **academic work that uses LLARS must cite the LLARS paper**
+(see [Citation](#citation) / [`CITATION.cff`](CITATION.cff)).
+
+**Commercial use requires a separate commercial license.** For commercial
+licensing inquiries, contact
+[steigerwaldph@ki-zentrum.bayern](mailto:steigerwaldph@ki-zentrum.bayern).
 
 ---
 

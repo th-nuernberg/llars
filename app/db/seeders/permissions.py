@@ -326,13 +326,6 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Durchführen von OnCoCo Analysen'
         },
-        # Feature: DB Price Agent
-        {
-            'permission_key': 'feature:db_agent:view',
-            'display_name': 'DB Preisagent ansehen',
-            'category': 'feature',
-            'description': 'Erlaubt den Zugriff auf den Deutsche Bahn Preisagenten'
-        },
         # Feature: KAIMO
         {
             'permission_key': 'feature:kaimo:view',
@@ -559,10 +552,6 @@ def initialize_permissions(db):
                 'feature:rag:share',
                 # Referral Links
                 'feature:referral:create_links',
-                # DB Price Agent — admin-only by product decision; the
-                # `feature:db_agent:view` permission is granted via the
-                # admin role (which inherits all non-communication
-                # permissions) and explicitly NOT given to researchers.
             ]
         },
         {

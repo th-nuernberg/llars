@@ -76,12 +76,6 @@
       "category": "ai"
     },
     {
-      "name": "DB Preisagent",
-      "route": "/db-agent",
-      "allowed_roles": ["admin"],
-      "category": "ai"
-    },
-    {
       "name": "Admin Dashboard",
       "route": "/admin?tab=overview",
       "allowed_roles": ["admin"],

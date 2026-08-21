@@ -1,8 +1,8 @@
 # 📜 LLARS Changelog
 
-![Version](https://img.shields.io/badge/version-1.21.0-b0ca97?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.22.0-b0ca97?style=flat-square)
 ![Released](https://img.shields.io/badge/released-2026--08--21-88c4c8?style=flat-square)
-![Releases](https://img.shields.io/badge/releases-28-D1BC8A?style=flat-square)
+![Releases](https://img.shields.io/badge/releases-29-D1BC8A?style=flat-square)
 ![Format](https://img.shields.io/badge/format-Keep%20a%20Changelog-98d4bb?style=flat-square)
 
 All notable changes to **LLARS** (LLM Assisted Research System) — **newest first**.
@@ -14,13 +14,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 > `git describe --tags --match "v*" --first-parent`. A tag `vMAJOR.MINOR.PATCH`
 > yields `MAJOR.MINOR.(PATCH + N)`, where `N` is the number of commits since the
 > tag; at the tagged commit itself `N = 0` and the version equals the tag exactly.
-> Releases are tagged on `main` after every `dev`→`main` merge (currently **v1.0.0 … v1.21.0**).
+> Releases are tagged on `main` after every `dev`→`main` merge (currently **v1.0.0 … v1.22.0**).
 
 ---
 
 ## [Unreleased]
 
 _(empty — next release)_
+
+## [1.22.0] - 2026-08-21
+
+### ✨ Added
+- **New license: PolyForm Noncommercial 1.0.0 with a citation clause** — LLARS moves from "MIT/open source" to the **[PolyForm Noncommercial License 1.0.0](https://github.com/th-nuernberg/llars/blob/main/LICENSE)** with additional terms: **free for research, teaching and any other noncommercial use** (universities, government bodies and charitable organizations explicitly included, regardless of funding source), while **commercial use requires a separate license** (contact: steigerwaldph@ki-zentrum.bayern). New is the condition that **academic work using LLARS — or data produced with it — must cite the LLARS paper**: the citation is a condition of the license grant, not a request. A new `LICENSE` file sits in the repository root (verbatim PolyForm text plus `Required Notice:` lines and Additional Terms); `README.md` and `CITATION.cff` were updated accordingly. Versions published **before** this switch shipped without a license file and remain governed by the terms under which they were obtained.
+- **In-app citation hint** — Both footers (app footer and landing-page footer) now carry a discreet **"Cite LLARS"** link that opens a small dialog: the ask, the full BibTeX entry in a monospace box, and a **copy** button (with a "Copied!" confirmation). One reusable component (`LCitationDialog.vue`) serves both places; the BibTeX block is deliberately a code literal rather than a locale string so translations cannot break the LaTeX escaping (`\&`). All surrounding text is bilingual (DE/EN). The landing footer additionally states the license model in one sentence and links to `LICENSE`.
+- **`citation` block in JSON exports** — Every JSON export (v1 API `GET /api/v1/scenarios/<id>/results` **and** the GUI export `GET /api/scenarios/<id>/export`) now carries a `citation` block in its envelope with `message`, `paper` (short reference including the arXiv ID) and `bibtex_url` (pointing at `CITATION.cff`). Anyone who only ever receives the export file still has the citation at hand. **Deliberately not in CSV/JSONL:** a comment or preamble line would break strict parsers (`pandas.read_csv`, R `read.csv`, line-by-line JSONL readers). The literal lives in exactly **one** place (`results_export_service.CITATION_BLOCK` / `citation_block()`) and is imported by both routes — guarding the same regression class that dropped `timing_metrics` from the v1 envelope in 1.21.0. (Tests EXPORT_CITE_001–006.)
+- **"Citing LLARS" docs page** (`guides/citing-llars.md`, DE + EN) — why and how to cite (BibTeX, plain text, `CITATION.cff` + `cffconvert`), where the citation surfaces in the product, plus a license section breaking down research / non-profit / academic / commercial use. Notes that the reference currently points at the arXiv preprint and will be switched to the IJCAI-ECAI 2026 proceedings version once it appears.
+
+### 🔁 Changed
+- **App copy: "open source" → "source-available / free for research"** — Everywhere LLARS described its **own** license or nature, the wording now matches the new model: landing hero badge and subtitle, tech and research sections (including "MIT license — permanently free" → "PolyForm Noncommercial 1.0.0 — permanently free for research and teaching, commercial use on request"), landing navigation, docs hero tag, and **§ 5 of the Terms of Use** (now "Source-available & license", including the citation requirement and the pointer to a separate commercial license). Also updated: the static SEO metadata and the JSON-LD `SoftwareApplication` in `index.html`, whose `license` pointed at `opensource.org/licenses/MIT` and was simply wrong. **Left untouched:** mentions of open-source *third-party* software (Matomo, Authentik in the privacy policy), third-party model licenses (OnCoCo, CC BY-SA 4.0), and the paper reference "TextGrad … (MIT, 2024)", where "MIT" means the university. The landing anchor `#open-source` is kept so existing deep links keep working.
+
+### 🐛 Fixed
+- **`CITATION.cff` declared two licenses** — The file contained a duplicate `license:` key; on YAML parse the second (`MIT`) overrode the first (`PolyForm-Noncommercial-1.0.0`), so GitHub and `cffconvert` would still have reported MIT. Duplicate removed.
+
+### 🗑️ Removed
+- **DB price agent removed entirely** — The admin-only alpha tile "DB Preisagent" and its dashboard (`/db-agent`) are gone without replacement. The tool had nothing to do with what LLARS is for: it scraped the bahn.de fare search for **one single hardcoded route** (Dortmund Hbf ↔ Nürnberg Hbf, BahnCard 25, second class), collected journey prices in its own background scheduler and had an LLM derive travel recommendations from them. The scanner had been running into nothing for months — the public bahn.de endpoint answered `403 Forbidden`, which is why the scheduler thread was already switched off via `DB_AGENT_SCHEDULER_ENABLED=false`. Removed: the tile with its route and the `feature:db_agent:view` permission, all `/api/db-agent/*` endpoints (status, scan, scheduler control, statistics, deals, calendar, price history, volatility, weekday/timing analysis, LLM analysis, trip search), the scanner/analyzer/scheduler service including its startup thread in `main.py`, the three tables `db_price_scans`, `db_price_entries` and `db_trip_searches`, the four icons used only here (`train`, `train-outbound`, `train-return`, `deal`) along with their hover animations, plus 97 i18n keys in DE and EN. Existing databases are cleaned up by `migrations/20260821_remove_db_agent.sql` (tables child-before-parent, then the permission including its role/user assignments).
 
 ## [1.21.0] - 2026-08-21
 

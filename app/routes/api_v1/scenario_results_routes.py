@@ -34,6 +34,7 @@ from decorators.error_handler import (
 )
 from services.evaluation.results_export_service import (
     ROW_COLUMNS,
+    citation_block,
     collect_metrics,
     collect_results,
 )
@@ -84,7 +85,8 @@ def export_scenario_results_v1(scenario_id: int):
               "krippendorff_alpha": {value, interpretation, aggregation_method},
               ...
           },
-          "exported_at": "ISO 8601"
+          "exported_at": "ISO 8601",
+          "citation": { message, paper, bibtex_url }
         }
 
     Response (CSV):
@@ -143,6 +145,10 @@ def export_scenario_results_v1(scenario_id: int):
             # when at least one case has a (real or derived) time.
             "timing_metrics": payload.get("timing_metrics"),
             "exported_at": payload["exported_at"],
+            # Citation requirement of the PolyForm Noncommercial license.
+            # JSON envelope only — the csv/jsonl branches below stay strictly
+            # machine-parseable (see CITATION_BLOCK in results_export_service).
+            "citation": citation_block(),
         })
 
     if fmt == "jsonl":

@@ -242,7 +242,6 @@ test.describe('Tile Navigation (admin)', () => {
   test('Anonymisierungs-Pipeline', async ({ page }) => runAdminNavigation(page, 'Anonymisierungs-Pipeline'))
   test('KAIMO', async ({ page }) => runAdminNavigation(page, 'KAIMO'))
   test.skip('OnCoCo', async ({ page }) => runAdminNavigation(page, 'OnCoCo'))
-  test.skip('DB Preisagent', async ({ page }) => runAdminNavigation(page, 'DB Preisagent'))
   test('Admin Dashboard', async ({ page }) => runAdminNavigation(page, 'Admin Dashboard'))
   test('Landing Page Vorschau', async ({ page }) => runAdminNavigation(page, 'Landing Page Vorschau'))
   test.skip('Chatbot Admin', async ({ page }) => runAdminNavigation(page, 'Chatbot Admin'))

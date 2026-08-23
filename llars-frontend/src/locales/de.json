@@ -7456,8 +7456,10 @@
   },
   "autoLogin": {
     "signingIn": "Anmeldung läuft …",
-    "failedTitle": "Anmeldung fehlgeschlagen",
-    "failedBody": "Dieser Anmeldelink ist ungültig oder abgelaufen. Möglicherweise wurde er bereits verwendet. Bitte melden Sie sich stattdessen direkt an.",
+    "failedTitle": "Dieser Anmeldelink ist abgelaufen",
+    "failedBody": "Anmeldelinks aus unseren E-Mails sind aus Sicherheitsgründen nur begrenzt gültig — 7 Tage ab dem Versand. Danach funktioniert der Link nicht mehr.",
+    "failedNextStep": "Kein Problem: Sie können sich jederzeit selbst ein Passwort setzen. Klicken Sie auf „Passwort vergessen“, geben Sie dort Ihre E-Mail-Adresse ein und Sie erhalten einen Link, mit dem Sie ein eigenes Passwort festlegen.",
+    "forgotPassword": "Passwort vergessen",
     "toLogin": "Zur Anmeldung"
   },
   "termsPage": {

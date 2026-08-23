@@ -1,12 +1,18 @@
 <template>
   <!--
-    Passwordless magic auto-login landing. The IJCAI welcome mail links to
-    /auto-login/<token>; on mount we POST the token to
-    /auth/magic-login. On success the backend returns an Authentik
-    token bundle which we install exactly like Register.vue's auto-login
-    block (auth.applyTokenBundle), then route to the server-provided
-    redirect_path. On failure (expired / already-used token) we show a
-    friendly message with a link to /login.
+    Passwordless magic auto-login landing. The QR-join welcome mail and the
+    returning-user sign-in mail link to /auto-login/<token>; on mount we POST
+    the token to /auth/magic-login. On success the backend returns an
+    Authentik token bundle which we install exactly like Register.vue's
+    auto-login block (auth.applyTokenBundle), then route to the server-provided
+    redirect_path.
+
+    Sign-in links are MULTI-USE within their 7-day TTL (see the magic_login
+    docstring in app/routes/auth/password_reset_routes.py), so the only realistic
+    failure a participant hits is an EXPIRED link. The failure state is therefore
+    written as a friendly expiry explanation whose primary next step is
+    self-service: set your own password via "Passwort vergessen" (/forgot-password),
+    with "back to login" kept as the secondary action.
   -->
   <v-container class="auto-login" max-width="640">
     <v-card class="auto-login-card">
@@ -18,7 +24,7 @@
         <h1 class="auto-login-h1">{{ $t('autoLogin.signingIn') }}</h1>
       </template>
 
-      <!-- Failure: friendly message + link back to /login -->
+      <!-- Expired / invalid link: explain + point at the self-service reset -->
       <template v-else>
         <div class="auto-login-icon">
           <v-icon size="44" color="warning">mdi-link-variant-off</v-icon>
@@ -26,8 +32,21 @@
         <h1 class="auto-login-h1">{{ $t('autoLogin.failedTitle') }}</h1>
         <p class="auto-login-body">{{ $t('autoLogin.failedBody') }}</p>
 
+        <div class="auto-login-next">
+          <v-icon size="20" color="primary" class="auto-login-next-icon">mdi-lock-reset</v-icon>
+          <p class="auto-login-next-text">{{ $t('autoLogin.failedNextStep') }}</p>
+        </div>
+
         <div class="auto-login-actions">
-          <LBtn variant="primary" prepend-icon="mdi-login" @click="goLogin">
+          <LBtn
+            variant="primary"
+            prepend-icon="mdi-lock-reset"
+            data-testid="auto-login-forgot-password-btn"
+            @click="goForgotPassword"
+          >
+            {{ $t('autoLogin.forgotPassword') }}
+          </LBtn>
+          <LBtn variant="cancel" prepend-icon="mdi-login" @click="goLogin">
             {{ $t('autoLogin.toLogin') }}
           </LBtn>
         </div>
@@ -58,6 +77,12 @@ const working = ref(true)
 
 function goLogin() {
   router.push('/login')
+}
+
+// Self-service escape hatch for an expired link: same target as the
+// "Passwort vergessen?" link on the login page (router.js → ForgotPassword).
+function goForgotPassword() {
+  router.push('/forgot-password')
 }
 
 onMounted(async () => {
@@ -125,7 +150,33 @@ onMounted(async () => {
   line-height: 1.55;
   color: rgb(var(--v-theme-on-surface));
   opacity: 0.85;
+  margin: 0 0 18px;
+}
+
+/* Next-step callout: the self-service password path is the actual way out of
+   an expired link, so it gets its own tinted block instead of more body copy. */
+.auto-login-next {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 14px 16px;
   margin: 0 0 24px;
+  border-radius: 12px 3px 12px 3px;
+  background: rgba(var(--v-theme-primary), 0.12);
+}
+
+.auto-login-next-icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.auto-login-next-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.9;
 }
 
 .auto-login-actions {

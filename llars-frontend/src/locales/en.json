@@ -7456,8 +7456,10 @@
   },
   "autoLogin": {
     "signingIn": "Signing you in …",
-    "failedTitle": "Sign-in failed",
-    "failedBody": "This sign-in link is invalid or has expired. It may already have been used. Please sign in directly instead.",
+    "failedTitle": "This sign-in link has expired",
+    "failedBody": "For security, the sign-in links in our emails are only valid for a limited time — 7 days from the day they were sent. After that the link stops working.",
+    "failedNextStep": "No problem: you can set your own password at any time. Choose “Forgot password”, enter your email address, and you will receive a link that lets you set a password of your own.",
+    "forgotPassword": "Forgot password",
     "toLogin": "Go to login"
   },
   "termsPage": {

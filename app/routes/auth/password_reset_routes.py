@@ -1,5 +1,11 @@
 """
-Self-service password-reset routes.
+Self-service password-reset routes + the passwordless magic-login exchange.
+
+All three endpoints below read the SAME ``password_reset_tokens`` table, so
+each one gates on ``PasswordResetToken.purpose`` (``'reset'`` vs ``'magic'``,
+NULL = legacy = ``'reset'``). Without that gate a re-usable sign-in link could
+be posted to /password-reset/reset to CHANGE the account's password — a
+privilege the sign-in link is explicitly not meant to carry.
 
 Backs the "Passwort vergessen?" link on the login page. Two endpoints:
 
@@ -14,6 +20,10 @@ Backs the "Passwort vergessen?" link on the login page. Two endpoints:
   The token is only marked used on a successful write, so a failed write
   leaves the old password working and allows a retry.
 
+- ``POST /auth/magic-login`` — exchanges a ``'magic'`` token for an Authentik
+  token bundle (passwordless sign-in). Deliberately MULTI-USE inside its TTL;
+  see the endpoint docstring.
+
 LLARS stores no usable ``password_hash`` for Authentik-backed users, so the
 recipient email is resolved from the Authentik user record, and the password
 is only ever written through to Authentik — never to ``User.password_hash``.
@@ -23,12 +33,15 @@ import logging
 from datetime import datetime, timedelta
 
 from flask import jsonify, request
+from sqlalchemy import or_
 
 from auth.decorators import public_endpoint
 from decorators.error_handler import handle_api_errors, ValidationError
 from routes.auth import auth_bp
 from db.database import db
-from db.models.password_reset import PasswordResetToken, hash_reset_token
+from db.models.password_reset import (
+    PasswordResetToken, hash_reset_token, PURPOSE_RESET, PURPOSE_MAGIC,
+)
 from services.system_settings_service import is_self_service_password_reset_enabled
 from services.authentik_admin_service import AuthentikAdminService
 from services import email_service
@@ -70,6 +83,17 @@ def _invalid_token():
 
 def _looks_like_email(value: str) -> bool:
     return '@' in value and '.' in value
+
+
+# Reusable purpose gate for the two RESET endpoints. Rows written before the
+# ``purpose`` column existed carry NULL; they predate the magic-login split and
+# are therefore treated as the stricter, single-use 'reset' kind. Magic tokens
+# (purpose='magic') never match this and can never be spent on a password
+# change. See db/models/password_reset.py (PURPOSE_* block).
+_IS_RESET_TOKEN = or_(
+    PasswordResetToken.purpose == PURPOSE_RESET,
+    PasswordResetToken.purpose.is_(None),
+)
 
 
 @auth_bp.route('/password-reset/request', methods=['POST'])
@@ -117,9 +141,14 @@ def request_password_reset():
     # limit is evaded via X-Forwarded-For rotation. If we issued a token for this
     # account within the cooldown window, send nothing more but still return the
     # neutral 200 so the response stays indistinguishable from the success path.
+    #
+    # Scoped to RESET tokens: a magic sign-in link minted seconds earlier (QR
+    # join → welcome mail) must not silently swallow the reset mail of a user
+    # who immediately clicks "Passwort vergessen".
     recent = (
         PasswordResetToken.query
         .filter(PasswordResetToken.username == username)
+        .filter(_IS_RESET_TOKEN)
         .filter(PasswordResetToken.created_at >= now - _RESEND_COOLDOWN)
         .first()
     )
@@ -127,16 +156,19 @@ def request_password_reset():
         db.session.commit()  # persist the expired-row cleanup above
         return _neutral_ok()
 
-    # Invalidate any still-valid older tokens for this account so only the newest
-    # reset link works (one outstanding link at a time — limits the blast radius
-    # if an earlier link leaked).
+    # Invalidate any still-valid older RESET tokens for this account so only the
+    # newest reset link works (one outstanding link at a time — limits the blast
+    # radius if an earlier link leaked). Scoped to purpose='reset' so requesting
+    # a password reset does not also kill the user's live magic sign-in link
+    # (email_service._make_magic_login_url scopes its mirror UPDATE to 'magic').
     PasswordResetToken.query.filter(
         PasswordResetToken.username == username,
+        _IS_RESET_TOKEN,
         PasswordResetToken.used_at.is_(None),
     ).update({PasswordResetToken.used_at: now}, synchronize_session=False)
 
     # Issue a fresh short-lived single-use token and email the reset link.
-    token = PasswordResetToken.create_for(username)
+    token = PasswordResetToken.create_for(username, purpose=PURPOSE_RESET)
     db.session.add(token)
     db.session.commit()
 
@@ -160,7 +192,14 @@ def request_password_reset():
 @public_endpoint
 @handle_api_errors(logger_name='password_reset')
 def perform_password_reset():
-    """Exchange a valid token + new password for an Authentik write-through."""
+    """Exchange a valid RESET token + new password for an Authentik write-through.
+
+    Accepts ``purpose='reset'`` tokens only (NULL/legacy counts as 'reset').
+    A magic sign-in token is rejected here even though it lives in the same
+    table: sign-in links are re-usable and long-lived by design, so letting one
+    change the account password would hand anyone who ever saw the mailed link
+    a permanent takeover. Single-use semantics are unchanged.
+    """
     # Feature kill-switch: when the admin toggle is off the flow is fully closed,
     # including any in-flight links. Return the uniform invalid-token response so
     # we never reveal whether the feature (or the token) exists.
@@ -173,7 +212,11 @@ def perform_password_reset():
 
     # M6: in der DB liegt nur der Hash — eingehenden Klartext-Token hashen.
     token_hash = hash_reset_token(token_value) if token_value else ''
-    token = PasswordResetToken.query.filter_by(token=token_hash).first() if token_value else None
+    token = (
+        PasswordResetToken.query
+        .filter(PasswordResetToken.token == token_hash, _IS_RESET_TOKEN)
+        .first()
+    ) if token_value else None
     if token is None or not token.is_valid():
         return _invalid_token()
 
@@ -191,6 +234,7 @@ def perform_password_reset():
         PasswordResetToken.query
         .filter(
             PasswordResetToken.token == token_hash,
+            _IS_RESET_TOKEN,  # defence in depth — the read above already gated
             PasswordResetToken.used_at.is_(None),
             PasswordResetToken.expires_at > now,
         )
@@ -229,47 +273,58 @@ def perform_password_reset():
 @public_endpoint
 @handle_api_errors(logger_name='magic_login')
 def magic_login():
-    """Exchange a one-time magic-login token for an auto-login token bundle.
+    """Exchange a magic-login token for an auto-login token bundle.
 
-    Powers the passwordless sign-in link in the IJCAI welcome mail: the link
-    carries a single-use PasswordResetToken; we reserve it atomically, set a
-    fresh random password on the account and mint an Authentik token so the
-    frontend logs the user straight in. The emailed link IS the ownership proof.
-    Single-use + time-limited (token TTL). Bounded to the demo/study accounts the
-    welcome mail is sent to.
+    Powers the passwordless sign-in link in the QR-join welcome mail and the
+    returning-user sign-in mail: the link carries a ``purpose='magic'``
+    PasswordResetToken; we set a fresh random password on the account and mint
+    an Authentik token so the frontend logs the user straight in. The emailed
+    link IS the ownership proof.
+
+    MULTI-USE BY DESIGN (product decision, replaces the earlier single-use
+    behaviour): a study participant scans the QR once, receives this mail and
+    must be able to click the SAME link again on later visits. The token is
+    therefore NOT consumed here — no ``used_at`` stamp — and keeps working
+    until it expires. What still bounds it:
+
+    - **TTL** — 168h / 7 days, set at mint time and never extended.
+    - **Hashed at rest** — the DB holds only the SHA-256 (M6), so a DB read
+      does not yield a working link.
+    - **Superseded on re-mint** — a newer magic link for the same account
+      retires this one (``email_service._make_magic_login_url``).
+    - **Purpose gate** — accepted here only with ``purpose='magic'``. Reset
+      tokens (and legacy rows with NULL purpose, which are all dead magic
+      links from the pre-M6 hash bug anyway) are rejected, and this token in
+      turn cannot be spent on /password-reset/reset to CHANGE a password.
+
+    Note the side effect of the passwordless design: every redemption rotates
+    the account password to a fresh random value. A user who has set their own
+    password should sign in normally rather than re-click the mailed link.
     """
     import secrets
     data = request.get_json(silent=True) or {}
     token_value = (data.get('token') or '').strip()
     # M6: DB hält nur den Hash — Klartext-Token hashen.
     token_hash = hash_reset_token(token_value) if token_value else ''
-    token = PasswordResetToken.query.filter_by(token=token_hash).first() if token_value else None
-    if token is None or not token.is_valid():
-        return _invalid_token()
-
-    now = datetime.utcnow()
-    # Atomic single-use reservation (same TOCTOU guard as the reset flow).
-    reserved = (
+    token = (
         PasswordResetToken.query
         .filter(
             PasswordResetToken.token == token_hash,
-            PasswordResetToken.used_at.is_(None),
-            PasswordResetToken.expires_at > now,
+            PasswordResetToken.purpose == PURPOSE_MAGIC,
         )
-        .update({PasswordResetToken.used_at: now}, synchronize_session=False)
-    )
-    db.session.commit()
-    if reserved != 1:
+        .first()
+    ) if token_value else None
+    # is_valid() = not superseded and not expired. No reservation UPDATE and no
+    # used_at stamp: consuming the token here is exactly what we do NOT want.
+    if token is None or not token.is_valid():
         return _invalid_token()
 
     username = token.username
     password = secrets.token_urlsafe(24)
     ok, err = AuthentikAdminService.set_password(username, password)
     if not ok:
-        # Re-open the link so the user can retry while it is still valid.
-        PasswordResetToken.query.filter(PasswordResetToken.token == token_hash)\
-            .update({PasswordResetToken.used_at: None}, synchronize_session=False)
-        db.session.commit()
+        # Nothing to roll back — the link was never consumed, so it stays
+        # usable for a retry on its own.
         logger.warning("Magic-login set_password failed for '%s': %s", username, err)
         return _invalid_token()
 

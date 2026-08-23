@@ -1,8 +1,8 @@
 # 📜 LLARS Changelog
 
-![Version](https://img.shields.io/badge/version-1.22.0-b0ca97?style=flat-square)
-![Released](https://img.shields.io/badge/released-2026--08--21-88c4c8?style=flat-square)
-![Releases](https://img.shields.io/badge/releases-29-D1BC8A?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.23.0-b0ca97?style=flat-square)
+![Released](https://img.shields.io/badge/released-2026--08--23-88c4c8?style=flat-square)
+![Releases](https://img.shields.io/badge/releases-30-D1BC8A?style=flat-square)
 ![Format](https://img.shields.io/badge/format-Keep%20a%20Changelog-98d4bb?style=flat-square)
 
 Alle nennenswerten Änderungen am **LLARS** (LLM Assisted Research System) — **neueste zuerst**.
@@ -14,13 +14,22 @@ Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/en/1
 > `git describe --tags --match "v*" --first-parent`. Aus einem Tag `vMAJOR.MINOR.PATCH`
 > ergibt sich `MAJOR.MINOR.(PATCH + N)`, wobei `N` die Anzahl Commits seit dem Tag ist;
 > am getaggten Commit selbst ist `N = 0` und die Version entspricht exakt dem Tag.
-> Releases werden nach jedem `dev`→`main`-Merge auf `main` getaggt (aktuell **v1.0.0 … v1.22.0**).
+> Releases werden nach jedem `dev`→`main`-Merge auf `main` getaggt (aktuell **v1.0.0 … v1.23.0**).
 
 ---
 
 ## [Unreleased]
 
 _(leer — naechstes Release)_
+
+## [1.23.0] - 2026-08-23
+
+### 🔁 Changed
+- **Anmeldelinks aus E-Mails sind jetzt mehrfach nutzbar** — Der passwortlose Anmeldelink in der Willkommens-Mail nach dem QR-Scan und in der Mail für zurückkehrende Teilnehmende (`/auto-login/<token>`) war bisher **einmalig**: nach dem ersten Klick war er tot, und wer die Mail später erneut öffnete, kam nicht mehr hinein. Der Link funktioniert jetzt **innerhalb seines Gültigkeitsfensters beliebig oft** — Teilnehmende scannen den QR-Code einmal, bekommen die Mail und melden sich damit bis zu **7 Tage** lang immer wieder an. Die Grenzen bleiben unverändert: strikte **TTL von 168 Stunden**, nur der SHA-256-Hash liegt in der Datenbank, und ein neu versendeter Anmeldelink **entwertet den vorherigen**. Die Mail-Texte (DE/EN) sagen das jetzt auch so („7 Tage gültig und in dieser Zeit beliebig oft nutzbar“) statt „nur einmal nutzbar“.
+- **Freundliche Seite bei abgelaufenem Anmeldelink** — Wer einen abgelaufenen Link öffnet, landet nicht mehr bei „Anmeldung fehlgeschlagen“, sondern bei **„Dieser Anmeldelink ist abgelaufen“** mit Erklärung (Anmeldelinks gelten aus Sicherheitsgründen 7 Tage) und einem klaren nächsten Schritt: Über **„Passwort vergessen“** (Button führt direkt auf `/forgot-password`) können sich Teilnehmende jederzeit selbst ein eigenes Passwort setzen — E-Mail-Adresse eingeben genügt. „Zur Anmeldung“ bleibt als zweite Aktion erhalten. Zweisprachig (DE/EN).
+
+### 🔒 Security
+- **`purpose`-Spalte trennt Reset- und Anmeldelinks** — Beide Link-Arten lagen bisher ununterscheidbar in derselben Tabelle `password_reset_tokens`. Dadurch liess sich ein **Anmelde-Token an `/auth/password-reset/reset` schicken und damit das Kontopasswort ändern** — eine Berechtigung, die ein Anmeldelink nie tragen sollte, erst recht nicht als jetzt mehrfach nutzbarer 7-Tage-Link. Die neue Spalte `purpose` (`'reset'` | `'magic'`) schliesst das in beide Richtungen: `/auth/password-reset/reset` akzeptiert ausschliesslich `'reset'` (NULL/Alt-Zeilen zählen als `'reset'`), `/auth/magic-login` ausschliesslich `'magic'`. Ausserdem entwerten sich die beiden Flows nicht mehr gegenseitig: ein frischer Anmeldelink löscht keinen offenen Passwort-Reset-Link mehr und umgekehrt (das galt auch für die 2-Minuten-Sperre gegen Mail-Flooding, die sonst die Reset-Mail direkt nach dem QR-Scan verschluckt hätte). Die Migration `migrate_add_password_reset_purpose.py` läuft **idempotent beim Serverstart** — kein manuelles SQL.
 
 ## [1.22.0] - 2026-08-21
 

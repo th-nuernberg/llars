@@ -689,7 +689,8 @@ def render_ijcai_welcome(*, username: str, auto_login_url: Optional[str] = None)
     and shared generation jobs from the link's ``provision_json``. If that
     provisioning changes, update this copy (text AND html) with it.
 
-    When ``auto_login_url`` is given (a one-time magic-login link), the CTA logs
+    When ``auto_login_url`` is given (a re-usable magic-login link, valid 7
+    days — see ``_make_magic_login_url``), the CTA logs
     the user straight in without a password; otherwise it links to the hub.
     Pure render — no send. Shares the branded shell + logo.
     """
@@ -780,28 +781,43 @@ def render_ijcai_welcome(*, username: str, auto_login_url: Optional[str] = None)
 
 
 def _make_magic_login_url(username: str, ttl_hours: int = 168) -> Optional[str]:
-    """Mint a one-time magic-login token for ``username`` and return the public
+    """Mint a magic-login token for ``username`` and return the public
     /auto-login/<token> URL (passwordless sign-in). 7-day TTL by default — long
     enough that a conference attendee can use the welcome-mail link later.
+
+    The link is deliberately MULTI-USE inside that window (product decision):
+    a participant scans the QR once, gets this mail and clicks the same link
+    again whenever they come back. ``POST /auth/magic-login`` therefore does
+    not consume it; the bounds are the TTL, hashing at rest and being
+    superseded by the next mint (below). See the PURPOSE_* block in
+    db/models/password_reset.py.
+
     Returns None on any failure (the mail still sends, just without the link).
     """
     try:
         from datetime import datetime
-        from db.models.password_reset import PasswordResetToken
+        from db.models.password_reset import PasswordResetToken, PURPOSE_MAGIC
         from db.database import db as _db
 
         # Build the row first (pure Python) so a failure here cannot leave the
         # invalidation below half-applied in the caller's open transaction.
-        token = PasswordResetToken.create_for(username, ttl_hours=ttl_hours)
+        token = PasswordResetToken.create_for(
+            username, ttl_hours=ttl_hours, purpose=PURPOSE_MAGIC
+        )
 
-        # Invalidate any still-valid older magic links for this account so only
-        # the newest one works. Mirrors request_password_reset() (see
-        # routes/auth/password_reset_routes.py) — keeps unused tokens from
+        # Retire any still-valid older MAGIC links for this account so only the
+        # newest mailed link works. Mirrors request_password_reset() (see
+        # routes/auth/password_reset_routes.py) — keeps live tokens from
         # accumulating per account and limits the blast radius if an earlier
         # mail leaked. Runs BEFORE the add() so the fresh token, which is not
         # in the session yet, cannot be swept up by the bulk UPDATE.
+        #
+        # Scoped to purpose='magic': a welcome/sign-in mail must NOT kill a
+        # password-reset link the same user requested moments earlier (and the
+        # reset flow returns the favour by scoping its own UPDATE to 'reset').
         PasswordResetToken.query.filter(
             PasswordResetToken.username == username,
+            PasswordResetToken.purpose == PURPOSE_MAGIC,
             PasswordResetToken.used_at.is_(None),
         ).update({PasswordResetToken.used_at: datetime.utcnow()},
                  synchronize_session=False)
@@ -828,8 +844,10 @@ def send_ijcai_welcome(
 ) -> None:
     """Send the English IJCAI demo welcome mail (logged as mail_type 'welcome').
 
-    Includes a one-time passwordless auto-login link so the recipient can sign
-    back in straight from the mail (the email is the ownership proof).
+    Includes a passwordless auto-login link so the recipient can sign back in
+    straight from the mail (the email is the ownership proof). The link stays
+    usable for its whole 7-day window, not just once — see
+    ``_make_magic_login_url``.
     """
     auto_login_url = _make_magic_login_url(username)
     rendered = render_ijcai_welcome(username=username, auto_login_url=auto_login_url)
@@ -1012,7 +1030,8 @@ def render_demo_welcome(*, username: str, lang: str = 'de',
 def send_demo_welcome(*, username: str, email: str, lang: str = 'de',
                       recipient_user_id: Optional[int] = None,
                       referral_link_id: Optional[int] = None) -> None:
-    """Send the bilingual demo welcome mail with a one-time auto-login link."""
+    """Send the bilingual demo welcome mail with a re-usable auto-login link
+    (valid 7 days — see ``_make_magic_login_url``)."""
     auto_login_url = _make_magic_login_url(username)
     rendered = render_demo_welcome(username=username, lang=lang, auto_login_url=auto_login_url)
     record_and_send(
@@ -1038,8 +1057,8 @@ def send_magic_login_email(
     referral_link_id: Optional[int] = None,
 ) -> bool:
     """Send a passwordless QUICK-LOGIN mail (used on re-entry via an email-mode
-    referral link). One-time /auto-login/<token> link; the emailed address is the
-    ownership proof. Language follows the link (en/de). Returns False if no token
+    referral link). The /auto-login/<token> link stays usable for its whole
+    7-day window (not one-shot); the emailed address is the ownership proof. Language follows the link (en/de). Returns False if no token
     could be minted (caller may fall back). Logged as mail_type 'magic_login'.
     """
     auto_login_url = _make_magic_login_url(username)
@@ -1053,25 +1072,29 @@ def send_magic_login_email(
         subject = "Dein Anmelde-Link für LLARS"
         head_sub = "LLARS — Demo"
         greeting = "Hallo,"
-        intro = "hier ist dein einmaliger Anmelde-Link für die LLARS-Demo. Ein Klick — kein Passwort nötig."
+        intro = "hier ist dein persönlicher Anmelde-Link für die LLARS-Demo. Ein Klick — kein Passwort nötig."
         cta = "Jetzt anmelden →"
-        note = "Der Link ist 7 Tage gültig und nur einmal nutzbar. Falls du das nicht angefordert hast, ignoriere diese E-Mail."
+        note = ("Der Link ist 7 Tage gültig und kann in dieser Zeit beliebig oft genutzt werden — "
+                "bewahre die E-Mail einfach auf. Falls du das nicht angefordert hast, ignoriere diese E-Mail.")
         body_text = (
-            f"Hallo,\n\nhier ist dein einmaliger Anmelde-Link für die LLARS-Demo "
+            f"Hallo,\n\nhier ist dein persönlicher Anmelde-Link für die LLARS-Demo "
             f"(kein Passwort nötig):\n\n{auto_login_url}\n\n"
-            f"Benutzername: {username}\n\nDer Link ist 7 Tage gültig und nur einmal nutzbar.\n"
+            f"Benutzername: {username}\n\n"
+            f"Der Link ist 7 Tage gültig und in dieser Zeit beliebig oft nutzbar.\n"
         )
     else:
         subject = "Your LLARS sign-in link"
         head_sub = "LLARS — Demo"
         greeting = "Hello,"
-        intro = "here is your one-time sign-in link for the LLARS demo. One click — no password needed."
+        intro = "here is your personal sign-in link for the LLARS demo. One click — no password needed."
         cta = "Sign in →"
-        note = "The link is valid for 7 days and can be used once. If you didn't request this, just ignore this email."
+        note = ("The link stays valid for 7 days and you can use it as often as you like in that "
+                "window — just keep this email. If you didn't request this, just ignore it.")
         body_text = (
-            f"Hello,\n\nhere is your one-time sign-in link for the LLARS demo "
+            f"Hello,\n\nhere is your personal sign-in link for the LLARS demo "
             f"(no password needed):\n\n{auto_login_url}\n\n"
-            f"Username: {username}\n\nThe link is valid for 7 days and single-use.\n"
+            f"Username: {username}\n\n"
+            f"The link is valid for 7 days and can be reused as often as you like.\n"
         )
 
     body_html = f"""\

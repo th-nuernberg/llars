@@ -1,8 +1,8 @@
 # 📜 LLARS Changelog
 
-![Version](https://img.shields.io/badge/version-1.22.0-b0ca97?style=flat-square)
-![Released](https://img.shields.io/badge/released-2026--08--21-88c4c8?style=flat-square)
-![Releases](https://img.shields.io/badge/releases-29-D1BC8A?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.23.0-b0ca97?style=flat-square)
+![Released](https://img.shields.io/badge/released-2026--08--23-88c4c8?style=flat-square)
+![Releases](https://img.shields.io/badge/releases-30-D1BC8A?style=flat-square)
 ![Format](https://img.shields.io/badge/format-Keep%20a%20Changelog-98d4bb?style=flat-square)
 
 All notable changes to **LLARS** (LLM Assisted Research System) — **newest first**.
@@ -14,13 +14,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 > `git describe --tags --match "v*" --first-parent`. A tag `vMAJOR.MINOR.PATCH`
 > yields `MAJOR.MINOR.(PATCH + N)`, where `N` is the number of commits since the
 > tag; at the tagged commit itself `N = 0` and the version equals the tag exactly.
-> Releases are tagged on `main` after every `dev`→`main` merge (currently **v1.0.0 … v1.22.0**).
+> Releases are tagged on `main` after every `dev`→`main` merge (currently **v1.0.0 … v1.23.0**).
 
 ---
 
 ## [Unreleased]
 
 _(empty — next release)_
+
+## [1.23.0] - 2026-08-23
+
+### 🔁 Changed
+- **Sign-in links from emails are now multi-use** — The passwordless sign-in link in the post-QR-scan welcome mail and in the returning-participant mail (`/auto-login/<token>`) used to be **single-use**: it died on the first click, so anyone reopening the email later was locked out. The link now works **as often as you like within its validity window** — participants scan the QR code once, get the email, and sign in with it again and again for up to **7 days**. The bounds are unchanged: a strict **168-hour TTL**, only the SHA-256 hash is stored in the database, and a newly sent sign-in link **retires the previous one**. The mail copy (DE/EN) now says so too ("valid for 7 days and reusable as often as you like") instead of "single-use".
+- **Friendly page for an expired sign-in link** — Opening an expired link no longer lands on "Sign-in failed" but on **"This sign-in link has expired"**, with an explanation (sign-in links are valid for 7 days for security reasons) and a clear next step: via **"Forgot password"** (the button leads straight to `/forgot-password`) participants can set a password of their own at any time — entering their email address is enough. "Go to login" remains as the secondary action. Bilingual (DE/EN).
+
+### 🔒 Security
+- **`purpose` column separates reset links from sign-in links** — Both kinds of link used to sit indistinguishably in the same `password_reset_tokens` table. That allowed a **sign-in token to be posted to `/auth/password-reset/reset` and change the account password** — a privilege a sign-in link was never meant to carry, least of all now that it is a reusable 7-day link. The new `purpose` column (`'reset'` | `'magic'`) closes this in both directions: `/auth/password-reset/reset` accepts `'reset'` only (NULL/legacy rows count as `'reset'`), `/auth/magic-login` accepts `'magic'` only. The two flows also stop invalidating each other: a fresh sign-in link no longer kills a pending password-reset link, and vice versa (this included the 2-minute anti-mail-flooding cooldown, which would otherwise have swallowed the reset mail requested right after a QR scan). The migration `migrate_add_password_reset_purpose.py` runs **idempotently at server startup** — no manual SQL.
 
 ## [1.22.0] - 2026-08-21
 

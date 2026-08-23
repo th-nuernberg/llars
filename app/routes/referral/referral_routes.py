@@ -78,8 +78,9 @@ def _post_enroll_redirect(user) -> str:
 
 
 def _send_referral_signin_link(username: str, email: str, locale: str = 'en', link_id=None) -> None:
-    """Email a one-time passwordless QUICK-LOGIN link to a RETURNING email-mode
-    registrant.
+    """Email a passwordless QUICK-LOGIN link to a RETURNING email-mode
+    registrant. The link stays usable for its whole 7-day window (multi-use by
+    design — see ``email_service._make_magic_login_url``).
 
     Closes the deterministic-username takeover: an existing account must prove
     control of the email (by clicking the emailed one-click link) before any

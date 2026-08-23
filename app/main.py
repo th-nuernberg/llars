@@ -750,6 +750,32 @@ if _should_run_one_time_startup_tasks():
     migrate_password_reset_tokens()
 
 
+# Split password_reset_tokens into 'reset' (single-use password change) and
+# 'magic' (re-usable passwordless sign-in) links so neither endpoint accepts
+# the other's token. Must run AFTER migrate_password_reset_tokens() above.
+def migrate_password_reset_purpose():
+    """One-time migration: ``purpose`` on ``password_reset_tokens``.
+    Idempotent — no-op when the column already exists.
+    See app/db/migrations/migrate_add_password_reset_purpose.py."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping password_reset_tokens purpose migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_add_password_reset_purpose import migrate_add_password_reset_purpose
+    with app.app_context():
+        try:
+            result = migrate_add_password_reset_purpose()
+            if result.get('columns_added'):
+                print(f"[Startup] password_reset_tokens — added {result['columns_added']}")
+            else:
+                print("[Startup] password_reset_tokens — purpose already present")
+        except Exception as exc:
+            print(f"[Startup] Error migrating password_reset_tokens purpose: {exc}")
+
+
+if _should_run_one_time_startup_tasks():
+    migrate_password_reset_purpose()
+
+
 # Create the Mail-Center tables (email_log + referral_invitation) backing the
 # Admin Mail-Center: central mail audit log + invitation→acceptance tracking.
 def migrate_mail_center():

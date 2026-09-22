@@ -766,6 +766,15 @@ class AgreementMetricsService:
                     ItemLabelingEvaluation.user_id.in_(active_assessor_ids)
                 )
             for ev in label_query.all():
+                # Only rows carrying an actual category are units of analysis.
+                # This deliberately drops TWO kinds of row: an explicit
+                # "unsure" (an absence of a category, not a category of its
+                # own) and a question-first row whose rater has answered the
+                # decision questions but not yet chosen a label. The latter is
+                # work in progress — counting it would make one rater look like
+                # they voted "nothing" and distort the alpha. Mirrors
+                # labeling_types.labeling_row_is_decided (which is the
+                # *completion* rule and does include "unsure").
                 if not ev.category_id:
                     continue
                 rater_id = f"human:{ev.user_id}"

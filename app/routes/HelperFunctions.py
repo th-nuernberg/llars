@@ -218,15 +218,25 @@ def get_progression_authenticity(thread: EmailThread, user_id: int) -> Progressi
 
 def get_progression_labeling(thread: EmailThread, user_id: int) -> ProgressionStatus:
     """
-    Berechnet den Fortschritt für das Labeling (function_type_id=7).
+    Berechnet den Fortschritt für das Labeling (function_type_id=7 und 9).
 
     Labeling speichert die Kategorie-Auswahl in ItemLabelingEvaluation
     (NICHT ItemDimensionRating). Eine Zeile mit gewählter Kategorie oder
-    is_unsure markiert das Item als DONE — analog zur Session-View-Logik
-    (session_service._batch_get_evaluation_statuses) und zur Aggregation in
-    scenario_stats_service._batch_get_progression_states.
+    is_unsure markiert das Item als DONE; eine Zeile mit blossen Teilantworten
+    (Fragen-first-Labeling speichert jeden Klick sofort) als PROGRESSING.
+
+    Die Drei-Wege-Regel liegt bewusst NUR in
+    services.evaluation.labeling_types.labeling_row_status — dieselbe Funktion
+    nutzen die Session-View (session_service._batch_get_evaluation_statuses)
+    und die Aggregation (scenario_stats_service._batch_get_progression_states),
+    damit die Zustände nicht auseinanderlaufen.
     """
     from db.models.scenario import ItemLabelingEvaluation
+    from services.evaluation.labeling_types import (
+        LABELING_STATUS_DONE,
+        LABELING_STATUS_IN_PROGRESS,
+        labeling_row_status,
+    )
 
     scenario_thread = db.session.query(ScenarioThreads).filter_by(
         thread_id=thread.thread_id
@@ -239,8 +249,11 @@ def get_progression_labeling(thread: EmailThread, user_id: int) -> ProgressionSt
             scenario_id=scenario_thread.scenario_id
         ).first()
 
-        if evaluation and (evaluation.category_id is not None or evaluation.is_unsure):
+        status = labeling_row_status(evaluation)
+        if status == LABELING_STATUS_DONE:
             return ProgressionStatus.DONE
+        if status == LABELING_STATUS_IN_PROGRESS:
+            return ProgressionStatus.PROGRESSING
 
     return ProgressionStatus.NOT_STARTED
 

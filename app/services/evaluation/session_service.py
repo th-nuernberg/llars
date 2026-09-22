@@ -33,7 +33,12 @@ from schemas.evaluation_data_schemas import EvaluationType
 # Both labeling flavours (7 classic, 9 conversation) run through this service's
 # code paths; see services/evaluation/labeling_types.py for why this is one
 # shared predicate instead of an 'or' bolted onto every branch.
-from services.evaluation.labeling_types import is_labeling_type, is_span_labeling
+from services.evaluation.labeling_types import (
+    is_labeling_type,
+    is_span_labeling,
+    labeling_row_status,
+    strongest_labeling_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -294,8 +299,13 @@ class EvaluationSessionService:
 
         Returns {item_id: {...}} with the values an interface needs to restore
         its inputs. Currently labeling (the interface reads item.evaluation =
-        {category_id, is_unsure, feedback}); other types prefill via their own
-        endpoints and return {} here.
+        {category_id, is_unsure, feedback, second_choice_id, answers_json});
+        other types prefill via their own endpoints and return {} here.
+
+        Deliberately NOT filtered on category_id: a question-first row whose
+        rater answered two of three questions has no category yet, and it is
+        exactly that row the interface needs in order to restore the answers
+        instead of making the rater start over.
         """
         if not thread_ids:
             return {}
@@ -319,6 +329,8 @@ class EvaluationSessionService:
                         'category_id': r.category_id,
                         'is_unsure': bool(r.is_unsure),
                         'feedback': getattr(r, 'feedback', None) or '',
+                        'second_choice_id': getattr(r, 'second_choice_id', None),
+                        'answers_json': getattr(r, 'answers_json', None),
                     }
                 return {item_id: {'spans': spans} for item_id, spans in per_item.items()}
 
@@ -327,6 +339,8 @@ class EvaluationSessionService:
                     'category_id': r.category_id,
                     'is_unsure': bool(r.is_unsure),
                     'feedback': getattr(r, 'feedback', None) or '',
+                    'second_choice_id': getattr(r, 'second_choice_id', None),
+                    'answers_json': getattr(r, 'answers_json', None),
                 }
                 for r in rows
             }
@@ -381,9 +395,17 @@ class EvaluationSessionService:
                 ItemLabelingEvaluation.scenario_id == scenario_id,
                 ItemLabelingEvaluation.item_id.in_(thread_ids)
             ).all()
-            done_ids = {e.item_id for e in evals if e.category_id is not None or e.is_unsure}
+            # Question-first labeling persists every click, so a row can exist
+            # with answered questions but no label yet — that is 'in_progress',
+            # not 'pending'. One rule for all five status computations:
+            # labeling_types.labeling_row_status.
+            by_item = {}
+            for e in evals:
+                by_item[e.item_id] = strongest_labeling_status(
+                    by_item.get(e.item_id), labeling_row_status(e)
+                )
             status_map = {
-                tid: ('done' if tid in done_ids else 'pending')
+                tid: by_item.get(tid, 'pending')
                 for tid in thread_ids
             }
 
@@ -676,16 +698,17 @@ class EvaluationSessionService:
             )
 
         elif is_labeling_type(function_type):
-            # Check labeling evaluations
+            # Check labeling evaluations. A row without a category may still be
+            # work in progress (question-first labeling saves each answer), so
+            # the three-way rule lives in labeling_row_status — it returns
+            # 'pending' for a missing row, hence no None check here.
             from db.models.scenario import ItemLabelingEvaluation
             labeling_eval = ItemLabelingEvaluation.query.filter_by(
                 user_id=user_id,
                 item_id=thread_id,
                 scenario_id=scenario_id
             ).first()
-            if labeling_eval is not None and (labeling_eval.category_id is not None or labeling_eval.is_unsure):
-                return 'done'
-            return 'pending'
+            return labeling_row_status(labeling_eval)
 
         # Default: pending
         return 'pending'

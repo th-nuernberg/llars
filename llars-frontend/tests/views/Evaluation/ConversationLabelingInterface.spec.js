@@ -1,7 +1,7 @@
 /**
  * ConversationLabelingInterface Tests
  *
- * Test IDs: CONVLAB_001 - CONVLAB_023
+ * Test IDs: CONVLAB_001 - CONVLAB_035
  *
  * One item is a whole conversation; one decision is a single span inside it.
  * The behaviours locked in here are the ones the study depends on, not the
@@ -15,6 +15,9 @@
  *    two identical labels in a row — the block-merge signal)
  *  - keyboard: digits pick, Enter advances, Backspace steps back
  *  - co-pilot suggestions are never pre-selected
+ *  - label FIRST, principles below: picking a mode fills the answer triple
+ *    backwards, and changing an answer corrects the mode (the OnCoCo order is
+ *    deliberately reversed here)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -107,10 +110,10 @@ function installAxios(items) {
   axios.post.mockResolvedValue({ data: { success: true } })
 }
 
-async function mountInterface(items = [sessionItem()]) {
+async function mountInterface(items = [sessionItem()], config = CONFIG) {
   installAxios(items)
   const wrapper = mount(ConversationLabelingInterface, {
-    props: { scenarioId: SCENARIO_ID, config: CONFIG, scenario: { id: SCENARIO_ID } },
+    props: { scenarioId: SCENARIO_ID, config, scenario: { id: SCENARIO_ID } },
     global: {
       plugins: [vuetify],
       stubs: {
@@ -592,3 +595,229 @@ describe('ConversationLabelingInterface span splitting', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Label first, principles below.
+//
+// The classic (OnCoCo) interface put the three questions ON TOP and derived the
+// label from them. Here it is reversed on purpose: the mode is chosen, the
+// triple follows from the mapping and stays correctable. The study payoff is
+// that EVERY decision now carries a triple without three extra clicks.
+// ---------------------------------------------------------------------------
+
+const QUESTIONS = {
+  enabled: true,
+  direct_selection: true,
+  mapping: { SSS: 'D', SSG: 'E', SGS: 'A' },
+  items: [
+    { id: 'q1', title: { de: 'Quelle', en: 'Source' }, text: { de: 'Von wem?', en: 'From whom?' },
+      options: [{ id: 'S', label: { de: 'von mir', en: 'from me' } },
+                { id: 'G', label: { de: 'von dir', en: 'from you' } }] },
+    { id: 'q2', title: { de: 'Präsupposition', en: 'Presumption' }, text: { de: '?', en: '?' },
+      options: [{ id: 'S', label: { de: 'nein', en: 'no' } },
+                { id: 'G', label: { de: 'ja', en: 'yes' } }] },
+    { id: 'q3', title: { de: 'Maßstab', en: 'Standard' }, text: { de: '?', en: '?' },
+      options: [{ id: 'S', label: { de: 'mir', en: 'mine' } },
+                { id: 'G', label: { de: 'dir oder allen', en: 'yours or everyone' } }] },
+  ],
+}
+
+function configWithQuestions(extra = {}) {
+  const c = JSON.parse(JSON.stringify(CONFIG))
+  c.eval_config.config.questions = QUESTIONS
+  c.eval_config.config.second_choice = true
+  Object.assign(c.eval_config.config, extra)
+  return c
+}
+
+// Arg-Reihenfolge umgedreht gegenueber mountInterface: hier variiert die
+// Config, die Items sind meist der Default.
+function mountInterfaceWith(config, items = [sessionItem()]) {
+  return mountInterface(items, config)
+}
+
+/**
+ * Wie mountInterfaceWith, aber mit ABGESCHALTETEM Auto-Advance.
+ * Ein Label-Klick springt sonst sofort zum naechsten Span — richtig so fuer den
+ * Durchlauf, aber dann sind Zweitwahl und Gegenprobe des GERADE gelabelten
+ * Spans nicht mehr im Bild, und genau die pruefen diese Tests.
+ */
+async function mountStaying(config = configWithQuestions(), items = [sessionItem()]) {
+  const w = await mountInterface(items, config)
+  await w.find('.autoadvance-switch').trigger('click')
+  await flushPromises()
+  // Die Gegenprobe startet zugeklappt (Durchlauf-Default) — diese Tests pruefen
+  // ihren Inhalt, also einmal aufklappen.
+  const toggle = w.find('[data-test="questions-toggle"]')
+  if (toggle.exists()) {
+    await toggle.trigger('click')
+    await flushPromises()
+  }
+  return w
+}
+
+describe('ConversationLabelingInterface — Prinzipien-Gegenprobe', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('CONVLAB_024: renders the questions block below the labels', async () => {
+    const w = await mountInterfaceWith(configWithQuestions())
+    const html = w.html()
+    expect(w.find('[data-test="questions-section"]').exists()).toBe(true)
+    // Order in the DOM is the point: categories first, questions after.
+    expect(html.indexOf('category-buttons')).toBeLessThan(html.indexOf('questions-section'))
+  })
+
+  it('CONVLAB_025: no questions block when the scenario has none', async () => {
+    const w = await mountInterfaceWith(CONFIG)
+    expect(w.find('[data-test="questions-section"]').exists()).toBe(false)
+  })
+
+  it('CONVLAB_026: picking a mode fills the triple backwards and shows the key', async () => {
+    const w = await mountStaying()
+    await w.findAll('.l-label-btn')[0].trigger('click')   // D -> SSS
+    await flushPromises()
+    expect(w.find('.questions-key').text()).toBe('SSS')
+    const active = w.findAll('.question-option.active').map(b => b.text())
+    expect(active).toEqual(['von mir', 'nein', 'mir'])
+  })
+
+  it('CONVLAB_027: the triple rides along in answers_json with source "direct"', async () => {
+    const w = await mountInterfaceWith(configWithQuestions())
+    await w.findAll('.l-label-btn')[1].trigger('click')   // E -> SSG
+    await flushPromises()
+    const body = axios.post.mock.calls.at(-1)[1]
+    expect(body.category_id).toBe('E')
+    expect(body.answers_json).toMatchObject({ q1: 'S', q2: 'S', q3: 'G', derived: 'E', source: 'direct' })
+  })
+
+  it('CONVLAB_028: changing one answer corrects the mode', async () => {
+    const w = await mountStaying()
+    await w.findAll('.l-label-btn')[0].trigger('click')   // D -> SSS
+    await flushPromises()
+    // flip q3 to G  -> SSG -> E
+    const q3 = w.find('[data-test="question-q3"]')
+    await q3.findAll('.question-option')[1].trigger('click')
+    await flushPromises()
+    expect(w.find('.questions-key').text()).toBe('SSG')
+    const body = axios.post.mock.calls.at(-1)[1]
+    expect(body.category_id).toBe('E')
+    expect(body.answers_json.source).toBe('questions')
+  })
+
+  it('CONVLAB_029: second choice is always visible but inert without a first choice', async () => {
+    // Always rendered so it does not pop into existence mid-run and shove the
+    // rest of the panel down; inert until there is a first choice to be second to.
+    const w = await mountStaying()
+    expect(w.find('.second-choice').exists()).toBe(true)
+    expect(w.findAll('.second-choice-chip').every(c => c.attributes('disabled') !== undefined)).toBe(true)
+    expect(w.find('.second-choice-hint').exists()).toBe(true)
+
+    await w.findAll('.l-label-btn')[0].trigger('click')   // D
+    await flushPromises()
+    expect(w.find('.second-choice-hint').exists()).toBe(false)
+    const chips = w.findAll('.second-choice-chip')
+    expect(chips.map(c => c.text())).toEqual(['D', 'E', 'A'])
+    // The first choice itself stays disabled — Platz 2 cannot be Platz 1.
+    expect(chips[0].attributes('disabled')).toBeDefined()
+    await chips[1].trigger('click')
+    await flushPromises()
+    expect(axios.post.mock.calls.at(-1)[1].second_choice_id).toBe('E')
+  })
+
+  it('CONVLAB_030: clearing the mode clears triple and second choice', async () => {
+    const w = await mountStaying()
+    const btns = w.findAll('.l-label-btn')
+    await btns[0].trigger('click')
+    await flushPromises()
+    await w.findAll('.second-choice-chip')[0].trigger('click')
+    await flushPromises()
+    expect(w.find('.questions-key').exists()).toBe(true)
+
+    const postsBefore = axios.post.mock.calls.length
+    await btns[0].trigger('click')                        // toggle off
+    await flushPromises()
+
+    // The triple is gone with the label it belonged to; the second-choice row
+    // stays (it always does) but falls back to inert.
+    expect(w.find('.questions-key').exists()).toBe(false)
+    expect(w.find('.second-choice-hint').exists()).toBe(true)
+    expect(w.findAll('.second-choice-chip').every(c => c.attributes('disabled') !== undefined)).toBe(true)
+    // An emptied vote is not persisted (persistSpan bails on a blank decision),
+    // so nothing new is posted — the stale row on the server is a known,
+    // pre-existing gap and not something this block should pretend to cover.
+    expect(axios.post.mock.calls.length).toBe(postsBefore)
+  })
+
+  it('CONVLAB_031: a saved triple and second choice survive a reload', async () => {
+    const item = sessionItem({
+      evaluation: {
+        spans: {
+          'm2-s01': {
+            category_id: 'A', is_unsure: false, second_choice_id: 'D',
+            // string form on purpose: the API returns it either way
+            answers_json: JSON.stringify({ q1: 'S', q2: 'G', q3: 'S', derived: 'A', source: 'direct' }),
+          },
+        },
+      },
+    })
+    const w = await mountInterfaceWith(configWithQuestions(), [item])
+    // resume lands on the first UNDECIDED span, so step back to m2-s01
+    press('Backspace')
+    await flushPromises()
+    expect(w.find('.questions-key').text()).toBe('SGS')
+    expect(w.find('.second-choice-chip.active').text()).toBe('D')
+  })
+
+  it('CONVLAB_032: a label click advances even with questions below', async () => {
+    // At 8,307 spans the run-through is the normal case and the second choice
+    // the exception, so the click must not wait for anything underneath it.
+    // The triple is still recorded — it is set backwards from the label on the
+    // way out, nobody has to look at it.
+    const w = await mountInterfaceWith(configWithQuestions())
+    const before = w.find('.span-counter').text()
+    await w.findAll('.l-label-btn')[0].trigger('click')
+    await flushPromises()
+    expect(w.find('.span-counter').text()).not.toBe(before)
+    expect(axios.post.mock.calls.at(-1)[1].answers_json).toMatchObject({ source: 'direct' })
+  })
+
+  it('CONVLAB_033: with auto-advance off the controls stay reachable', async () => {
+    const w = await mountStaying()
+    const before = w.find('.span-counter').text()
+    await w.findAll('.l-label-btn')[0].trigger('click')
+    await flushPromises()
+    expect(w.find('.span-counter').text()).toBe(before)
+    expect(w.find('.second-choice').exists()).toBe(true)
+  })
+
+  it('CONVLAB_034: the cross-check starts collapsed and remembers being opened', async () => {
+    // The open state is persisted per browser, and mountStaying() opens it —
+    // so this test has to start from a clean slate or it inherits that.
+    localStorage.removeItem('llars:conversationLabeling:questionsOpen')
+    const w = await mountInterfaceWith(configWithQuestions())
+    const toggle = w.find('[data-test="questions-toggle"]')
+    expect(toggle.exists()).toBe(true)
+
+    // v-show sets an inline display:none. Asserted directly rather than via
+    // isVisible(): in jsdom that walks computed styles of a detached tree and
+    // does not reliably see the inline rule.
+    expect(w.find('[data-test="question-q1"]').attributes('style')).toContain('display: none')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+
+    await toggle.trigger('click')
+    await flushPromises()
+    expect(w.find('[data-test="question-q1"]').attributes('style') || '').not.toContain('display: none')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(localStorage.setItem)
+      .toHaveBeenCalledWith('llars:conversationLabeling:questionsOpen', 'true')
+  })
+
+  it('CONVLAB_035: the focus span is keyed so the swap animation restarts', async () => {
+    // The animation hangs off the node identity, not a <Transition> — without
+    // the key Vue would patch the text in place and nothing would move.
+    const w = await mountInterfaceWith(configWithQuestions())
+    const before = w.find('.focus-span').element
+    await w.findAll('.l-label-btn')[0].trigger('click')
+    await flushPromises()
+    expect(w.find('.focus-span').element).not.toBe(before)
+  })
+})

@@ -106,10 +106,19 @@
                   }) }}
                 </span>
               </div>
+              <!-- Der Wechsel wird animiert, weil beim Auto-Advance sonst nur
+                   der Text austauscht und das Auge nicht mitbekommt, DASS etwas
+                   passiert ist — bei 8.307 Spans in Folge der Unterschied
+                   zwischen "weitergesprungen" und "hat mein Klick gezaehlt?".
+                   Bewusst OHNE <Transition mode="out-in">: das haette den neuen
+                   Text erst nach der Leave-Phase gezeigt, also spuerbaren Lag
+                   beim Tastatur-Durchlauf. Der :key ersetzt den Knoten, und die
+                   CSS-Animation laeuft dabei von selbst neu an — sofort
+                   sichtbar, trotzdem bewegt. -->
               <blockquote
+                :key="currentSpanId"
                 class="focus-span"
                 :class="{ 'is-splitting': splitMode }"
-                @click="splitMode ? null : null"
               >{{ currentSpanText }}</blockquote>
 
             </div>
@@ -203,6 +212,93 @@
                 hide-details
                 @update:model-value="onUnsureChange"
               />
+            </div>
+
+            <!-- Zweitwahl: Platz 2, kein Multilabel. IMMER sichtbar, auch ohne
+                 Platz 1 — sonst taucht mitten im Durchlauf ploetzlich eine neue
+                 Zeile auf und schiebt alles darunter weg. Ohne Erstwahl sind die
+                 Chips inaktiv; das Feld haelt nur seinen Platz. -->
+            <div v-if="secondChoiceEnabled" class="second-choice">
+              <span class="second-choice-label">
+                {{ $t('evaluation.labeling.secondChoice.title') }}
+              </span>
+              <div class="second-choice-chips">
+                <button
+                  v-for="cat in categories"
+                  :key="cat.id"
+                  type="button"
+                  class="second-choice-chip"
+                  :class="{ active: secondChoice === cat.id }"
+                  :style="secondChoiceStyle(cat)"
+                  :disabled="!canEvaluate || !selectedCategory || cat.id === selectedCategory"
+                  :title="localize(cat.description)"
+                  @click="toggleSecondChoice(cat.id)"
+                >{{ cat.id }}</button>
+              </div>
+              <span v-if="!selectedCategory" class="second-choice-hint">
+                {{ $t('evaluation.labeling.secondChoice.needsFirst') }}
+              </span>
+            </div>
+
+            <!-- Die drei Prinzipienfragen stehen UNTER den Labels, nicht darüber.
+                 Beim klassischen Labeling (OnCoCo) war es umgekehrt: erst die
+                 Fragen, das Label ergab sich daraus. Hier ist die Reihenfolge
+                 bewusst gedreht — der Modus wird gewählt, das Antworttripel
+                 ergibt sich rückwärts aus dem Mapping und ist korrigierbar.
+                 Grund: Stiles laesst das Label codieren und die Prinzipien im
+                 Kopf anwenden (MODES.DOC: erst die Bedeutung verstehen, dann
+                 die Prinzipien; eingegeben werden Buchstaben). Der Nebeneffekt
+                 ist studienrelevant: JEDE Entscheidung traegt jetzt ein Tripel,
+                 ohne dass jemand drei Extraklicks macht. -->
+            <div v-if="questionsEnabled" class="questions-section" data-test="questions-section">
+              <!-- Standardmaessig zugeklappt: im Durchlauf braucht sie niemand,
+                   das Tripel entsteht ohnehin rueckwaerts aus dem Label. Wer
+                   eine Entscheidung pruefen oder korrigieren will, klappt auf —
+                   der Zustand bleibt pro Browser gemerkt. -->
+              <button
+                type="button"
+                class="questions-head"
+                :aria-expanded="String(questionsOpen)"
+                data-test="questions-toggle"
+                @click="toggleQuestions()"
+              >
+                <LIcon size="16" class="questions-caret" :class="{ open: questionsOpen }">mdi-chevron-right</LIcon>
+                <span class="questions-title">{{ $t('evaluation.labeling.questions.checkTitle') }}</span>
+                <span v-if="answerKey" class="questions-key">{{ answerKey }}</span>
+              </button>
+              <p v-show="questionsOpen && !selectedCategory" class="questions-empty">
+                {{ $t('evaluation.labeling.questions.checkEmpty') }}
+              </p>
+              <div
+                v-for="(q, qi) in questionItems"
+                :key="q.id"
+                v-show="questionsOpen"
+                class="question-card"
+                :data-test="`question-${q.id}`"
+              >
+                <div class="question-head">
+                  <span class="question-num">{{ qi + 1 }}</span>
+                  <span class="question-title">{{ localize(q.title) }}</span>
+                </div>
+                <p class="question-text">{{ localize(q.text) }}</p>
+                <div class="question-options">
+                  <button
+                    v-for="opt in q.options"
+                    :key="opt.id"
+                    type="button"
+                    class="question-option"
+                    :class="{ active: answers[q.id] === opt.id }"
+                    :disabled="!canEvaluate"
+                    @click="answerQuestion(q.id, opt.id)"
+                  >
+                    <span class="question-option-label">{{ localize(opt.label) }}</span>
+                    <span v-if="localize(opt.hint)" class="question-option-hint">{{ localize(opt.hint) }}</span>
+                  </button>
+                </div>
+              </div>
+              <p v-show="questionsOpen && answerKey && !derivedCategoryId" class="questions-nomap">
+                {{ $t('evaluation.labeling.questions.noMapping', { key: answerKey }) }}
+              </p>
             </div>
 
             <!-- The unitizing is frozen at import time and a wrong boundary is
@@ -417,6 +513,24 @@ watch(autoAdvance, (v) => {
   try { localStorage.setItem(AUTO_ADVANCE_KEY, String(v)) } catch (e) { /* non-fatal */ }
 })
 
+// Aufklappzustand der Prinzipien-Gegenprobe. Default ZU: im Durchlauf braucht
+// sie niemand — das Antworttripel entsteht rueckwaerts aus dem Label. Wer eine
+// Entscheidung pruefen will, klappt auf, und das bleibt dann so.
+// Opt-in-Semantik, gespiegelt zum Auto-Advance oben: nur das ausdrueckliche
+// 'true' klappt auf, damit ein Storage-Stub mit undefined beim Default bleibt.
+const QUESTIONS_OPEN_KEY = 'llars:conversationLabeling:questionsOpen'
+const questionsOpen = ref(false)
+try {
+  if (localStorage.getItem(QUESTIONS_OPEN_KEY) === 'true') questionsOpen.value = true
+} catch (e) { /* private mode — keep the default */ }
+
+function toggleQuestions() {
+  questionsOpen.value = !questionsOpen.value
+  try {
+    localStorage.setItem(QUESTIONS_OPEN_KEY, String(questionsOpen.value))
+  } catch (e) { /* non-fatal */ }
+}
+
 let suppressAutoSave = false
 let spanShownAt = Date.now()
 
@@ -433,6 +547,20 @@ const inner = computed(() => {
 })
 const categories = computed(() => inner.value.labels || inner.value.categories || [])
 const allowUnsure = computed(() => inner.value.allowUnsure ?? inner.value.allow_unsure ?? true)
+
+// Zweitwahl ("Platz 2") und die drei Prinzipienfragen kommen aus derselben
+// Szenario-Config wie beim klassischen Labeling — das Backend nimmt
+// second_choice_id/answers_json auf der evaluate-Route bereits span-scoped an,
+// nur diese Oberfläche hat sie bisher nicht geschickt.
+const secondChoiceEnabled = computed(() => inner.value.second_choice === true)
+const questionsConfig = computed(() => inner.value.questions || null)
+const questionItems = computed(() => {
+  const items = questionsConfig.value?.items
+  return Array.isArray(items) ? items.filter(q => q && q.id) : []
+})
+const questionsEnabled = computed(
+  () => questionsConfig.value?.enabled !== false && questionItems.value.length > 0
+)
 const allowFeedback = computed(
   () => (inner.value.allowFeedback ?? inner.value.allow_feedback ?? true) !== false
 )
@@ -690,19 +818,108 @@ function flushFeedbackSave() {
   if (sid && votes.value[sid]) persistSpan(sid)
 }
 
+// --- Zweitwahl + Prinzipienfragen ------------------------------------------
+const currentVote = computed(() => votes.value[currentSpanId.value] || {})
+const secondChoice = computed(() => currentVote.value.second_choice_id ?? null)
+const answers = computed(() => currentVote.value.answers || {})
+
+// Antwortschlüssel in Fragenreihenfolge, z. B. "GSG". Leer, solange nicht alle
+// drei beantwortet sind — ein Teil-Tripel darf kein Label behaupten.
+const answerKey = computed(() => {
+  const a = answers.value
+  const parts = questionItems.value.map(q => a[q.id])
+  return parts.every(Boolean) ? parts.join('') : ''
+})
+const derivedCategoryId = computed(
+  () => (answerKey.value && questionsConfig.value?.mapping?.[answerKey.value]) || null
+)
+
+/**
+ * Rückwärts vom Label auf das Antworttripel — nur wenn das Mapping eindeutig
+ * ist. Sonst lieber leer lassen, als ein Tripel zu erfinden, das der Person
+ * später als ihre eigene Antwort vorgehalten wird.
+ */
+function answersForCategory(categoryId) {
+  const mapping = questionsConfig.value?.mapping || {}
+  const keys = Object.keys(mapping).filter(k => mapping[k] === categoryId)
+  if (keys.length !== 1) return null
+  let rest = keys[0]
+  const out = {}
+  for (const q of questionItems.value) {
+    const opt = (q.options || []).find(o => rest.startsWith(String(o.id)))
+    if (!opt) return null
+    out[q.id] = opt.id
+    rest = rest.slice(String(opt.id).length)
+  }
+  return rest.length === 0 ? out : null
+}
+
 function selectCategory(id) {
   if (!canEvaluate.value || !currentSpanId.value) return
   const cur = votes.value[currentSpanId.value] || {}
   // Clicking the selected category again clears it — same affordance as the
   // classic interface. Auto-advance must NOT fire on a clear.
   const next = cur.category_id === id ? null : id
-  setVote(currentSpanId.value, { category_id: next, is_unsure: false })
+  setVote(currentSpanId.value, {
+    ...cur,
+    category_id: next,
+    is_unsure: false,
+    // Das Tripel folgt dem Label. Bei Abwahl mitlöschen, sonst bliebe ein
+    // verwaistes Tripel stehen, das kein Label mehr stützt.
+    answers: next == null ? {} : (questionsEnabled.value ? (answersForCategory(next) || {}) : {}),
+    answer_source: next == null ? null : 'direct',
+    // Platz 2 kann nicht Platz 1 sein.
+    second_choice_id: cur.second_choice_id === next ? null : (cur.second_choice_id ?? null)
+  })
   if (next != null) maybeAdvance()
+}
+
+/**
+ * Eine Frage anders beantworten korrigiert das Label — die Fragen sind hier
+ * nicht Deko, sondern der Weg zurück, wenn die Direktwahl danebenlag.
+ */
+function answerQuestion(questionId, optionId) {
+  if (!canEvaluate.value || !currentSpanId.value) return
+  const cur = votes.value[currentSpanId.value] || {}
+  const nextAnswers = { ...(cur.answers || {}), [questionId]: optionId }
+  const parts = questionItems.value.map(q => nextAnswers[q.id])
+  const key = parts.every(Boolean) ? parts.join('') : ''
+  const derived = (key && questionsConfig.value?.mapping?.[key]) || null
+  setVote(currentSpanId.value, {
+    ...cur,
+    answers: nextAnswers,
+    answer_source: 'questions',
+    category_id: derived ?? cur.category_id ?? null,
+    is_unsure: derived ? false : !!cur.is_unsure,
+    second_choice_id: cur.second_choice_id === derived ? null : (cur.second_choice_id ?? null)
+  })
+}
+
+function toggleSecondChoice(id) {
+  if (!canEvaluate.value || !currentSpanId.value) return
+  const cur = votes.value[currentSpanId.value] || {}
+  if (id === cur.category_id) return
+  setVote(currentSpanId.value, {
+    ...cur,
+    second_choice_id: cur.second_choice_id === id ? null : id
+  })
+}
+
+function secondChoiceStyle(cat) {
+  const color = cat.color || '#b0ca97'
+  return secondChoice.value === cat.id
+    ? { borderColor: color, background: color, color: '#fff' }
+    : { borderColor: color, color }
 }
 
 function onUnsureChange(value) {
   if (!canEvaluate.value || !currentSpanId.value) return
-  setVote(currentSpanId.value, { category_id: null, is_unsure: !!value })
+  // "Unsicher" und ein konkreter Modus schliessen sich aus — dann duerfen auch
+  // Tripel und Zweitwahl nicht stehen bleiben.
+  setVote(currentSpanId.value, {
+    category_id: null, is_unsure: !!value,
+    answers: {}, answer_source: null, second_choice_id: null
+  })
   if (value) maybeAdvance()
 }
 
@@ -721,6 +938,15 @@ function applySuggestion(labelId) {
  */
 function maybeAdvance() {
   if (!autoAdvance.value) return
+  // Ein Label-Klick springt IMMER weiter, auch wenn darunter Zweitwahl und
+  // Prinzipien-Gegenprobe stehen. Ich hatte das zwischenzeitlich unterdrueckt,
+  // damit diese Bedienelemente erreichbar bleiben — das war die falsche
+  // Abwaegung: bei 8.307 Spans ist der Durchlauf der Normalfall und die
+  // Zweitwahl die Ausnahme. Wer sie braucht, schaltet Auto-Advance im Kopf der
+  // Seite ab oder geht mit Backspace einen Span zurueck; beides ist schon da.
+  // Das Antworttripel geht dabei nicht verloren: es wird beim Label-Klick
+  // rueckwaerts aus dem Mapping gesetzt und mitgespeichert (answers_json,
+  // source "direct"), ohne dass jemand es ansehen muss.
   nextTick(() => goToNextSpan())
 }
 
@@ -997,6 +1223,25 @@ async function confirmMerge() {
 }
 
 // --- persistence ----------------------------------------------------------
+
+/**
+ * Das answers_json fuer EINEN Span. null, wenn nichts zu speichern ist — sonst
+ * stuende in der Studie ein leeres Tripel neben jedem Label und man koennte
+ * "nicht beantwortet" nicht mehr von "beantwortet mit leerem Ergebnis" trennen.
+ */
+function answersPayload(vote) {
+  if (!questionsEnabled.value) return null
+  const a = vote.answers || {}
+  if (Object.keys(a).length === 0) return null
+  const parts = questionItems.value.map(q => a[q.id])
+  const key = parts.every(Boolean) ? parts.join('') : ''
+  return {
+    ...a,
+    derived: (key && questionsConfig.value?.mapping?.[key]) || null,
+    source: vote.answer_source || null
+  }
+}
+
 async function persistSpan(spanId) {
   const item = currentItem.value
   const vote = votes.value[spanId]
@@ -1014,6 +1259,11 @@ async function persistSpan(spanId) {
         span_id: spanId,
         category_id: vote.category_id,
         is_unsure: !!vote.is_unsure,
+        second_choice_id: vote.second_choice_id ?? null,
+        // Auch ein TEILWEISE beantwortetes Tripel wird gespeichert: nur so
+        // ueberlebt "zwei von drei Fragen beantwortet" einen Reload. `derived`
+        // ist dann null — das Label wird nie geraten.
+        answers_json: answersPayload(vote),
         feedback: feedbacks.value[spanId] ?? '',
         // time_on_item_ms is first-write-only server side, so a revisit cannot
         // overwrite the original measurement. `helpful` stays updatable — it is
@@ -1103,10 +1353,22 @@ async function loadCurrentItem() {
 
   const saved = item.evaluation?.spans || {}
   votes.value = Object.fromEntries(
-    Object.entries(saved).map(([sid, v]) => [sid, {
-      category_id: v.category_id ?? null,
-      is_unsure: v.is_unsure === true
-    }])
+    Object.entries(saved).map(([sid, v]) => {
+      // answers_json kommt je nach Speicherweg als Objekt ODER als String
+      // zurueck; beides muss den Wiedereinstieg ueberstehen.
+      let parsed = v.answers_json
+      if (typeof parsed === 'string') {
+        try { parsed = JSON.parse(parsed) } catch { parsed = null }
+      }
+      const { derived: _d, source, ...rest } = parsed || {}
+      return [sid, {
+        category_id: v.category_id ?? null,
+        is_unsure: v.is_unsure === true,
+        second_choice_id: v.second_choice_id ?? null,
+        answers: rest,
+        answer_source: source ?? null
+      }]
+    })
   )
   feedbacks.value = Object.fromEntries(
     Object.entries(saved).map(([sid, v]) => [sid, v.feedback || ''])
@@ -1225,12 +1487,22 @@ onBeforeUnmount(() => {
    the chips sit inline and the text must stay comfortably readable. */
 :deep(.l-message__body) {
   font-size: 1rem;
-  line-height: 1.95;
+  /* Grosszuegig, weil die Spans einen 2px-Ring tragen koennen und die Chips
+     inline mitlaufen — bei engerem Zeilenabstand beruehren sich die Rahmen
+     zweier umbrochener Zeilen. */
+  line-height: 2.15;
 }
 
 .span {
   border-radius: 4px;
-  padding: 2px 1px;
+  /* Seitlicher Innenabstand statt 1px: der 2px-Ring des aktuellen Spans lag
+     sonst direkt auf dem Text und auf dem Label-Chip. */
+  padding: 2px 4px;
+  /* Ohne clone zieht der Browser bei einem umbrechenden Inline-Span EINEN
+     Kasten ueber beide Zeilen — die Ecken sitzen dann an den falschen Stellen.
+     Mit clone bekommt jede Zeile ihren eigenen, sauber gerundeten Rahmen. */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
   transition: background 0.15s ease, opacity 0.15s ease;
 }
 
@@ -1253,6 +1525,9 @@ onBeforeUnmount(() => {
 .span-current {
   background: rgba(74, 111, 165, 0.16);
   box-shadow: 0 0 0 2px #4A6FA5;
+  /* Etwas Luft nach aussen, damit der Ring bei umbrechendem Text nicht an den
+     Ring der eigenen naechsten Zeile stoesst. */
+  margin: 1px 0;
 }
 
 .span-done {
@@ -1285,12 +1560,19 @@ onBeforeUnmount(() => {
    visible — two identical chips in a row are the block-merge signal. */
 .span-chip {
   display: inline-block;
-  margin-left: 4px;
+  margin-left: 6px;
   padding: 1px 7px;
   border-radius: 6px 2px 6px 2px;
   font-size: 0.72rem;
   font-weight: 700;
+  line-height: 1.5;
   vertical-align: 1px;
+  /* Der Chip steht INNERHALB des Spans, also umschliesst ihn auch dessen
+     Rahmen. Ein schmaler Ring in der Hintergrundfarbe setzt ihn davon ab —
+     sonst beruehren sich Chip-Ecke und Span-Ring und es sieht aus, als liefe
+     das Label ueber die Spangrenze. Gilt fuer beide Faelle: blauer Ring des
+     aktuellen Spans und graue Flaeche eines erledigten. */
+  box-shadow: 0 0 0 2px rgb(var(--v-theme-surface));
 }
 
 /* --- decision panel ---------------------------------------------------- */
@@ -1331,6 +1613,213 @@ onBeforeUnmount(() => {
   border-radius: 0 16px 16px 0;
   font-size: 1.15rem;
   line-height: 1.6;
+}
+
+/* Zweitwahl und Prinzipienfragen sitzen UNTER den Labels und sind bewusst
+   leiser gestaltet als die Label-Buttons: der Modus ist die Entscheidung, das
+   Tripel ist ihre Begruendung. Wuerden beide gleich laut auftreten, waere die
+   Reihenfolge wieder offen — und genau die ist hier die Aussage. */
+/* Animation beim Spanwechsel. Kurz und klein: sie soll den Wechsel quittieren,
+   nicht inszeniert werden — bei 8.307 Spans nacheinander wird jede groessere
+   Bewegung zur Qual. Laeuft ueber den :key des Knotens, nicht ueber
+   <Transition>, damit der neue Text sofort dasteht und die Bewegung nur
+   obendrauf liegt. */
+@keyframes span-swap-in {
+  from { opacity: 0.25; transform: translateY(5px); }
+  to   { opacity: 1;    transform: none; }
+}
+.focus-span {
+  animation: span-swap-in 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-span {
+    animation: none;
+  }
+}
+
+/* Trennlinie nach oben: Zweitwahl und Prinzipien-Gegenprobe sind Nacharbeit am
+   Urteil, die Labels darueber sind das Urteil selbst. */
+.second-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.second-choice-hint {
+  font-size: 0.78rem;
+  opacity: 0.55;
+}
+.second-choice-label {
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+.second-choice-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.second-choice-chip {
+  min-width: 30px;
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: transparent;
+  border: 1.5px dashed currentColor;
+  border-radius: 6px 2px 6px 2px;
+  cursor: pointer;
+}
+.second-choice-chip.active {
+  border-style: solid;
+}
+.second-choice-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.questions-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Der Kopf ist der Aufklapp-Schalter, also ein echter Button: Tastatur und
+   Screenreader bekommen ihn damit geschenkt. Sieht aber aus wie eine
+   Ueberschrift, weil er im Durchlauf nicht nach Bedienelement schreien soll. */
+.questions-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.questions-head:focus-visible {
+  outline: 2px solid #4A6FA5;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.questions-caret {
+  transition: transform 0.15s ease;
+  opacity: 0.6;
+}
+.questions-caret.open {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .questions-caret {
+    transition: none;
+  }
+}
+.questions-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.questions-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.8;
+}
+.questions-empty,
+.questions-nomap {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin: 0;
+}
+/* Kartenlayout wie beim klassischen Labeling: Fragetext und Antwort-Hinweise
+   stehen ausgeschrieben da, nicht als Tooltip. Die Fragen sind der Ort, an dem
+   eine Fehlentscheidung auffliegt — dafuer muessen sie lesbar sein, auch wenn
+   sie hier NACH den Labels kommen. */
+.question-card {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-surface), 1);
+}
+.question-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.question-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.85);
+  color: rgb(var(--v-theme-surface));
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.question-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.question-text {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  white-space: pre-line;
+}
+.question-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.question-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  font: inherit;
+  border: 1.5px solid rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.question-option:hover:not(:disabled) {
+  border-color: rgba(var(--v-theme-on-surface), 0.5);
+}
+.question-option.active {
+  border-color: #88c4c8;
+  background: rgba(136, 196, 200, 0.18);
+}
+.question-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.question-option-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.question-option-hint {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  line-height: 1.35;
 }
 
 .category-buttons {
@@ -1453,12 +1942,18 @@ onBeforeUnmount(() => {
    the segmentation for every rater, so they belong out of the decision rhythm
    rather than next to the span they would alter. One horizontal row of faint
    text links — present when needed, invisible when not. */
+/* Die Span-Werkzeuge sind eine andere Sorte Handlung als das Labeln: sie
+   aendern die Einheit, nicht das Urteil. Deshalb ein eigener Trenner darueber —
+   ohne ihn klebten sie an der Prinzipien-Gegenprobe und sahen aus wie ein
+   vierter Schritt derselben Entscheidung. */
 .split-zone {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 14px;
-  margin-top: 4px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .split-trigger,

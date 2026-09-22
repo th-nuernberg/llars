@@ -572,6 +572,30 @@ if _should_run_one_time_startup_tasks():
     migrate_labeling_span_id_columns()
 
 
+# Question-first labeling + second choice: two nullable columns on
+# item_labeling_evaluations (see app/db/migrations/migrate_labeling_second_choice_answers.py).
+def migrate_labeling_second_choice_answers_columns():
+    if _skip_startup_tasks():
+        print("[Startup] Skipping labeling second_choice/answers migration (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from db.migrations.migrate_labeling_second_choice_answers import (
+        migrate_labeling_second_choice_answers,
+    )
+
+    with app.app_context():
+        try:
+            result = migrate_labeling_second_choice_answers()
+            if result.get('changed'):
+                print(f"[Startup] Added to item_labeling_evaluations: {', '.join(result['added'])}")
+            else:
+                print("[Startup] labeling second_choice/answers columns already present — skipping")
+        except Exception as e:
+            print(f"[Startup] Error migrating labeling second_choice/answers: {e}")
+
+if _should_run_one_time_startup_tasks():
+    migrate_labeling_second_choice_answers_columns()
+
+
 # Add collect_email + collect_display_name flags to referral_links so
 # study links can hide / skip those fields on the registration form.
 def migrate_referral_link_collect_flags_column():

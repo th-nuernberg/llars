@@ -1,8 +1,8 @@
 # 📜 LLARS Changelog
 
-![Version](https://img.shields.io/badge/version-1.23.0-b0ca97?style=flat-square)
-![Released](https://img.shields.io/badge/released-2026--08--23-88c4c8?style=flat-square)
-![Releases](https://img.shields.io/badge/releases-30-D1BC8A?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.24.0-b0ca97?style=flat-square)
+![Released](https://img.shields.io/badge/released-2026--09--15-88c4c8?style=flat-square)
+![Releases](https://img.shields.io/badge/releases-31-D1BC8A?style=flat-square)
 ![Format](https://img.shields.io/badge/format-Keep%20a%20Changelog-98d4bb?style=flat-square)
 
 Alle nennenswerten Änderungen am **LLARS** (LLM Assisted Research System) — **neueste zuerst**.
@@ -14,13 +14,29 @@ Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/en/1
 > `git describe --tags --match "v*" --first-parent`. Aus einem Tag `vMAJOR.MINOR.PATCH`
 > ergibt sich `MAJOR.MINOR.(PATCH + N)`, wobei `N` die Anzahl Commits seit dem Tag ist;
 > am getaggten Commit selbst ist `N = 0` und die Version entspricht exakt dem Tag.
-> Releases werden nach jedem `dev`→`main`-Merge auf `main` getaggt (aktuell **v1.0.0 … v1.23.0**).
+> Releases werden nach jedem `dev`→`main`-Merge auf `main` getaggt (aktuell **v1.0.0 … v1.24.0**).
 
 ---
 
 ## [Unreleased]
 
-_(leer — naechstes Release)_
+### 🐛 Fixed
+
+- **Labeling: Teilantworten zählen als „in Bearbeitung"** — Beim Fragen-first-Labeling kann eine Zeile in `item_labeling_evaluations` mit Antworten, Zweitwahl oder Kommentar, aber ohne Label existieren. Bisher galt sie überall als „ausstehend". Jetzt gibt es eine Drei-Wege-Regel an genau einer Stelle (`labeling_types.labeling_row_status`: Label oder „unsicher" = `done`, sonst Eingaben = `in_progress`, sonst `pending`), die Session-Status, Einzel-Status, Progression, Szenario-Statistik, Span-Fortschritt (Typ 9) und die Items-Liste des Managers gemeinsam nutzen. Der Save-Endpoint antwortet mit diesem Status statt dem alten `completed`. Teilzeilen sind **keine Votes**: Export und IRR überspringen sie, und Bearbeitungszeit sowie Co-Pilot-Log werden erst beim ersten vollständigen Label geschrieben, nicht beim ersten Klick. `LABEL_STATUS_001–026`.
+- **Labeling speichert jede Auswahl sofort** — jede beantwortete Frage, jeder Lean-Slider, die Zweitwahl, die Direktwahl, „unsicher" und der Kommentar werden beim Klick persistiert (POST mit `category_id: null` + `answers_json`, solange noch kein Label ableitbar ist). Das Item wird bis zum vollständigen Label als **„In Bearbeitung"** angezeigt (Item-Liste, Session-Footer und Statuskachel im Labeling-Panel, inkl. „Speichern…"-Indikator); laufende Speicherungen werden vor dem Blättern (Weiter/Zurück, auch über die Session-Navigation) und beim Verlassen abgewartet. Zuvor ging die Arbeit verloren, wer z. B. zwei von drei Fragen beantwortet und weitergeklickt hat (Prod-Szenario 758). Es wird dabei nie ein Label vorbelegt.
+
+## [1.24.0] - 2026-09-15
+
+### ✨ Added
+
+- **Fragen-first-Labeling (Labeling-Typ 7/9):** Ein Labeling-Szenario kann dem Label Entscheidungsfragen vorschalten (`questions` in der Labeling-Config: `items` mit je zwei Antwort-Optionen, `mapping` Antwortschlüssel → Label, optional `sliders` als Zusatzinfo „eher A … eher B", `direct_selection`). Annotator:innen beantworten die Fragen oben mit Buttons, das Label wird aus dem Antwortschlüssel abgeleitet und nie vorausgewählt; die Direktwahl bleibt aufklappbar und setzt die Fragen rückwärts über das Mapping. Antworten landen in `item_labeling_evaluations.answers_json` (neue Spalte, Startup-Migration `migrate_labeling_second_choice_answers.py`), im Session-Prefill und als Export-Spalte `answers_json`. Vorbild: VRM-Cheatsheet (Stiles 1992) – Thema / Präsupposition / Bezugsrahmen, je S/G. `LabelingInterface.vue`, `DecisionQuestionsConfig`, `LABEL_009–013`.
+- **Zweitwahl („Platz 2") beim Labeling:** `second_choice: true` blendet nach der ersten Wahl Chips für ein zweites Label ein – kein Multilabel, das Studienlabel bleibt `category_id`; die Zweitwahl wird in `second_choice_id` gespeichert und als Export-Spalte `second_choice` ausgegeben. So gehen „beides vertretbar"-Fälle nicht verloren. `LABEL_011`, `LABEL_SVC_026`.
+- **Co-Pilot beantwortet Entscheidungsfragen zuerst:** Hat das Szenario `questions`, verlangt der Format-Block jedes Vorschlags zuerst `answers` (je Frage eine Option) und dann das explizite `label_id`; der Parser trägt `answers`, `derived_label_id` (aus dem Mapping) und `consistent` durch, das explizite Label bleibt maßgeblich. Änderungen an den Fragen bumpen `prompt_version` wie `top_k`. Die Antworten erscheinen im Vorschlags-Panel. `_validate_copilot_answers`, `COPILOT_Q_001–006`.
+- **v1-API `PUT /api/v1/scenarios/{id}/labeling-config`:** schaltet `questions` und `second_choice` headless per API-Key (Owner/Admin, `scenario:write`) – der generische Szenario-PUT ist session-only und der v1-PATCH lehnt `eval_config` ab, Studien-Skripte hatten also keinen Weg zu diesen Einstellungen. Validiert gegen `DecisionQuestionsConfig`, Mapping-Ziele müssen Label-IDs sein, `config.config`-Spiegel bleibt synchron. `LABEL_SET_001–007`.
+
+### 🐛 Fixed
+
+- **Labeling-Feedback ging beim Weiterklicken verloren:** Der Kommentar wurde mit 800 ms Verzögerung gespeichert; Navigation zum nächsten Item löschte den Timer und leerte das Feld vor dem POST. Jetzt wird ein anstehender Kommentar vor `goNext`/`goPrev`, beim Verlassen des Feldes und beim Unmount gespeichert, und ein fehlgeschlagener Save zeigt einen Snackbar statt nur `console.error`. `LABEL_012`.
 
 ## [1.23.0] - 2026-08-23
 

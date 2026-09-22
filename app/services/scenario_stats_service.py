@@ -49,7 +49,7 @@ from db.models import (
     UserFeatureRating,
     ScenarioItems,
 )
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from decorators.error_handler import NotFoundError, ValidationError
 from routes.HelperFunctions import (
@@ -63,6 +63,8 @@ from services.evaluation.dimensional_rating_service import DimensionalRatingServ
 from services.evaluation.labeling_types import (
     LABELING_FUNCTION_TYPE_IDS,
     is_labeling_type,
+    labeling_decided_clause,
+    labeling_partial_clause,
 )
 from services.llm_registry_service import resolve_model_registry
 
@@ -622,11 +624,18 @@ def _batch_get_progression_states(
     elif function_type_id in LABELING_FUNCTION_TYPE_IDS:
         # LABELING: progress lives in ItemLabelingEvaluation, NOT
         # ItemDimensionRating. A row with a chosen category (or is_unsure)
-        # marks the item DONE for that user — mirroring the session-view
-        # status logic (session_service._batch_get_evaluation_statuses).
+        # marks the item DONE for that user; a row that only holds answered
+        # decision questions / feedback marks it PROGRESSING — mirroring the
+        # session-view status logic (session_service._batch_get_evaluation_statuses).
         # Reading ItemDimensionRating here (as rating does) always yielded
         # 0/N once saving worked, so the manager/hub progress showed
         # "0 von N" even though the labels were persisted.
+        #
+        # Two id-only queries instead of loading the rows: this runs over every
+        # (item, user) pair of a scenario — conversation labeling has ~90 span
+        # rows per item — so pulling every feedback/answers_json blob into
+        # Python would be the expensive way to ask a yes/no question. The
+        # clauses are the SQL twins of labeling_row_status (labeling_types).
         labeled = set(
             db.session.query(
                 ItemLabelingEvaluation.item_id,
@@ -636,19 +645,33 @@ def _batch_get_progression_states(
                 ItemLabelingEvaluation.scenario_id == scenario_id,
                 ItemLabelingEvaluation.user_id.in_(user_ids),
                 ItemLabelingEvaluation.item_id.in_(thread_ids),
-                or_(
-                    ItemLabelingEvaluation.category_id.isnot(None),
-                    ItemLabelingEvaluation.is_unsure.is_(True),
-                ),
+                labeling_decided_clause(),
+            )
+            .all()
+        )
+        started = set(
+            db.session.query(
+                ItemLabelingEvaluation.item_id,
+                ItemLabelingEvaluation.user_id,
+            )
+            .filter(
+                ItemLabelingEvaluation.scenario_id == scenario_id,
+                ItemLabelingEvaluation.user_id.in_(user_ids),
+                ItemLabelingEvaluation.item_id.in_(thread_ids),
+                labeling_partial_clause(),
             )
             .all()
         )
         for uid in user_ids:
             for tid in thread_ids:
-                result[(tid, uid)] = (
-                    ProgressionStatus.DONE if (tid, uid) in labeled
-                    else ProgressionStatus.NOT_STARTED
-                )
+                if (tid, uid) in labeled:
+                    # DONE wins over a partial sibling row: one decided span
+                    # of a conversation is progress, never a regression.
+                    result[(tid, uid)] = ProgressionStatus.DONE
+                elif (tid, uid) in started:
+                    result[(tid, uid)] = ProgressionStatus.PROGRESSING
+                else:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
 
     elif function_type_id == 3:
         # MAIL_RATING: check UserMailHistoryRating

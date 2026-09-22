@@ -84,6 +84,14 @@ RESPONSE=$(smoke_curl -sf -X POST "$BASE_URL/api/chatbots/wizard" \
     }" 2>&1) || {
     log_error "Wizard-Session konnte nicht erstellt werden!"
     log_error "Response: ${RESPONSE:-<leer>}"
+    # -sf verschluckt bei HTTP-Fehlern den Body — für die Ferndiagnose (z. B.
+    # kia-dev ohne VPN-Zugriff auf Server-Logs) den Call ohne -f wiederholen
+    # und Status + Body ins CI-Log schreiben. Kein Einfluss aufs Testergebnis.
+    DIAG=$(smoke_curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL/api/chatbots/wizard" \
+        -H "Content-Type: application/json" \
+        -H "X-API-Key: $API_KEY" \
+        -d "{\"url\": \"$TEST_URL\", \"crawler_config\": {\"max_pages\": 3, \"max_depth\": 1, \"use_playwright\": false}}" 2>&1 || true)
+    log_error "Diagnose (Status + Body): ${DIAG:-<leer>}"
     exit 1
 }
 

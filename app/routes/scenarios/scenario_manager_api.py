@@ -1041,7 +1041,15 @@ def get_scenario_threads(scenario_id):
             # Labeling status lives in ItemLabelingEvaluation (a chosen category
             # OR is_unsure = done), NOT ItemDimensionRating. Reading the rating
             # table here left every labeled item showing as "pending".
+            # A row that only holds answered decision questions is
+            # 'in_progress' — see labeling_types.labeling_row_status, the one
+            # place that rule is defined.
             from db.models.scenario import ItemLabelingEvaluation
+            from services.evaluation.labeling_types import (
+                LABELING_STATUS_PENDING,
+                labeling_row_status,
+                strongest_labeling_status,
+            )
             labels = ItemLabelingEvaluation.query.filter(
                 ItemLabelingEvaluation.scenario_id == scenario_id,
                 ItemLabelingEvaluation.user_id == user_id,
@@ -1049,8 +1057,11 @@ def get_scenario_threads(scenario_id):
             ).all()
 
             for lab in labels:
-                if lab.category_id is not None or lab.is_unsure:
-                    user_status_map[lab.item_id] = 'done'
+                status = strongest_labeling_status(
+                    user_status_map.get(lab.item_id), labeling_row_status(lab)
+                )
+                if status != LABELING_STATUS_PENDING:
+                    user_status_map[lab.item_id] = status
 
         elif func_type_name in ('comparison', 'communication_comparison'):
             # Pairwise comparison: check ItemComparisonEvaluation (type-8
@@ -3298,6 +3309,8 @@ def export_scenario_results(scenario_id):
                 'category_id': ev.category_id,
                 'is_unsure': ev.is_unsure,
                 'feedback': ev.feedback,
+                'second_choice_id': getattr(ev, 'second_choice_id', None),
+                'answers_json': getattr(ev, 'answers_json', None),
                 # Empty for classic labeling — the whole item is the unit there.
                 # ItemTimingService.stamp_rows reads span_id to key per-case
                 # timing, so this must be present before the post-stamp runs.

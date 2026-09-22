@@ -65,6 +65,7 @@ API-Keys können auf eine Scope-Liste eingeschränkt werden. Leere Scope-Liste =
 | `GET` | `/api/v1/scenarios/{id}/copilot` | `scenario:read` | Co-Pilot-Status (Labeling, nur Owner) |
 | `PUT` | `/api/v1/scenarios/{id}/copilot` | `scenario:write` | Co-Pilot-Config aktualisieren |
 | `POST` | `/api/v1/scenarios/{id}/copilot/generate` | `scenario:write` | Vorschlagsgenerierung (re-)starten |
+| `PUT` | `/api/v1/scenarios/{id}/labeling-config` | `scenario:write` | Fragen-first-Labeling (`questions`) und Zweitwahl (`second_choice`) schalten (Labeling, nur Owner) |
 | `GET` | `/api/v1/scenarios/{id}/parts` | `scenario:read` | Teile-Status inkl. Fortschritt pro Bewerter (Labeling, nur Owner) |
 | `PUT` | `/api/v1/scenarios/{id}/parts/{part_id}` | `scenario:write` | Teil ändern: `locked` / `copilot` / `name` / `order` |
 

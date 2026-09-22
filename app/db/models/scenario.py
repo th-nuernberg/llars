@@ -547,6 +547,17 @@ class ItemLabelingEvaluation(db.Model):
     # Optional feedback
     feedback: Mapped[Optional[str]] = mapped_column(db.TEXT, nullable=True)
 
+    # Optional second choice ("Platz 2"): NOT a multi-label — category_id stays
+    # the one study label, this only preserves the runner-up when the rater
+    # found two readings defensible. Never equal to category_id.
+    second_choice_id: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
+    # Answers to the decision questions that precede the label (question-first
+    # labeling, see DecisionQuestionsConfig): {"<question_id>": "<option_id>",
+    # ..., "lean": {"<question_id>": 0..100}, "derived": "<label_id>",
+    # "source": "questions"|"direct"|"copilot"}. NULL for classic labeling.
+    answers_json: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
@@ -577,6 +588,8 @@ class ItemLabelingEvaluation(db.Model):
             'category_id': self.category_id,
             'is_unsure': self.is_unsure,
             'feedback': self.feedback,
+            'second_choice_id': self.second_choice_id,
+            'answers_json': self.answers_json,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

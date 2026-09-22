@@ -517,6 +517,18 @@ smoke:dev:
     - echo "Waiting 30s for rate-limit bucket refill..."
     - sleep 30
     - BASE_URL=http://localhost:55080 bash scripts/ci/smoke_test.sh
+  # Netzwerk-Diagnose fuer den seit v1.21 fehlschlagenden Wizard-Smoke
+  # ("Error -3 connecting to llars-redis"): zeigt, ob der Redis-Container
+  # laeuft und ob Kandidaten-Flask + Redis im selben Docker-Netz haengen.
+  # after_script laeuft auch bei Failure; rein lesend.
+  after_script:
+    - docker ps --format '{{.Names}}\t{{.Status}}\t{{.Networks}}' | grep -iE 'redis|flask' || true
+    - docker network inspect llars_default --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null || echo "network llars_default missing"
+    # llars_redis haengt auf kia-dev in einer Crash-Loop (Exit 1) — Logs,
+    # Restart-Zaehler und Plattenstand zeigen die Ursache (AOF korrupt? Disk voll?).
+    - docker logs --tail 40 llars_redis 2>&1 | tail -40 || true
+    - docker inspect llars_redis --format 'RestartCount={{.RestartCount}} OOMKilled={{.State.OOMKilled}} Error={{.State.Error}}' || true
+    - df -h / /var/lib/docker 2>/dev/null | tail -3 || true
   extends:
     - .dev_deploy_rules
   needs:
@@ -891,6 +903,34 @@ rollback:production:
       when: manual
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
       when: manual
+  allow_failure: true
+
+# Manueller Reparatur-Job fuer den Dev-Basis-Stack: recreatet llars-redis
+# mit der aktuellen Compose-Config (AOF aus — heilt die Boot-Crash-Loop
+# durch korruptes appendonly-File) und entfernt verwaiste Container, die
+# nicht mehr im Compose stehen. Rein auf kia-dev; needs:[] macht ihn sofort
+# spielbar, ohne auf fruehere Stages zu warten.
+maintenance:dev-stack-repair:
+  stage: rollback
+  tags:
+    - shell-dev
+  environment:
+    name: dev
+  resource_group: dev
+  needs: []
+  script:
+    - cd /var/llars
+    - echo "=== Orphan-Container entfernen ==="
+    - docker rm -f llars_livekit_agents llars_livekit 2>/dev/null || true
+    - echo "=== llars-redis mit aktueller Config recreaten ==="
+    - docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps --force-recreate llars-redis
+    - sleep 12
+    - docker ps --format '{{.Names}}\t{{.Status}}' | grep -i redis
+    - docker logs --tail 8 llars_redis 2>&1 | tail -8
+    - docker inspect llars_redis --format 'RestartCount={{.RestartCount}} Health={{.State.Health.Status}}'
+  extends:
+    - .dev_deploy_rules
+  when: manual
   allow_failure: true
 
 # =============================================================================

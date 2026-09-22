@@ -79,6 +79,9 @@ class TestRowSchema:
             # Rater free text, one column filled per type (comparison notes,
             # labeling/rating feedback, authenticity notes).
             "notes",
+            # Labeling only: runner-up label + decision-question answers.
+            "second_choice",
+            "answers_json",
         ]
 
     def test_APIV1_RES_020_free_text_reaches_the_export(self):

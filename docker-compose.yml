@@ -566,7 +566,15 @@ services:
     container_name: llars_redis
     mem_limit: 1g  # Pentest M3: cap runaway (steady-state weit darunter)
     image: public.ecr.aws/docker/library/redis:7-alpine
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-dev_redis_password}"]
+    # AOF bewusst AUS (nur RDB-Snapshots): Ein korruptes appendonly-Incr-File
+    # nach unclean Shutdown hat llars_redis auf kia-dev tagelang in eine
+    # Boot-Crash-Loop geschickt ("Bad file format reading the append only
+    # file", 6318 Restarts) — und damit jeden Blue-Green-Kandidaten am
+    # Redis-DNS scheitern lassen. Der Inhalt ist durchweg ephemer (Wizard-
+    # Sessions mit DB-Fallback, Socket.IO-MQ, Presence, Rate-Limits); ein
+    # Verlust seit letztem Snapshot ist verschmerzbar, ein nicht bootender
+    # Redis nicht. Gleiches Muster wie authentik-redis in Prod.
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "no", "--requirepass", "${REDIS_PASSWORD:-dev_redis_password}"]
     volumes:
       - llars_redis_data:/data
     environment:

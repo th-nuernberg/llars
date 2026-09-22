@@ -4478,8 +4478,28 @@
           "high": "Hohe Konfidenz",
           "medium": "Mittlere Konfidenz",
           "low": "Niedrige Konfidenz"
-        }
-      }
+        },
+        "answers": "Antworten"
+      },
+      "questions": {
+        "derived": "Abgeleitetes Label:",
+        "pending": "Beantworte alle Fragen – das Label ergibt sich daraus.",
+        "noMapping": "Für die Antwortkombination {key} ist kein Label hinterlegt.",
+        "direct": "Label direkt wählen",
+        "directHint": "Die Direktwahl beantwortet die Fragen oben automatisch.",
+        "checkTitle": "Prinzipien-Gegenprobe",
+        "checkEmpty": "Wähle oben einen Modus — das Antworttripel ergibt sich daraus und lässt sich hier korrigieren."
+      },
+      "secondChoice": {
+        "title": "Zweitwahl",
+        "hint": "optional – wenn eine zweite Lesart vertretbar bleibt",
+        "needsFirst": "erst einen Modus oben wählen"
+      },
+      "status": {
+        "inProgress": "In Bearbeitung",
+        "saving": "Speichern…"
+      },
+      "saveError": "Speichern fehlgeschlagen – bitte erneut versuchen."
     },
     "conversationLabeling": {
       "pageTitle": "Konversationslabeling",

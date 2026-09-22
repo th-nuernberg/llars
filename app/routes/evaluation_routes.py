@@ -11,13 +11,18 @@ Separate from LLM-specific evaluation routes.
 """
 
 import logging
+import json
 from flask import Blueprint, jsonify, request, g
 
 from auth.decorators import authentik_required
 from auth.access_control import require_scenario_membership, require_item_in_scenario
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 from decorators.permission_decorator import require_permission
-from services.evaluation.labeling_types import is_labeling_type
+from services.evaluation.labeling_types import (
+    LABELING_STATUS_DONE,
+    is_labeling_type,
+    labeling_row_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -551,8 +556,17 @@ def submit_evaluation(scenario_id, item_id):
 
     # Handle labeling evaluations (classic type 7 and conversation type 9)
     if is_labeling_type(function_type):
+        # A partial save (question-first labeling) legitimately arrives with
+        # category_id null — the row is upserted exactly like a full save, it
+        # just does not count as done yet. Normalise '' to None so an "no label
+        # chosen yet" placeholder from a client can never masquerade as a
+        # decision in labeling_row_status / the export / the IRR.
         category_id = data.get('category_id')
-        is_unsure = data.get('is_unsure', False)
+        if isinstance(category_id, str) and not category_id.strip():
+            category_id = None
+        # NOT NULL in the DB, so coerce: a client sending null must not blow up
+        # the insert mid-study.
+        is_unsure = bool(data.get('is_unsure', False))
         feedback = data.get('feedback')
         # Conversation labeling addresses ONE SPAN of the item; classic
         # labeling addresses the whole item and sends no span_id. The empty
@@ -561,6 +575,23 @@ def submit_evaluation(scenario_id, item_id):
         span_id = str(data.get('span_id') or '')
         if len(span_id) > 64:
             raise ValidationError('span_id must be at most 64 characters')
+
+        # Second choice ("Platz 2") — optional, never the same as the label,
+        # and never a label on its own (a second choice without a first is
+        # meaningless for the IRR analysis).
+        second_choice_id = data.get('second_choice_id')
+        second_choice_id = str(second_choice_id).strip() if second_choice_id else None
+        if second_choice_id and (len(second_choice_id) > 255 or second_choice_id == category_id
+                                 or not category_id):
+            second_choice_id = None
+
+        # Answers to the decision questions (question-first labeling). Kept
+        # as an opaque dict with a size cap so a client bug can't bloat rows.
+        answers_json = data.get('answers_json')
+        if not isinstance(answers_json, dict) or not answers_json:
+            answers_json = None
+        elif len(json.dumps(answers_json)) > 4096:
+            raise ValidationError('answers_json must be at most 4096 bytes')
 
         # Find or create labeling evaluation
         evaluation = ItemLabelingEvaluation.query.filter_by(
@@ -575,6 +606,8 @@ def submit_evaluation(scenario_id, item_id):
             evaluation.category_id = category_id
             evaluation.is_unsure = is_unsure
             evaluation.feedback = feedback
+            evaluation.second_choice_id = second_choice_id
+            evaluation.answers_json = answers_json
         else:
             # Create new
             evaluation = ItemLabelingEvaluation(
@@ -584,45 +617,67 @@ def submit_evaluation(scenario_id, item_id):
                 span_id=span_id,
                 category_id=category_id,
                 is_unsure=is_unsure,
-                feedback=feedback
+                feedback=feedback,
+                second_choice_id=second_choice_id,
+                answers_json=answers_json,
             )
             db.session.add(evaluation)
 
         db.session.commit()
 
+        # Three-way status of the row we just wrote. Question-first labeling
+        # persists EVERY click, so this save may well be a partial one
+        # (answered questions, no label yet) — the interface needs to know
+        # which, and so does everything below. Single source of truth:
+        # labeling_types.labeling_row_status.
+        row_status = labeling_row_status(evaluation)
+        row_is_done = row_status == LABELING_STATUS_DONE
+
         # Co-pilot study logging (no-op unless the scenario has an enabled
         # copilot). Client only contributes timing + helpful flag; shown/
         # suggestions/acceptance are derived server-side. Must NEVER block
         # the labeling save itself.
-        try:
-            from services.evaluation.labeling_copilot_service import LabelingCopilotService
-            from db.models import RatingScenarios
-            scenario = RatingScenarios.query.get(scenario_id)
-            if scenario is not None:
-                copilot_data = data.get('copilot') or {}
-                log = LabelingCopilotService.record_label_event(
-                    scenario,
-                    user.id,
-                    item_id,
-                    category_id,
-                    time_on_item_ms=copilot_data.get('time_on_item_ms'),
-                    helpful=copilot_data.get('helpful'),
-                    span_id=span_id,
+        #
+        # ONLY on a done row: the log is the study record of a labeling
+        # decision (was a suggestion shown, was it accepted, how long did the
+        # case take). Writing it on the first partial save would snapshot
+        # "accepted=None" plus the time to the first question click and — the
+        # log being first-write-only for the duration — freeze that as the
+        # case duration forever.
+        if row_is_done:
+            try:
+                from services.evaluation.labeling_copilot_service import LabelingCopilotService
+                from db.models import RatingScenarios
+                scenario = RatingScenarios.query.get(scenario_id)
+                if scenario is not None:
+                    copilot_data = data.get('copilot') or {}
+                    log = LabelingCopilotService.record_label_event(
+                        scenario,
+                        user.id,
+                        item_id,
+                        category_id,
+                        time_on_item_ms=copilot_data.get('time_on_item_ms'),
+                        helpful=copilot_data.get('helpful'),
+                        span_id=span_id,
+                    )
+                    if log is not None:
+                        db.session.commit()
+            except Exception:
+                db.session.rollback()
+                import logging
+                logging.getLogger('evaluation').warning(
+                    'Copilot log upsert failed for scenario %s item %s', scenario_id, item_id,
+                    exc_info=True,
                 )
-                if log is not None:
-                    db.session.commit()
-        except Exception:
-            db.session.rollback()
-            import logging
-            logging.getLogger('evaluation').warning(
-                'Copilot log upsert failed for scenario %s item %s', scenario_id, item_id,
-                exc_info=True,
-            )
 
         result = {
             'success': True,
             'evaluation': evaluation.to_dict(),
-            'status': 'completed'
+            # 'done' | 'in_progress' | 'pending' for the saved row — NOT the
+            # old constant 'completed', which could not express a partial save.
+            'status': row_status,
+            # Gate for the timing block below; not part of the response.
+            '_record_timing': row_is_done,
         }
 
     elif function_type == 'comparison':
@@ -678,9 +733,17 @@ def submit_evaluation(scenario_id, item_id):
     # Labeling additionally rides in the co-pilot log above; extract_from_payload
     # reads the top-level value OR labeling's nested copilot.time_on_item_ms.
     # Best-effort: a bad/missing timing value must never fail the evaluation.
+    #
+    # Labeling gate: the timing column means "item shown -> DECISION", and the
+    # row is first-write-only. A question-first save fires on the very first
+    # question click, so recording it here would permanently stamp the case
+    # with the time to that click instead of the time to the label. The
+    # labeling branch therefore only asks for a timing write once the row is
+    # done; every other type has no partial save and always records.
+    record_timing = result.pop('_record_timing', True)
     try:
         from services.evaluation.item_timing_service import ItemTimingService
-        ms = ItemTimingService.extract_from_payload(data)
+        ms = ItemTimingService.extract_from_payload(data) if record_timing else None
         if ms is not None:
             ItemTimingService.record_item_timing(
                 scenario_id, user.id, item_id, ms, function_type=function_type,

@@ -142,6 +142,21 @@ class LocalizedString(BaseModel):
     model_config = {"frozen": True}
 
 
+class LocalizedStringList(BaseModel):
+    """Mehrsprachige Liste kurzer Strings (DE/EN) — z. B. Ankerbeispiele.
+
+    Anders als LocalizedString sind BEIDE Sprachen optional (leere Liste als
+    Default): Anker sind echte Belegsätze aus dem Korpus, und eine deutsche
+    Beratungsäußerung hat oft kein sinnvolles englisches Gegenstück. Die
+    Oberfläche fällt deshalb auf die jeweils andere Sprache zurück, statt eine
+    Übersetzung zu erzwingen, die es nicht gibt.
+    """
+    de: List[str] = Field(default_factory=list)
+    en: List[str] = Field(default_factory=list)
+
+    model_config = {"frozen": True}
+
+
 class Source(BaseModel):
     """Herkunft eines Items (Mensch, LLM, Unbekannt)."""
     type: SourceType
@@ -477,11 +492,27 @@ class AuthenticityConfig(BaseModel):
 # =============================================================================
 
 class LabelOption(BaseModel):
-    """Eine Label-Option für Kategorisierung."""
+    """Eine Label-Option für Kategorisierung.
+
+    ``rule`` und ``anchors`` sind Codebook-Material, das WÄHREND des Labelns
+    sichtbar sein muss und nicht nur im PDF steht. Anlass war die VRM-Studie:
+    Die K-Beschreibung lautete „Hör-/Verstehenssignal ohne eigenen Inhalt (auch
+    Dank- und Grußformeln)" — Hauptsatz und Klammer widersprechen sich, und
+    genau an dieser Stelle liefen die beiden Annotator:innen auseinander, ohne
+    es zu merken. Eine einzeilige ``description`` trägt einen Trennfall nicht;
+    der entscheidende Test und ein paar Anker schon.
+
+    ``rule``    — der EINE Test, der den häufigsten Nachbarmodus abtrennt.
+    ``anchors`` — kurze, echte Beispiele; Kontrastfälle gehören dazu, weil ein
+                  Anker ohne Gegenbeispiel nur die eigene Lesart bestätigt.
+    Beide sind optional; ohne sie verhält sich das Labelset wie bisher.
+    """
     id: str  # "politics", "economy"
     label: LocalizedString
     description: Optional[LocalizedString] = None
     color: Optional[str] = None
+    rule: Optional[LocalizedString] = None
+    anchors: Optional[LocalizedStringList] = None
 
 
 class CopilotPromptVersion(BaseModel):
@@ -581,6 +612,44 @@ class PartsConfig(BaseModel):
         return parts
 
 
+class DecisionOption(BaseModel):
+    """Eine der (genau zwei) Antworten auf eine Entscheidungsfrage."""
+    id: str  # z. B. "S" / "G"
+    label: LocalizedString
+    hint: Optional[LocalizedString] = None
+
+
+class DecisionQuestion(BaseModel):
+    """Eine Entscheidungsfrage, die dem Label vorgeschaltet ist.
+
+    Beispiel VRM (Stiles 1992): ① Thema, ② Präsupposition, ③ Bezugsrahmen —
+    jede mit den Antworten S (Sprecher:in) / G (Gegenüber). Das Antworttripel
+    bestimmt den Modus eindeutig (siehe ``DecisionQuestionsConfig.mapping``).
+    """
+    id: str
+    title: LocalizedString
+    text: LocalizedString
+    options: List[DecisionOption] = Field(min_length=2, max_length=2)
+
+
+class DecisionQuestionsConfig(BaseModel):
+    """Fragen-first-Labeling: Annotator:innen beantworten Fragen, das Label
+    wird aus dem Antwortschlüssel abgeleitet. Die Direktwahl bleibt möglich
+    (aufklappbar) und setzt die Antworten rückwärts über ``mapping``.
+
+    ``mapping``: Antwortschlüssel (Option-IDs in Fragenreihenfolge
+    konkateniert, z. B. "SGS") → Label-ID. Nicht abgebildete Schlüssel lassen
+    das Label leer und zeigen einen Hinweis.
+    ``sliders``: optional je Frage ein Regler „eher A … eher B" als Zusatzinfo
+    (0–100, wird mit den Antworten gespeichert, ändert das Label nicht).
+    """
+    enabled: bool = True
+    items: List[DecisionQuestion] = Field(default_factory=list)
+    mapping: Dict[str, str] = Field(default_factory=dict)
+    sliders: bool = False
+    direct_selection: bool = True
+
+
 class LabelingConfig(BaseModel):
     """Konfiguration für Labeling/Kategorisierung."""
     mode: LabelingMode  # "single" oder "multi"
@@ -591,6 +660,12 @@ class LabelingConfig(BaseModel):
     copilot: Optional[CopilotConfig] = None
     # Optionale Teile/Phasen (Kalibrierungs-Studien); None = keine Teile
     parts: Optional[PartsConfig] = None
+    # Zweitwahl („Platz 2"): KEIN Multilabel — das Studienlabel bleibt die
+    # erste Wahl, die zweite wird nur zusätzlich gespeichert (Export-Spalte
+    # second_choice), damit „beides vertretbar"-Fälle nicht verloren gehen.
+    second_choice: bool = False
+    # Fragen-first-Labeling (siehe DecisionQuestionsConfig); None = klassisch
+    questions: Optional[DecisionQuestionsConfig] = None
 
 
 class ConversationLabelingConfig(LabelingConfig):

@@ -66,16 +66,27 @@ def span_ids_from_metadata(metadata_json: Optional[dict]) -> List[str]:
     ]
 
 
-def voted_span_ids(
+def span_progress_sets(
     scenario_id: int, user_id: int, item_ids: Iterable[int]
-) -> Dict[int, set]:
-    """Return ``{item_id: {span_id that this user has decided}}``.
+) -> Dict[int, Dict[str, set]]:
+    """Return ``{item_id: {"decided": {span_id}, "started": {span_id}}}``.
+
+    Both sets come out of ONE query because every caller needs both and this
+    runs per item list on every overview render.
 
     "Decided" mirrors the classic labeling rule: a category was chosen OR the
-    rater explicitly marked the span unsure. Both are decisions; only an absent
-    row is undone.
+    rater explicitly marked the span unsure. "Started" is the question-first
+    middle ground — the rater answered decision questions (or left feedback)
+    for that span but has not committed to a label yet. Both classifications
+    come from ``labeling_types.labeling_row_status`` so the span rule cannot
+    drift away from the item rule.
     """
     from db.models.scenario import ItemLabelingEvaluation
+    from services.evaluation.labeling_types import (
+        LABELING_STATUS_DONE,
+        LABELING_STATUS_IN_PROGRESS,
+        labeling_row_status,
+    )
 
     ids = [int(i) for i in item_ids if i is not None]
     if not ids:
@@ -91,12 +102,34 @@ def voted_span_ids(
         .all()
     )
 
-    voted: Dict[int, set] = {}
+    progress: Dict[int, Dict[str, set]] = {}
     for row in rows:
-        if row.category_id is None and not row.is_unsure:
+        status = labeling_row_status(row)
+        if status == LABELING_STATUS_DONE:
+            bucket = "decided"
+        elif status == LABELING_STATUS_IN_PROGRESS:
+            bucket = "started"
+        else:
             continue
-        voted.setdefault(row.item_id, set()).add(row.span_id or "")
-    return voted
+        entry = progress.setdefault(row.item_id, {"decided": set(), "started": set()})
+        entry[bucket].add(row.span_id or "")
+    return progress
+
+
+def voted_span_ids(
+    scenario_id: int, user_id: int, item_ids: Iterable[int]
+) -> Dict[int, set]:
+    """Return ``{item_id: {span_id that this user has DECIDED}}``.
+
+    Thin view on :func:`span_progress_sets` — kept because "which spans are
+    finished" is what the counting callers actually mean.
+    """
+    return {
+        item_id: entry["decided"]
+        for item_id, entry in span_progress_sets(
+            scenario_id, user_id, item_ids
+        ).items()
+    }
 
 
 def item_status_map(
@@ -115,12 +148,14 @@ def item_status_map(
         return {}
 
     inventory = span_ids_for_items(ids)
-    voted = voted_span_ids(scenario_id, user_id, ids)
+    progress = span_progress_sets(scenario_id, user_id, ids)
 
     status: Dict[int, str] = {}
     for item_id in ids:
         total = inventory.get(item_id) or []
-        done = voted.get(item_id) or set()
+        entry = progress.get(item_id) or {}
+        done = entry.get("decided") or set()
+        started = entry.get("started") or set()
         if not total:
             # No spans indexed: nothing can be completed, so don't claim it is.
             status[item_id] = "pending"
@@ -128,7 +163,10 @@ def item_status_map(
         done_count = sum(1 for span_id in total if span_id in done)
         if done_count >= len(total):
             status[item_id] = "done"
-        elif done_count > 0:
+        elif done_count > 0 or any(span_id in started for span_id in total):
+            # Answering the decision questions of a single span is already work
+            # the rater must be able to see again — with question-first
+            # labeling the first click lands here, not on a label.
             status[item_id] = "in_progress"
         else:
             status[item_id] = "pending"

@@ -2541,17 +2541,43 @@ Antworte im JSON-Format:
             "Du bist ein Annotations-Assistent, der Label-Vorschläge mit Begründung "
             "und Textbelegen liefert. Antworte ausschließlich im JSON-Format."
         )
+        # Question-first labeling: the model answers the decision questions
+        # FIRST (in output order), derives the label from the answer key, and
+        # still emits an explicit label_id — both are stored, so the export
+        # shows where derived and explicit label diverge.
+        questions_cfg = LabelingCopilotService.get_questions_config(config)
+
         # Fixed output contract, appended AFTER the user template so a custom
         # prompt can never break the parseable response format.
-        format_instruction = (
-            "\n\nAntworte AUSSCHLIESSLICH mit JSON in diesem Format:\n"
-            '{"suggestions": [{"label_id": "<erlaubte ID>", '
-            '"rationale": "1-2 Sätze Begründung", '
-            '"evidence": "kurzes wörtliches Textzitat als Beleg", '
-            '"confidence": "high|medium|low"}]}\n'
-            f"Gib genau {top_k} Vorschlag/Vorschläge, absteigend nach Eignung sortiert. "
-            f"Erlaubte label_id-Werte: {ids_text}"
-        )
+        if questions_cfg:
+            answers_example = ", ".join(
+                f'"{q["id"]}": "<{"|".join(str(o.get("id")) for o in (q.get("options") or []) if isinstance(o, dict))}>"'
+                for q in questions_cfg["items"]
+            )
+            format_instruction = (
+                "\n\nBeantworte ZUERST die folgenden Entscheidungsfragen, leite daraus "
+                "das Label ab und gib das Label zusätzlich explizit an. Das Label MUSS "
+                "zum Antwortschlüssel passen.\n"
+                + LabelingCopilotService.build_questions_block(questions_cfg)
+                + "\n\nAntworte AUSSCHLIESSLICH mit JSON in diesem Format:\n"
+                '{"suggestions": [{"answers": {' + answers_example + '}, '
+                '"label_id": "<erlaubte ID>", '
+                '"rationale": "1-2 Sätze Begründung", '
+                '"evidence": "kurzes wörtliches Textzitat als Beleg", '
+                '"confidence": "high|medium|low"}]}\n'
+                f"Gib genau {top_k} Vorschlag/Vorschläge, absteigend nach Eignung sortiert. "
+                f"Erlaubte label_id-Werte: {ids_text}"
+            )
+        else:
+            format_instruction = (
+                "\n\nAntworte AUSSCHLIESSLICH mit JSON in diesem Format:\n"
+                '{"suggestions": [{"label_id": "<erlaubte ID>", '
+                '"rationale": "1-2 Sätze Begründung", '
+                '"evidence": "kurzes wörtliches Textzitat als Beleg", '
+                '"confidence": "high|medium|low"}]}\n'
+                f"Gib genau {top_k} Vorschlag/Vorschläge, absteigend nach Eignung sortiert. "
+                f"Erlaubte label_id-Werte: {ids_text}"
+            )
 
         consecutive_failures = 0
         total_failures = 0
@@ -2641,7 +2667,7 @@ Antworte im JSON-Format:
                         )
                         s_duration = int((time.monotonic() - s_started) * 1000)
                         s_suggestions = LLMAITaskRunner._validate_copilot_payload(
-                            s_payload, allowed_ids, top_k
+                            s_payload, allowed_ids, top_k, questions_cfg
                         )
                         if s_suggestions is None:
                             raise ValueError(f"Invalid {task_type} payload for span {span_id}")
@@ -2720,7 +2746,7 @@ Antworte im JSON-Format:
                     },
                 )
                 duration_ms = int((time.monotonic() - started) * 1000)
-                suggestions = LLMAITaskRunner._validate_copilot_payload(payload, allowed_ids, top_k)
+                suggestions = LLMAITaskRunner._validate_copilot_payload(payload, allowed_ids, top_k, questions_cfg)
                 if suggestions is None:
                     raise ValueError(f"Invalid {task_type} payload")
 
@@ -2801,10 +2827,42 @@ Antworte im JSON-Format:
                 )
 
     @staticmethod
+    def _validate_copilot_answers(
+        entry: Dict[str, Any],
+        questions: Optional[Dict[str, Any]],
+        canonical: Dict[str, str],
+    ) -> Optional[Dict[str, Any]]:
+        """Normalise the ``answers`` block of one suggestion against the
+        question config: unknown questions/options are dropped, the label is
+        derived from the answer key via ``mapping``. Returns None when the
+        scenario has no questions or the model answered none of them."""
+        if not questions:
+            return None
+        raw = entry.get("answers")
+        if not isinstance(raw, dict):
+            return None
+        answers: Dict[str, str] = {}
+        for q in questions["items"]:
+            opts = {str(o.get("id")).lower(): str(o.get("id"))
+                    for o in (q.get("options") or []) if isinstance(o, dict) and o.get("id")}
+            value = raw.get(q["id"])
+            value = opts.get(str(value).strip().lower()) if value is not None else None
+            if value:
+                answers[q["id"]] = value
+        if not answers:
+            return None
+        complete = all(q["id"] in answers for q in questions["items"])
+        key = "".join(answers[q["id"]] for q in questions["items"]) if complete else None
+        derived_raw = (questions.get("mapping") or {}).get(key) if key else None
+        derived = canonical.get(str(derived_raw).lower()) if derived_raw else None
+        return {"answers": answers, "key": key, "derived_label_id": derived}
+
+    @staticmethod
     def _validate_copilot_payload(
         payload: Any,
         allowed_ids: List[str],
         top_k: int,
+        questions: Optional[Dict[str, Any]] = None,
     ) -> Optional[List[Dict[str, Any]]]:
         """Normalize a copilot response to a ranked suggestion list.
 
@@ -2812,6 +2870,11 @@ Antworte im JSON-Format:
         Each entry must reference an allowed label id (case-insensitive match
         is canonicalized); duplicates are dropped, the list is trimmed to
         top_k. Returns None when nothing valid remains.
+
+        With ``questions`` (question-first labeling) each suggestion also
+        carries ``answers``, ``derived_label_id`` and ``consistent`` — the
+        explicit label always wins for ranking, the derived one is kept so the
+        study can measure where the model's answers and label diverge.
         """
         if not isinstance(payload, dict):
             return None
@@ -2835,12 +2898,19 @@ Antworte im JSON-Format:
             confidence = str(entry.get("confidence") or "").strip().lower()
             if confidence not in ("high", "medium", "low"):
                 confidence = "medium"
-            suggestions.append({
+            suggestion = {
                 "label_id": label_id,
                 "rationale": str(entry.get("rationale") or "").strip(),
                 "evidence": str(entry.get("evidence") or "").strip(),
                 "confidence": confidence,
-            })
+            }
+            answered = LLMAITaskRunner._validate_copilot_answers(entry, questions, canonical)
+            if answered:
+                suggestion["answers"] = answered["answers"]
+                suggestion["derived_label_id"] = answered["derived_label_id"]
+                suggestion["consistent"] = (answered["derived_label_id"] == label_id
+                                            if answered["derived_label_id"] else None)
+            suggestions.append(suggestion)
             if len(suggestions) >= top_k:
                 break
         return suggestions or None

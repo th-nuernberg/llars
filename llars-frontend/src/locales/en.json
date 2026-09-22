@@ -4478,8 +4478,28 @@
           "high": "High confidence",
           "medium": "Medium confidence",
           "low": "Low confidence"
-        }
-      }
+        },
+        "answers": "Answers"
+      },
+      "questions": {
+        "derived": "Derived label:",
+        "pending": "Answer all questions – the label follows from them.",
+        "noMapping": "No label is mapped for the answer combination {key}.",
+        "direct": "Choose the label directly",
+        "directHint": "Choosing directly answers the questions above automatically.",
+        "checkTitle": "Principles cross-check",
+        "checkEmpty": "Pick a mode above — the answer triple follows from it and can be corrected here."
+      },
+      "secondChoice": {
+        "title": "Second choice",
+        "hint": "optional – when a second reading stays defensible",
+        "needsFirst": "pick a mode above first"
+      },
+      "status": {
+        "inProgress": "In progress",
+        "saving": "Saving…"
+      },
+      "saveError": "Saving failed – please try again."
     },
     "conversationLabeling": {
       "pageTitle": "Conversation Labeling",

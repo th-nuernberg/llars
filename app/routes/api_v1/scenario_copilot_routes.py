@@ -10,6 +10,12 @@ so studies can be operated headlessly (the UI routes are session-only):
            LabelingCopilotService.normalize_config_on_write (same as the UI)
 - POST /generate → clear error records and enqueue (re-)generation; items
            cached for the CURRENT prompt version are skipped by the runner
+
+``PUT /api/v1/scenarios/<id>/labeling-config`` lives here too: it switches
+question-first labeling (``questions``) and the second choice
+(``second_choice``) on/off headlessly. The generic scenario PUT is
+session-only and the v1 PATCH refuses ``eval_config``, so study scripts had
+no API-key path to these settings (VRM study, 2026-09-15).
 """
 
 from __future__ import annotations
@@ -147,3 +153,43 @@ def generate_copilot_suggestions_v1(scenario_id: int):
             f"Co-pilot generation not startable: {result.get('reason')}"
         )
     return jsonify({"success": True, "scenario_id": scenario_id, **result})
+
+
+@api_v1_bp.route("/scenarios/<int:scenario_id>/labeling-config", methods=["PUT"])
+@api_key_or_token_required
+@require_api_scope("scenario:write")
+@handle_api_errors(logger_name="api_v1.copilot")
+def update_labeling_config_v1(scenario_id: int):
+    """Merge ``questions`` / ``second_choice`` into the labeling config.
+
+    Validation + mirroring in LabelingCopilotService.update_labeling_settings;
+    the copilot prompt_version bumps automatically when the questions change
+    (they are part of the effective co-pilot prompt), same as via the UI.
+    """
+    scenario = _get_labeling_scenario(scenario_id)
+    body = request.get_json(silent=True) or {}
+    previous_config = scenario.config_json or {}
+    try:
+        next_config = LabelingCopilotService.update_labeling_settings(previous_config, body)
+    except ValueError as exc:
+        raise ApiValidationError(str(exc))
+    next_config = LabelingCopilotService.normalize_config_on_write(
+        next_config, previous_config
+    )
+    scenario.config_json = next_config
+    db.session.commit()
+
+    inner = LabelingCopilotService.locate_inner_config(scenario.config_json)
+    logger.info(
+        "[api_v1.copilot] Updated labeling settings for scenario %s: %s",
+        scenario_id, sorted(body.keys()),
+    )
+    return jsonify({
+        "success": True,
+        "scenario_id": scenario_id,
+        "labeling": {
+            "questions": inner.get("questions"),
+            "second_choice": bool(inner.get("second_choice")),
+        },
+        "copilot": LabelingCopilotService.get_status(scenario),
+    })

@@ -7,7 +7,7 @@ functionality through:
 - Session service labeling status checks
 - Labeling evaluation workflow (find-or-create pattern)
 
-Test IDs: [LABEL_SVC_001] through [LABEL_SVC_025]
+Test IDs: [LABEL_SVC_001] through [LABEL_SVC_026]
 """
 
 import pytest
@@ -183,6 +183,38 @@ class TestItemLabelingEvaluationModel:
             assert result['feedback'] == 'Good'
             assert 'created_at' in result
             assert 'updated_at' in result
+
+    def test_LABEL_SVC_026_second_choice_and_answers_round_trip(self, app, db):
+        """second_choice_id + answers_json (question-first labeling) persist
+        and appear in to_dict; classic rows keep both as None."""
+        from db.models.scenario import ItemLabelingEvaluation
+
+        with app.app_context():
+            _create_function_type(db, 'labeling', 7)
+            user = _create_user(db)
+            scenario = _create_scenario(db)
+            item = _create_item(db)
+
+            answers = {'q1': 'G', 'q2': 'S', 'q3': 'S', 'derived': 'Q', 'source': 'questions'}
+            db.session.add(ItemLabelingEvaluation(
+                user_id=user.id, item_id=item.item_id, scenario_id=scenario.id,
+                category_id='Q', second_choice_id='A', answers_json=answers,
+            ))
+            db.session.commit()
+
+            saved = ItemLabelingEvaluation.query.first()
+            assert saved.second_choice_id == 'A'
+            assert saved.answers_json == answers
+            d = saved.to_dict()
+            assert d['second_choice_id'] == 'A'
+            assert d['answers_json']['derived'] == 'Q'
+
+            classic = ItemLabelingEvaluation(
+                user_id=user.id, item_id=item.item_id, scenario_id=scenario.id,
+                span_id='s1', category_id='positive',
+            )
+            assert classic.to_dict()['second_choice_id'] is None
+            assert classic.to_dict()['answers_json'] is None
 
     def test_LABEL_SVC_005_unique_constraint(self, app, db):
         """Should enforce unique constraint on (user_id, item_id, scenario_id)."""

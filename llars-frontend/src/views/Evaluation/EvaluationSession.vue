@@ -136,6 +136,7 @@
               :hide-navigation="true"
               @status-change="handleStatusChange"
               @saving-change="handleSavingChange"
+              @item-progress="handleItemProgress"
               @item-completed="handleItemCompleted"
             />
           </keep-alive>
@@ -306,6 +307,15 @@ const {
 const currentItemStatus = ref('pending')
 const isSaving = ref(false)
 
+// Partial progress reported by a child interface ('item-progress'), keyed by
+// item id. Needed because an interface can persist an INCOMPLETE state — e.g.
+// labeling with two of three decision questions answered — which is neither
+// "pending" nor "done". useEvaluationSession exposes `items` readonly (and a
+// partial save must not bump the completed counter), so the session keeps the
+// intermediate status in this map; it survives navigation inside the session
+// without a reload. Entries are dropped once the item is genuinely completed.
+const partialItemStatus = ref({})
+
 // -----------------------------------------------------------------------------
 // Universal "thank you for your first evaluation" pop-up
 // -----------------------------------------------------------------------------
@@ -374,8 +384,13 @@ watch(() => route.params.itemId, (newItemId) => {
 // Watch for current item changes to reset status
 watch(currentItem, (newItem) => {
   if (newItem) {
-    // Reset status based on item's evaluated state
-    currentItemStatus.value = newItem.status || (newItem.evaluated ? 'done' : 'pending')
+    // Reset status based on item's evaluated state. A partial save reported
+    // during this session wins over the (then stale) list status.
+    const itemId = newItem.thread_id || newItem.id || newItem.item_id
+    currentItemStatus.value =
+      partialItemStatus.value[itemId] ||
+      newItem.status ||
+      (newItem.evaluated ? 'done' : 'pending')
   }
 }, { immediate: true })
 
@@ -669,8 +684,40 @@ function handleSavingChange(saving) {
   isSaving.value = saving
 }
 
+// Copy of the partial-status map without one entry (kept immutable so the
+// watchers/templates reading it actually re-evaluate).
+function withoutItem(map, itemId) {
+  const next = { ...map }
+  delete next[itemId]
+  return next
+}
+
+// Handle an INCOMPLETE but persisted state from a child interface (e.g. a
+// labeling item with some — but not all — decision questions answered). The
+// footer tag flips to "In Bearbeitung" and the status is remembered per item so
+// navigating away and back doesn't fall back to "Ausstehend". Never touches the
+// completed counter — only handleItemCompleted does.
+function handleItemProgress(payload) {
+  const itemId = payload?.itemId ?? payload?.thread_id ?? payload
+  const status = payload?.status || 'in_progress'
+  if (!itemId) return
+
+  if (status === 'done') {
+    // Completion arrives via item-completed; drop the stale partial marker.
+    partialItemStatus.value = withoutItem(partialItemStatus.value, itemId)
+  } else {
+    partialItemStatus.value = { ...partialItemStatus.value, [itemId]: status }
+  }
+
+  const currentId = currentItem.value?.thread_id || currentItem.value?.id || currentItem.value?.item_id
+  if (currentId === itemId) {
+    currentItemStatus.value = status
+  }
+}
+
 // Handle item completion - update progress without reloading
 function handleItemCompleted(itemId) {
+  partialItemStatus.value = withoutItem(partialItemStatus.value, itemId)
   markItemCompleted(itemId)
   // Pulse the Weiter button to signal the next step once a selection
   // lands. Skip when there's nothing left to advance to.

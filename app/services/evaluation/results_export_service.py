@@ -35,6 +35,7 @@ lives.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
@@ -55,6 +56,7 @@ from db.models import (
     UserMailHistoryRating,
 )
 from db.models.scenario import ItemComparisonEvaluation, ItemLabelingEvaluation
+from services.evaluation.labeling_types import labeling_row_is_decided
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +196,13 @@ ROW_COLUMNS = [
     # borderline-case remark or a rationale was collected in the interface and
     # then silently dropped on the way out. One column, filled per type.
     "notes",
+    # Labeling only (appended at the END, see span_id rationale above).
+    # ``second_choice`` = the rater's runner-up label ("Platz 2"; the study
+    # label stays vote_value_str). ``answers_json`` = the answers to the
+    # decision questions that precede the label (question-first labeling),
+    # serialised as a JSON string so CSV and JSON exports carry the same cell.
+    "second_choice",
+    "answers_json",
 ]
 
 
@@ -722,6 +731,14 @@ def _human_labeling_rows(scenario, item_ids, items_by_id, users_by_id, voters):
         }
 
     for ev in rows:
+        # Skip rows that are not a DECISION yet. Question-first labeling saves
+        # every click, so a row can hold answered questions with no label — that
+        # is work in progress, not a vote. Exporting it would put an empty
+        # vote_value_str in the results file, count the rater as a voter of that
+        # item, and (via the shared row set) drag a half-finished case into the
+        # agreement numbers. See labeling_types.labeling_row_is_decided.
+        if not labeling_row_is_decided(ev):
+            continue
         item = items_by_id.get(ev.item_id)
         user = users_by_id.get(ev.user_id)
         voters.add(("human", ev.user_id))
@@ -751,6 +768,9 @@ def _human_labeling_rows(scenario, item_ids, items_by_id, users_by_id, voters):
             vote_value_str=ev.category_id,
             status="unsure" if ev.is_unsure else None,
             notes=ev.feedback,
+            second_choice=getattr(ev, "second_choice_id", None),
+            answers_json=(json.dumps(ev.answers_json, ensure_ascii=False)
+                          if getattr(ev, "answers_json", None) else None),
             created_at=_to_iso(ev.created_at),
             updated_at=_to_iso(ev.updated_at),
             # None for classic labeling, where '' is the sentinel for "whole

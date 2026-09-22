@@ -65,6 +65,7 @@ API keys can be restricted to a scope list. An empty list means the key inherits
 | `GET` | `/api/v1/scenarios/{id}/copilot` | `scenario:read` | Co-pilot status (labeling, owner only) |
 | `PUT` | `/api/v1/scenarios/{id}/copilot` | `scenario:write` | Update co-pilot config |
 | `POST` | `/api/v1/scenarios/{id}/copilot/generate` | `scenario:write` | (Re-)start suggestion generation |
+| `PUT` | `/api/v1/scenarios/{id}/labeling-config` | `scenario:write` | Toggle question-first labeling (`questions`) and the second choice (`second_choice`) (labeling, owner only) |
 | `GET` | `/api/v1/scenarios/{id}/parts` | `scenario:read` | Parts status incl. per-assessor progress (labeling, owner only) |
 | `PUT` | `/api/v1/scenarios/{id}/parts/{part_id}` | `scenario:write` | Update a part: `locked` / `copilot` / `name` / `order` |
 

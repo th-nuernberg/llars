@@ -98,8 +98,17 @@
             <LIcon size="20" class="mr-2">mdi-label-outline</LIcon>
             <span class="panel-title">{{ $t('evaluation.labeling.selectCategory') }}</span>
             <v-spacer />
-            <LTag :variant="selectedCategory ? 'success' : 'default'" size="small">
-              {{ selectedCategory ? $t('evaluation.labeling.selected') : $t('evaluation.labeling.notSelected') }}
+            <!-- A save is in flight (every click persists now — see persist()).
+                 Sits next to the status tag so the rater sees that their partial
+                 answer is being stored, not swallowed. -->
+            <span v-if="submitting" class="saving-indicator" data-test="saving-indicator">
+              <v-progress-circular indeterminate size="12" width="2" />
+              {{ $t('evaluation.labeling.status.saving') }}
+            </span>
+            <!-- Three states: done (label/unsure set) | in progress (some input,
+                 no label yet) | pending (untouched). -->
+            <LTag :variant="headerStatusVariant" size="small" :data-status="headerStatus" data-test="header-status">
+              {{ headerStatusLabel }}
             </LTag>
           </div>
           <div class="panel-content">
@@ -163,6 +172,13 @@
                       {{ $t('evaluation.labeling.copilot.apply') }}
                     </LBtn>
                   </div>
+                  <p v-if="suggestion.answers" class="copilot-answers">
+                    {{ $t('evaluation.labeling.copilot.answers') }}:
+                    <span v-for="(val, qid) in suggestion.answers" :key="qid" class="copilot-answer-chip">{{ qid }} = {{ val }}</span>
+                    <span v-if="suggestion.consistent === false" class="copilot-answers-warn">
+                      ≠ {{ suggestion.derived_label_id }}
+                    </span>
+                  </p>
                   <p v-if="suggestion.rationale" class="copilot-rationale">{{ suggestion.rationale }}</p>
                   <p v-if="suggestion.evidence" class="copilot-evidence">„{{ suggestion.evidence }}“</p>
                 </div>
@@ -173,8 +189,86 @@
                 </p>
               </div>
 
-              <!-- Category Buttons -->
-              <div class="category-buttons">
+              <!-- Question-first labeling: the rater answers the decision
+                   questions (e.g. VRM: topic / presumption / frame, each S or G)
+                   and the label is DERIVED from the answer key. Nothing is
+                   pre-selected. The direct label choice stays available below
+                   (expandable) and sets the answers backwards via the mapping. -->
+              <div v-if="questionsEnabled" class="questions-section" data-test="questions-section">
+                <div
+                  v-for="(q, qi) in questionItems"
+                  :key="q.id"
+                  class="question-card"
+                  :data-test="`question-${q.id}`"
+                >
+                  <div class="question-head">
+                    <span class="question-num">{{ qi + 1 }}</span>
+                    <span class="question-title">{{ localize(q.title) }}</span>
+                  </div>
+                  <p class="question-text">{{ localize(q.text) }}</p>
+                  <div class="question-options">
+                    <button
+                      v-for="opt in q.options"
+                      :key="opt.id"
+                      type="button"
+                      class="question-option"
+                      :class="{ active: answers[q.id] === opt.id }"
+                      :disabled="!canEvaluate"
+                      :data-test="`answer-${q.id}-${opt.id}`"
+                      @click="answerQuestion(q.id, opt.id)"
+                    >
+                      <span class="question-option-id">{{ opt.id }}</span>
+                      <span class="question-option-label">{{ localize(opt.label) }}</span>
+                      <span v-if="localize(opt.hint)" class="question-option-hint">{{ localize(opt.hint) }}</span>
+                    </button>
+                  </div>
+                  <!-- Optional lean slider: supplementary info only ("rather
+                       S … rather G"), never changes the derived label. -->
+                  <div v-if="questionsConfig?.sliders && q.options.length === 2" class="question-lean">
+                    <span class="lean-end">{{ q.options[0].id }}</span>
+                    <v-slider
+                      :model-value="leans[q.id] ?? 50"
+                      :min="0"
+                      :max="100"
+                      :step="5"
+                      density="compact"
+                      hide-details
+                      :disabled="!canEvaluate"
+                      @update:model-value="setLean(q.id, $event)"
+                    />
+                    <span class="lean-end">{{ q.options[1].id }}</span>
+                  </div>
+                </div>
+
+                <div class="derived-label" data-test="derived-label">
+                  <template v-if="derivedCategory">
+                    <span class="derived-caption">{{ $t('evaluation.labeling.questions.derived') }}</span>
+                    <span class="copilot-label-chip derived-chip" :style="{ borderColor: derivedCategory.color, color: derivedCategory.color }">
+                      {{ categoryName(derivedCategory) }}
+                    </span>
+                  </template>
+                  <span v-else-if="answersComplete" class="derived-missing">
+                    {{ $t('evaluation.labeling.questions.noMapping', { key: answerKey }) }}
+                  </span>
+                  <span v-else class="derived-pending">{{ $t('evaluation.labeling.questions.pending') }}</span>
+                </div>
+
+                <button
+                  v-if="questionsConfig?.direct_selection !== false"
+                  type="button"
+                  class="direct-toggle"
+                  data-test="direct-toggle"
+                  @click="directOpen = !directOpen"
+                >
+                  <LIcon size="16" class="mr-1">{{ directOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
+                  {{ $t('evaluation.labeling.questions.direct') }}
+                </button>
+              </div>
+
+              <!-- Category Buttons (direct choice). Always visible in classic
+                   mode; in question mode only when expanded. -->
+              <div v-show="!questionsEnabled || directOpen" class="category-buttons" data-test="category-buttons">
+                <p v-if="questionsEnabled" class="direct-hint">{{ $t('evaluation.labeling.questions.directHint') }}</p>
                 <LLabelButton
                   v-for="cat in categories"
                   :key="cat.id"
@@ -182,6 +276,31 @@
                   :model-value="selectedCategory"
                   @select="selectCategory"
                 />
+              </div>
+
+              <!-- Second choice ("Platz 2"): NOT a multi-label. Only offered
+                   once a first label exists; stored alongside it so "both
+                   readings defensible" cases are not thrown away. -->
+              <div v-if="secondChoiceEnabled && selectedCategory" class="second-choice-section" data-test="second-choice">
+                <p class="second-choice-title">
+                  {{ $t('evaluation.labeling.secondChoice.title') }}
+                  <span class="second-choice-hint">{{ $t('evaluation.labeling.secondChoice.hint') }}</span>
+                </p>
+                <div class="second-choice-chips">
+                  <button
+                    v-for="cat in secondChoiceCandidates"
+                    :key="cat.id"
+                    type="button"
+                    class="second-choice-chip"
+                    :class="{ active: secondChoice === cat.id }"
+                    :style="{ borderColor: cat.color || '#c9c9c2', color: cat.color || 'inherit' }"
+                    :disabled="!canEvaluate"
+                    :data-test="`second-${cat.id}`"
+                    @click="toggleSecondChoice(cat.id)"
+                  >
+                    {{ categoryName(cat) }}
+                  </button>
+                </div>
               </div>
 
               <!-- Unsure Option -->
@@ -208,12 +327,19 @@
                 rows="2"
                 auto-grow
                 hide-details
+                @blur="flushPendingSaves"
               />
             </div>
           </div>
         </div>
       </template>
     </div>
+
+    <!-- A failed save used to vanish into console.error only; the rater kept
+         labeling and lost work. Surface it. -->
+    <v-snackbar v-model="saveError" color="error" :timeout="6000">
+      {{ $t('evaluation.labeling.saveError') }}
+    </v-snackbar>
 
     <!-- Action Bar -->
     <template #action-bar-right>
@@ -268,8 +394,23 @@
  * Layout:
  * - Left Panel: Content to be labeled (messages/text)
  * - Right Panel: Category selection buttons
+ *
+ * Persistence model (prod incident scenario 758): EVERY click persists — a
+ * question answer, a lean slider, the second choice, a direct label, "unsure",
+ * an applied co-pilot suggestion, feedback. The auto-save gate is `hasAnyInput`,
+ * NOT `canSubmit`: a rater who answered two of three questions and navigated
+ * away used to lose both answers, because the old gate required a complete
+ * (derivable) label. The backend accepts `category_id: null` together with a
+ * non-empty `answers_json` and answers with the authoritative status of the row
+ * it wrote ('done' | 'in_progress' | 'pending', see
+ * services/evaluation/labeling_types.labeling_row_status), which this component
+ * mirrors into the item list and emits upwards ('item-progress'). `canSubmit`
+ * still gates the explicit "Save & Next" button and 'item-completed'.
+ *
+ * Study invariant: nothing is ever pre-selected, and a partial save NEVER
+ * writes a label (category_id stays null until the answers derive one).
  */
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { usePanelResize } from '@/composables/usePanelResize'
@@ -299,7 +440,11 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 'saving-change'])
+// 'item-progress' carries EVERY persisted state of the current item — including
+// a partial one ({ itemId, status: 'in_progress' }) — so the session shell can
+// show "In Bearbeitung" instead of "Ausstehend". 'item-completed' stays
+// reserved for a finished label (it bumps the session's completed counter).
+const emit = defineEmits(['item-completed', 'item-progress', 'all-completed', 'status-change', 'saving-change'])
 
 // Computed prop for hideNavigation to use in template
 const hideNavigation = computed(() => props.hideNavigation)
@@ -357,6 +502,17 @@ const isUnsure = ref(false)
 const feedback = ref('')
 const currentItemDetail = ref(null)
 
+// Question-first labeling state. `answers` = {questionId: optionId};
+// `leans` = optional slider values (0..100) per question; `answerSource`
+// records how the label came about ("questions" | "direct" | "copilot").
+const answers = ref({})
+const leans = ref({})
+const answerSource = ref(null)
+const directOpen = ref(false)
+// Second choice ("Platz 2") — never equal to selectedCategory.
+const secondChoice = ref(null)
+const saveError = ref(false)
+
 // When embedded in EvaluationSession (hideNavigation=true), LEvaluationLayout
 // hides the action bar — and with it the explicit "Save & Next" button that
 // used to be the ONLY trigger for the labeling POST. The session footer's
@@ -370,7 +526,16 @@ const currentItemDetail = ref(null)
 // reset + restore the inputs for a freshly-loaded item, so navigating between
 // items doesn't re-POST the already-saved (or empty) value.
 const suppressAutoSave = ref(false)
+// Debounced writers: free-text feedback (800 ms) and the lean sliders (300 ms —
+// a drag fires one update per step). Both are flushed before navigation and on
+// unmount (flushPendingSaves) so nothing is lost mid-debounce.
 let feedbackTimer = null
+let leanTimer = null
+// The POST currently on the wire. Navigation awaits it so an item switch can't
+// race the response of a partial save (which would land on the wrong item).
+let inFlightPersist = null
+// Overlapping saves: `submitting` must only clear when the LAST one finished.
+let openRequests = 0
 
 // Co-Pilot state. `copilotHelpful` is the per-item thumbs vote; it rides along
 // with the next persist() (server only stores non-null values, so an untouched
@@ -424,6 +589,90 @@ const categories = computed(() => {
 
 const evalConfig = computed(() => inner.value)
 
+// --- Question-first labeling (DecisionQuestionsConfig) --------------------
+const questionsConfig = computed(() => inner.value.questions || null)
+const questionItems = computed(() => (questionsConfig.value?.items || []).filter(q => q && q.id && Array.isArray(q.options)))
+const questionsEnabled = computed(() =>
+  !!questionsConfig.value && questionsConfig.value.enabled !== false && questionItems.value.length > 0
+)
+const secondChoiceEnabled = computed(() =>
+  inner.value.second_choice === true || inner.value.secondChoice === true
+)
+
+const answersComplete = computed(() =>
+  questionItems.value.length > 0 && questionItems.value.every(q => !!answers.value[q.id])
+)
+const answerKey = computed(() =>
+  answersComplete.value ? questionItems.value.map(q => answers.value[q.id]).join('') : null
+)
+const derivedCategoryId = computed(() => {
+  if (!answerKey.value) return null
+  const mapping = questionsConfig.value?.mapping || {}
+  return mapping[answerKey.value] ?? null
+})
+const derivedCategory = computed(() =>
+  categories.value.find(c => c.id === derivedCategoryId.value) || null
+)
+const secondChoiceCandidates = computed(() =>
+  categories.value.filter(c => c.id !== selectedCategory.value)
+)
+
+// Reverse mapping: the answers that produce `categoryId`, or null when the
+// mapping is ambiguous (several keys) or absent (flag cards, X).
+function answersForCategory(categoryId) {
+  const mapping = questionsConfig.value?.mapping || {}
+  const keys = Object.keys(mapping).filter(k => mapping[k] === categoryId)
+  if (keys.length !== 1) return null
+  let rest = keys[0]
+  const out = {}
+  for (const q of questionItems.value) {
+    const opt = q.options.find(o => rest.startsWith(String(o.id)))
+    if (!opt) return null
+    out[q.id] = opt.id
+    rest = rest.slice(String(opt.id).length)
+  }
+  return rest.length === 0 ? out : null
+}
+
+// Answering a question re-derives the label. Nothing is pre-selected: the
+// label appears only once every question has an answer AND the key maps.
+function answerQuestion(questionId, optionId) {
+  if (!canEvaluate.value) return
+  answers.value = { ...answers.value, [questionId]: optionId }
+  answerSource.value = 'questions'
+  const derived = derivedCategoryId.value
+  if (derived !== selectedCategory.value) {
+    selectedCategory.value = derived
+    if (derived) isUnsure.value = false
+  }
+  if (secondChoice.value && secondChoice.value === derived) secondChoice.value = null
+}
+
+function setLean(questionId, value) {
+  if (!canEvaluate.value) return
+  leans.value = { ...leans.value, [questionId]: Number(value) }
+}
+
+function toggleSecondChoice(categoryId) {
+  if (!canEvaluate.value || categoryId === selectedCategory.value) return
+  secondChoice.value = secondChoice.value === categoryId ? null : categoryId
+}
+
+// The `answers_json` sent with every save. A PARTIAL answer set is valid on
+// purpose: it is what makes "two of three questions answered" survive a reload
+// (`derived` is then null — the label is never guessed). A lean alone also
+// counts as input, so dragging a slider before answering still persists.
+function answersPayload() {
+  if (!questionsEnabled.value) return null
+  const payload = { ...answers.value }
+  const hasLeans = Object.keys(leans.value).length > 0
+  if (Object.keys(payload).length === 0 && !hasLeans && !answerSource.value) return null
+  if (hasLeans) payload.lean = { ...leans.value }
+  payload.derived = derivedCategoryId.value
+  payload.source = answerSource.value
+  return payload
+}
+
 // Suggestions delivered per item by the session endpoint (server-side filtered;
 // see session_service.py — hidden-control items simply have no suggestion).
 const copilotSuggestions = computed(() =>
@@ -456,15 +705,24 @@ function confidenceVariant(confidence) {
 // current choice. The auto-save watcher persists immediately.
 function applySuggestion(suggestion) {
   if (!canEvaluate.value) return
+  if (questionsEnabled.value) {
+    const fromModel = suggestion.answers && Object.keys(suggestion.answers).length
+      ? { ...suggestion.answers }
+      : answersForCategory(suggestion.label_id)
+    if (fromModel) answers.value = fromModel
+    answerSource.value = 'copilot'
+  }
+  if (secondChoice.value === suggestion.label_id) secondChoice.value = null
   selectedCategory.value = suggestion.label_id
   isUnsure.value = false
 }
 
 function setHelpful(value) {
   copilotHelpful.value = value
-  // Persist right away when a label already exists (log row gets the vote);
-  // otherwise it rides along with the upcoming label save.
-  if (canSubmit.value && !suppressAutoSave.value) persist()
+  // Persist right away when there is already something to attach the vote to
+  // (a label, an "unsure" or question answers); otherwise it rides along with
+  // the next save. A thumbs alone has no row to write into.
+  if (hasPersistablePayload.value && !suppressAutoSave.value) schedulePersist()
 }
 
 // Display name per category. Schema items expose `label` as {de,en};
@@ -477,8 +735,51 @@ function categoryName(cat) {
 const hasNext = computed(() => currentItemIndex.value < items.value.length - 1)
 const hasPrev = computed(() => currentItemIndex.value > 0)
 
+// A COMPLETE evaluation: a bucket was reached (derived or directly chosen) or
+// the rater declared themselves unsure. Gates the explicit "Save & Next" button
+// and the 'item-completed' emit — NOT the auto-save (see hasAnyInput).
 const canSubmit = computed(() => {
   return selectedCategory.value !== null || isUnsure.value
+})
+
+// ANY rater input on this item. This is the auto-save gate: the moment a single
+// question is answered (or a slider moved, a second choice picked, feedback
+// typed) the state goes to the server, so navigating away can't discard it.
+const hasAnyInput = computed(() =>
+  selectedCategory.value !== null ||
+  isUnsure.value ||
+  secondChoice.value !== null ||
+  Object.keys(answers.value).length > 0 ||
+  Object.keys(leans.value).length > 0 ||
+  (feedback.value || '').trim().length > 0
+)
+
+// Not everything the rater can touch is storable on its own: feedback (and, in
+// classic mode without questions, anything else) has no row to attach to while
+// there is neither a bucket nor an answers_json. Those keystrokes ride along
+// with the next real save instead of POSTing an empty partial the backend would
+// reject.
+const hasPersistablePayload = computed(() =>
+  selectedCategory.value !== null || isUnsure.value || answersPayload() !== null
+)
+
+// Header tag state. Derived from the CURRENT input (not the round-trip status)
+// so it flips the instant the rater clicks; the "Speichern…" indicator next to
+// it covers the POST itself.
+const headerStatus = computed(() => {
+  if (canSubmit.value) return 'done'
+  return hasAnyInput.value ? 'in_progress' : 'pending'
+})
+
+const headerStatusVariant = computed(() => {
+  if (headerStatus.value === 'done') return 'success'
+  return headerStatus.value === 'in_progress' ? 'warning' : 'default'
+})
+
+const headerStatusLabel = computed(() => {
+  if (headerStatus.value === 'done') return t('evaluation.labeling.selected')
+  if (headerStatus.value === 'in_progress') return t('evaluation.labeling.status.inProgress')
+  return t('evaluation.labeling.notSelected')
 })
 
 const completedCount = computed(() => {
@@ -496,12 +797,17 @@ const evaluationStatus = computed(() => {
 // evaluationStatus (Gesamtfortschritt) emittiert, stünde bei einem frischen Item
 // "In Bearbeitung" (weil ANDERE Items bereits erledigt sind) und bei einem schon
 // erledigten Item beim Zurücknavigieren ebenfalls "In Bearbeitung" statt
-// "Abgeschlossen". Labeling ist pro Item binär (Label gespeichert = evaluated),
-// daher done | pending.
+// "Abgeschlossen".
+// Drei Zustände seit den Teilspeicherungen: done (Label gespeichert) |
+// in_progress (Teilantworten gespeichert, noch kein Label) | pending.
 const currentItemStatus = computed(() => {
   const item = items.value[currentItemIndex.value]
   if (!item) return 'pending'
-  return item.evaluated ? 'done' : 'pending'
+  if (item.evaluated) return 'done'
+  // The backend spells the partial state either way ('in_progress' from the
+  // session service, 'Progressing' from the ProgressionStatus enum).
+  const status = String(item.status || '').toLowerCase()
+  return status === 'in_progress' || status === 'progressing' ? 'in_progress' : 'pending'
 })
 
 // Emit den Status des aktuellen Items an den Parent (Footer-Status-Tag).
@@ -519,7 +825,16 @@ function selectCategory(categoryId) {
   if (!canEvaluate.value) return
   if (selectedCategory.value === categoryId) {
     selectedCategory.value = null
+    if (questionsEnabled.value) answers.value = {}
   } else {
+    if (questionsEnabled.value) {
+      // Direct choice answers the questions backwards (when the mapping is
+      // unambiguous); otherwise the answers are cleared so a stale triple
+      // can't contradict the chosen label.
+      answers.value = answersForCategory(categoryId) || {}
+      answerSource.value = 'direct'
+    }
+    if (secondChoice.value === categoryId) secondChoice.value = null
     selectedCategory.value = categoryId
     isUnsure.value = false
   }
@@ -535,11 +850,32 @@ function onUnsureChange(val) {
   if (val) selectedCategory.value = null
 }
 
+// A prefill row without a category but WITH rater input = a partial save
+// (question answers / leans / second choice / unsure / a comment).
+function isPartialEvaluation(evaluation) {
+  if (!evaluation) return false
+  if (evaluation.category_id) return false
+  const saved = evaluation.answers_json
+  const hasAnswers = !!saved && typeof saved === 'object' && Object.keys(saved).length > 0
+  return hasAnswers ||
+    Boolean(evaluation.is_unsure) ||
+    Boolean(evaluation.second_choice_id) ||
+    Boolean((evaluation.feedback || '').trim())
+}
+
 async function loadItems() {
   loading.value = true
   try {
     const response = await axios.get(`/api/evaluation/session/${props.scenarioId}`)
-    items.value = response.data.items || []
+    // Partially-answered items come back with `evaluated: false` and a prefill
+    // row carrying answers but no category. Mark them so footer/status read
+    // "In Bearbeitung" instead of "Ausstehend" after a reload — unless the
+    // backend already said so itself.
+    items.value = (response.data.items || []).map(item =>
+      !item.status && !item.evaluated && isPartialEvaluation(item.evaluation)
+        ? { ...item, status: 'in_progress' }
+        : item
+    )
 
     // Navigate to initial item if specified
     if (props.initialItemId && items.value.length > 0) {
@@ -574,12 +910,23 @@ async function loadCurrentItemDetail() {
   // mutate the bound inputs programmatically — without this guard navigating to
   // another item would immediately re-POST its empty/saved value.
   suppressAutoSave.value = true
+  // Drop any debounce still pointing at the PREVIOUS item — the callers
+  // (goNext/goPrev/initialItemId) flushed it already; a leftover timer would
+  // fire against the freshly reset inputs.
   clearTimeout(feedbackTimer)
+  feedbackTimer = null
+  clearTimeout(leanTimer)
+  leanTimer = null
 
   // Reset state
   selectedCategory.value = null
   isUnsure.value = false
   feedback.value = ''
+  answers.value = {}
+  leans.value = {}
+  answerSource.value = null
+  secondChoice.value = null
+  directOpen.value = false
   currentItemDetail.value = null
   fullscreenOpen.value = false // don't keep stale content open across items
   copilotHelpful.value = null
@@ -596,11 +943,25 @@ async function loadCurrentItemDetail() {
     loadingItem.value = false
   }
 
-  // Restore a previously-saved label so navigating back shows the prior choice.
+  // Restore a previously-saved state so navigating back shows the prior input.
+  // This deliberately also covers a PARTIAL row (category_id null, answers
+  // present): the two answers a rater gave before leaving must come back as
+  // active buttons — without a label being (re-)selected.
   if (item.evaluation) {
     selectedCategory.value = item.evaluation.category_id || null
     feedback.value = item.evaluation.feedback || ''
     isUnsure.value = Boolean(item.evaluation.is_unsure)
+    secondChoice.value = item.evaluation.second_choice_id || null
+    const saved = item.evaluation.answers_json
+    if (saved && typeof saved === 'object') {
+      const restored = {}
+      for (const q of questionItems.value) {
+        if (saved[q.id]) restored[q.id] = saved[q.id]
+      }
+      answers.value = restored
+      leans.value = saved.lean && typeof saved.lean === 'object' ? { ...saved.lean } : {}
+      answerSource.value = saved.source || null
+    }
   }
 
   // Re-enable auto-save only after the restore-driven reactivity has flushed,
@@ -613,49 +974,146 @@ async function loadCurrentItemDetail() {
   itemShownAt.value = Date.now()
 }
 
-// Persist the current item's label. Shared by the auto-save watchers (embedded
-// session flow) and the explicit "Save & Next" button (standalone flow, where
-// the action bar is visible). Idempotent: the backend upserts by
-// (user, item, scenario), so re-saving the same item just updates the row.
-async function persist() {
-  if (!canEvaluate.value || !canSubmit.value || !currentItem.value) return
+// Normalize the item status the backend reports for the row it just upserted
+// ('done' | 'in_progress' | 'pending', see labeling_types.labeling_row_status).
+// The server is authoritative — it knows whether the stored row carries a
+// label. `complete` is only the fallback for older backends that answer with
+// the former constant 'completed' or no status at all.
+function normalizeSavedStatus(serverStatus, complete) {
+  const value = String(serverStatus || '').toLowerCase()
+  if (value === 'done' || value === 'completed') return 'done'
+  if (value === 'in_progress' || value === 'progressing') return 'in_progress'
+  if (value === 'pending' || value === 'not_started') return 'pending'
+  return complete ? 'done' : 'in_progress'
+}
 
+// Persist the current item's state — complete OR partial. Shared by the
+// auto-save watchers (embedded session flow) and the explicit "Save & Next"
+// button (standalone flow, where the action bar is visible). Idempotent: the
+// backend upserts by (user, item, scenario), so re-saving just updates the row.
+//
+// Nothing is guessed: `category_id` stays null until the answers derive a label
+// (or the rater picks one directly), so a partial save can never invent one.
+async function persist() {
+  if (!canEvaluate.value || !currentItem.value) return
+  // Feedback/leans without anything to attach them to would be an empty row.
+  if (!hasPersistablePayload.value) return
+
+  // Capture the target: a save started here must land on THIS item even if the
+  // response arrives after the rater has navigated on.
+  const index = currentItemIndex.value
+  const item = items.value[index]
+  const complete = canSubmit.value
+  const payload = answersPayload()
+
+  openRequests++
   submitting.value = true
 
-  try {
-    await axios.post(
-      `/api/evaluation/session/${props.scenarioId}/items/${currentItem.value.thread_id}/evaluate`,
-      {
-        function_type: 'labeling',
-        category_id: selectedCategory.value,
-        is_unsure: isUnsure.value,
-        feedback: feedback.value,
-        // Study logging (server no-ops when the scenario has no co-pilot):
-        // only timing + helpful travel from the client; shown/suggestions/
-        // acceptance are derived server-side against the suggestion cache.
-        copilot: {
-          time_on_item_ms: itemShownAt.value ? Date.now() - itemShownAt.value : null,
-          helpful: copilotHelpful.value
-        }
-      }
-    )
-
-    items.value[currentItemIndex.value].evaluated = true
-    items.value[currentItemIndex.value].evaluation = {
+  const request = axios.post(
+    `/api/evaluation/session/${props.scenarioId}/items/${item.thread_id}/evaluate`,
+    {
+      function_type: 'labeling',
       category_id: selectedCategory.value,
       is_unsure: isUnsure.value,
-      feedback: feedback.value
+      feedback: feedback.value,
+      second_choice_id: secondChoice.value,
+      answers_json: payload,
+      // Study logging (server no-ops when the scenario has no co-pilot):
+      // only timing + helpful travel from the client; shown/suggestions/
+      // acceptance are derived server-side against the suggestion cache.
+      copilot: {
+        time_on_item_ms: itemShownAt.value ? Date.now() - itemShownAt.value : null,
+        helpful: copilotHelpful.value
+      }
+    }
+  )
+  inFlightPersist = request
+
+  try {
+    const response = await request
+    const status = normalizeSavedStatus(response?.data?.status, complete)
+
+    item.status = status
+    item.evaluated = status === 'done'
+    item.evaluation = {
+      category_id: selectedCategory.value,
+      is_unsure: isUnsure.value,
+      feedback: feedback.value,
+      second_choice_id: secondChoice.value,
+      answers_json: payload
     }
 
-    emit('item-completed', currentItem.value.thread_id)
+    // Every save reports progress; only a finished label counts as completed
+    // (the session shell bumps its completed counter on 'item-completed').
+    emit('item-progress', { itemId: item.thread_id, status })
 
-    if (completedCount.value === items.value.length) {
-      emit('all-completed')
+    if (status === 'done') {
+      emit('item-completed', item.thread_id)
+
+      if (completedCount.value === items.value.length) {
+        emit('all-completed')
+      }
     }
   } catch (err) {
     console.error('Failed to save labeling:', err)
+    saveError.value = true
   } finally {
-    submitting.value = false
+    if (inFlightPersist === request) inFlightPersist = null
+    openRequests = Math.max(0, openRequests - 1)
+    if (openRequests === 0) submitting.value = false
+  }
+}
+
+// Coalesce the watchers that fire together in one tick (answering a question
+// changes `answers` AND `selectedCategory`) into a single POST. The queue flag
+// is re-checked inside the microtask so flushPendingSaves() can claim the
+// pending save synchronously without it running twice.
+let persistQueued = false
+function schedulePersist() {
+  if (persistQueued) return
+  persistQueued = true
+  Promise.resolve().then(() => {
+    if (!persistQueued) return
+    persistQueued = false
+    persist()
+  })
+}
+
+// Flush anything still in a debounce (feedback 800 ms, leans 300 ms) or queued
+// for the next microtask, then wait for the request on the wire. Navigating
+// away used to clear the feedback timer and reset the inputs BEFORE the POST
+// went out — the comment (and, since partial saves exist, half-answered
+// questions) were silently lost. Called on blur, before goNext/goPrev and on
+// unmount.
+async function flushPendingSaves() {
+  let pending = false
+
+  if (feedbackTimer) {
+    clearTimeout(feedbackTimer)
+    feedbackTimer = null
+    pending = true
+  }
+  if (leanTimer) {
+    clearTimeout(leanTimer)
+    leanTimer = null
+    pending = true
+  }
+  if (persistQueued) {
+    persistQueued = false
+    pending = true
+  }
+
+  if (pending && !suppressAutoSave.value && hasAnyInput.value && currentItem.value) {
+    await persist()
+  }
+
+  // A save started a tick earlier may still be on the wire.
+  if (inFlightPersist) {
+    try {
+      await inFlightPersist
+    } catch {
+      // persist() already surfaced the failure via the saveError snackbar.
+    }
   }
 }
 
@@ -669,30 +1127,65 @@ async function handleSubmit() {
 // Auto-save the bucket choice the moment it changes. Skipped while
 // loadCurrentItemDetail() is resetting/restoring inputs for a new item.
 watch([selectedCategory, isUnsure], () => {
-  if (suppressAutoSave.value || !canSubmit.value) return
-  persist()
+  if (suppressAutoSave.value || !hasAnyInput.value) return
+  schedulePersist()
 })
 
-// Feedback is free text — debounce so we don't POST on every keystroke. Only
-// persists once a bucket (category or unsure) is selected; feedback alone is
-// not a valid evaluation (canSubmit guards this).
+// Second choice and question answers persist immediately too — the gate is
+// `hasAnyInput`, not `canSubmit`: a single answered question is already worth
+// storing (it comes back as a partial row, status "in Bearbeitung").
+watch(secondChoice, () => {
+  if (suppressAutoSave.value || !hasAnyInput.value) return
+  schedulePersist()
+})
+watch(answers, () => {
+  if (suppressAutoSave.value || !hasAnyInput.value) return
+  schedulePersist()
+}, { deep: true })
+
+// Lean sliders emit one update per step while dragging — debounce 300 ms so a
+// drag becomes a single POST. Flushed on navigation/blur/unmount.
+watch(leans, () => {
+  if (suppressAutoSave.value || !hasAnyInput.value) return
+  clearTimeout(leanTimer)
+  leanTimer = setTimeout(() => {
+    leanTimer = null
+    persist()
+  }, 300)
+}, { deep: true })
+
+// Feedback is free text — debounce so we don't POST on every keystroke.
+// hasPersistablePayload (checked inside persist) still holds a comment back
+// while there is neither a bucket nor an answer to attach it to. Pending saves
+// are flushed on blur and before navigation (flushPendingSaves).
 watch(feedback, () => {
-  if (suppressAutoSave.value || !canSubmit.value) return
+  if (suppressAutoSave.value || !hasAnyInput.value) return
   clearTimeout(feedbackTimer)
-  feedbackTimer = setTimeout(() => persist(), 800)
+  feedbackTimer = setTimeout(() => {
+    feedbackTimer = null
+    persist()
+  }, 800)
 })
 
-function goNext() {
+async function goNext() {
   if (!hasNext.value) return
+  await flushPendingSaves()
   currentItemIndex.value++
   loadCurrentItemDetail()
 }
 
-function goPrev() {
+async function goPrev() {
   if (!hasPrev.value) return
+  await flushPendingSaves()
   currentItemIndex.value--
   loadCurrentItemDetail()
 }
+
+// Fire-and-forget: a lifecycle hook can't await, but the pending POST is still
+// sent before the component goes away (the browser keeps the request alive).
+onBeforeUnmount(() => {
+  flushPendingSaves()
+})
 
 function navigateBack() {
   const fromScenario = route.query.from
@@ -720,8 +1213,12 @@ watch(() => props.scenarioId, (newId) => {
   }
 })
 
-// Watch for initialItemId changes (e.g., when navigating between items via URL)
-watch(() => props.initialItemId, (newItemId) => {
+// Watch for initialItemId changes (e.g., when navigating between items via URL).
+// This is the path the EMBEDDED session footer takes (its Next/Previous buttons
+// push a route), so — like goNext/goPrev — it must flush a pending/in-flight
+// partial save BEFORE the item switches, otherwise the response would land on
+// the wrong item and the last click would be lost.
+watch(() => props.initialItemId, async (newItemId) => {
   if (newItemId && items.value.length > 0) {
     const targetId = Number(newItemId)
     // Check if this item is already the current item
@@ -732,6 +1229,7 @@ watch(() => props.initialItemId, (newItemId) => {
       (item.thread_id || item.id || item.item_id) === targetId
     )
     if (targetIndex >= 0 && targetIndex !== currentItemIndex.value) {
+      await flushPendingSaves()
       currentItemIndex.value = targetIndex
       loadCurrentItemDetail()
     }
@@ -781,6 +1279,17 @@ watch(() => props.initialItemId, (newItemId) => {
 .panel-title {
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+/* "Speichern…" while a (partial) save is on the wire — sits left of the status
+   tag in the labeling panel header. */
+.saving-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 8px;
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
 /* Panel Content */
@@ -946,6 +1455,193 @@ watch(() => props.initialItemId, (newItemId) => {
 }
 
 /* Feedback Section */
+/* ---- question-first labeling ---- */
+.questions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.question-card {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-surface), 1);
+}
+.question-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.question-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.85);
+  color: rgb(var(--v-theme-surface));
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.question-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.question-text {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+.question-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.question-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1.5px solid rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.question-option:hover:not(:disabled) {
+  border-color: rgba(var(--v-theme-on-surface), 0.5);
+}
+.question-option.active {
+  border-color: #88c4c8;
+  background: rgba(136, 196, 200, 0.18);
+}
+.question-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.question-option-id {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.question-option-label {
+  font-size: 0.8rem;
+}
+.question-option-hint {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+.question-lean {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.lean-end {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+.derived-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 0.85rem;
+}
+.derived-caption {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+.derived-chip {
+  font-weight: 700;
+}
+.derived-missing {
+  color: rgb(var(--v-theme-warning));
+}
+.derived-pending {
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-style: italic;
+}
+.direct-toggle {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.direct-hint {
+  width: 100%;
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* ---- second choice ---- */
+.second-choice-section {
+  margin-top: 12px;
+}
+.second-choice-title {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.second-choice-hint {
+  font-weight: 400;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+.second-choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.second-choice-chip {
+  padding: 3px 10px;
+  border: 1.5px solid;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.78rem;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.second-choice-chip.active {
+  opacity: 1;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-on-surface), 0.12);
+}
+.second-choice-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.copilot-answers {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+.copilot-answer-chip {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.25);
+  border-radius: 4px;
+  font-weight: 600;
+}
+.copilot-answers-warn {
+  margin-left: 6px;
+  color: rgb(var(--v-theme-warning));
+  font-weight: 600;
+}
+
 .feedback-section {
   margin-top: 24px;
   padding-top: 16px;

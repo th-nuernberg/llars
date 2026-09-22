@@ -116,6 +116,160 @@ class LabelingCopilotService:
             return None
         return copilot
 
+    # Labeling settings that the v1 API may write headlessly (see
+    # routes/api_v1/scenario_copilot_routes.py PUT .../labeling-config).
+    # Everything else in the labeling config (labels, mode, parts, copilot)
+    # has its own write path or is study-immutable once votes exist.
+    LABELING_SETTINGS_FIELDS = frozenset({"questions", "second_choice", "labels"})
+
+    @staticmethod
+    def update_labeling_settings(config: Any, body: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a new config with ``questions`` / ``second_choice`` merged
+        into the inner labeling config (and its ``config.config`` mirror).
+
+        Why a dedicated path: the generic ``PUT /api/scenarios/<id>`` is
+        session-only, and the v1 PATCH deliberately refuses ``eval_config``.
+        Studies driven by scripts (VRM, see vrm-corpus) still need to switch
+        question-first labeling and the second choice on without a browser.
+
+        ``questions`` is validated against ``DecisionQuestionsConfig`` (a
+        mapping target that is not a label id is rejected); ``None`` removes
+        the block. Raises ``ValueError`` with a user-facing message.
+
+        ``labels`` MERGES by id instead of replacing the list: a running study
+        fixes the wording of one category without resending the whole label set,
+        and — more importantly — cannot silently drop a label that votes already
+        reference. Adding or removing categories mid-study stays a deliberate UI
+        action. Each entry is validated against ``LabelOption``, which is what
+        keeps ``rule`` and ``anchors`` (the codebook text shown while labeling)
+        well-formed.
+        """
+        from pydantic import ValidationError as PydanticValidationError
+        from schemas.evaluation_data_schemas import DecisionQuestionsConfig, LabelOption
+
+        unknown = set(body) - LabelingCopilotService.LABELING_SETTINGS_FIELDS
+        if unknown:
+            raise ValueError(
+                f"Unknown fields: {sorted(unknown)}. "
+                f"Editable: {sorted(LabelingCopilotService.LABELING_SETTINGS_FIELDS)}"
+            )
+        if not body:
+            raise ValueError(
+                "Request body must contain questions, second_choice and/or labels"
+            )
+
+        next_config = json.loads(json.dumps(LabelingCopilotService._to_dict(config)))
+        inner = LabelingCopilotService.locate_inner_config(next_config)
+        if not inner:
+            raise ValueError("Scenario has no labeling config")
+
+        updates: Dict[str, Any] = {}
+        if "second_choice" in body:
+            if not isinstance(body["second_choice"], bool):
+                raise ValueError("second_choice must be a boolean")
+            updates["second_choice"] = body["second_choice"]
+        if "questions" in body:
+            questions = body["questions"]
+            if questions is None:
+                updates["questions"] = None
+            else:
+                try:
+                    validated = DecisionQuestionsConfig.model_validate(questions)
+                except PydanticValidationError as exc:
+                    raise ValueError(f"questions: {exc.errors()[0].get('msg', exc)}")
+                label_ids = {
+                    str(lbl.get("id"))
+                    for lbl in (inner.get("labels") or inner.get("categories") or [])
+                    if isinstance(lbl, dict)
+                }
+                missing = sorted(set(validated.mapping.values()) - label_ids) if label_ids else []
+                if missing:
+                    raise ValueError(f"questions.mapping targets unknown labels: {missing}")
+                updates["questions"] = validated.model_dump(mode="json")
+
+        if "labels" in body:
+            patches = body["labels"]
+            if not isinstance(patches, list) or not patches:
+                raise ValueError("labels must be a non-empty list")
+            current = inner.get("labels") or inner.get("categories") or []
+            by_id = {str(lbl.get("id")): lbl for lbl in current if isinstance(lbl, dict)}
+            for patch in patches:
+                if not isinstance(patch, dict) or not patch.get("id"):
+                    raise ValueError("each label patch needs an id")
+                label_id = str(patch["id"])
+                if label_id not in by_id:
+                    raise ValueError(
+                        f"unknown label id {label_id!r} — "
+                        f"known: {sorted(by_id)}. Adding categories is a UI action."
+                    )
+                merged = {**by_id[label_id], **patch, "id": label_id}
+                try:
+                    LabelOption.model_validate(merged)
+                except PydanticValidationError as exc:
+                    err = exc.errors()[0]
+                    raise ValueError(
+                        f"labels[{label_id}].{'.'.join(str(p) for p in err.get('loc', ()))}: "
+                        f"{err.get('msg', exc)}"
+                    )
+                by_id[label_id] = merged
+            updates["labels"] = [by_id[str(lbl.get("id"))] for lbl in current
+                                 if isinstance(lbl, dict)]
+
+        def _apply(target: Dict[str, Any]) -> None:
+            for key, value in updates.items():
+                if value is None:
+                    target.pop(key, None)
+                else:
+                    target[key] = value
+
+        _apply(inner)
+        # v1-created scenarios mirror the inner config at config.config — keep
+        # both copies in sync (same as the copilot PUT and the settings tab).
+        mirror = next_config.get("config")
+        if isinstance(mirror, dict) and mirror is not inner:
+            _apply(mirror)
+        return next_config
+
+    @staticmethod
+    def get_questions_config(config: Any) -> Optional[Dict[str, Any]]:
+        """Return the question-first block ({items, mapping, sliders}) if the
+        scenario has it enabled and at least one question — else None."""
+        inner = LabelingCopilotService.locate_inner_config(config)
+        questions = LabelingCopilotService._to_dict(inner.get("questions"))
+        if not questions or questions.get("enabled") is False:
+            return None
+        items = [q for q in (questions.get("items") or []) if isinstance(q, dict) and q.get("id")]
+        if not items:
+            return None
+        return {
+            "items": items,
+            "mapping": {str(k): str(v) for k, v in (questions.get("mapping") or {}).items()},
+            "sliders": bool(questions.get("sliders")),
+        }
+
+    @staticmethod
+    def build_questions_block(questions: Dict[str, Any]) -> str:
+        """Human-readable rendering of the decision questions for the LLM
+        prompt (German first, English fallback), incl. the answer→label map."""
+
+        def _loc(value: Any) -> str:
+            if isinstance(value, dict):
+                return str(value.get("de") or value.get("en") or "")
+            return str(value) if value else ""
+
+        lines = []
+        for idx, q in enumerate(questions["items"], 1):
+            opts = " / ".join(
+                f"{o.get('id')} = {_loc(o.get('label'))}"
+                + (f" ({_loc(o.get('hint'))})" if _loc(o.get("hint")) else "")
+                for o in (q.get("options") or []) if isinstance(o, dict)
+            )
+            lines.append(f"{idx}. {q['id']} — {_loc(q.get('title'))}: {_loc(q.get('text'))}\n   Antworten: {opts}")
+        mapping = questions.get("mapping") or {}
+        if mapping:
+            lines.append("Antwortschlüssel → Label: " + ", ".join(f"{k} → {v}" for k, v in mapping.items()))
+        return "\n".join(lines)
+
     @staticmethod
     def extract_label_options(config: Any) -> List[Dict[str, str]]:
         """Extract label options as [{id, name, description}] from either the
@@ -211,10 +365,21 @@ class LabelingCopilotService:
         top_k = _norm_top_k(copilot.get("top_k"))
         prev_top_k = _norm_top_k(prev_copilot.get("top_k"))
 
+        # The decision questions are part of the EFFECTIVE prompt too (the
+        # runner renders them into the format instruction), so a change must
+        # bump the version for the same cache-staleness reason as top_k.
+        def _questions_sig(cfg: Any) -> str:
+            q = LabelingCopilotService.get_questions_config(cfg) if cfg else None
+            return json.dumps(q, sort_keys=True, ensure_ascii=False) if q else ""
+
+        questions_sig = _questions_sig(config_dict)
+        prev_questions_sig = _questions_sig(previous)
+
         if prev_version == 0:
             # First write of a copilot config
             new_version = 1
-        elif prompt != prev_prompt or codebook != prev_codebook or top_k != prev_top_k:
+        elif (prompt != prev_prompt or codebook != prev_codebook or top_k != prev_top_k
+              or questions_sig != prev_questions_sig):
             new_version = prev_version + 1
         else:
             new_version = prev_version
@@ -231,6 +396,16 @@ class LabelingCopilotService:
         copilot["prompt_version"] = new_version
         copilot["prompt_history"] = history
         inner["copilot"] = copilot
+        # v1-created scenarios keep a mirror of the inner config at config.config.
+        # update_labeling_settings mirrors questions/second_choice/labels, so the
+        # copilot block has to follow — otherwise the two copies drift and anyone
+        # reading the mirror sees a stale prompt_version. That happened on the VRM
+        # study scenario: authoritative v3, mirror still v1. The runner reads the
+        # authoritative block (locate_inner_config), so the audit trail was intact,
+        # but a stale mirror is a trap for every later reader.
+        mirror = config_dict.get("config")
+        if isinstance(mirror, dict) and mirror is not inner and isinstance(mirror.get("copilot"), dict):
+            mirror["copilot"] = json.loads(json.dumps(copilot))
         return config_dict
 
     # ------------------------------------------------------------------

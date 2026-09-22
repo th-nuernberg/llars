@@ -18,13 +18,14 @@
   <img src="https://img.shields.io/badge/Flask-3.0-green" alt="Flask">
   <img src="https://img.shields.io/badge/Vue-3.4-brightgreen" alt="Vue">
   <img src="https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue" alt="License">
-  <a href="https://arxiv.org/abs/2605.10593"><img src="https://img.shields.io/badge/arXiv-2605.10593-b31b1b.svg" alt="arXiv"></a>
+  <a href="https://doi.org/10.24963/ijcai.2026/995"><img src="https://img.shields.io/badge/IJCAI--26-10.24963%2Fijcai.2026%2F995-1f6feb.svg" alt="IJCAI-26"></a>
+  <a href="https://arxiv.org/abs/2605.10593"><img src="https://img.shields.io/badge/arXiv-2605.10593-b31b1b.svg" alt="arXiv preprint"></a>
 </p>
 
 <p align="center">
   <a href="https://llars.e-beratungsinstitut.de"><strong>Live Instance</strong></a> &middot;
   <a href="https://youtu.be/FdG1nJ7OqE0"><strong>Demo Video</strong></a> &middot;
-  <a href="https://arxiv.org/abs/2605.10593"><strong>Paper (arXiv)</strong></a>
+  <a href="https://doi.org/10.24963/ijcai.2026/995"><strong>Paper (IJCAI-26)</strong></a>
 </p>
 
 ---
@@ -39,7 +40,7 @@ LLARS bridges the gap between domain experts and developers for building LLM-bas
 
 New prompts and models are automatically available for batch generation, and completed batches can be turned into evaluation scenarios with a single click.
 
-> **Paper:** *LLARS: Enabling Domain Expert & Developer Collaboration for LLM Prompting, Generation and Evaluation* — [arXiv:2605.10593](https://arxiv.org/abs/2605.10593). A demo paper is under review for IJCAI-ECAI 2026 (Demo Track); this reference will be updated to the proceedings version once published. See [Citation](#citation) below for BibTeX.
+> **Paper:** *LLARS: Enabling Domain Expert & Developer Collaboration for LLM Prompting, Generation and Evaluation* — IJCAI-26 (Demo Track), pages 8526–8529, [doi:10.24963/ijcai.2026/995](https://doi.org/10.24963/ijcai.2026/995). Preprint: [arXiv:2605.10593](https://arxiv.org/abs/2605.10593). See [Citation](#citation) below for BibTeX.
 
 ---
 
@@ -200,22 +201,23 @@ LITELLM_API_KEY=...           # Optional for open-source models via LiteLLM
 
 If you use LLARS in your research, please cite our paper:
 
-<!-- CITATION: preprint entry. Once the demo paper appears in the IJCAI-ECAI 2026
-     proceedings, replace this @article with the @inproceedings entry (booktitle,
-     pages, publisher), drop the "under review" sentence underneath, and mirror
-     the change in CITATION.cff. -->
-
 ```bibtex
-@article{steigerwald2026llars,
-  title   = {LLARS: Enabling Domain Expert \& Developer Collaboration for LLM Prompting, Generation and Evaluation},
-  author  = {Steigerwald, Philipp and Stieler, Mara and Burghardt, Jennifer and Rudolph, Eric and Albrecht, Jens},
-  journal = {arXiv preprint arXiv:2605.10593},
-  year    = {2026},
-  url     = {https://arxiv.org/abs/2605.10593}
+@inproceedings{steigerwald2026llars,
+  title     = {LLARS: Enabling Domain Expert \& Developer Collaboration for LLM Prompting, Generation and Evaluation},
+  author    = {Steigerwald, Philipp and Stieler, Mara and Burghardt, Jennifer and Rudolph, Eric and Albrecht, Jens},
+  booktitle = {Proceedings of the Thirty-Fifth International Joint Conference on Artificial Intelligence, {IJCAI-26}},
+  publisher = {International Joint Conferences on Artificial Intelligence Organization},
+  editor    = {Diego Calvanese},
+  pages     = {8526--8529},
+  year      = {2026},
+  month     = {8},
+  note      = {Demo Track},
+  doi       = {10.24963/ijcai.2026/995},
+  url       = {https://doi.org/10.24963/ijcai.2026/995}
 }
 ```
 
-A demo paper is under review for **IJCAI-ECAI 2026 (Demo Track)**; this citation will be updated to the proceedings version once published. GitHub's *"Cite this repository"* button (repo sidebar) is generated from [`CITATION.cff`](CITATION.cff).
+The paper appeared in the **IJCAI-26 Demo Track** proceedings; a preprint of the same paper is on [arXiv:2605.10593](https://arxiv.org/abs/2605.10593). Please cite the proceedings version. GitHub's *"Cite this repository"* button (repo sidebar) is generated from [`CITATION.cff`](CITATION.cff).
 
 ---
 

@@ -21,15 +21,11 @@ authors:
     given-names: Jens
 repository-code: "https://github.com/th-nuernberg/llars"
 url: "https://llars.e-beratungsinstitut.de"
-# Bevorzugtes Zitat: aktuell die arXiv-Version. Sobald die IJCAI-ECAI-2026-
-# Proceedings-Version erscheint, hier auf type: conference-paper mit
-# collection-title/conference/DOI umstellen.
-# REPLACE ON PUBLICATION: this describes the arXiv preprint. When the demo
-# paper appears in the IJCAI-ECAI 2026 proceedings, switch type to
-# 'conference-paper', add collection-title/publisher/pages and the DOI,
-# and mirror the change in README.md (badge, header link, About, Citation).
+# Bevorzugtes Zitat: die IJCAI-26-Proceedings-Version (Demo Track), erschienen
+# 2026-08. Der arXiv-Preprint bleibt als identifier stehen, damit aeltere
+# Verweise aufloesbar bleiben — zitiert werden soll aber die Proceedings-Version.
 preferred-citation:
-  type: article
+  type: conference-paper
   title: "LLARS: Enabling Domain Expert & Developer Collaboration for LLM Prompting, Generation and Evaluation"
   authors:
     - family-names: Steigerwald
@@ -43,10 +39,25 @@ preferred-citation:
     - family-names: Albrecht
       given-names: Jens
   year: 2026
-  month: 5
-  journal: "arXiv preprint arXiv:2605.10593"
-  url: "https://arxiv.org/abs/2605.10593"
+  month: 8
+  collection-title: "Proceedings of the Thirty-Fifth International Joint Conference on Artificial Intelligence, IJCAI-26"
+  collection-type: proceedings
+  conference:
+    name: "Thirty-Fifth International Joint Conference on Artificial Intelligence (IJCAI-26)"
+  editors:
+    - family-names: Calvanese
+      given-names: Diego
+  publisher:
+    name: "International Joint Conferences on Artificial Intelligence Organization"
+  start: 8526
+  end: 8529
+  doi: "10.24963/ijcai.2026/995"
+  url: "https://doi.org/10.24963/ijcai.2026/995"
+  notes: "Demo Track"
   identifiers:
+    - type: doi
+      value: "10.24963/ijcai.2026/995"
+      description: "IJCAI-26 proceedings version (cite this one)"
     - type: other
       value: "arXiv:2605.10593"
-      description: "arXiv preprint"
+      description: "arXiv preprint of the same paper"

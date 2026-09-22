@@ -64,13 +64,21 @@ class TestCitationInExportEnvelope:
 
         assert 'citation' in result, 'JSON export envelope must carry the citation block'
         citation = result['citation']
-        assert set(citation) == {'message', 'paper', 'bibtex_url'}
+        # doi/url kamen mit der Proceedings-Version dazu: der Prosa-String in
+        # 'paper' ist fuer Menschen, diese beiden sind maschinenlesbar.
+        assert set(citation) == {'message', 'paper', 'doi', 'url', 'bibtex_url'}
         assert citation['message'] == (
             'If you use data produced with LLARS in academic work, '
             'please cite the LLARS paper.'
         )
-        assert 'arXiv:2605.10593' in citation['paper']
+        # Die publizierte Fassung, nicht mehr der Preprint: wer einen Export
+        # zitiert, soll die Proceedings-Version nennen.
+        assert 'doi:10.24963/ijcai.2026/995' in citation['paper']
+        assert 'IJCAI-26' in citation['paper']
+        assert 'arXiv' not in citation['paper']
         assert citation['paper'].startswith('Steigerwald et al. (2026).')
+        assert citation['doi'] == '10.24963/ijcai.2026/995'
+        assert citation['url'] == 'https://doi.org/10.24963/ijcai.2026/995'
         assert citation['bibtex_url'] == (
             'https://github.com/th-nuernberg/llars/blob/main/CITATION.cff'
         )

@@ -15,8 +15,9 @@ Technische Hochschule Nürnberg Georg Simon Ohm (https://github.com/th-nuernberg
 
 Required Notice: If you use LLARS in academic work, please cite:
 Steigerwald et al., "LLARS: Enabling Domain Expert & Developer
-Collaboration for LLM Prompting, Generation and Evaluation",
-arXiv:2605.10593 (see CITATION.cff for BibTeX).
+Collaboration for LLM Prompting, Generation and Evaluation", in
+Proceedings of IJCAI-26 (Demo Track), pages 8526-8529,
+doi:10.24963/ijcai.2026/995 (see CITATION.cff for BibTeX).
 
 ## Additional Terms
 

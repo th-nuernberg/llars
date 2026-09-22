@@ -30,12 +30,18 @@ Zitieren Sie LLARS, wenn Sie
 ### BibTeX
 
 ```bibtex
-@article{steigerwald2026llars,
-  title   = {LLARS: Enabling Domain Expert \& Developer Collaboration for LLM Prompting, Generation and Evaluation},
-  author  = {Steigerwald, Philipp and Stieler, Mara and Burghardt, Jennifer and Rudolph, Eric and Albrecht, Jens},
-  journal = {arXiv preprint arXiv:2605.10593},
-  year    = {2026},
-  url     = {https://arxiv.org/abs/2605.10593}
+@inproceedings{steigerwald2026llars,
+  title     = {LLARS: Enabling Domain Expert \& Developer Collaboration for LLM Prompting, Generation and Evaluation},
+  author    = {Steigerwald, Philipp and Stieler, Mara and Burghardt, Jennifer and Rudolph, Eric and Albrecht, Jens},
+  booktitle = {Proceedings of the Thirty-Fifth International Joint Conference on Artificial Intelligence, {IJCAI-26}},
+  publisher = {International Joint Conferences on Artificial Intelligence Organization},
+  editor    = {Diego Calvanese},
+  pages     = {8526--8529},
+  year      = {2026},
+  month     = {8},
+  note      = {Demo Track},
+  doi       = {10.24963/ijcai.2026/995},
+  url       = {https://doi.org/10.24963/ijcai.2026/995}
 }
 ```
 
@@ -43,8 +49,9 @@ Zitieren Sie LLARS, wenn Sie
 
 > Steigerwald, P., Stieler, M., Burghardt, J., Rudolph, E., & Albrecht, J. (2026).
 > *LLARS: Enabling Domain Expert & Developer Collaboration for LLM Prompting,
-> Generation and Evaluation.* arXiv:2605.10593.
-> <https://arxiv.org/abs/2605.10593>
+> Generation and Evaluation.* In *Proceedings of the Thirty-Fifth International
+> Joint Conference on Artificial Intelligence (IJCAI-26), Demo Track* (S. 8526–8529).
+> <https://doi.org/10.24963/ijcai.2026/995>
 
 ---
 
@@ -68,7 +75,9 @@ verfügbar ist, wenn nur die Exportdatei weitergegeben wird:
   "rows": [ ... ],
   "citation": {
     "message": "If you use data produced with LLARS in academic work, please cite the LLARS paper.",
-    "paper": "Steigerwald et al. (2026). LLARS: Enabling Domain Expert & Developer Collaboration for LLM Prompting, Generation and Evaluation. arXiv:2605.10593",
+    "paper": "Steigerwald et al. (2026). LLARS: Enabling Domain Expert & Developer Collaboration for LLM Prompting, Generation and Evaluation. In Proceedings of IJCAI-26 (Demo Track), pages 8526-8529. doi:10.24963/ijcai.2026/995",
+    "doi": "10.24963/ijcai.2026/995",
+    "url": "https://doi.org/10.24963/ijcai.2026/995",
     "bibtex_url": "https://github.com/th-nuernberg/llars/blob/main/CITATION.cff"
   }
 }
@@ -92,12 +101,12 @@ pip install cffconvert
 cffconvert -f bibtex -i CITATION.cff
 ```
 
-!!! info "Referenz wird aktualisiert"
-    Aktuell verweist die Zitation auf den arXiv-Preprint. Ein Demo-Paper ist für
-    **IJCAI-ECAI 2026 (Demo Track)** eingereicht; sobald die Proceedings-Version
-    erscheint, werden `CITATION.cff`, `README.md` und diese Seite auf die
-    Proceedings-Referenz umgestellt. Prüfen Sie vor der Einreichung Ihrer
-    eigenen Arbeit kurz `CITATION.cff` auf die aktuellste Referenz.
+!!! info "Preprint vs. Proceedings"
+    Zitieren Sie die **Proceedings-Version** (IJCAI-26 Demo Track,
+    doi:10.24963/ijcai.2026/995). Der arXiv-Preprint desselben Papers
+    ([arXiv:2605.10593](https://arxiv.org/abs/2605.10593)) bleibt erreichbar und
+    steht in `CITATION.cff` als zusätzlicher Identifier, ist aber nicht die
+    Referenz, die in eine Literaturliste gehört.
 
 ---
 

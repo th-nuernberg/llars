@@ -93,6 +93,12 @@ _FUNCTION_TYPE_NAME = {
 # (app/routes/api_v1/scenario_results_routes.py) and the GUI export route
 # (app/routes/scenarios/scenario_manager_api.py). Keep in sync with the root
 # CITATION.cff / README.md when the paper reference is updated.
+#
+# Stand 2026-09: die Proceedings-Version (IJCAI-26 Demo Track,
+# doi:10.24963/ijcai.2026/995) ersetzt den arXiv-Preprint als Zitat. Der
+# Preprint bleibt in CITATION.cff als identifier erhalten, taucht hier aber
+# nicht mehr auf — wer einen Export zitiert, soll die publizierte Fassung
+# nennen.
 CITATION_BLOCK = {
     "message": (
         "If you use data produced with LLARS in academic work, "
@@ -100,8 +106,12 @@ CITATION_BLOCK = {
     ),
     "paper": (
         "Steigerwald et al. (2026). LLARS: Enabling Domain Expert & Developer "
-        "Collaboration for LLM Prompting, Generation and Evaluation. arXiv:2605.10593"
+        "Collaboration for LLM Prompting, Generation and Evaluation. "
+        "In Proceedings of IJCAI-26 (Demo Track), pages 8526-8529. "
+        "doi:10.24963/ijcai.2026/995"
     ),
+    "doi": "10.24963/ijcai.2026/995",
+    "url": "https://doi.org/10.24963/ijcai.2026/995",
     "bibtex_url": "https://github.com/th-nuernberg/llars/blob/main/CITATION.cff",
 }
 

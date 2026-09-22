@@ -22,7 +22,7 @@
             target="_blank"
             rel="noopener noreferrer"
             class="citation-link"
-          >arXiv:2605.10593</a>
+          >IJCAI-26 · doi:10.24963/ijcai.2026/995</a>
         </p>
 
         <pre class="citation-bibtex">{{ BIBTEX }}</pre>
@@ -92,20 +92,28 @@ const props = defineProps({
 
 defineEmits(['update:modelValue'])
 
-const PAPER_URL = 'https://arxiv.org/abs/2605.10593'
+// Die publizierte Fassung. Der arXiv-Preprint desselben Papers bleibt
+// erreichbar, zitiert werden soll aber die Proceedings-Version.
+const PAPER_URL = 'https://doi.org/10.24963/ijcai.2026/995'
 const LICENSE_URL = 'https://github.com/th-nuernberg/llars/blob/main/LICENSE'
 
 const PAPER_REFERENCE =
   'Steigerwald, P., Stieler, M., Burghardt, J., Rudolph, E., & Albrecht, J. (2026). ' +
   'LLARS: Enabling Domain Expert & Developer Collaboration for LLM Prompting, ' +
-  'Generation and Evaluation.'
+  'Generation and Evaluation. In Proceedings of IJCAI-26 (Demo Track), 8526\u20138529.'
 
-const BIBTEX = `@article{steigerwald2026llars,
-  title   = {LLARS: Enabling Domain Expert \\& Developer Collaboration for LLM Prompting, Generation and Evaluation},
-  author  = {Steigerwald, Philipp and Stieler, Mara and Burghardt, Jennifer and Rudolph, Eric and Albrecht, Jens},
-  journal = {arXiv preprint arXiv:2605.10593},
-  year    = {2026},
-  url     = {https://arxiv.org/abs/2605.10593}
+const BIBTEX = `@inproceedings{steigerwald2026llars,
+  title     = {LLARS: Enabling Domain Expert \\& Developer Collaboration for LLM Prompting, Generation and Evaluation},
+  author    = {Steigerwald, Philipp and Stieler, Mara and Burghardt, Jennifer and Rudolph, Eric and Albrecht, Jens},
+  booktitle = {Proceedings of the Thirty-Fifth International Joint Conference on Artificial Intelligence, {IJCAI-26}},
+  publisher = {International Joint Conferences on Artificial Intelligence Organization},
+  editor    = {Diego Calvanese},
+  pages     = {8526--8529},
+  year      = {2026},
+  month     = {8},
+  note      = {Demo Track},
+  doi       = {10.24963/ijcai.2026/995},
+  url       = {https://doi.org/10.24963/ijcai.2026/995}
 }`
 
 // Transient button feedback: swaps the label/icon for ~2s after a copy.

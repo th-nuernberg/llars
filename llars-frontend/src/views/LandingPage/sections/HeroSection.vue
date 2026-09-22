@@ -103,13 +103,13 @@ import { useTheme } from 'vuetify'
 import { useCursorGlow } from '../composables/useCursorGlow'
 
 /**
- * The LLARS paper.
+ * The LLARS paper — IJCAI-26 (Demo Track), doi:10.24963/ijcai.2026/995.
  *
- * arXiv preprint for now. REPLACE this with the official IJCAI proceedings URL
- * once the paper appears there — one constant, so the badge, the footer and
- * anything else pointing at the paper move together.
+ * One constant, so the badge, the footer and anything else pointing at the
+ * paper move together. The arXiv preprint of the same paper stays reachable
+ * under arXiv:2605.10593, but the proceedings version is what we cite.
  */
-const PAPER_URL = 'https://arxiv.org/abs/2605.10593'
+const PAPER_URL = 'https://doi.org/10.24963/ijcai.2026/995'
 
 const router = useRouter()
 const theme = useTheme()

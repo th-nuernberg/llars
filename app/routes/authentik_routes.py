@@ -98,6 +98,113 @@ def check_admin():
     }), 200
 
 
+# Maximal so viele Stufen des Autorisierungs-Flows durchlaufen. Der Flow hat
+# real genau eine (Consent); die Schranke ist gegen eine Fehlkonfiguration, die
+# sonst eine Endlosschleife im Request-Thread erzeugen wuerde.
+_MAX_AUTHZ_FLOW_STEPS = 5
+
+
+def _authorization_code(session, authentik_base_url, auth_response):
+    """Den Authorization-Code aus der Antwort von /application/o/authorize/ holen.
+
+    Zwei Formen sind normal, und die zweite ist der Grund, warum es diese
+    Funktion gibt:
+
+    1. 302 direkt auf ``redirect_uri?code=...`` — kein Consent noetig.
+    2. 302 in den Autorisierungs-Flow. Authentik erzwingt bei ``offline_access``
+       ``prompt=consent`` (providers/oauth2/views/authorize.py), und zwar
+       UNABHAENGIG davon, ob der Flow eine implizite Consent-Stage hat. Der Flow
+       muss dann ausgefuehrt werden, sonst gibt es keinen Code — und ohne
+       ``offline_access`` gibt Authentik kein Refresh-Token aus
+       (providers/oauth2/views/token.py). Genau diese Zwickmuehle hat Bewertende
+       stuendlich rausgeworfen.
+
+    Der Login-Flow wird weiter oben schon per Flow-Executor gefahren; hier
+    passiert dasselbe fuer den Autorisierungs-Flow. Die Consent-Stage
+    beantwortet man mit ``{"component": "ak-stage-consent", "token": <token>}``
+    — der Token kommt aus der Challenge und wird serverseitig gegen die Session
+    geprueft (stages/consent/stage.py, ConsentChallengeResponse).
+
+    Gibt den Code zurueck oder ``None``; der Aufrufer behandelt None als
+    "Login fehlgeschlagen".
+    """
+    from urllib.parse import urlparse, parse_qs
+
+    def _code_from(url):
+        return (parse_qs(urlparse(url or '').query).get('code') or [None])[0]
+
+    if auth_response.status_code not in (302, 303):
+        return None
+
+    location = auth_response.headers.get('Location', '')
+    code = _code_from(location)
+    if code:
+        return code
+
+    parsed = urlparse(location)
+    segments = [seg for seg in parsed.path.split('/') if seg]
+    if not segments:
+        return None
+    # ".../if/flow/<slug>/" bzw. ".../flows/-/<slug>/" — der Slug steht hinten.
+    flow_slug = segments[-1]
+    executor = f"{authentik_base_url}/api/v3/flows/executor/{flow_slug}/"
+    # Die Query der Authorize-Anfrage muss mitgereicht werden, sonst weiss der
+    # Executor nicht, welche Autorisierung er gerade abarbeitet.
+    query = {'query': parsed.query}
+    headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
+
+    for _ in range(_MAX_AUTHZ_FLOW_STEPS):
+        stage = session.get(
+            executor, params=query, headers={'Accept': 'application/json'}, timeout=10
+        )
+        if stage.status_code != 200:
+            return None
+        data = stage.json()
+
+        code = _code_from(data.get('to'))
+        if code:
+            return code
+
+        component = data.get('component')
+        if component != 'ak-stage-consent':
+            # Jede andere Stufe (MFA, Prompt, Fehler) laesst sich hier nicht
+            # blind beantworten — dann lieber sauber scheitern als raten.
+            current_app.logger.warning(
+                f"Authorization flow stopped at unexpected stage: {component}"
+            )
+            return None
+
+        # CSRF: Die POSTs des LOGIN-Flows laufen noch mit anonymer Session,
+        # da prueft DRF nicht. Ab hier ist die Session authentifiziert, und
+        # SessionAuthentication.enforce_csrf schlaegt zu — ohne Header kommt
+        # "CSRF Failed: CSRF token missing" zurueck, das der Executor als
+        # ak-stage-flow-error ausliefert. Authentik benennt beides eigen
+        # (root/settings.py): Cookie authentik_csrf, Header X-authentik-CSRF —
+        # das uebliche X-CSRFToken wird NICHT gelesen. Das Cookie erst hier
+        # abholen, weil Django es unterwegs erneuern kann.
+        post_headers = dict(headers)
+        csrf_token = session.cookies.get('authentik_csrf')
+        if csrf_token:
+            post_headers['X-authentik-CSRF'] = csrf_token
+            # Django prueft den Referer nur bei HTTPS; intern laeuft es ueber
+            # HTTP. Mitschicken kostet nichts und haelt den Aufruf gueltig,
+            # falls die interne Strecke spaeter auf TLS umgestellt wird.
+            post_headers['Referer'] = f"{authentik_base_url}/"
+
+        result = session.post(
+            executor, params=query, headers=post_headers, timeout=10,
+            json={'component': 'ak-stage-consent', 'token': data.get('token')},
+        )
+        if result.status_code != 200:
+            return None
+        code = _code_from(result.json().get('to'))
+        if code:
+            return code
+
+    current_app.logger.warning('Authorization flow did not yield a code')
+    return None
+
+
 @authentik_auth_blueprint.route('/refresh', methods=['POST'])
 @public_endpoint
 @handle_api_errors(logger_name='authentik')
@@ -311,7 +418,14 @@ def login():
                 'response_type': 'code',
                 'client_id': client_id,
                 'redirect_uri': f"{authentik_base_url}/",  # Placeholder, we intercept
-                'scope': 'openid profile email',
+                # offline_access ist NICHT optional: ohne diesen Scope stellt
+                # Authentik gar kein Refresh-Token aus (token.py:637), und die
+                # komplette Erneuerungsmechanik im Frontend laeuft ins Leere —
+                # Rauswurf nach spaetestens 60 Minuten. Der Scope ist dem
+                # Provider in Authentik zugewiesen; er zwingt aber prompt=consent
+                # auf, weshalb der Redirect danach in den Autorisierungs-Flow
+                # geht statt zum Code. Das faengt _authorization_code() ab.
+                'scope': 'openid profile email offline_access',
                 'state': state,
                 'nonce': nonce
             }
@@ -325,16 +439,14 @@ def login():
 
             # Check for authorization code in redirect
             if auth_response.status_code in [302, 303]:
-                location = auth_response.headers.get('Location', '')
-                current_app.logger.debug(f"Auth redirect: {location}")
+                current_app.logger.debug(
+                    f"Auth redirect: {auth_response.headers.get('Location', '')}"
+                )
+                auth_code = _authorization_code(
+                    session, authentik_base_url, auth_response
+                )
 
-                # Extract code from redirect URL
-                from urllib.parse import urlparse, parse_qs
-                parsed = urlparse(location)
-                params = parse_qs(parsed.query)
-
-                if 'code' in params:
-                    auth_code = params['code'][0]
+                if auth_code:
 
                     # Step 5: Exchange authorization code for tokens
                     token_url = f"{authentik_base_url}/application/o/token/"
@@ -543,19 +655,17 @@ def issue_authentik_token(username: str, password: str) -> Optional[dict]:
                 'response_type': 'code',
                 'client_id': client_id,
                 'redirect_uri': f"{authentik_base_url}/",
-                'scope': 'openid profile email',
+                # Siehe login(): ohne offline_access kein Refresh-Token.
+                'scope': 'openid profile email offline_access',
                 'state': state,
                 'nonce': nonce,
             },
             allow_redirects=False,
             timeout=10,
         )
-        if auth_response.status_code not in (302, 303):
+        auth_code = _authorization_code(session, authentik_base_url, auth_response)
+        if not auth_code:
             return None
-        params = parse_qs(urlparse(auth_response.headers.get('Location', '')).query)
-        if 'code' not in params:
-            return None
-        auth_code = params['code'][0]
 
         token_response = http_requests.post(
             f"{authentik_base_url}/application/o/token/",
